@@ -120,9 +120,9 @@
  * ============================================================================
  */
 
-const STORAGE_KEY = 'oog_app_state_v13';
-const STORAGE_SCHEMA_VERSION = 13;
-const LEGACY_KEYS = ['oog_app_state_v12', 'oog_app_state_v11', 'oog_app_state_v10', 'oog_app_state_v9', 'oog_app_state_v8', 'oog_app_state_v7', 'oog_app_state_v6', 'oog_app_state_v5', 'oog_app_state_v4'];   // 이전 저장 상태 마이그레이션용
+const STORAGE_KEY = 'oog_app_state_v14';
+const STORAGE_SCHEMA_VERSION = 14;
+const LEGACY_KEYS = ['oog_app_state_v13', 'oog_app_state_v12', 'oog_app_state_v11', 'oog_app_state_v10', 'oog_app_state_v9', 'oog_app_state_v8', 'oog_app_state_v7', 'oog_app_state_v6', 'oog_app_state_v5', 'oog_app_state_v4'];   // 이전 저장 상태 마이그레이션용
 
 /* 최초 실행 시점 기준 상대 시간(분)으로 시드 데이터의 작성 시각을 만든다. */
 const MINUTE = 60 * 1000;
@@ -207,6 +207,89 @@ const GROUP_DEPUTY_SEED = {
   grp_crossfit_1: ['user_kettle'],
   grp_climbing_1: ['match_junseo']
 };
+
+/* ===== Sprint 16 — 인스타그램형 24시간 스토리 =====
+   11/15 19:05 사용자: "피드는 인스타그램처럼 상단에 이용자들이 스토리를 올릴 수 있도록 하자
+   24시간이 지나면 지워지도록".
+   · 스토리는 **모임 단위**다(groupId). 그 모임 피드 맨 위 스토리 바에만 나온다.
+   · 저장은 남겨도 되지만 **읽을 때 24시간이 지난 것은 절대 보이지 않는다**
+     (앱을 다시 열었을 때도 만료된 스토리가 되살아나지 않게 pruneExpiredStories 가 정리한다). */
+const STORY_TTL_HOURS = 24;
+const STORY_SEED = [
+  {
+    id: 'story_cf_1',
+    groupId: 'grp_crossfit_1',
+    authorId: 'leader_jun',
+    authorName: '코치준',
+    authorAvatarText: '준',
+    authorGradient: 'linear-gradient(135deg, #0F172A, #334155)',
+    mediaPreset: 'wod',
+    mediaCaption: '오늘 와드',
+    caption: '19:10반 와드 브리핑 짧게 올려요',
+    createdAt: ago(2 * HOUR)
+  },
+  {
+    id: 'story_cf_2',
+    groupId: 'grp_crossfit_1',
+    authorId: 'user_kettle',
+    authorName: '케틀벨러버',
+    authorAvatarText: '케',
+    authorGradient: 'linear-gradient(135deg, #FBBF24, #B45309)',
+    mediaPreset: 'kettle',
+    mediaCaption: '케틀벨 스윙',
+    caption: '오늘 스윙 100개 채웠습니다',
+    createdAt: ago(6 * HOUR)
+  },
+  {
+    id: 'story_cf_3',
+    groupId: 'grp_crossfit_1',
+    authorId: 'user_rookie',
+    authorName: '루키',
+    authorAvatarText: '루',
+    authorGradient: 'linear-gradient(135deg, #10B981, #047857)',
+    mediaPreset: 'selfie',
+    mediaCaption: '오운완',
+    caption: '샤워하고 나오는 길, 오늘도 해냈다',
+    createdAt: ago(11 * HOUR)
+  },
+  {
+    id: 'story_ft_1',
+    groupId: 'grp_fitness_1',
+    authorId: 'user_iron',
+    authorName: '아이언',
+    authorAvatarText: '아',
+    authorGradient: 'linear-gradient(135deg, #64748B, #0F172A)',
+    mediaPreset: 'barbell',
+    mediaCaption: '벤치 100',
+    caption: '주말 원정 준비 중',
+    createdAt: ago(4 * HOUR)
+  },
+  {
+    id: 'story_cl_1',
+    groupId: 'grp_climbing_1',
+    authorId: 'match_junseo',
+    authorName: '준서',
+    authorAvatarText: '준',
+    authorGradient: 'linear-gradient(135deg, #38BDF8, #0369A1)',
+    mediaPreset: 'climbing_boulder',
+    mediaCaption: 'V4 도전',
+    caption: '새 벽 세팅 진짜 좋네요',
+    createdAt: ago(9 * HOUR)
+  },
+  {
+    /* 24시간이 지난 스토리 — 화면에는 절대 나오지 않는다(만료 검증용) */
+    id: 'story_cf_expired',
+    groupId: 'grp_crossfit_1',
+    authorId: 'user_toe',
+    authorName: '오늘의토우',
+    authorAvatarText: '오',
+    authorGradient: 'linear-gradient(135deg, #A78BFA, #6D28D9)',
+    mediaPreset: 'gym',
+    mediaCaption: '어제 와드',
+    caption: '어제 기록 (24시간 지나 사라짐)',
+    createdAt: ago(26 * HOUR)
+  }
+];
 
 /* 그룹 내 1:1 대화 정책 시드 — 기본은 허용(true).
    금지 사례를 하나 둬서 OFF 안내가 어떻게 보이는지 홈에서 바로 볼 수 있게 한다. */
@@ -459,6 +542,13 @@ function isKnownRadius(radiusId) {
   return EXPLORE_RADIUS_OPTIONS.some((r) => r.id === radiusId);
 }
 
+/** Sprint 16 — 0~99세 범위 값 보정. 숫자가 아니면 fallback, 범위 밖은 잘라낸다. */
+function clampAge(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(99, Math.round(n)));
+}
+
 /** 반경 옵션 id → km (전체 = null). */
 function radiusKmOf(radiusId) {
   const hit = EXPLORE_RADIUS_OPTIONS.find((r) => r.id === radiusId);
@@ -634,7 +724,9 @@ const defaultInitialState = {
     workoutSpec: '크로스핏 6개월차 · 푸시업 정자세 훈련 중',
     bio: '성수동 거주. 퇴근 후 레벨업 크로스핏 박스에서 땀 흘립니다. 잡생각 없애는 덴 운동이 최고!',
     /* 루키이 '그룹장'인 모임 + 단순 가입 모임을 함께 둔다 (권한 분기 검증용) */
-    joinedGroupIds: ['grp_crossfit_1', 'grp_fitness_1', 'grp_climbing_1']
+    joinedGroupIds: ['grp_crossfit_1', 'grp_fitness_1', 'grp_climbing_1'],
+    /* Sprint 16 — 내 프로필을 탐색 '사람' 카드로 공개할지 (기본 OFF · 내가 켤 때만) */
+    exploreProfileVisible: false
   },
 
   /* ---------------- 탐색 탭 취미 필터 (사람·모임 카드 공용 키) ----------------
@@ -672,7 +764,25 @@ const defaultInitialState = {
    *  region : 'all' | 지역 id
    *  radius : 'all' | '1' | '3' | '5' | '10'   (Sprint 8 — 내 동네 반경 km)
    * ------------------------------------------------------------------------- */
-  explorePrefs: { filter: 'all', age: 'all', region: 'all', radius: 'all' },
+  explorePrefs: { filter: 'all', age: 'all', region: 'all', radius: 'all', ageMin: 0, ageMax: 99 },
+
+  /* ---------------- Sprint 16 — 0~99세 듀얼 레인지 나이 슬라이더 ----------------
+   * 11/15 19:05 사용자: "나이는 0~99세 드래그 슬라이더로".
+   * 예전 4구간 고정 칩 대신 explorePrefs.ageMin/ageMax(0~99)로 거른다.
+   * ageMin 0 · ageMax 99 는 '나이 조건 없음'이다.
+   * ------------------------------------------------------------------------- */
+  ageRangeBounds: { min: 0, max: 99 },
+
+  /* ---------------- Sprint 16 — 글 올릴 때 마지막 선택 기억 ----------------
+   * 11/15 18:36 사용자 답: "돋보기 기본값 = 마지막 선택 기억".
+   * 작성 모달의 '돋보기에 노출' 토글을 마지막으로 둔 값으로 다음 작성도 시작한다.
+   * ------------------------------------------------------------------------- */
+  composePrefs: { exploreVisible: false },
+
+  /* ---------------- Sprint 16 — 24시간 스토리 (모임 단위) ----------------
+   * 위 STORY_SEED 참고. 읽을 때 24시간 지난 것은 걸러낸다.
+   * ------------------------------------------------------------------------- */
+  stories: JSON.parse(JSON.stringify(STORY_SEED)),
 
   /* ---------------- 모임 나이 제한 옵션 (Sprint 4.5 · Sprint 5 강조) ----------------
    * 그룹장이 개설·설정에서 고르는 4가지. min·max 는 신청자 나이 판정에 쓴다.
@@ -2893,6 +3003,28 @@ class Store {
         ...p,
         exploreVisible: p.exploreVisible === true
       }));
+      /* ===== Sprint 16 (v13 → v14) 마이그레이션 =====
+       * ① stories — 24시간 스토리. 없던 저장 상태면 시드로 채운다.
+       * ② groups[].deputyCanModerate — 부방장에게 '멤버 승인·강퇴'까지 맡길지(기본 OFF).
+       *    공지·일정 작성은 부방장이 늘 할 수 있고, 승인·강퇴만 그룹장이 따로 켠다.
+       * ③ composePrefs — 글 올릴 때 마지막으로 둔 '돋보기 노출' 값.
+       * ④ explorePrefs.ageMin/ageMax — 0~99세 슬라이더(기본 0~99 = 조건 없음).
+       * ⑤ currentUser.exploreProfileVisible — 내 프로필을 탐색에 올렸는지(기본 OFF).
+       */
+      if (!Array.isArray(merged.stories)) {
+        merged.stories = JSON.parse(JSON.stringify(STORY_SEED));
+      }
+      merged.groups = (merged.groups || []).map((g) => ({
+        ...g,
+        deputyCanModerate: g.deputyCanModerate === true
+      }));
+      merged.composePrefs = {
+        exploreVisible: !!(parsed.composePrefs && parsed.composePrefs.exploreVisible === true)
+      };
+      merged.ageRangeBounds = { min: 0, max: 99 };
+      if (typeof merged.currentUser.exploreProfileVisible !== 'boolean') {
+        merged.currentUser.exploreProfileVisible = false;
+      }
       applyRegionIds(merged);
       return merged;
     } catch (e) {
@@ -3293,14 +3425,58 @@ class Store {
       filter: typeIds.includes(p.filter) ? p.filter : 'all',
       age: ageIds.includes(p.age) ? p.age : 'all',
       region: regionIds.includes(p.region) ? p.region : 'all',
-      radius: radiusIds.includes(p.radius) ? p.radius : 'all'
+      radius: radiusIds.includes(p.radius) ? p.radius : 'all',
+      /* Sprint 16 — 0~99세 듀얼 레인지. 두 값이 뒤집혔으면 바로잡고, 범위 밖은 잘라낸다. */
+      ageMin: clampAge(p.ageMin, 0),
+      ageMax: clampAge(p.ageMax, 99)
     };
+  }
+
+  /** Sprint 16 — 지금 고른 나이 범위(0~99). active = 실제로 걸러야 하는 상태인지. */
+  getExploreAgeRange() {
+    const prefs = this.getExplorePrefs();
+    const min = Math.min(prefs.ageMin, prefs.ageMax);
+    const max = Math.max(prefs.ageMin, prefs.ageMax);
+    return { min, max, active: !(min === 0 && max === 99), bounds: { min: 0, max: 99 } };
+  }
+
+  /**
+   * 나이 범위를 저장한다(기억됨). 0~99 를 벗어나는 값은 잘라내고, 최소>최대면 바꿔 넣는다.
+   * @returns {{ok:boolean, range:object, prefs:object}}
+   */
+  setExploreAgeRange(min, max) {
+    const lo = clampAge(min, 0);
+    const hi = clampAge(max, 99);
+    const prefs = this.updateExplorePrefs({
+      ageMin: Math.min(lo, hi),
+      ageMax: Math.max(lo, hi),
+      /* 슬라이더를 쓰면 예전 4구간 칩 조건은 풀린다(두 조건이 서로를 가리지 않게). */
+      age: 'all'
+    });
+    return { ok: true, range: this.getExploreAgeRange(), prefs: prefs.prefs };
+  }
+
+  /** 나이 범위 필터가 사람·글쓴이의 나이를 허용하는가(범위가 0~99면 모두 통과). */
+  ageRangeAllows(age) {
+    const range = this.getExploreAgeRange();
+    if (!range.active) return true;
+    if (age == null || Number.isNaN(Number(age))) return false;
+    const n = Number(age);
+    return n >= range.min && n <= range.max;
+  }
+
+  /** 나이 범위 필터가 모임의 가입 나이 제한과 겹치는가(모임은 제한 구간과 범위가 겹치면 보인다). */
+  ageRangeAllowsGroup(group) {
+    const range = this.getExploreAgeRange();
+    if (!range.active) return true;
+    const limit = this.getAgeLimit((group && group.ageLimit) || 'all') || { min: 0, max: 200 };
+    return range.min <= limit.max && range.max >= limit.min;
   }
 
   /** 마지막으로 고른 탐색 필터(나이·지역·종류·반경) — 새로고침해도 유지된다. */
   getExplorePrefs() {
     if (!this.state.explorePrefs || typeof this.state.explorePrefs !== 'object') {
-      this.state.explorePrefs = { filter: 'all', age: 'all', region: 'all', radius: 'all' };
+      this.state.explorePrefs = { filter: 'all', age: 'all', region: 'all', radius: 'all', ageMin: 0, ageMax: 99 };
     }
     this.state.explorePrefs = Store.normalizeExplorePrefs(this.state.explorePrefs, this.state);
     return { ...this.state.explorePrefs };
@@ -3315,7 +3491,8 @@ class Store {
     const current = this.getExplorePrefs();
     const next = Store.normalizeExplorePrefs({ ...current, ...(patch || {}) }, this.state);
     const changed = next.filter !== current.filter || next.age !== current.age
-      || next.region !== current.region || next.radius !== current.radius;
+      || next.region !== current.region || next.radius !== current.radius
+      || next.ageMin !== current.ageMin || next.ageMax !== current.ageMax;
     this.state.explorePrefs = next;
     if (changed) this.saveState();
     return { ok: true, prefs: { ...next }, changed };
@@ -3675,9 +3852,15 @@ class Store {
 
     const people = [];
     if (kind === 'all' || kind === 'people' || isHobby) {
+      /* Sprint 16 — 내가 탐색에 올린 프로필도 '사람' 카드로 보인다(내 카드 표시). */
+      const myCard = this.getMyExploreProfile();
+      if (myCard && (!isHobby || (myCard.hobbyIds || []).includes(kind))) {
+        people.push({ type: 'person', id: myCard.id, ratio: myCard.ratio || 'mid', profile: myCard, distanceKm: 0, isMe: true });
+      }
       (this.state.matchProfiles || []).forEach((p) => {
         if (isHobby && !(p.hobbyIds || []).includes(kind)) return;
         if (!this.ageFilterAllowsAge(age, p.age)) return;
+        if (!this.ageRangeAllows(p.age)) return;
         if (!inRegion(this.getPersonRegionId(p))) return;
         const distanceKm = this.getPersonDistanceKm(p);
         if (!this.radiusAllows(radiusId, distanceKm)) return;
@@ -3691,6 +3874,7 @@ class Store {
       (this.state.groups || []).forEach((g) => {
         if (isHobby && g.hobbyId !== kind) return;
         if (!this.ageFilterAllowsGroup(age, g)) return;
+        if (!this.ageRangeAllowsGroup(g)) return;
         if (!inRegion(this.getGroupRegionId(g))) return;
         const distanceKm = this.getGroupDistanceKm(g);
         if (!this.radiusAllows(radiusId, distanceKm)) return;
@@ -3707,6 +3891,7 @@ class Store {
       (this.state.explorePosts || []).forEach((p) => {
         if (isHobby && p.hobbyId !== kind) return;
         if (!this.ageFilterAllowsAge(age, this.getPostAuthorAge(p))) return;
+        if (!this.ageRangeAllows(this.getPostAuthorAge(p))) return;
         if (!inRegion(this.getExplorePostRegionId(p))) return;
         const distanceKm = this.getExplorePostDistanceKm(p);
         if (!this.radiusAllows(radiusId, distanceKm)) return;
@@ -4173,7 +4358,9 @@ class Store {
   createExplorePost(data) {
     const d = data || {};
     const chip = this.getHobbyChip(d.hobbyId);
-    if (!chip) return { ok: false, reason: 'hobby' };
+    /* Sprint 16 — 취미를 고르지 않아도 '자유' 글로 올릴 수 있다(누구나 게시글 올리기). */
+    const isFree = !chip && (d.open === true || !d.hobbyId);
+    if (!chip && !isFree) return { ok: false, reason: 'hobby' };
     const caption = String(d.caption || '').trim();
     const preset = d.mediaPreset && this.mediaLibrary.includes(d.mediaPreset) ? d.mediaPreset : null;
     if (!caption && !preset) return { ok: false, reason: 'empty' };
@@ -4184,15 +4371,17 @@ class Store {
       authorName: user.nickname,
       authorAvatarText: user.avatarText || user.nickname.charAt(0),
       authorGradient: user.avatarGradient,
-      hobbyId: chip.id,
-      hobbyLabel: chip.name,
-      hobbyEmoji: chip.emoji,
+      hobbyId: chip ? chip.id : null,
+      hobbyLabel: chip ? chip.name : '자유게시판',
+      hobbyEmoji: chip ? chip.emoji : '',
+      /* Sprint 16 — 그룹과 무관하게 올리는 '오픈 글' */
+      scope: chip ? 'hobby' : 'open',
       tag: String(d.tag || '').trim().slice(0, 8) || null,
       caption: caption.slice(0, 300),
       mediaPreset: preset,
       mediaCaption: String(d.mediaCaption || '').trim().slice(0, 40),
       ratio: d.ratio === 'wide' ? 'wide' : 'square',
-      groupName: '공개 취미 피드',
+      groupName: chip ? '공개 취미 피드' : '탐색 게시판',
       /* Sprint 7 — 새 글은 내 생활권으로 분류된다(지역 탐색에 바로 잡힌다). */
       regionId: user.regionId || deriveRegionId(user.location) || 'gwanak',
       likes: 0,
@@ -6946,6 +7135,297 @@ class Store {
     comment.likes = Math.max(0, (comment.likes || 0) + (comment.likedByMe ? 1 : -1));
     this.saveState();
     return { liked: comment.likedByMe, likes: comment.likes || 0, comment };
+  }
+
+  /* ==========================================================================
+   * 16-A. 바깥 3탭 — 홈 = 내 그룹 2열 갤러리
+   * -------------------------------------------------------------------------
+   * 11/15 19:05 사용자: "홈탭 첫 화면은 내가 가입한 그룹들이 2열 갤러리식 카드로
+   * 나열되고, 그룹을 탭해서 들어가면 그 그룹 전용 공간으로 전환".
+   * 갤러리 카드 하나에 필요한 것만 한 번에 모아 준다(모임·표지·사진·스토리·약속).
+   * ======================================================================== */
+  getGroupGallery() {
+    return this.getJoinedGroups().map((group) => {
+      const posts = this.getGroupPhotoPosts(group.id);
+      const photos = posts.filter((p) => p.mediaPreset || p.photoUrl);
+      const next = this.getNextGroupEvent(group.id);
+      const chat = this.getGroupChatPreview(group.id);
+      const stories = this.getGroupStories(group.id);
+      const last = posts[0] || null;
+      return {
+        id: group.id,
+        group,
+        name: group.name,
+        emoji: group.emoji,
+        categoryName: group.categoryName,
+        location: group.location,
+        coverGradient: group.coverGradient,
+        memberCount: group.memberCount,
+        photoCount: photos.length,
+        postCount: posts.length,
+        storyCount: stories.length,
+        storyAuthors: stories.slice(0, 4).map((s) => ({ name: s.authorName, avatarText: s.authorAvatarText, gradient: s.authorGradient })),
+        nextEvent: next,
+        chat,
+        lastPostAt: last ? last.createdAt : null,
+        coverPresets: photos.slice(0, 2).map((p) => p.mediaPreset).filter(Boolean),
+        isLeader: this.isGroupLeader(group.id)
+      };
+    });
+  }
+
+  /* ==========================================================================
+   * 16-B. 인스타그램형 24시간 스토리 (모임 단위)
+   * -------------------------------------------------------------------------
+   * · 스토리는 올린 시각(createdAt)부터 **24시간**만 산다.
+   * · 읽는 쪽(getGroupStories)에서 한 번 더 거르고, pruneExpiredStories 가 저장 상태에서 지운다.
+   * ======================================================================== */
+  static storyExpired(story, now) {
+    if (!story || !story.createdAt) return true;
+    const at = new Date(story.createdAt).getTime();
+    if (Number.isNaN(at)) return true;
+    return (now == null ? Date.now() : now) - at >= STORY_TTL_HOURS * HOUR;
+  }
+
+  isStoryExpired(story, now) {
+    return Store.storyExpired(story, now);
+  }
+
+  /** 그 모임의 살아 있는 스토리 — 오래된 것부터(인스타처럼 좌→우). */
+  getGroupStories(groupId, options = {}) {
+    const now = options.now == null ? Date.now() : options.now;
+    return (this.state.stories || [])
+      .filter((s) => s.groupId === groupId)
+      .filter((s) => (options.includeExpired ? true : !Store.storyExpired(s, now)))
+      .slice()
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  }
+
+  /** 스토리 바에 쓸 요약 — 내 스토리 수·다른 사람 수·만료된 수(점검용). */
+  getGroupStoryStats(groupId, options = {}) {
+    const live = this.getGroupStories(groupId, options);
+    const me = this.currentUser.id;
+    return {
+      total: live.length,
+      mine: live.filter((s) => s.authorId === me).length,
+      others: live.filter((s) => s.authorId !== me).length,
+      expired: this.getGroupStories(groupId, { ...options, includeExpired: true }).length - live.length,
+      ttlHours: STORY_TTL_HOURS
+    };
+  }
+
+  /** 스토리 하나 — 뷰어가 id 로 찾는다(만료된 것은 돌려주지 않는다). */
+  getStory(storyId, options = {}) {
+    const story = (this.state.stories || []).find((s) => s.id === storyId);
+    if (!story) return null;
+    if (!options.includeExpired && Store.storyExpired(story, options.now)) return null;
+    return story;
+  }
+
+  /** 스토리 올리기 — 가입한 모임에만. 사진(프리셋)이나 한 줄 중 하나는 있어야 한다. */
+  addGroupStory(data) {
+    const d = data || {};
+    const groupId = d.groupId;
+    if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
+    const preset = d.mediaPreset && this.mediaLibrary.includes(d.mediaPreset) ? d.mediaPreset : null;
+    const caption = String(d.caption || '').trim().slice(0, 60);
+    if (!preset && !caption) return { ok: false, reason: 'empty' };
+    const user = this.state.currentUser;
+    const story = {
+      id: `story_${Date.now()}`,
+      groupId,
+      authorId: user.id,
+      authorName: user.nickname,
+      authorAvatarText: user.avatarText || user.nickname.charAt(0),
+      authorGradient: user.avatarGradient,
+      mediaPreset: preset,
+      mediaCaption: String(d.mediaCaption || '').trim().slice(0, 24),
+      caption,
+      createdAt: new Date().toISOString()
+    };
+    if (!Array.isArray(this.state.stories)) this.state.stories = [];
+    this.state.stories.push(story);
+    this.saveState();
+    return { ok: true, story };
+  }
+
+  /** 내가 올린 스토리 지우기 — 내 것만. */
+  deleteStory(storyId) {
+    const story = (this.state.stories || []).find((s) => s.id === storyId);
+    if (!story) return { ok: false, reason: 'not_found' };
+    if (story.authorId !== this.currentUser.id) return { ok: false, reason: 'permission' };
+    this.state.stories = this.state.stories.filter((s) => s.id !== storyId);
+    this.saveState();
+    return { ok: true };
+  }
+
+  /** 24시간이 지난 스토리를 저장 상태에서 정리한다(앱을 열 때·스토리 바를 그릴 때). */
+  pruneExpiredStories(now) {
+    const at = now == null ? Date.now() : now;
+    const before = (this.state.stories || []).length;
+    this.state.stories = (this.state.stories || []).filter((s) => !Store.storyExpired(s, at));
+    const removed = before - this.state.stories.length;
+    if (removed > 0) this.saveState();
+    return removed;
+  }
+
+  /* ==========================================================================
+   * 16-C. 부방장 권한 — 공지·일정은 늘, 멤버 승인·강퇴는 그룹장이 켤 때만
+   * -------------------------------------------------------------------------
+   * 11/15 18:36 사용자 답: "공지·일정 만들기·멤버 승인/강퇴 모두 지원하되,
+   * 멤버 승인·강퇴 권한은 그룹장이 선택(부여/해제)할 수 있게".
+   * ======================================================================== */
+  getDeputyPermissions(groupId) {
+    const group = this.getGroup(groupId);
+    const isLeader = this.isGroupLeader(groupId);
+    const isDeputy = this.isGroupDeputy(groupId);
+    const grant = !!(group && group.deputyCanModerate === true);
+    return {
+      groupId,
+      isLeader,
+      isDeputy,
+      deputyCanModerate: grant,
+      /* 공지·일정 작성: 그룹장 + 부방장 */
+      canManageNotices: isLeader || isDeputy,
+      canManageEvents: isLeader || isDeputy,
+      /* 멤버 승인·강퇴: 그룹장, 또는 그룹장이 권한을 켠 부방장 */
+      canModerateMembers: isLeader || (isDeputy && grant),
+      /* 이 스위치는 그룹장만 바꿀 수 있다 */
+      canToggleModerate: isLeader
+    };
+  }
+
+  /** 부방장에게 '멤버 승인·강퇴'까지 맡길지 — 그룹장만 바꿀 수 있다. */
+  setDeputyModeratePermission(groupId, on) {
+    const group = this.getGroup(groupId);
+    if (!group) return { ok: false, reason: 'not_found' };
+    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    group.deputyCanModerate = !!on;
+    this.saveState();
+    return { ok: true, groupId, deputyCanModerate: group.deputyCanModerate, permissions: this.getDeputyPermissions(groupId) };
+  }
+
+  /* ==========================================================================
+   * 16-D. 글 올릴 때 마지막 선택 기억 (돋보기 노출)
+   * ======================================================================== */
+  getComposePrefs() {
+    if (!this.state.composePrefs || typeof this.state.composePrefs !== 'object') {
+      this.state.composePrefs = { exploreVisible: false };
+    }
+    return { exploreVisible: this.state.composePrefs.exploreVisible === true };
+  }
+
+  setComposeExploreDefault(on) {
+    this.state.composePrefs = { exploreVisible: !!on };
+    this.saveState();
+    return { ok: true, prefs: this.getComposePrefs() };
+  }
+
+  /* ==========================================================================
+   * 16-E. 탐색에 내 프로필 올리기 · 오픈 글
+   * -------------------------------------------------------------------------
+   * 11/15 19:05 사용자: "그룹과 별개로 누구나 탐색에 게시글과 본인 프로필을 올릴 수 있게".
+   * ======================================================================== */
+  isMyProfileExploreVisible() {
+    return this.state.currentUser.exploreProfileVisible === true;
+  }
+
+  /** 내가 탐색 '사람' 카드로 올렸을 때 보이는 내 카드 (안 올렸으면 null). */
+  getMyExploreProfile() {
+    if (!this.isMyProfileExploreVisible()) return null;
+    const u = this.state.currentUser;
+    return {
+      id: u.id,
+      nickname: u.nickname,
+      handle: u.handle,
+      avatarText: u.avatarText || u.nickname.charAt(0),
+      avatarGradient: u.avatarGradient,
+      age: Number(u.age) || null,
+      location: u.location,
+      regionId: u.regionId || null,
+      hobbyLabel: (u.hobbies || [])[0] || '',
+      hobbies: u.hobbies || [],
+      hobbyIds: u.hobbyIds || [],
+      hobbyStyle: u.workoutSpec || '',
+      bio: u.bio || '',
+      badge: '내 프로필',
+      ratio: 'mid',
+      isMe: true,
+      exploreVisible: true
+    };
+  }
+
+  /** 내 프로필을 탐색에 올릴지(켜고 끄기). */
+  setMyProfileExploreVisible(on) {
+    this.state.currentUser.exploreProfileVisible = !!on;
+    this.saveState();
+    return { ok: true, exploreProfileVisible: this.state.currentUser.exploreProfileVisible };
+  }
+
+  /** 그룹과 무관한 오픈 글만(내가 올린 것부터). */
+  getOpenExplorePosts() {
+    return (this.state.explorePosts || [])
+      .filter((p) => !p.hobbyId || p.scope === 'open')
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  /* ==========================================================================
+   * 16-F. 매칭 없이 바로 쪽지(디엠) — 전체 디엠함
+   * -------------------------------------------------------------------------
+   * 11/15 19:05 사용자: "사람 카드에서 상호 매칭을 기다리지 않고 바로 쪽지(디엠) 보내기,
+   * 보낸 대화는 바깥 3번째 탭 '전체 디엠함'에 즉시 노출".
+   * ======================================================================== */
+  startDirectMessage(profileId, text) {
+    const profile = this.getMatchProfile(profileId);
+    if (!profile) return { ok: false, reason: 'not_found' };
+    const body = String(text || '').trim();
+    const opened = this.openChatRoom(profileId);
+    const room = opened.room;
+    /* 매칭 대기 없이 보낸 쪽지 — '새 매칭' 배지 대신 바로 대화가 시작된다. */
+    room.isNewMatch = false;
+    room.startedByMe = true;
+    let message = null;
+    if (body) {
+      message = this.sendChatMessage(room.id, body);
+    } else {
+      this.saveState();
+    }
+    return { ok: true, room, created: opened.created, message };
+  }
+
+  /** 전체 디엠함 — 모든 모임 단체방 + 모든 1:1 방을 한 번에(바깥 3번째 탭). */
+  getDmInbox() {
+    const groupRooms = this.getJoinedGroups().map((group) => {
+      const chat = this.getGroupChatPreview(group.id);
+      return { kind: 'group', groupId: group.id, group, chat };
+    });
+    const directRooms = (this.state.chatRooms || []).map((room) => {
+      const msgs = room.messages || [];
+      const lastAt = msgs.reduce((max, m) => {
+        const t = new Date(m.at).getTime();
+        return Number.isFinite(t) && t > max ? t : max;
+      }, 0);
+      const groupId = this.getChatRoomGroupId(room.id);
+      return {
+        kind: 'direct',
+        room,
+        group: groupId ? this.getGroup(groupId) : null,
+        lastAt,
+        unread: room.unreadCount || 0
+      };
+    });
+    const groupUnread = groupRooms.reduce((sum, r) => sum + (r.chat.unread || 0), 0);
+    return {
+      groupRooms,
+      directRooms: directRooms.sort((a, b) => b.lastAt - a.lastAt),
+      total: groupRooms.length + directRooms.length,
+      unread: groupUnread + directRooms.reduce((sum, r) => sum + r.unread, 0)
+    };
+  }
+
+  getUnreadDmCount() {
+    return this.getDmInbox().unread;
   }
 }
 
