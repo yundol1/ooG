@@ -1,0 +1,49 @@
+{
+  "name": "ooG - 우리들의 취미 그룹",
+  "short_name": "ooG",
+  "description": "취미로 이어지는 사람과 모임. 2열 메이슨리 탐색 피드에서 취미친구와 소모임을 한 번에 만나고, 모임 인증은 모임원에게만 공개됩니다.",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "theme_color": "#10B981",
+  "background_color": "#FFFFFF",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "탐색 피드",
+      "short_name": "탐색",
+      "url": "./index.html?view=explore",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "내 소모임 피드",
+      "short_name": "피드",
+      "url": "./index.html?view=feed",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

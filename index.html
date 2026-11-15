@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#10B981">
+  <meta property="og:title" content="ooG (우그) — 취미로 이어지는 사람과 모임">
+  <meta property="og:description" content="토스쇼핑처럼 퍼즐처럼 얽히는 2열 탐색 피드에서 취미친구와 소모임을 한 번에. 모임 인증은 모임원에게만.">
+  <meta property="og:type" content="website">
+  <!-- ===== PWA (Sprint 5) — 홈 화면에 추가 · 앱처럼 실행 ===== -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ooG">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310B981'/%3E%3Ctext x='32' y='42' font-family='sans-serif' font-size='30' font-weight='800' fill='white' text-anchor='middle'%3EooG%3C/text%3E%3C/svg%3E">
+  <meta name="description" content="ooG(우그) - 취미 소모임 프라이빗 피드 & 1:1 매칭">
+  <title>ooG (우그) - 취미 소모임 & 1:1 매칭</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <noscript>
+    <div style="padding:24px;font-family:sans-serif;line-height:1.6">
+      ooG(우그)는 자바스크립트로 동작합니다. 브라우저에서 자바스크립트를 켜 주세요.
+    </div>
+  </noscript>
+  <div class="app-container">
+
+    <!-- ==================== 상단 헤더 (화이트 글래스) ==================== -->
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-logo">ooG</span>
+        <span class="brand-tag">Our Own Group</span>
+      </div>
+      <div class="header-actions">
+        <button class="icon-btn" id="btn-header-search" aria-label="검색">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <button class="icon-btn" id="btn-header-notif" aria-label="알림">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span class="notif-dot" id="notif-dot"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ==================== 푸시 알림 권한 안내 배너 (Sprint 4.5) ==================== -->
+    <div class="push-permission-banner" id="push-permission-banner" hidden>
+      <span class="ppb-icon" aria-hidden="true">🔔</span>
+      <div class="ppb-text">
+        <strong class="ppb-title">앱을 꺼도 새 메시지 알림 받기</strong>
+        <span class="ppb-desc">대화 답장·좋아요·댓글·모임 가입 소식을 놓치지 않게 알려드려요</span>
+      </div>
+      <button class="ppb-cta" id="btn-push-allow" type="button">알림 켜기</button>
+      <button class="ppb-close" id="btn-push-dismiss" type="button" aria-label="나중에 하기">&times;</button>
+    </div>
+
+    <!-- ==================== 인앱 상단 푸시 배너가 쌓이는 자리 ==================== -->
+    <div class="push-banner-stack" id="push-banner-stack" aria-live="assertive" aria-label="새 알림"></div>
+
+    <!-- ==================== 메인 콘텐츠 ==================== -->
+    <main class="app-main" id="main-content">
+
+      <!-- ========== 0. 피드 — 내 모임 (Sprint 15: 인스타그램 결) ==========
+           상단 = 모임 공지 + 다가오는 일정(고정), 본문 = 아래로 스크롤하는 모임 피드.
+           11/15 16:07 사용자: "모임 피드를 인스타그램처럼 해줘 이거는 홈탭의 피드탭을 볼 수 있게" -->
+      <section class="tab-view active" id="tab-home">
+        <!-- 내 모임 전환 스위처 + 모임 홈 헤더 -->
+        <div class="home-switcher-wrap">
+          <div class="home-switcher" id="home-switcher" role="tablist" aria-label="내 모임 전환"><!-- JS --></div>
+        </div>
+
+        <div class="home-hero" id="home-hero"><!-- JS --></div>
+
+        <!-- 상단 고정: 모임 공지 바 + 다가오는 일정 -->
+        <div class="home-pinned" id="home-pinned">
+          <div class="home-notice-bar" id="home-notice-bar" aria-live="polite"><!-- JS --></div>
+          <section class="home-event-strip" aria-labelledby="home-events-title">
+            <div class="home-event-strip-head">
+              <h3 class="home-event-strip-title" id="home-events-title">🗓 다가오는 일정</h3>
+              <button class="home-block-more" id="btn-home-event-new" type="button">＋ 일정 만들기</button>
+            </div>
+            <div class="home-events" id="home-events"><!-- JS --></div>
+          </section>
+        </div>
+
+        <!-- 본문 — 아래로 스크롤하며 보는 모임 피드 -->
+        <section class="home-block home-feed-block" aria-labelledby="home-photos-title">
+          <div class="home-block-head">
+            <h3 class="home-block-title" id="home-photos-title">
+              📸 우리 모임 피드 <span class="section-count" id="home-photo-count">0</span>
+            </h3>
+            <div class="home-view-seg" id="home-view-seg" role="group" aria-label="피드 보기 방식"><!-- JS --></div>
+          </div>
+          <div class="home-tag-chips" id="home-tag-chips" role="group" aria-label="말머리로 보기" hidden><!-- JS --></div>
+          <div class="home-photo-grid" id="home-photo-grid" aria-live="polite" hidden><!-- JS --></div>
+          <div class="feed-container home-feed-list" id="feed-posts-container" aria-live="polite"><!-- JS --></div>
+        </section>
+
+        <!-- 모임 단체 채팅 — 피드 아래 바로가기 -->
+        <section class="home-block home-chat-block" aria-labelledby="home-chat-title">
+          <div class="home-block-head">
+            <h3 class="home-block-title" id="home-chat-title">💬 모임 단체 채팅</h3>
+            <button class="home-block-more" id="btn-home-chat-open" type="button">들어가기 ›</button>
+          </div>
+          <div class="home-chat-card" id="home-chat-preview"><!-- JS --></div>
+        </section>
+      </section>
+
+
+      <!-- ========== 1. 탐색 탭 — 토스쇼핑형 2열 메이슨리 (사람 + 소모임) ========== -->
+      <section class="tab-view" id="tab-explore">
+        <div class="explore-top">
+          <div class="explore-search">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="search" id="explore-search-input" aria-label="취미나 동네 검색" placeholder="취미나 동네를 검색해보세요" autocomplete="off">
+            <button class="explore-search-clear hide" id="explore-search-clear" aria-label="검색어 지우기">&times;</button>
+          </div>
+          <div class="explore-toolbar">
+            <!-- Sprint 9 — 종류는 상단 1줄 세그먼트로 (전체 / 사람 / 모임 / 글) -->
+            <div class="explore-type-seg" id="explore-type-seg" role="group" aria-label="탐색 종류"><!-- JS --></div>
+            <!-- Sprint 7 — 지역(생활권) 드롭다운: 고른 지역은 저장되어 다시 열어도 유지된다 -->
+            <button class="explore-region-btn" id="btn-explore-region" type="button" aria-haspopup="dialog"
+                    aria-controls="region-modal" aria-label="지역 선택">
+              <span class="region-btn-dot" aria-hidden="true"></span>
+              <span class="region-btn-emoji" aria-hidden="true" id="explore-region-emoji">📍</span>
+              <span class="region-btn-label" id="explore-region-label">전체 지역</span>
+              <span class="region-btn-caret" aria-hidden="true">▾</span>
+            </button>
+            <!-- Sprint 9 — 취미·나이·반경은 통합 필터 시트로 접는다 -->
+            <button class="explore-filter-btn" id="btn-explore-filter" type="button" aria-haspopup="dialog"
+                    aria-controls="filter-modal" aria-expanded="false" aria-label="상세 필터 열기">
+              <span class="filter-btn-icon" aria-hidden="true">🎛️</span>
+              <span class="filter-btn-label">필터</span>
+              <span class="explore-filter-badge" id="explore-filter-count" hidden>0</span>
+            </button>
+          </div>
+          <!-- 적용된 세부 조건만 작은 칩 1줄로 — 누르면 바로 해제된다 -->
+          <div class="explore-active-filters" id="explore-active-filters" role="group"
+               aria-label="적용된 탐색 조건" hidden><!-- JS --></div>
+        </div>
+
+        <div class="explore-head">
+          <div class="explore-head-text">
+            <h2 class="explore-title" id="explore-title">취미로 이어지는 사람과 모임</h2>
+            <p class="explore-count" id="explore-count">사람 18 · 모임 15 · 글 18</p>
+          </div>
+        </div>
+
+        <!-- ===== Sprint 15 — 돋보기 그리드: **공개에 동의한** 타 모임 사진만 ===== -->
+        <section class="dokbo-section" id="dokbo-section" aria-labelledby="dokbo-title">
+          <div class="dokbo-head">
+            <div class="dokbo-head-text">
+              <h3 class="dokbo-title" id="dokbo-title">🔍 돋보기 <span class="section-count" id="dokbo-count">0</span></h3>
+              <p class="dokbo-sub" id="dokbo-sub">다른 모임이 '돋보기에 노출'을 켠 사진만 보여요</p>
+            </div>
+            <span class="dokbo-privacy" id="dokbo-privacy">🔒 끈 사진은 모임 안에만</span>
+          </div>
+          <div class="dokbo-grid" id="dokbo-grid" aria-live="polite"><!-- JS --></div>
+        </section>
+
+        <div class="explore-actions">
+          <button class="explore-action-btn" id="btn-explore-compose" type="button">
+            <span aria-hidden="true">✏️</span> 취미 게시글 쓰기
+          </button>
+          <button class="explore-action-btn ghost" id="btn-explore-create-group" type="button">
+            <span aria-hidden="true">＋</span> 모임 만들기
+          </button>
+        </div>
+
+        <!-- ===== Sprint 7 — 실시간 베스트(실베) 스트립: 반응 점수 상위 5 + 더보기 ===== -->
+        <section class="hot-strip" id="hot-strip" aria-labelledby="hot-title">
+          <div class="hot-head">
+            <div class="hot-head-text">
+              <h3 class="hot-title" id="hot-title"><span class="hot-flame" aria-hidden="true">🔥</span> 실시간 베스트</h3>
+              <p class="hot-sub" id="hot-sub">지금 반응이 뜨거운 취미 글</p>
+            </div>
+            <button class="hot-more" id="btn-hot-more" type="button">더보기 <span aria-hidden="true">›</span></button>
+          </div>
+          <div class="hot-rail" id="hot-rail" aria-live="polite"><!-- JS --></div>
+        </section>
+
+        <div class="masonry" id="explore-masonry" aria-live="polite"><!-- JS --></div>
+
+        <div class="explore-loader" id="explore-loader" hidden>
+          <span class="explore-spinner" aria-hidden="true"></span>
+          <span class="explore-loader-text">새 카드를 불러오는 중</span>
+        </div>
+        <div class="explore-sentinel" id="explore-sentinel" aria-hidden="true"></div>
+      </section>
+
+      <!-- ========== 3. 디엠 탭 (모임 전체방 + 그룹 내 1:1 대화) ========== -->
+      <section class="tab-view" id="tab-chat">
+        <div class="chat-header">
+          <div class="chat-title-area">
+            <h2 class="chat-title">디엠</h2>
+            <p class="chat-sub">모임 전체방과 그룹 안 1:1 대화를 한곳에서</p>
+          </div>
+          <span class="chat-count-badge" id="chat-room-count">0</span>
+        </div>
+
+        <!-- Sprint 14~15 — 모임 전체방(단체 채팅) -->
+        <section class="chat-group-section" aria-labelledby="chat-group-title">
+          <div class="chat-section-head">
+            <h3 class="chat-section-title" id="chat-group-title">👥 모임 전체방</h3>
+            <span class="chat-section-sub" id="chat-group-count">0곳</span>
+          </div>
+          <div class="chat-group-rooms" id="chat-group-rooms"><!-- JS --></div>
+        </section>
+
+        <section class="chat-dm-section" aria-labelledby="chat-dm-title">
+          <div class="chat-section-head">
+            <h3 class="chat-section-title" id="chat-dm-title">💚 그룹 내 1:1 대화</h3>
+            <span class="chat-section-sub" id="chat-dm-count">0명</span>
+          </div>
+          <p class="chat-dm-policy" id="chat-dm-policy"><!-- JS --></p>
+          <div class="chat-rooms-list" id="chat-rooms-container"><!-- JS --></div>
+        </section>
+        <p class="chat-note">대화방을 누르면 바로 메시지를 보낼 수 있어요. 모임에서 1:1 대화를 꺼두면 그 모임 멤버에게는 말을 걸 수 없어요.</p>
+      </section>
+
+      <!-- ========== 4. 프로필 탭 ========== -->
+      <section class="tab-view" id="tab-profile">
+        <div class="profile-header-area">
+          <div class="profile-avatar-large"><span class="avatar-letter" id="profile-avatar-letter">루</span><span class="online-indicator"></span></div>
+          <div class="profile-info-block">
+            <div class="profile-name-row">
+              <h2 class="profile-nickname" id="profile-nickname">루키</h2>
+              <span class="badge-role">그룹장</span>
+              <span class="badge-membership">PLUS</span>
+            </div>
+            <p class="profile-bio" id="profile-bio">성수동 거주 · 크로스핏 6개월차 푸시업 맹연습 중 🔥</p>
+            <div class="profile-specs-chips" id="profile-specs">
+              <span class="spec-chip">📍 성수동</span>
+              <span class="spec-chip">🏋️ 크로스핏 6개월</span>
+              <span class="spec-chip">🧗 볼더링 입문</span>
+            </div>
+            <button class="profile-edit-btn" id="btn-edit-profile" type="button">프로필 수정</button>
+          </div>
+        </div>
+
+        <div class="profile-stats">
+          <div class="stat-cell"><strong id="stat-posts">0</strong><span>내 게시물</span></div>
+          <div class="stat-cell"><strong id="stat-likes">0</strong><span>받은 좋아요</span></div>
+          <div class="stat-cell"><strong id="stat-comments">0</strong><span>내 댓글</span></div>
+        </div>
+
+        <!-- ===== Sprint 15 — 내정보: 내가 올린 피드 (인스타 프로필 피드) ===== -->
+        <section class="profile-block" aria-labelledby="profile-feed-title">
+          <div class="profile-block-head">
+            <h3 class="profile-block-title" id="profile-feed-title">📷 내 피드 <span class="section-count" id="profile-feed-count">0</span></h3>
+            <span class="profile-feed-sub" id="profile-feed-sub">사진 <b>0</b> · 돋보기 공개 <b>0</b></span>
+          </div>
+          <div class="profile-feed-grid" id="profile-feed-grid" aria-live="polite"><!-- JS --></div>
+        </section>
+
+        <!-- ===== Sprint 13 — 프로필 밀도: 내 모임 · 저장한 글 · 최근 활동 ===== -->
+        <section class="profile-block" aria-labelledby="profile-groups-title">
+          <div class="profile-block-head">
+            <h3 class="profile-block-title" id="profile-groups-title">👥 내 모임 <span class="section-count" id="profile-groups-count">0</span></h3>
+            <button class="text-btn" id="btn-profile-groups" type="button">전체 보기</button>
+          </div>
+          <div class="profile-group-strip" id="profile-group-strip"><!-- JS --></div>
+        </section>
+
+        <section class="profile-block" aria-labelledby="profile-saved-title">
+          <div class="profile-block-head">
+            <h3 class="profile-block-title" id="profile-saved-title">🔖 저장한 글 <span class="section-count" id="profile-saved-count">0</span></h3>
+          </div>
+          <div class="profile-saved-list" id="profile-saved-list"><!-- JS --></div>
+        </section>
+
+        <section class="profile-block" aria-labelledby="profile-recent-title">
+          <div class="profile-block-head">
+            <h3 class="profile-block-title" id="profile-recent-title">🕒 최근 활동</h3>
+            <button class="text-btn" id="btn-profile-activity" type="button">전체 보기</button>
+          </div>
+          <div class="profile-recent-list" id="profile-recent-list"><!-- JS --></div>
+        </section>
+
+        <!-- ===== PWA · 홈 화면에 추가 (Sprint 5) ===== -->
+        <section class="pwa-card" id="pwa-card" aria-labelledby="pwa-card-title" hidden>
+          <div class="pwa-card-head">
+            <h3 class="pwa-card-title" id="pwa-card-title"><span aria-hidden="true">📲</span> <span>홈 화면에 ooG 추가</span></h3>
+            <span class="pwa-card-state" id="pwa-card-state">확인 중</span>
+          </div>
+          <p class="pwa-card-desc" id="pwa-card-desc">홈 화면에 추가하면 앱처럼 열리고, 앱을 꺼도 푸시 알림을 받을 수 있어요.</p>
+          <div class="pwa-card-actions" id="pwa-card-actions"><!-- JS --></div>
+        </section>
+
+        <!-- ===== 알림 설정 (Sprint 4.5) ===== -->
+        <section class="notif-settings-card" aria-labelledby="notif-settings-title">
+          <div class="notif-settings-head">
+            <h3 class="notif-settings-title" id="notif-settings-title">🔔 알림 설정</h3>
+            <span class="notif-settings-state" id="notif-permission-state">권한 확인 중</span>
+          </div>
+          <div id="notif-settings-body"><!-- JS --></div>
+        </section>
+
+        <div class="profile-nav-sections">
+          <div class="nav-section-title">활동 및 설정</div>
+          <div class="settings-menu-list">
+            <div class="menu-item" id="menu-open-chat" role="button" tabindex="0">
+              <span class="menu-label">1:1 대화방</span>
+              <span class="menu-val" id="menu-chat-count">0개</span>
+            </div>
+            <div class="menu-item" id="menu-joined-manage" role="button" tabindex="0">
+              <span class="menu-label">가입한 소모임 관리</span>
+              <span class="menu-val" id="menu-joined-count">3개</span>
+            </div>
+            <div class="menu-item" id="menu-my-applications" role="button" tabindex="0">
+              <span class="menu-label">내 모임 가입 신청</span>
+              <span class="menu-val" id="menu-my-applications-count">0건</span>
+            </div>
+            <div class="menu-item" id="menu-activity-log" role="button" tabindex="0">
+              <span class="menu-label">내 활동 로그</span>
+              <span class="menu-val" id="menu-activity-count">0건</span>
+            </div>
+            <div class="menu-item" id="menu-liked-people" role="button" tabindex="0">
+              <span class="menu-label">내가 좋아요한 취미친구</span>
+              <span class="menu-val" id="menu-liked-count">0명</span>
+            </div>
+            <div class="menu-item">
+              <span class="menu-label">프라이버시 &amp; 사진 공개 범위</span>
+              <span class="menu-val">그룹 전용</span>
+            </div>
+            <div class="menu-item" id="btn-open-create-group" role="button" tabindex="0">
+              <span class="menu-label">새 소모임 만들기</span>
+              <span class="menu-val">준비 중</span>
+            </div>
+            <div class="menu-item highlight-menu">
+              <span class="menu-label">ooG 플러스 멤버십</span>
+              <span class="menu-badge">이용 중</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ==================== 플로팅 글쓰기 버튼 (홈 · 그 모임에 사진 올리기) ==================== -->
+    <button class="fab-write" id="fab-write" aria-label="새 게시물 작성">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <span class="fab-label">사진 올리기</span>
+    </button>
+
+    <!-- ==================== 모달 1. 모임 상세 + 말머리 태그 관리 ==================== -->
+    <div class="modal-overlay" id="group-detail-modal" role="dialog" aria-modal="true" aria-label="모임 상세">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-modal" aria-label="닫기">&times;</button>
+        <div class="sheet-body" id="group-detail-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 2. 새 게시물 작성 ==================== -->
+    <div class="modal-overlay" id="composer-modal" role="dialog" aria-modal="true" aria-label="새 게시물 작성">
+      <div class="modal-sheet composer-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-composer-cancel">취소</button>
+          <h3 class="composer-title">새 게시물</h3>
+          <button class="btn-publish" id="btn-publish" disabled>게시</button>
+        </div>
+        <div class="composer-body">
+          <div class="field-group">
+            <label class="field-label">모임 선택 <span class="field-hint">가입한 모임에만 올릴 수 있어요</span></label>
+            <div class="composer-group-list" id="composer-group-list"><!-- JS --></div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">말머리 태그 <span class="field-hint">그룹장이 만든 태그</span></label>
+            <div class="composer-tag-list" id="composer-tag-list"><!-- JS --></div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">사진 <span class="field-hint">운동·취미 프리셋</span></label>
+            <div class="media-picker" id="media-picker"><!-- JS --></div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">이미지 URL <span class="field-hint">내 사진을 쓰려면 주소 입력 (선택)</span></label>
+            <input type="url" class="text-input" id="composer-photo-url" aria-label="이미지 URL" placeholder="https://... (jpg · png 주소)" inputmode="url">
+            <div class="photo-preview" id="photo-preview" hidden>
+              <img class="photo-preview-img" id="photo-preview-img" alt="" aria-hidden="true">
+              <span class="photo-preview-note" id="photo-preview-note"></span>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">사진 위 문구 <span class="field-hint">선택</span></label>
+            <input type="text" class="text-input" id="composer-media-caption" aria-label="사진 위 문구" maxlength="40" placeholder="예: 20.11 WOD · 22분 캡">
+          </div>
+
+          <!-- Sprint 15 — 돋보기(타 그룹) 노출 토글 -->
+          <div class="field-group">
+            <div class="privacy-toggle-row" id="composer-explore-row">
+              <span class="privacy-toggle-icon" aria-hidden="true">🔍</span>
+              <span class="privacy-toggle-text">
+                <span class="privacy-toggle-title">돋보기에 노출</span>
+                <span class="privacy-toggle-desc" id="composer-explore-desc">끄면 이 모임 피드에만 남아요</span>
+              </span>
+              <button class="switch-toggle" id="composer-explore-toggle" role="switch" aria-checked="false"
+                      aria-label="돋보기(타 그룹)에 노출" type="button">
+                <span class="switch-knob" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <label class="field-label">내용</label>
+            <textarea id="composer-caption" class="text-area" aria-label="게시물 내용" maxlength="500" placeholder="오늘의 운동/취미 기록을 남겨보세요. 가입한 모임원에게만 보입니다."></textarea>
+            <div class="caption-counter"><span id="caption-count">0</span> / 500</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 3. 가입한 소모임 관리 ==================== -->
+    <div class="modal-overlay" id="joined-modal" role="dialog" aria-modal="true" aria-label="가입한 소모임 관리">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-joined" aria-label="닫기">&times;</button>
+        <h2 class="sheet-title joined-title">가입한 소모임</h2>
+        <p class="joined-sub">모임을 나가면 그 모임의 프라이빗 피드는 더 이상 보이지 않아요.</p>
+        <div class="joined-list" id="joined-groups-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 4. 취미친구 프로필 상세 ==================== -->
+    <div class="modal-overlay" id="match-detail-modal" role="dialog" aria-modal="true" aria-label="취미친구 프로필 상세">
+      <div class="modal-sheet match-detail-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-match-detail" aria-label="닫기">&times;</button>
+        <div class="match-detail-body" id="match-detail-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 매칭 성사 팝업 (b안) ==================== -->
+    <div class="match-popup" id="match-popup" role="dialog" aria-modal="true" aria-label="매칭 성사" hidden>
+      <div class="match-popup-confetti" id="match-popup-confetti" aria-hidden="true"></div>
+      <div class="match-popup-body">
+        <span class="popup-kicker">상호 LIKE</span>
+        <h2 class="popup-title">IT'S A MATCH!</h2>
+        <div class="match-avatars">
+          <div class="match-avatar me">루</div>
+          <div class="match-avatars-heart">💚</div>
+          <div class="match-avatar them" id="popup-avatar-them">?</div>
+        </div>
+        <p class="popup-names" id="popup-names">루키 × 상대</p>
+        <p class="popup-common" id="popup-common"></p>
+        <div class="popup-actions">
+          <button class="popup-btn primary" id="btn-open-chat-room">💬 첫 메시지 보내기 (대화방 열기)</button>
+          <button class="popup-btn ghost" id="btn-keep-swiping">계속 둘러보기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 5. 취미 게시글 상세 ==================== -->
+    <div class="modal-overlay" id="explore-post-modal" role="dialog" aria-modal="true" aria-label="취미 게시글 상세">
+      <div class="modal-sheet post-detail-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-post-detail" aria-label="닫기">&times;</button>
+        <div class="post-detail-body" id="explore-post-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 6. 취미 게시글 쓰기 (공개) ==================== -->
+    <div class="modal-overlay" id="explore-compose-modal" role="dialog" aria-modal="true" aria-label="취미 게시글 쓰기">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-explore-compose-cancel">취소</button>
+          <h3 class="composer-title">취미 게시글</h3>
+          <button class="btn-publish" id="btn-explore-publish" disabled>게시</button>
+        </div>
+        <div class="composer-body">
+          <p class="compose-note">탐색 피드에 <strong>공개</strong>로 올라갑니다. 모임 프라이빗 피드와는 별도예요.</p>
+          <div class="field-group">
+            <label class="field-label">취미 <span class="field-hint">하나를 골라주세요</span></label>
+            <div class="composer-tag-list" id="explore-compose-hobbies"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">사진 <span class="field-hint">선택</span></label>
+            <div class="media-picker" id="explore-compose-media"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">내용</label>
+            <textarea id="explore-compose-caption" class="text-area" aria-label="게시글 내용" maxlength="300" placeholder="오늘의 취미 기록을 남겨보세요. 같은 취미를 찾는 사람에게 닿아요."></textarea>
+            <div class="caption-counter"><span id="explore-caption-count">0</span> / 300</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 7. 프로필 수정 ==================== -->
+    <div class="modal-overlay" id="profile-edit-modal" role="dialog" aria-modal="true" aria-label="프로필 수정">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-edit-cancel">취소</button>
+          <h3 class="composer-title">프로필 수정</h3>
+          <button class="btn-publish ready" id="btn-save-profile">저장</button>
+        </div>
+        <div class="composer-body">
+          <div class="field-group">
+            <label class="field-label" for="edit-nickname">닉네임 <span class="field-hint">2~12자</span></label>
+            <input type="text" class="text-input" id="edit-nickname" maxlength="12" autocomplete="off">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="edit-bio">한 줄 소개</label>
+            <input type="text" class="text-input" id="edit-bio" maxlength="120" autocomplete="off" placeholder="어떤 취미를 어떻게 즐기는지 적어보세요">
+          </div>
+          <div class="field-group">
+            <label class="field-label">대표 취미 <span class="field-hint">1~3개</span></label>
+            <div class="composer-tag-list" id="edit-hobbies"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="edit-location">활동 지역</label>
+            <input type="text" class="text-input" id="edit-location" maxlength="30" autocomplete="off" placeholder="예: 서울 성동구 성수동">
+          </div>
+          <div class="field-group">
+            <label class="field-label">주로 활동하는 시간대</label>
+            <div class="composer-tag-list" id="edit-activity"><!-- JS --></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 8. 새 소모임 만들기 ==================== -->
+    <div class="modal-overlay" id="group-create-modal" role="dialog" aria-modal="true" aria-label="새 소모임 만들기">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-create-group-cancel">취소</button>
+          <h3 class="composer-title">새 소모임</h3>
+          <button class="btn-publish ready" id="btn-create-group-submit">개설</button>
+        </div>
+        <div class="composer-body">
+          <div class="field-group">
+            <label class="field-label" for="create-group-name">모임명 <span class="field-hint">2~30자</span></label>
+            <input type="text" class="text-input" id="create-group-name" maxlength="30" autocomplete="off" placeholder="예: 성수 주말 러닝 번개">
+          </div>
+          <div class="field-group">
+            <label class="field-label">취미 카테고리</label>
+            <div class="composer-tag-list" id="create-group-hobbies"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="create-group-desc">소개말</label>
+            <textarea id="create-group-desc" class="text-area" maxlength="300" placeholder="어떤 사람들이 모이는 모임인지 짧게 적어주세요"></textarea>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="create-group-meet">정기 모임 일시</label>
+            <input type="text" class="text-input" id="create-group-meet" maxlength="24" autocomplete="off" placeholder="예: 토 08:00 · 주말 반개">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="create-group-location">활동 지역</label>
+            <input type="text" class="text-input" id="create-group-location" maxlength="24" autocomplete="off" placeholder="예: 성동구 성수동">
+          </div>
+          <div class="field-group">
+            <label class="field-label">가입 방식 <span class="field-hint">나중에 바꿀 수 있어요</span></label>
+            <div class="composer-tag-list" id="create-group-privacy"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">나이 제한</label>
+            <div class="composer-tag-list" id="create-group-age"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="create-group-question">가입 질문 <span class="field-hint">승인제일 때 신청자에게 물어요</span></label>
+            <div class="composer-tag-list" id="create-group-question-presets"><!-- JS --></div>
+            <input type="text" class="text-input" id="create-group-question" maxlength="60" autocomplete="off" placeholder="예: 취미 구력이나 선호 요일을 적어주세요!">
+            <p class="policy-hint">비워두면 기본 질문을 씁니다. 질문은 모임 설정에서 더 바꿀 수 있어요.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 9. 모임 가입 신청서 (Sprint 4.5) ==================== -->
+    <div class="modal-overlay" id="group-apply-modal" role="dialog" aria-modal="true" aria-label="모임 가입 신청서">
+      <div class="modal-sheet apply-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-apply" aria-label="닫기">&times;</button>
+        <div class="sheet-body" id="group-apply-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 10. 내 모임 가입 신청 현황 ==================== -->
+    <div class="modal-overlay" id="my-applications-modal" role="dialog" aria-modal="true" aria-label="내 모임 가입 신청">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-my-applications" aria-label="닫기">&times;</button>
+        <h2 class="sheet-title">내 모임 가입 신청</h2>
+        <p class="joined-sub">승인제 모임은 그룹장이 소개서를 보고 수락하면 멤버가 됩니다.</p>
+        <div class="myapp-list" id="my-applications-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 11. 알림함 ==================== -->
+    <div class="modal-overlay" id="notif-modal" role="dialog" aria-modal="true" aria-label="알림함">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-notif" aria-label="닫기">&times;</button>
+        <h2 class="sheet-title">알림</h2>
+        <p class="joined-sub" id="notif-head-note">나에게 온 반응만 모여요 · 내가 한 일은 프로필 › 내 활동 로그에 쌓여요.</p>
+        <!-- Sprint 7 — 종류 필터 · 안 읽은 것만 보기 · 모두 읽음 -->
+        <div class="notif-filters" id="notif-filters" role="group" aria-label="알림 종류 필터"><!-- JS --></div>
+        <div class="notif-tools">
+          <button class="notif-unread-toggle" id="notif-unread-toggle" type="button" aria-pressed="false">
+            <span class="notif-unread-dot" aria-hidden="true"></span> 안 읽은 것만 보기
+          </button>
+          <button class="notif-read-all" id="notif-read-all" type="button">모두 읽음</button>
+          <!-- Sprint 11 — 알림함 4차: 펼쳐 둔 묶음을 한 번에 접기 -->
+          <button class="notif-collapse-all" id="notif-collapse-all" type="button" hidden disabled>모두 접기</button>
+        </div>
+        <div class="notif-list" id="notif-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 12. 내 활동 로그 (Sprint 6) ==================== -->
+    <div class="modal-overlay" id="activity-modal" role="dialog" aria-modal="true" aria-label="내 활동 로그">
+      <div class="modal-sheet activity-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-activity" aria-label="닫기">&times;</button>
+        <div class="activity-head">
+          <h2 class="sheet-title">내 활동 로그</h2>
+          <p class="activity-summary" id="activity-summary">내가 한 일 · 하트·글·댓글·모임 이력을 한눈에</p>
+        </div>
+        <!-- Sprint 7 — 이번 주 / 이번 달 요약 -->
+        <div class="activity-stats" id="activity-stats"><!-- JS --></div>
+        <!-- Sprint 8 — 기간 필터 · 모임별 묶어보기 -->
+        <div class="activity-controls">
+          <div class="activity-range" id="activity-range" role="group" aria-label="활동 기간 필터"><!-- JS --></div>
+          <div class="activity-view" id="activity-view" role="group" aria-label="활동 보기 방식"><!-- JS --></div>
+        </div>
+        <!-- Sprint 9 — 기간별 활동을 텍스트/CSV로 내보내기 (아이폰 메모·노션·엑셀) -->
+        <div class="activity-export" role="group" aria-label="활동 로그 내보내기">
+          <span class="activity-export-label" aria-hidden="true">내보내기</span>
+          <button class="activity-export-btn" id="btn-activity-export-text" type="button" aria-label="지금 목록을 텍스트로 복사"><span aria-hidden="true">📋</span> 텍스트 복사</button>
+          <button class="activity-export-btn" id="btn-activity-export-csv" type="button" aria-label="지금 목록을 CSV로 복사"><span aria-hidden="true">📄</span> CSV 복사</button>
+          <button class="activity-export-btn ghost" id="btn-activity-export-download" type="button" aria-label="지금 목록을 CSV 파일로 저장"><span aria-hidden="true">⬇️</span> CSV 저장</button>
+        </div>
+        <div class="activity-filters" id="activity-filters" role="group" aria-label="활동 종류 필터"><!-- JS --></div>
+        <div class="activity-list" id="activity-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 13. 지역 선택 (Sprint 7) ==================== -->    <div class="modal-overlay" id="region-modal" role="dialog" aria-modal="true" aria-label="지역 선택">
+      <div class="modal-sheet region-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-region" aria-label="닫기">&times;</button>
+        <div class="region-head">
+          <h2 class="sheet-title">지역으로 보기</h2>
+          <p class="region-sub">지역을 고르면 그 동네의 사람·모임·글만 모아 보여드려요. 고른 지역은 기억됩니다.</p>
+        </div>
+        <div class="region-list" id="region-list"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 14. 실시간 베스트 전체 (Sprint 7) ==================== -->
+    <div class="modal-overlay" id="hot-modal" role="dialog" aria-modal="true" aria-label="실시간 베스트">
+      <div class="modal-sheet hot-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-hot" aria-label="닫기">&times;</button>
+        <div class="hot-sheet-head">
+          <h2 class="sheet-title">🔥 실시간 베스트</h2>
+          <p class="hot-sheet-sub" id="hot-sheet-sub">좋아요·댓글과 최신성으로 계산한 지금의 인기 순위</p>
+        </div>
+        <div class="hot-list" id="hot-list"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 15. 통합 탐색 필터 (Sprint 9) ==================== -->
+    <div class="modal-overlay" id="filter-modal" role="dialog" aria-modal="true" aria-label="탐색 필터">
+      <div class="modal-sheet filter-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-filter" aria-label="닫기">&times;</button>
+        <div class="filter-head">
+          <h2 class="sheet-title">탐색 필터</h2>
+          <p class="filter-sub">취미·나이·거리를 한 번에 고르고 [적용하기]를 누르면 탐색에 반영돼요.</p>
+        </div>
+        <div class="filter-sheet-body">
+          <!-- 취미 — 하나만 고를 수 있고, 다시 누르면 해제된다 -->
+          <section class="filter-group" aria-labelledby="filter-hobby-label">
+            <div class="filter-group-head">
+              <h3 class="filter-group-title" id="filter-hobby-label"><span aria-hidden="true">🎯</span> 취미</h3>
+              <span class="filter-group-hint">하나만 고를 수 있어요 · 다시 누르면 해제</span>
+            </div>
+            <div class="explore-chips filter-chips" id="explore-chips" role="group" aria-label="취미 필터"><!-- JS --></div>
+          </section>
+          <!-- 나이 — 11/14 21:24 "필터가 있으면 좋지" -->
+          <section class="filter-group" aria-labelledby="filter-age-label">
+            <div class="filter-group-head">
+              <h3 class="filter-group-title" id="filter-age-label"><span aria-hidden="true">🎂</span> 나이</h3>
+              <span class="filter-group-hint">모임 나이 제한과 사람 나이대</span>
+            </div>
+            <div class="explore-age-bar" id="explore-age-bar" role="group" aria-label="나이 제한 필터">
+              <div class="age-bar-chips" id="explore-age-chips"><!-- JS --></div>
+            </div>
+          </section>
+          <!-- 내 동네 반경 — 11/14 22:59 "내 동네 반경 필터 넣어줘" -->
+          <section class="filter-group" aria-labelledby="filter-radius-label">
+            <div class="filter-group-head">
+              <h3 class="filter-group-title" id="filter-radius-label"><span aria-hidden="true">📏</span> 내 동네 반경</h3>
+              <span class="filter-group-hint">내 위치(성수동) 기준</span>
+            </div>
+            <div class="explore-radius-bar" id="explore-radius-bar" role="group" aria-label="내 동네 반경 필터">
+              <div class="radius-bar-chips" id="explore-radius-chips"><!-- JS --></div>
+            </div>
+          </section>
+        </div>
+        <div class="filter-sheet-foot">
+          <span class="filter-result" id="filter-result" aria-live="polite">조건에 맞는 카드 0장</span>
+          <div class="filter-actions">
+            <button class="btn-secondary" id="btn-filter-reset" type="button">초기화</button>
+            <button class="btn-primary" id="btn-filter-apply" type="button">적용하기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 16. 전체 멤버 (Sprint 14) ==================== -->
+    <div class="modal-overlay" id="group-members-modal" role="dialog" aria-modal="true" aria-label="전체 멤버">
+      <div class="modal-sheet members-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-members" aria-label="닫기">&times;</button>
+        <div class="members-head">
+          <h2 class="sheet-title" id="group-members-title">전체 멤버</h2>
+          <p class="joined-sub" id="group-members-sub">그룹장·나·멤버를 구분해서 보여드려요. 멤버를 누르면 프로필과 1:1 대화로 이어집니다.</p>
+        </div>
+        <div class="members-list" id="group-members-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 18. 모임 공지 (Sprint 15) ==================== -->
+    <div class="modal-overlay" id="notice-modal" role="dialog" aria-modal="true" aria-label="모임 공지">
+      <div class="modal-sheet notice-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-notice" aria-label="닫기">&times;</button>
+        <div class="notice-head">
+          <h2 class="sheet-title" id="notice-title">모임 공지</h2>
+          <p class="joined-sub" id="notice-sub">공지는 그룹장과 그룹장이 지정한 부방장만 쓸 수 있어요.</p>
+        </div>
+        <div class="notice-list" id="notice-list"><!-- JS --></div>
+        <div class="notice-editor" id="notice-editor"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 19. 일정 상세 (Sprint 15) ==================== -->
+    <div class="modal-overlay" id="event-detail-modal" role="dialog" aria-modal="true" aria-label="일정 상세">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-event-detail" aria-label="닫기">&times;</button>
+        <div class="event-detail-body" id="event-detail-body"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 17. 새 모임 일정(술모임·번개) (Sprint 14) ==================== -->
+    <div class="modal-overlay" id="event-modal" role="dialog" aria-modal="true" aria-label="새 모임 일정">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-event-cancel">취소</button>
+          <h3 class="composer-title">새 모임 일정</h3>
+          <button class="btn-publish" id="btn-event-submit" disabled>올리기</button>
+        </div>
+        <div class="composer-body">
+          <p class="compose-note" id="event-group-note">모임에 올리면 멤버 모두에게 보입니다.</p>
+          <div class="field-group">
+            <label class="field-label" for="event-title">무엇을 하나요 <span class="field-hint">2~30자</span></label>
+            <input type="text" class="text-input" id="event-title" maxlength="30" autocomplete="off" placeholder="예: 금요일 성수 술모임">
+          </div>
+          <div class="field-group">
+            <label class="field-label">종류</label>
+            <div class="composer-tag-list" id="event-kinds"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">날짜·시각</label>
+            <div class="event-when-row">
+              <input type="date" class="text-input" id="event-date" aria-label="날짜">
+              <input type="time" class="text-input" id="event-time" aria-label="시각">
+            </div>
+            <div class="composer-tag-list" id="event-quick-when"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="event-place">장소 <span class="field-hint">선택</span></label>
+            <input type="text" class="text-input" id="event-place" maxlength="40" autocomplete="off" placeholder="예: 성수 포차거리">
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="event-note">한 줄 안내 <span class="field-hint">선택</span></label>
+            <textarea id="event-note" class="text-area" maxlength="140" placeholder="모이는 시간·회비 같은 걸 적어두세요"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모임 단체 채팅 (전체 화면, Sprint 14) ==================== -->
+    <div class="chat-room-overlay group-chat-overlay" id="group-chat-modal" role="dialog" aria-modal="true" aria-label="모임 단체 채팅" hidden>
+      <div class="chat-room-inner">
+        <header class="chat-room-head">
+          <button class="chat-back-btn" id="btn-group-chat-back" aria-label="뒤로 가기">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div class="chat-partner-info">
+            <div class="chat-partner-avatar group-chat-avatar" id="group-chat-avatar">🏋️</div>
+            <div class="chat-partner-text">
+              <span class="chat-partner-name" id="group-chat-name">모임</span>
+              <span class="chat-partner-hobby" id="group-chat-sub">멤버 단체 채팅</span>
+            </div>
+          </div>
+          <button class="chat-profile-btn" id="btn-group-chat-info" type="button">모임 정보</button>
+        </header>
+
+        <div class="chat-messages group-chat-messages" id="group-chat-messages" aria-live="polite"><!-- JS --></div>
+
+        <form class="chat-input-bar" id="group-chat-form">
+          <input type="text" class="chat-input" id="group-chat-input" placeholder="모임원에게 한마디" maxlength="500" autocomplete="off" aria-label="단체 채팅 입력">
+          <button type="submit" class="chat-send-btn" aria-label="메시지 보내기">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ==================== 인앱 1:1 대화방 (전체 화면) ==================== -->
+    <div class="chat-room-overlay" id="chat-room-modal" role="dialog" aria-modal="true" aria-label="1:1 대화방" hidden>
+      <div class="chat-room-inner">
+        <header class="chat-room-head">
+          <button class="chat-back-btn" id="btn-chat-back" aria-label="뒤로 가기">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div class="chat-partner-info">
+            <div class="chat-partner-avatar" id="chat-room-avatar">?</div>
+            <div class="chat-partner-text">
+              <span class="chat-partner-name" id="chat-room-name">상대</span>
+              <span class="chat-partner-hobby" id="chat-room-hobby">취미</span>
+            </div>
+          </div>
+          <button class="chat-profile-btn" id="btn-chat-profile" type="button">취미 프로필 보기</button>
+        </header>
+
+        <div class="chat-messages" id="chat-messages" aria-live="polite"><!-- JS --></div>
+
+        <form class="chat-input-bar" id="chat-form">
+          <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요" maxlength="500" autocomplete="off" aria-label="메시지 입력">
+          <button type="submit" class="chat-send-btn" id="btn-chat-send" aria-label="메시지 보내기">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ==================== 토스트 알림 ==================== -->
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- ==================== 하단 탭바 (피드 · 돋보기 · 디엠 · 내정보 — 인스타그램 결) ==================== -->
+    <nav class="bottom-nav-bar" id="bottom-nav" role="tablist" aria-label="주요 화면">
+      <span class="nav-indicator" id="nav-indicator" aria-hidden="true"></span>
+      <button class="nav-tab-item active" data-tab="tab-home" role="tab" aria-selected="true" aria-controls="tab-home" aria-label="피드 — 내 모임 피드">
+        <span class="tab-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.2 12 3l9 7.2"></path><path d="M5.6 9.4V20h12.8V9.4"></path><path d="M9.6 20v-5.6h4.8V20"></path></svg>
+        </span>
+        <span class="tab-label">피드</span>
+        <span class="nav-badge hide" id="nav-home-badge">0</span>
+      </button>
+
+      <button class="nav-tab-item" data-tab="tab-explore" role="tab" aria-selected="false" aria-controls="tab-explore" aria-label="돋보기 — 다른 모임의 사진과 취미친구 탐색">
+        <span class="tab-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.6" cy="10.6" r="7.2"></circle><line x1="15.9" y1="15.9" x2="21" y2="21"></line></svg>
+        </span>
+        <span class="tab-label">돋보기</span>
+      </button>
+
+      <button class="nav-tab-item" data-tab="tab-chat" role="tab" aria-selected="false" aria-controls="tab-chat" aria-label="디엠 — 모임 전체방과 1:1 대화">
+        <span class="tab-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3 10.5 13.5"></path><path d="M21 3 14.6 21l-4.1-7.5L3 9.4 21 3z"></path></svg>
+        </span>
+        <span class="tab-label">디엠</span>
+        <span class="nav-badge hide" id="nav-chat-badge">0</span>
+      </button>
+
+      <button class="nav-tab-item" data-tab="tab-profile" role="tab" aria-selected="false" aria-controls="tab-profile" aria-label="내정보 — 내 피드와 설정">
+        <span class="tab-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8.2" r="4"></circle><path d="M4.5 21c0-4.1 3.4-6.4 7.5-6.4s7.5 2.3 7.5 6.4"></path></svg>
+        </span>
+        <span class="tab-label">내정보</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <script src="js/store.js"></script>
+  <script src="js/media.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
