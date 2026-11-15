@@ -23,6 +23,13 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const store = window.appStore;
+  /* Sprint 17 — 테스트·미리보기 전용 #demo: 예전 데모 계정(내 모임·글·디엠)으로 시작한다.
+     실사용 배포 주소(해시 없음)는 언제나 회원가입 화면부터 시작한다. */
+  if (window.location.hash === '#demo' && !store.isDemoAccount()) store.seedDemoAccount();
+  /* 해시만 바뀌어 들어온 경우(#demo)에도 한 번 새로 열어 데모 상태로 맞춘다. */
+  window.addEventListener('hashchange', () => {
+    if (window.location.hash === '#demo' && !window.appStore.isDemoAccount()) window.location.reload();
+  });
   const timeAgo = window.oogTimeAgo;
   const Media = window.OogMedia;
 
@@ -46,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
     expandedComments: new Set(), // 댓글 전체 보기 상태
     lastTap: null,               // 더블 탭 좋아요 판정용
     scrollByTab: {},             // 탭별 스크롤 위치 기억 (탭 전환 시 복원)
-    composer: { groupId: null, tag: null, mediaPreset: null },
+    composer: { groupId: null, tag: null, mediaPreset: null, photoUrl: null },
     lastCreatedPostId: null,
     toastTimer: null,
     /* Sprint 3.5 — 카드 하트 · 상호 LIKE 팝업 */
@@ -64,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     typingRoomId: null,          // 상대가 답장을 쓰는 중인 방 (인디케이터)
     replyTimer: null,
     postSheetId: null,           // 열린 게시글 상세
-    exploreCompose: { hobbyId: null, mediaPreset: null },
+    exploreCompose: { hobbyId: null, mediaPreset: null, photoUrl: null },
     edit: { hobbyIds: [], activity: '' },   // 프로필 수정 드래프트
     groupDraft: { hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '' },
 
@@ -114,10 +121,27 @@ document.addEventListener('DOMContentLoaded', () => {
     storyId: null,               // 보고 있는 스토리 id
     storyGroupId: null,          // 스토리를 연 모임
     storyPreset: null,           // 스토리 올리기에서 고른 사진
+    storyPhotoUrl: null,         // 스토리 올리기에서 앨범/카메라로 고른 사진(Data URL)
     storyTimer: null,            // 스토리 자동 넘김 예약
     dmTargetId: null,            // 쪽지 보내는 상대(id)
     ageMin: 0,                   // Sprint 16 — 나이 슬라이더 왼쪽
-    ageMax: 99                   //                나이 슬라이더 오른쪽
+    ageMax: 99,                  //                나이 슬라이더 오른쪽
+
+    /* Sprint 17 — 회원가입 · 스토리 링/보관함 · 공지 읽음 · 표지 · 디엠 정렬 */
+    onboardingMode: 'signup',    // 'signup' | 'login'
+    onboardingStep: 0,           // 0 계정 → 1 프로필 → 2 취미·지역
+    onboardingDraft: null,       // 입력 중인 가입서(메모리)
+    storyRingId: null,           // 지금 보고 있는 스토리 링의 멤버 id
+    storyArchiveView: false,     // 보관함에서 연 스토리인지
+    boardNoticeExpanded: false,  // 지난 공지 펼침
+    noticeReadId: null,          // 읽음 상태를 연 공지
+    coverGroupId: null,          // 표지를 고르는 모임
+    coverDraft: [],              // 고른 표지 프리셋(최대 2)
+    exploreCardPreset: null,     // 탐색 카드 꾸미기 드래프트
+    dmView: 'recent',            // 'recent' | 'group'
+    dmUnreadOnly: false,         // 안 읽은 대화만
+    dmSent: null,                // 방금 쪽지를 보낸 상대 {partnerId, name, roomId}
+    confirmAction: null          // 확인 시트에서 실행할 동작
   };
 
   /* Sprint 7 — 마지막 탐색 필터 복원: 앱을 다시 열어도 나이·지역·종류 조건이 그대로다. */
@@ -160,6 +184,55 @@ document.addEventListener('DOMContentLoaded', () => {
     gallerySub: $('#gallery-sub'),
     galleryEmpty: $('#group-gallery-empty'),
     btnGalleryFind: $('#btn-gallery-find'),
+    gallerySort: $('#gallery-sort'),
+    btnNoticeMore: $('#btn-notice-more'),
+    btnBoardPhoto: $('#btn-board-photo'),
+    btnBoardReview: $('#btn-board-review'),
+    exploreSummary: $('#explore-summary'),
+    btnExploreCardEdit: $('#btn-explore-card-edit'),
+    exploreCardModal: $('#explore-card-modal'),
+    exploreCardMedia: $('#explore-card-media'),
+    exploreCardIntro: $('#explore-card-intro'),
+    dmViewSeg: $('#dm-view-seg'),
+    dmUnreadToggle: $('#dm-unread-toggle'),
+    dmSentBanner: $('#dm-sent-banner'),
+    /* Sprint 17 — 게시물·스토리·오픈 글 사진(앨범/카메라) */
+    composerPhotoPreview: $('#composer-photo-preview'),
+    composerPhotoImg: $('#composer-photo-img'),
+    composerPhotoNote: $('#composer-photo-note'),
+    composerPhotoAlbum: $('#composer-photo-album'),
+    composerPhotoCamera: $('#composer-photo-camera'),
+    storyPhotoPreview: $('#story-photo-preview'),
+    storyPhotoImg: $('#story-photo-img'),
+    storyPhotoNote: $('#story-photo-note'),
+    storyPhotoAlbum: $('#story-photo-album'),
+    storyPhotoCamera: $('#story-photo-camera'),
+    explorePhotoPreview: $('#explore-photo-preview'),
+    explorePhotoImg: $('#explore-photo-img'),
+    explorePhotoNote: $('#explore-photo-note'),
+    explorePhotoAlbum: $('#explore-photo-album'),
+    explorePhotoCamera: $('#explore-photo-camera'),
+    onboarding: $('#onboarding'),
+    onboardingBody: $('#onboarding-body'),
+    onboardingPanel: $('#onboarding-panel'),
+    storyReplyForm: $('#story-reply-form'),
+    storyReplyInput: $('#story-reply-input'),
+    btnStoryArchive: $('#btn-story-archive'),
+    storyArchiveModal: $('#story-archive-modal'),
+    storyArchiveGrid: $('#story-archive-grid'),
+    coverModal: $('#cover-modal'),
+    coverGrid: $('#cover-grid'),
+    noticeReadModal: $('#notice-read-modal'),
+    noticeReadList: $('#notice-read-list'),
+    noticeReadSub: $('#notice-read-sub'),
+    confirmModal: $('#confirm-modal'),
+    confirmTitle: $('#confirm-title'),
+    confirmDesc: $('#confirm-desc'),
+    confirmOk: $('#btn-confirm-ok'),
+    profileAvatarImg: $('#profile-avatar-img'),
+    menuStoryArchiveCount: $('#menu-story-archive-count'),
+    menuPhotoState: $('#menu-photo-state'),
+    profilePhotoInput: $('#profile-photo-input'),
     groupSpace: $('#group-space'),
     groupSpaceName: $('#group-space-name'),
     groupSpaceMeta: $('#group-space-meta'),
@@ -425,6 +498,432 @@ document.addEventListener('DOMContentLoaded', () => {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
   const fmtCount = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
+  /* ==========================================================================
+   * Sprint 17 — 회원가입(온보딩) · 아바타(프로필 사진) · 로그아웃 · 데이터 초기화
+   * --------------------------------------------------------------------------
+   * 11/15 21:32 사용자: "회원가입 기능도 넣어주소 프로필 사진 등록하는거 닉넴까지 다 해주고
+   * 이제 데이터는 초기화해줘 실사용해보게".
+   *  · 가입 전이면 앱 대신 회원가입 화면(body.onboarding-mode)만 보인다.
+   *  · 정한 닉네임·사진이 헤더·내정보·스토리·피드·디엠·탐색 카드에 그대로 쓰인다.
+   * ========================================================================== */
+  const SIGNUP_FALLBACK_GRADIENT = 'linear-gradient(135deg, #10B981 0%, #059669 55%, #047857 100%)';
+
+  function myAvatarText() {
+    const u = store.currentUser || {};
+    return u.avatarText || (u.nickname || '?').charAt(0) || '?';
+  }
+
+  function avatarImgHTML(photoUrl, alt) {
+    if (!photoUrl) return '';
+    return `<img class="avatar-img" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(alt || '')}" loading="lazy" decoding="async">`;
+  }
+
+  /** 헤더·내정보 아바타를 내 사진/이니셜로 맞춘다. */
+  function paintMyAvatars() {
+    const u = store.currentUser || {};
+    const text = myAvatarText();
+    const header = $('#header-avatar');
+    if (header) {
+      if (u.photoUrl) {
+        header.innerHTML = avatarImgHTML(u.photoUrl, u.nickname);
+        header.classList.add('has-photo');
+        header.style.background = 'transparent';
+      } else {
+        header.textContent = text;
+        header.classList.remove('has-photo');
+        header.style.background = u.avatarGradient || SIGNUP_FALLBACK_GRADIENT;
+      }
+    }
+    if (el.profileAvatarLetter) {
+      el.profileAvatarLetter.hidden = !!u.photoUrl;
+      el.profileAvatarLetter.textContent = u.photoUrl ? '' : text;
+    }
+    if (el.profileAvatarImg) {
+      if (u.photoUrl) {
+        el.profileAvatarImg.src = u.photoUrl;
+        el.profileAvatarImg.alt = u.nickname || '내 사진';
+        el.profileAvatarImg.hidden = false;
+      } else {
+        el.profileAvatarImg.removeAttribute('src');
+        el.profileAvatarImg.hidden = true;
+      }
+    }
+    if (el.menuPhotoState) el.menuPhotoState.textContent = u.photoUrl ? '등록됨' : '기본 아바타';
+    if (el.menuStoryArchiveCount) {
+      el.menuStoryArchiveCount.textContent = `${store.getStoryArchiveStats().count}개`;
+    }
+  }
+
+  /** 사진 파일 → 최대 max(기본 256)px JPEG Data URL (저장 용량·속도 고려).
+   *  Sprint 17 — 게시물·스토리 사진은 1080px, 프로필 사진은 256px로 줄인다. */
+  function readImageFile(file, onDone, max = 256) {
+    if (!file) return;
+    if (!/^image\//.test(file.type || '')) {
+      showToast('이미지 파일만 올릴 수 있어요', 'warning');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width || 1, img.height || 1));
+        const w = Math.max(1, Math.round((img.width || 1) * scale));
+        const h = Math.max(1, Math.round((img.height || 1) * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        onDone(canvas.toDataURL('image/jpeg', 0.84));
+      };
+      img.onerror = () => showToast('사진을 읽지 못했어요', 'warning');
+      img.src = reader.result;
+    };
+    reader.onerror = () => showToast('사진을 읽지 못했어요', 'warning');
+    reader.readAsDataURL(file);
+  }
+
+  /* ------------------------------------------------------------------
+   * Sprint 17 — 사진 올리기(앨범/카메라) 공통 처리
+   *   · 고른 사진은 최대 1080px JPEG Data URL 로 줄여 저장한다(localStorage 보호).
+   *   · 미리보기·삭제·바꾸기가 가능하고, 프리셋(예시 사진)은 보조 옵션으로 남긴다.
+   * ---------------------------------------------------------------- */
+  const PHOTO_KINDS = {
+    composer: {
+      max: 1080, refs: () => ({ preview: el.composerPhotoPreview, img: el.composerPhotoImg, note: el.composerPhotoNote }),
+      get: () => ui.composer.photoUrl,
+      set: (url) => { ui.composer.photoUrl = url; updatePublishState(); }
+    },
+    story: {
+      max: 1080, refs: () => ({ preview: el.storyPhotoPreview, img: el.storyPhotoImg, note: el.storyPhotoNote }),
+      get: () => ui.storyPhotoUrl,
+      set: (url) => { ui.storyPhotoUrl = url; updateStoryPublish(); }
+    },
+    explore: {
+      max: 1080, refs: () => ({ preview: el.explorePhotoPreview, img: el.explorePhotoImg, note: el.explorePhotoNote }),
+      get: () => ui.exploreCompose.photoUrl,
+      set: (url) => { ui.exploreCompose.photoUrl = url; updateExplorePublishState(); }
+    }
+  };
+
+  function renderPhotoPreview(kind) {
+    const conf = PHOTO_KINDS[kind];
+    if (!conf) return;
+    const { preview, img, note } = conf.refs();
+    const url = conf.get();
+    if (!preview) return;
+    if (!url) {
+      preview.hidden = true;
+      if (img) img.removeAttribute('src');
+      return;
+    }
+    preview.hidden = false;
+    if (img) img.src = url;
+    if (note) note.textContent = '앨범·카메라에서 고른 사진 · 올리면 이 사진으로 게시돼요';
+  }
+
+  function applyPhotoPick(kind, file) {
+    const conf = PHOTO_KINDS[kind];
+    if (!conf || !file) return;
+    readImageFile(file, (url) => {
+      conf.set(url);
+      renderPhotoPreview(kind);
+      showToast('사진을 준비했어요', 'info');
+    }, conf.max);
+  }
+
+  function clearPhoto(kind) {
+    const conf = PHOTO_KINDS[kind];
+    if (!conf) return;
+    conf.set(null);
+    renderPhotoPreview(kind);
+  }
+
+  function wirePhotoPicker(kind, albumInput, cameraInput, albumBtn, cameraBtn, removeBtn) {
+    albumBtn && albumBtn.addEventListener('click', () => albumInput && albumInput.click());
+    cameraBtn && cameraBtn.addEventListener('click', () => cameraInput && cameraInput.click());
+    [albumInput, cameraInput].forEach((input) => {
+      if (!input) return;
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (file) applyPhotoPick(kind, file);
+        input.value = '';
+      });
+    });
+    removeBtn && removeBtn.addEventListener('click', () => clearPhoto(kind));
+  }
+
+  function newOnboardingDraft() {
+    return {
+      loginId: '', password: '', passwordConfirm: '', quickStart: false,
+      nickname: '', photoUrl: null,
+      avatarGradient: (store.getOnboardingState().avatarGradients || [SIGNUP_FALLBACK_GRADIENT])[0],
+      age: '', regionId: '', hobbies: []
+    };
+  }
+
+  function onboardingError(reason) {
+    return ({
+      nickname_short: '닉네임을 2자 이상 입력해 주세요',
+      nickname_long: '닉네임은 12자까지 쓸 수 있어요',
+      login_id_short: '아이디를 3자 이상 입력해 주세요',
+      password_short: '비밀번호를 4자 이상 입력해 주세요',
+      password_long: '비밀번호가 너무 길어요',
+      password_mismatch: '비밀번호가 서로 달라요',
+      age_range: '나이는 14~99세 사이로 입력해 주세요',
+      no_account: '저장된 계정이 없어요 — 새로 가입해 주세요',
+      login_mismatch: '아이디를 확인해 주세요',
+    }[reason] || '가입 정보를 다시 확인해 주세요');
+  }
+
+  function onboardingStepDots() {
+    const dots = $$('#onboarding-steps .onboarding-dot');
+    dots.forEach((dot, i) => dot.classList.toggle('on', i <= ui.onboardingStep));
+  }
+
+  function renderOnboarding() {
+    if (!el.onboardingBody) return;
+    const ob = store.getOnboardingState();
+    const draft = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+    const loginMode = ui.onboardingMode === 'login' && ob.hasAccount;
+    onboardingStepDots();
+    if (loginMode) {
+      el.onboardingBody.innerHTML = `
+        <div class="ob-hero">
+          <h1 class="ob-title">다시 만나요</h1>
+          <p class="ob-desc">${escapeHtml(ob.nickname || '내 계정')} 계정으로 이어서 시작해요.</p>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-login-id">아이디</label>
+          <input class="ob-input" id="ob-login-id" type="text" autocomplete="username" value="${escapeHtml(ob.loginId)}">
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-login-pw">비밀번호</label>
+          <input class="ob-input" id="ob-login-pw" type="password" autocomplete="current-password" placeholder="간편 시작 계정은 비워도 돼요">
+        </div>
+        <p class="ob-error" id="ob-error" hidden></p>
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-login-submit" type="button">이어서 시작</button>
+          <button class="ob-btn ghost" id="ob-restart-signup" type="button">새 계정 만들기</button>
+        </div>`;
+      return;
+    }
+    const steps = [
+      () => `
+        <div class="ob-hero">
+          <h1 class="ob-title">ooG 시작하기</h1>
+          <p class="ob-desc">취미로 이어지는 사람과 모임. 회원가입하고 내 모임을 만들어 보세요.</p>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-login-id">아이디 <span class="ob-hint">영문·숫자 3자 이상</span></label>
+          <input class="ob-input" id="ob-login-id" type="text" autocomplete="username" value="${escapeHtml(draft.loginId)}" placeholder="예: runningjun">
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-password">비밀번호</label>
+          <input class="ob-input" id="ob-password" type="password" autocomplete="new-password" placeholder="4자 이상">
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-password-confirm">비밀번호 확인</label>
+          <input class="ob-input" id="ob-password-confirm" type="password" autocomplete="new-password" placeholder="한 번 더 입력">
+        </div>
+        <p class="ob-note">아이디 없이 <button class="ob-link" id="ob-quick-start" type="button">간편 시작</button>으로도 바로 쓸 수 있어요.</p>
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-next" type="button">다음</button>
+          ${ob.hasAccount ? '<button class="ob-btn ghost" id="ob-to-login" type="button">이미 계정이 있어요</button>' : ''}
+        </div>`,
+      () => `
+        <div class="ob-hero">
+          <h1 class="ob-title">프로필 만들기</h1>
+          <p class="ob-desc">닉네임과 사진이 피드·스토리·디엠·탐색에 그대로 보여요.</p>
+        </div>
+        <div class="ob-photo-row">
+          <div class="ob-photo-preview ${draft.avatarGradient === SIGNUP_FALLBACK_GRADIENT ? 'brand' : ''}" id="ob-photo-preview" style="background:${draft.photoUrl ? 'transparent' : draft.avatarGradient}">
+            ${draft.photoUrl ? avatarImgHTML(draft.photoUrl, '프로필 사진 미리보기') : escapeHtml(draft.nickname.charAt(0) || 'ooG')}
+          </div>
+          <div class="ob-photo-actions">
+            <input class="ob-file" id="ob-photo-input" type="file" accept="image/*">
+            <label class="ob-label" for="ob-photo-input">프로필 사진 <span class="ob-hint">선택 · 256px로 줄여 저장</span></label>
+            <div class="ob-swatches" id="ob-swatches">
+              ${(store.getOnboardingState().avatarGradients || []).map((g, i) =>
+                `<button class="ob-swatch ${draft.avatarGradient === g ? 'on' : ''}" data-ob-gradient="${i}" type="button" style="background:${g}" aria-label="기본 아바타 ${i + 1}"></button>`).join('')}
+            </div>
+          </div>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-nickname">닉네임 <span class="ob-hint">2~12자</span></label>
+          <input class="ob-input" id="ob-nickname" type="text" maxlength="12" autocomplete="nickname" value="${escapeHtml(draft.nickname)}" placeholder="예: 러닝준">
+        </div>
+        <p class="ob-error" id="ob-error" hidden></p>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
+          <button class="ob-btn primary" id="ob-next" type="button">다음</button>
+        </div>`,
+      () => `
+        <div class="ob-hero">
+          <h1 class="ob-title">나를 소개해요</h1>
+          <p class="ob-desc">나이·지역·대표 취미는 탐색과 모임 추천에 쓰여요. 나중에 바꿀 수 있어요.</p>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-age">나이 <span class="ob-hint">14~99세 · 선택</span></label>
+          <input class="ob-input" id="ob-age" type="number" min="14" max="99" inputmode="numeric" value="${draft.age === null ? '' : escapeHtml(String(draft.age))}" placeholder="예: 26">
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-region">활동 지역</label>
+          <select class="ob-input" id="ob-region">
+            <option value="">지역 선택 안 함</option>
+            ${store.getExploreRegions().map((r) => `<option value="${escapeHtml(r.id)}" ${draft.regionId === r.id ? 'selected' : ''}>${escapeHtml(r.name)} · ${escapeHtml(r.short)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="ob-field">
+          <span class="ob-label">대표 취미 <span class="ob-hint">최대 3개</span></span>
+          <div class="ob-hobbies" id="ob-hobbies">
+            ${store.getExploreHobbyFilters().map((h) => `<button class="ob-hobby ${draft.hobbies.includes(h.id) ? 'on' : ''}" data-ob-hobby="${h.id}" type="button" aria-pressed="${draft.hobbies.includes(h.id)}">${escapeHtml(h.name)}</button>`).join('')}
+          </div>
+        </div>
+        <p class="ob-error" id="ob-error" hidden></p>
+        <div class="ob-actions">
+          <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
+          <button class="ob-btn primary" id="ob-submit" type="button">ooG 시작하기</button>
+        </div>`
+    ];
+    el.onboardingBody.innerHTML = steps[Math.min(ui.onboardingStep, steps.length - 1)]();
+  }
+
+  /** 온보딩 입력은 단계마다 새로 그려지므로 id 로 찾는다(정적 점검 예외용 헬퍼). */
+  const obField = (id) => document.querySelector(`[id="${id}"]`);
+
+  function collectOnboardingInputs() {
+    const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+    const val = (id) => { const n = obField(id); return n ? n.value : undefined; };
+    if (obField('ob-login-id')) d.loginId = val('ob-login-id');
+    if (obField('ob-password')) d.password = val('ob-password');
+    if (obField('ob-password-confirm')) d.passwordConfirm = val('ob-password-confirm');
+    if (obField('ob-nickname')) d.nickname = val('ob-nickname');
+    if (obField('ob-age')) d.age = val('ob-age');
+    if (obField('ob-region')) d.regionId = val('ob-region');
+    return d;
+  }
+
+  function onboardingNext() {
+    const d = collectOnboardingInputs();
+    if (ui.onboardingStep === 0 && !d.quickStart) {
+      if (String(d.loginId || '').trim().length < 3) return showOnboardingError('아이디를 3자 이상 입력해 주세요');
+      if (String(d.password || '').length < 4) return showOnboardingError('비밀번호를 4자 이상 입력해 주세요');
+      if (d.password !== d.passwordConfirm) return showOnboardingError('비밀번호가 서로 달라요');
+    }
+    if (ui.onboardingStep === 1 && String(d.nickname || '').trim().length < 2) {
+      return showOnboardingError('닉네임을 2자 이상 입력해 주세요');
+    }
+    ui.onboardingStep = Math.min(2, ui.onboardingStep + 1);
+    renderOnboarding();
+  }
+
+  function showOnboardingError(text) {
+    const node = obField('ob-error');
+    if (node) { node.hidden = false; node.textContent = text; }
+    else showToast(text, 'warning');
+  }
+
+  function onboardingBack() {
+    ui.onboardingStep = Math.max(0, ui.onboardingStep - 1);
+    renderOnboarding();
+  }
+
+  function submitOnboarding() {
+    const d = collectOnboardingInputs();
+    const region = d.regionId ? store.getRegion(d.regionId) : null;
+    const res = store.signUp({
+      loginId: d.loginId, password: d.password, passwordConfirm: d.passwordConfirm,
+      quickStart: d.quickStart === true,
+      nickname: d.nickname, photoUrl: d.photoUrl, avatarGradient: d.avatarGradient,
+      age: d.age === '' ? null : Number(d.age),
+      location: region ? `${region.name.split('·')[0]} ${region.short}` : '',
+      hobbies: d.hobbies
+    });
+    if (!res.ok) return showOnboardingError(onboardingError(res.reason));
+    ui.onboardingDraft = null;
+    finishSignup();
+  }
+
+  function submitOnboardingLogin() {
+    const d = collectOnboardingInputs();
+    const pw = (obField('ob-login-pw') || {}).value || '';
+    const res = store.signIn({ loginId: obField('ob-login-id').value, password: pw });
+    if (!res.ok) return showOnboardingError(onboardingError(res.reason));
+    finishSignup();
+  }
+
+  /** 가입/로그인 완료 → 앱 화면으로. 정한 닉네임·사진을 전체에 반영한다. */
+  function finishSignup() {
+    applySignInGate();
+    paintMyAvatars();
+    renderHome();
+    renderGallery();
+    renderExplore();
+    renderChatRooms();
+    renderProfileHeader();
+    renderProfileMyFeed();
+    updateBadges();
+    switchTab('tab-explore');
+    const u = store.currentUser;
+    showToast(`${u.nickname}님, ooG에 오신 걸 환영해요`, 'success',
+      { label: '내정보', onClick: () => switchTab('tab-profile') });
+  }
+
+  /** 가입 전에는 앱을 가리고 회원가입만 보여준다. */
+  function applySignInGate() {
+    const signedIn = store.isSignedIn();
+    document.body.classList.toggle('onboarding-mode', !signedIn);
+    if (el.onboarding) el.onboarding.hidden = signedIn;
+    if (!signedIn) {
+      const ob = store.getOnboardingState();
+      ui.onboardingMode = ob.hasAccount && !ob.completed ? 'login' : 'signup';
+      if (ui.onboardingMode !== 'login' && !ui.onboardingDraft) ui.onboardingDraft = newOnboardingDraft();
+      renderOnboarding();
+    }
+  }
+
+  /** 확인 시트 — 로그아웃/초기화처럼 되돌리기 어려운 동작 앞에서 한 번 물어본다. */
+  function askConfirm(title, desc, okLabel, onOk) {
+    ui.confirmAction = typeof onOk === 'function' ? onOk : null;
+    if (el.confirmTitle) el.confirmTitle.textContent = title;
+    if (el.confirmDesc) el.confirmDesc.textContent = desc;
+    if (el.confirmOk) el.confirmOk.textContent = okLabel || '확인';
+    openModal(el.confirmModal);
+  }
+
+  function runSignOut() {
+    store.signOut();
+    ui.onboardingStep = 0;
+    ui.onboardingDraft = newOnboardingDraft();
+    ui.groupSpaceId = null;
+    closeAllModals();
+    applySignInGate();
+    switchTab('tab-home');
+    showToast('로그아웃했어요 · 다시 로그인할 수 있어요', 'info');
+  }
+
+  function runResetData() {
+    store.resetAllData();
+    closeAllModals();
+    ui.onboardingStep = 0;
+    ui.onboardingDraft = newOnboardingDraft();
+    ui.groupSpaceId = null;
+    switchTab('tab-home');
+    applySignInGate();
+    renderHome();
+    renderExplore();
+    renderProfileHeader();
+    updateBadges();
+    showToast('모든 데이터를 비웠어요 · 회원가입부터 다시 시작해요', 'info');
+  }
+
+  /** 모달을 모두 닫는다(로그아웃·초기화 때 화면 정리). */
+  function closeAllModals() {
+    $$('.modal-overlay.active').forEach((m) => closeModal(m));
+    if (el.storyViewer && !el.storyViewer.hidden) closeStoryViewer();
+  }
+
 
   /* ------------------------------------------------------------------
    * Sprint 11 — 알림함 펼침 상태 (11/15 02:07 사용자 결정: "이건 네가 알아서").
@@ -747,7 +1246,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 바깥 홈 — 내가 가입한 그룹이 2열만 가득 차 늘어선다(ㅁ ㅁ / ㅁ ㅁ). */
+  /** 바깥 홈 — 내가 가입한 그룹이 2열만 가득 차 늘어선다(ㅁ ㅁ / ㅁ ㅁ).
+   *  Sprint 17 — 정렬(최근 활동순/가나다순/내가 그룹장) + 갤러리 안 '새 모임 만들기'. */
   function renderGallery() {
     if (!el.galleryGrid) return;
     const items = store.getGroupGallery();
@@ -757,6 +1257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `${items.length}개 모임 · 지금 올라온 스토리 ${stories}개`
         : '아직 가입한 모임이 없어요';
     }
+    renderGallerySort(items.length > 0);
     if (!items.length) {
       el.galleryGrid.innerHTML = '';
       if (el.galleryEmpty) {
@@ -766,13 +1267,36 @@ document.addEventListener('DOMContentLoaded', () => {
             ${emptyArt('explore')}
             <p class="empty-title">아직 내 모임이 없어요</p>
             <p class="empty-desc">취미가 맞는 모임에 가입하면 이곳이 우리 모임의 사진과 약속으로 채워져요.</p>
-            <div class="empty-actions"><button class="btn-primary" data-home-find="1" type="button">모임 찾아보기</button></div>
+            <div class="empty-actions">
+              <button class="btn-primary" data-home-find="1" type="button">모임 찾아보기</button>
+              <button class="btn-secondary" data-gallery-new="1" type="button">새 모임 만들기</button>
+            </div>
           </div>`;
       }
       return;
     }
     if (el.galleryEmpty) { el.galleryEmpty.hidden = true; el.galleryEmpty.innerHTML = ''; }
-    el.galleryGrid.innerHTML = items.map(galleryCardHTML).join('');
+    el.galleryGrid.innerHTML = items.map(galleryCardHTML).join('') + newGroupTileHTML();
+  }
+
+  /** Sprint 17 — 갤러리 정렬 세그먼트. */
+  function renderGallerySort(visible) {
+    if (!el.gallerySort) return;
+    el.gallerySort.hidden = visible === false;
+    const sort = store.getGallerySort();
+    el.gallerySort.innerHTML = store.getGallerySortOptions().map((o) => `
+      <button class="gallery-sort-btn ${sort === o.id ? 'active' : ''}" data-gallery-sort="${o.id}"
+              type="button" aria-pressed="${sort === o.id}">${escapeHtml(o.label)}</button>`).join('');
+  }
+
+  /** Sprint 17 — 2열 갤러리 안의 '새 모임 만들기' 타일. */
+  function newGroupTileHTML() {
+    return `
+      <button class="gallery-new" data-gallery-new="1" type="button" aria-label="새 모임 만들기">
+        <span class="gallery-new-plus" aria-hidden="true">＋</span>
+        <span class="gallery-new-title">새 모임 만들기</span>
+        <span class="gallery-new-desc">취미가 맞는 사람들과 바로 시작</span>
+      </button>`;
   }
 
   /** 갤러리 카드 하나 — 표지(사진 2장 또는 그라디언트) · 이름 · 멤버·사진·스토리 · 다음 약속. */
@@ -811,20 +1335,23 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / (60 * 1000)))}분 전`;
   }
 
-  /** 모임 피드 맨 위 스토리 바 — [올리기] + 살아 있는 스토리(오래된 것부터). */
+  /** 모임 피드 맨 위 스토리 바 — [올리기] + 사람별 링(멤버당 1개) + [보관함].
+   *  Sprint 17 — 인스타그램처럼 한 사람 링을 누르면 그 사람 스토리가 연속 재생된다. */
   function renderStoryBar(grp) {
     if (!el.storyBar || !grp) return;
-    const stories = store.getGroupStories(grp.id);
-    const me = store.currentUser.id;
-    const mine = stories.filter((s) => s.authorId === me);
-    const others = stories.filter((s) => s.authorId !== me);
-    const item = (s, i) => `
-      <button class="story-item ${s.authorId === me ? 'is-mine' : ''}" data-story-open="${s.id}" data-story-index="${i}" type="button"
-              aria-label="${escapeHtml(s.authorName)}님의 스토리 보기">
-        <span class="story-ring">
-          <span class="story-avatar" style="background:${s.authorGradient || 'linear-gradient(135deg,#10B981,#047857)'}">${escapeHtml(s.authorAvatarText || s.authorName.charAt(0))}</span>
+    const rings = store.getStoryRings(grp.id);
+    const archive = store.getStoryArchiveStats();
+    const item = (ring) => `
+      <button class="story-item ${ring.isMine ? 'is-mine' : ''}" data-story-ring="${ring.authorId}"
+              data-story-open="${ring.stories[0].id}" type="button"
+              aria-label="${escapeHtml(ring.isMine ? '내' : ring.authorName + '님의')} 스토리 ${ring.count}개 보기">
+        <span class="story-ring ${ring.isMine ? 'mine' : ''}">
+          <span class="story-avatar" ${ring.photoUrl ? 'data-photo="1"' : `style="background:${ring.gradient || 'linear-gradient(135deg,#10B981,#047857)'}"`}>
+            ${ring.photoUrl ? avatarImgHTML(ring.photoUrl, ring.authorName) : escapeHtml(ring.avatarText || ring.authorName.charAt(0))}
+          </span>
         </span>
-        <span class="story-name">${s.authorId === me ? '내 스토리' : escapeHtml(s.authorName)}</span>
+        ${ring.count > 1 ? `<span class="story-count">${ring.count}</span>` : ''}
+        <span class="story-name">${ring.isMine ? '내 스토리' : escapeHtml(ring.authorName)}</span>
       </button>`;
     el.storyBar.innerHTML = `
       <div class="story-rail" role="list">
@@ -832,8 +1359,13 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="story-ring add"><span class="story-add-icon" aria-hidden="true">＋</span></span>
           <span class="story-name">스토리 올리기</span>
         </button>
-        ${mine.map(item).join('')}
-        ${others.map((s) => item(s, stories.indexOf(s))).join('')}
+        ${rings.map(item).join('')}
+        <button class="story-item story-archive-item" data-story-archive-open="1" type="button"
+                aria-label="내 스토리 보관함 열기">
+          <span class="story-ring archive"><span class="story-archive-icon" aria-hidden="true">▣</span></span>
+          <span class="story-name">보관함</span>
+          ${archive.count ? `<span class="story-count">${archive.count}</span>` : ''}
+        </button>
       </div>`;
   }
 
@@ -841,7 +1373,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function openStoryComposer() {
     if (!isGroupMode()) return;
     ui.storyPreset = null;
+    ui.storyPhotoUrl = null;
     ui.storyGroupId = ui.groupSpaceId;
+    renderPhotoPreview('story');
     if (el.storyCaption) el.storyCaption.value = '';
     if (el.storyMediaCaption) el.storyMediaCaption.value = '';
     renderStoryMediaPicker();
@@ -861,7 +1395,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateStoryPublish() {
     if (!el.storyPublish) return;
-    const has = !!ui.storyPreset || (el.storyCaption && el.storyCaption.value.trim());
+    const has = !!ui.storyPreset || !!ui.storyPhotoUrl || (el.storyCaption && el.storyCaption.value.trim());
     el.storyPublish.disabled = !has;
     el.storyPublish.classList.toggle('ready', has);
   }
@@ -870,6 +1404,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const res = store.addGroupStory({
       groupId: ui.storyGroupId || ui.groupSpaceId,
       mediaPreset: ui.storyPreset,
+      photoUrl: ui.storyPhotoUrl,
       caption: el.storyCaption ? el.storyCaption.value : '',
       mediaCaption: el.storyMediaCaption ? el.storyMediaCaption.value : ''
     });
@@ -882,7 +1417,26 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('스토리를 올렸어요 · 24시간 뒤에 사라져요');
   }
 
-  /* 스토리 뷰어 (전체화면) */
+  /* 스토리 뷰어 (전체화면) — Sprint 17: 사람별 링의 스토리를 연속 재생한다. */
+  function openStoryRing(authorId) {
+    if (!ui.groupSpaceId) return;
+    const ring = store.getStoryRing(ui.groupSpaceId, authorId);
+    if (!ring || !ring.count) {
+      showToast('이미 사라졌거나 24시간이 지난 스토리예요', 'info');
+      renderHome();
+      return;
+    }
+    ui.storyGroupId = ui.groupSpaceId;
+    ui.storyRingId = authorId;
+    ui.storyArchiveView = false;
+    ui.storyId = ring.stories[0].id;
+    if (el.storyViewer) {
+      el.storyViewer.hidden = false;
+      el.storyViewer.classList.add('active');
+    }
+    renderStoryViewer();
+  }
+
   function openStoryViewer(storyId) {
     const story = store.getStory(storyId);
     if (!story) {
@@ -891,6 +1445,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     ui.storyGroupId = story.groupId;
+    ui.storyRingId = story.authorId;
+    ui.storyArchiveView = false;
+    ui.storyId = storyId;
+    if (el.storyViewer) {
+      el.storyViewer.hidden = false;
+      el.storyViewer.classList.add('active');
+    }
+    renderStoryViewer();
+  }
+
+  /** 보관함에서 지난 내 스토리를 다시 본다(24시간이 지나도 볼 수 있다). */
+  function openArchivedStory(storyId) {
+    const story = store.getMyStoryArchive().find((s) => s.id === storyId);
+    if (!story) { showToast('보관함에서 찾지 못했어요', 'warning'); return; }
+    closeModal(el.storyArchiveModal);
+    ui.storyGroupId = story.groupId;
+    ui.storyRingId = null;
+    ui.storyArchiveView = true;
     ui.storyId = storyId;
     if (el.storyViewer) {
       el.storyViewer.hidden = false;
@@ -900,6 +1472,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function currentStoryList() {
+    if (ui.storyArchiveView) return store.getMyStoryArchive();
+    if (ui.storyRingId && ui.storyGroupId) {
+      const ring = store.getStoryRing(ui.storyGroupId, ui.storyRingId);
+      return ring ? ring.stories : [];
+    }
     return ui.storyGroupId ? store.getGroupStories(ui.storyGroupId) : [];
   }
 
@@ -910,31 +1487,45 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!story) { closeStoryViewer(); return; }
     ui.storyId = story.id;
     const idx = list.findIndex((s) => s.id === story.id);
-    const media = story.mediaPreset ? Media.render(story.mediaPreset, 'view_' + story.id) : '';
+    const media = story.photoUrl
+      ? `<img class="story-photo-img" src="${escapeHtml(story.photoUrl)}" alt="스토리 사진" loading="lazy" decoding="async">`
+      : (story.mediaPreset ? Media.render(story.mediaPreset, 'view_' + story.id) : '');
+    const mine = story.authorId === store.currentUser.id;
+    const rings = (!ui.storyArchiveView && ui.storyGroupId) ? store.getStoryRings(ui.storyGroupId) : [];
+    const ringIdx = rings.findIndex((r) => r.authorId === story.authorId);
     el.storyViewerBody.innerHTML = `
       <div class="story-photo">${media}
         ${story.mediaCaption ? `<span class="story-photo-caption">${escapeHtml(story.mediaCaption)}</span>` : ''}
       </div>
       ${story.caption ? `<p class="story-viewer-caption">${escapeHtml(story.caption)}</p>` : ''}
-      <p class="story-viewer-note">${storyTimeLabel(story.createdAt)} · 24시간 뒤 자동 삭제</p>`;
+      <p class="story-viewer-note">${storyTimeLabel(story.createdAt)} · 24시간 뒤 자동 삭제
+        ${ui.storyArchiveView ? ' · 보관함에서 다시 보는 중' : ''}</p>
+      ${!mine ? `<p class="story-reply-hint">답장을 보내면 ${escapeHtml(story.authorName)}님과 1:1 대화가 열려요</p>` : ''}`;
     if (el.storyViewerProgress) {
       el.storyViewerProgress.innerHTML = list.map((s, i) =>
         `<span class="story-seg ${i < idx ? 'done' : ''} ${i === idx ? 'on' : ''}"><span></span></span>`).join('');
     }
     if (el.storyViewerAvatar) {
-      el.storyViewerAvatar.textContent = story.authorAvatarText || story.authorName.charAt(0);
-      el.storyViewerAvatar.style.background = story.authorGradient || 'linear-gradient(135deg,#10B981,#047857)';
+      el.storyViewerAvatar.innerHTML = story.authorPhotoUrl
+        ? avatarImgHTML(story.authorPhotoUrl, story.authorName)
+        : escapeHtml(story.authorAvatarText || story.authorName.charAt(0));
+      el.storyViewerAvatar.style.background = story.authorPhotoUrl ? 'transparent' : (story.authorGradient || 'linear-gradient(135deg,#10B981,#047857)');
     }
     if (el.storyViewerName) el.storyViewerName.textContent = story.authorName;
-    if (el.storyViewerTime) el.storyViewerTime.textContent = storyTimeLabel(story.createdAt);
-    if (el.btnStoryDelete) el.btnStoryDelete.hidden = story.authorId !== store.currentUser.id;
+    if (el.storyViewerTime) {
+      el.storyViewerTime.textContent = `${idx + 1}/${list.length}${ringIdx >= 0 ? ` · 링 ${ringIdx + 1}/${rings.length}` : ''}`;
+    }
+    if (el.btnStoryDelete) el.btnStoryDelete.hidden = !mine;
     if (el.btnStoryPrev) el.btnStoryPrev.disabled = idx <= 0;
-    if (el.btnStoryNext) el.btnStoryNext.disabled = idx >= list.length - 1;
+    if (el.btnStoryNext) el.btnStoryNext.disabled = idx >= list.length - 1 && ringIdx >= rings.length - 1;
+    if (el.storyReplyForm) el.storyReplyForm.hidden = mine || ui.storyArchiveView;
     scheduleStoryAdvance();
   }
 
   function scheduleStoryAdvance() {
     clearStoryTimer();
+    /* 보관함에서 다시 볼 때는 자동으로 넘기지 않는다(내 기록을 천천히 본다). */
+    if (ui.storyArchiveView) return;
     ui.storyTimer = setTimeout(() => storyStep(1), 6000);
   }
 
@@ -942,19 +1533,31 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ui.storyTimer) { clearTimeout(ui.storyTimer); ui.storyTimer = null; }
   }
 
+  /** 링 안에서는 다음 스토리로, 링이 끝나면 다음 사람 링으로 넘어간다(인스타그램 결). */
   function storyStep(dir) {
     const list = currentStoryList();
     const idx = list.findIndex((s) => s.id === ui.storyId);
     const next = idx + dir;
-    if (next < 0) { renderStoryViewer(); return; }
-    if (next >= list.length) { closeStoryViewer(); return; }
-    ui.storyId = list[next].id;
+    if (next >= 0 && next < list.length) {
+      ui.storyId = list[next].id;
+      renderStoryViewer();
+      return;
+    }
+    if (ui.storyArchiveView || dir < 0) { if (dir < 0) renderStoryViewer(); else closeStoryViewer(); return; }
+    const rings = store.getStoryRings(ui.storyGroupId);
+    const ringIdx = rings.findIndex((r) => r.authorId === ui.storyRingId);
+    const nextRing = rings[ringIdx + 1];
+    if (!nextRing) { closeStoryViewer(); return; }
+    ui.storyRingId = nextRing.authorId;
+    ui.storyId = nextRing.stories[0].id;
     renderStoryViewer();
   }
 
   function closeStoryViewer() {
     clearStoryTimer();
     ui.storyId = null;
+    ui.storyRingId = null;
+    ui.storyArchiveView = false;
     if (el.storyViewer) {
       el.storyViewer.hidden = true;
       el.storyViewer.classList.remove('active');
@@ -963,11 +1566,72 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function deleteCurrentStory() {
     if (!ui.storyId) return;
-    const res = store.deleteStory(ui.storyId);
+    const res = ui.storyArchiveView
+      ? store.deleteArchivedStory(ui.storyId) : store.deleteStory(ui.storyId);
     if (!res.ok) { showToast('내 스토리만 지울 수 있어요', 'warning'); return; }
     showToast('스토리를 지웠어요', 'info');
     closeStoryViewer();
     renderHome();
+    paintMyAvatars();
+  }
+
+  /** 스토리에 짧은 답장 — 그 모임의 1:1 대화로 이어진다. */
+  function sendStoryReply() {
+    if (!ui.storyId || !el.storyReplyInput) return;
+    const text = el.storyReplyInput.value.trim();
+    if (!text) { showToast('답장을 한 줄 적어주세요', 'warning'); return; }
+    const res = store.replyToStory(ui.storyId, text);
+    if (!res.ok) {
+      showToast(res.reason === 'dm_disabled'
+        ? '이 모임은 그룹장이 1:1 대화를 꺼두었어요'
+        : '답장을 보내지 못했어요', 'warning');
+      return;
+    }
+    el.storyReplyInput.value = '';
+    clearStoryTimer();
+    showToast(`${res.partnerName}님에게 답장을 보냈어요`, 'success',
+      { label: '대화 보기', onClick: () => { closeStoryViewer(); openChatRoom(res.room.id); } });
+  }
+
+  /* ------------------------ Sprint 17 — 내 스토리 보관함 */
+  function openStoryArchive() {
+    renderStoryArchive();
+    openModal(el.storyArchiveModal);
+  }
+
+  function renderStoryArchive() {
+    if (!el.storyArchiveGrid) return;
+    const list = store.getMyStoryArchive();
+    if (!list.length) {
+      el.storyArchiveGrid.innerHTML = `
+        <div class="archive-empty">
+          ${emptyArt('explore')}
+          <p class="empty-title">보관함이 비어 있어요</p>
+          <p class="empty-desc">스토리가 24시간을 지나면 지우지 않고 이곳에 모아 둡니다.</p>
+        </div>`;
+      return;
+    }
+    el.storyArchiveGrid.innerHTML = list.map((s) => `
+      <article class="archive-card" data-archive-id="${s.id}">
+        <button class="archive-thumb" data-archive-open="${s.id}" type="button"
+                aria-label="${escapeHtml(s.caption || '내 스토리')} 다시 보기">
+          ${s.photoUrl
+            ? `<img class="story-photo-img" src="${escapeHtml(s.photoUrl)}" alt="보관한 스토리 사진" loading="lazy" decoding="async">`
+            : (s.mediaPreset ? Media.render(s.mediaPreset, 'arc_' + s.id) : `<span class="archive-text">${escapeHtml(s.caption || '스토리')}</span>`)}
+        </button>
+        <div class="archive-meta">
+          <span class="archive-group">${escapeHtml(s.groupName)}</span>
+          <span class="archive-date">${formatShortDate(s.createdAt)}</span>
+        </div>
+        <p class="archive-caption">${escapeHtml(s.caption || s.mediaCaption || '')}</p>
+        <button class="archive-del" data-archive-del="${s.id}" type="button">지우기</button>
+      </article>`).join('');
+  }
+
+  function formatShortDate(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return `${d.getMonth() + 1}월 ${d.getDate()}일`;
   }
 
   /* ------------------------------------------------------------------
@@ -991,51 +1655,98 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 게시판의 공지 목록 — 고정 → 최신 순. */
+  /** 게시판의 공지 목록 — 고정 → 최신 순. Sprint 17: 읽음 수 표시 + 지난 공지 접기. */
   function renderBoardNotices(grp) {
     if (!el.boardNoticeList) return;
-    /* 상단 고정 공지 바에 이미 있는 공지는 목록에서 빼고, 나머지를 최신순으로. */
-    const pinnedNow = store.getPinnedGroupNotice(grp.id);
-    const notices = store.getGroupNotices(grp.id)
-      .filter((n) => !pinnedNow || n.id !== pinnedNow.id)
-      .slice()
-      .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)
-        || new Date(b.at).getTime() - new Date(a.at).getTime());
-    if (!notices.length) {
-      el.boardNoticeList.innerHTML = `<p class="board-empty">${pinnedNow
-        ? '고정 공지 외에 다른 공지는 아직 없어요.'
-        : '아직 공지가 없어요. 그룹장과 부방장이 공지를 남길 수 있어요.'}</p>`;
-      return;
-    }
-    el.boardNoticeList.innerHTML = notices.slice(0, 5).map((n) => {
+    const groups = store.getGroupNoticeGroups(grp.id, { recentCount: 1 });
+    const rows = groups.recent.concat(ui.boardNoticeExpanded ? groups.past : []);
+    const rowHTML = (n) => {
       const role = n.authorRole === 'deputy' ? '부방장' : (n.authorRole === 'leader' ? '그룹장' : '멤버');
+      const read = store.getNoticeReadState(n.id) || { readCount: 0, total: 0, iRead: false };
       return `
-        <article class="board-notice ${n.pinned ? 'is-pinned' : ''}">
+        <article class="board-notice ${n.pinned ? 'is-pinned' : ''} ${read.iRead ? 'is-read' : ''}"
+                 data-notice-read="${n.id}" role="button" tabindex="0"
+                 aria-label="${escapeHtml(n.text.slice(0, 20))}… 공지 읽음 ${read.readCount}명 보기">
           <div class="board-notice-top">
             ${n.pinned ? '<span class="board-notice-pin">고정</span>' : ''}
             <span class="board-notice-who">${escapeHtml(n.authorName)} ${role}</span>
             <span class="board-notice-time" data-created="${n.at}">${timeAgo(n.at)}</span>
           </div>
           <p class="board-notice-text">${escapeHtml(n.text)}</p>
+          <div class="board-notice-foot">
+            <span class="notice-read-chip ${read.iRead ? 'mine' : ''}">읽음 ${read.readCount}/${read.total}${read.iRead ? ' · 나 읽음' : ''}</span>
+            <span class="notice-read-hint">누가 읽었는지 보기</span>
+          </div>
         </article>`;
-    }).join('');
+    };
+    if (!rows.length) {
+      el.boardNoticeList.innerHTML = `<p class="board-empty">${groups.pinned
+        ? '고정 공지 외에 다른 공지는 아직 없어요.'
+        : '아직 공지가 없어요. 그룹장과 부방장이 공지를 남길 수 있어요.'}</p>`;
+    } else {
+      el.boardNoticeList.innerHTML = rows.map(rowHTML).join('');
+    }
+    if (el.btnNoticeMore) {
+      const hasPast = groups.past.length > 0;
+      el.btnNoticeMore.hidden = !hasPast;
+      el.btnNoticeMore.textContent = ui.boardNoticeExpanded
+        ? `지난 공지 접기 (${groups.past.length})` : `지난 공지 더 보기 (${groups.past.length})`;
+      el.btnNoticeMore.setAttribute('aria-expanded', String(ui.boardNoticeExpanded));
+    }
   }
 
-  /** 자유·후기 게시판 — 모임 피드의 글을 글로만 간추린 목록(말머리로 거른다). */
+  /** 공지 읽음 상태 시트 — 읽은 사람 명단(알림 없이 기록만). */
+  function openNoticeRead(noticeId) {
+    const notice = store.getGroupNotice(noticeId);
+    if (!notice) return;
+    ui.noticeReadId = noticeId;
+    if (store.isGroupJoined(notice.groupId)) store.markNoticeRead(noticeId);
+    const read = store.getNoticeReadState(noticeId);
+    if (el.noticeReadSub) {
+      el.noticeReadSub.textContent = read
+        ? `멤버 ${read.total}명 중 ${read.readCount}명이 읽었어요 (${read.percent}%) · 읽음 표시는 알림을 만들지 않아요`
+        : '읽은 사람을 볼 수 있어요';
+    }
+    if (el.noticeReadList) {
+      el.noticeReadList.innerHTML = `
+        <p class="notice-read-quote">${escapeHtml(notice.text)}</p>
+        <div class="notice-read-bar" aria-hidden="true"><span style="width:${read ? read.percent : 0}%"></span></div>
+        <h4 class="notice-read-title">읽은 사람 ${read ? read.readers.length : 0}</h4>
+        <div class="notice-read-people">
+          ${read && read.readers.length ? read.readers.map((r) => `
+            <span class="notice-reader">
+              <span class="notice-reader-avatar" style="background:${r.gradient || '#10B981'}">${r.photoUrl ? avatarImgHTML(r.photoUrl, r.name) : escapeHtml(r.avatarText || r.name.charAt(0))}</span>
+              <span class="notice-reader-name">${escapeHtml(r.name)}</span>
+            </span>`).join('')
+            : '<p class="board-empty">아직 읽은 사람이 없어요.</p>'}
+        </div>
+        ${read && read.unread.length ? `<h4 class="notice-read-title">아직 안 읽은 사람 ${read.unread.length}</h4>
+          <p class="notice-read-unread">${read.unread.slice(0, 12).map((m) => escapeHtml(m.name)).join(' · ')}${read.unread.length > 12 ? ' …' : ''}</p>` : ''}`;
+    }
+    openModal(el.noticeReadModal);
+    if (ui.activeTab === 'tab-board' && ui.groupSpaceId) renderBoardNotices(store.getGroup(ui.groupSpaceId));
+  }
+
+  /** 자유·후기 게시판 — 모임 피드의 글을 글로만 간추린 목록(말머리·후기로 거른다). */
   function renderBoardPosts(grp) {
     if (!el.boardPostList) return;
     const all = store.getGroupPhotoPosts(grp.id);
     const tags = store.getGroupPhotoTags(grp.id);
+    const reviews = store.getGroupReviewPosts(grp.id);
     if (el.boardFilterChips) {
       el.boardFilterChips.innerHTML = [
         `<button class="board-chip ${ui.boardTag ? '' : 'active'}" data-board-tag="" aria-pressed="${!ui.boardTag}" type="button">전체 ${all.length}</button>`,
-        ...tags.map((t) => `<button class="board-chip ${ui.boardTag === t.tag ? 'active' : ''}" data-board-tag="${escapeHtml(t.tag)}" aria-pressed="${ui.boardTag === t.tag}" type="button">#${escapeHtml(t.tag)} ${t.count}</button>`)
+        `<button class="board-chip review ${ui.boardTag === '후기' ? 'active' : ''}" data-board-tag="후기" aria-pressed="${ui.boardTag === '후기'}" type="button">후기 모아보기 ${reviews.length}</button>`,
+        ...tags.filter((t) => !(t.tag === '후기' && reviews.length)).map((t) => `<button class="board-chip ${ui.boardTag === t.tag ? 'active' : ''}" data-board-tag="${escapeHtml(t.tag)}" aria-pressed="${ui.boardTag === t.tag}" type="button">#${escapeHtml(t.tag)} ${t.count}</button>`)
       ].join('');
     }
-    const list = ui.boardTag ? all.filter((p) => p.tag === ui.boardTag) : all;
+    const list = ui.boardTag === '후기' ? reviews
+      : (ui.boardTag ? all.filter((p) => p.tag === ui.boardTag) : all);
     if (el.boardPostCount) el.boardPostCount.textContent = String(list.length);
     if (!list.length) {
-      el.boardPostList.innerHTML = '<p class="board-empty">아직 글이 없어요. [＋ 글쓰기]로 첫 글을 남겨보세요.</p>';
+      el.boardPostList.innerHTML = ui.boardTag === '후기'
+        ? '<p class="board-empty">아직 후기가 없어요. 다녀온 모임 후기를 #후기로 남겨보세요.</p>'
+        : '<p class="board-empty">아직 글이 없어요. [＋ 글쓰기]로 첫 글을 남겨보세요.</p>';
       return;
     }
     el.boardPostList.innerHTML = list.map((p) => `
@@ -1053,6 +1764,101 @@ document.addEventListener('DOMContentLoaded', () => {
           ? `<img src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
           : Media.render(p.mediaPreset, 'bp_' + p.id)}</span>` : ''}
       </article>`).join('');
+  }
+
+  /* ------------------------------------------------------------------
+   * 1-D-2. Sprint 17 — 갤러리 표지 고르기 · 탐색 한 줄 요약 · 카드 꾸미기
+   * ---------------------------------------------------------------- */
+  function openCoverPicker(groupId) {
+    if (!store.isGroupLeader(groupId)) {
+      showToast('카드 표지는 그룹장만 고를 수 있어요', 'warning');
+      return;
+    }
+    const cover = store.getGroupCover(groupId);
+    if (!cover) return;
+    ui.coverGroupId = groupId;
+    ui.coverDraft = cover.presets.slice(0, 2);
+    renderCoverGrid();
+    openModal(el.coverModal);
+  }
+
+  function renderCoverGrid() {
+    if (!el.coverGrid) return;
+    const cover = store.getGroupCover(ui.coverGroupId);
+    if (!cover) return;
+    el.coverGrid.innerHTML = cover.options.map((k) => {
+      const idx = ui.coverDraft.indexOf(k);
+      return `
+        <button class="cover-option ${idx >= 0 ? 'on' : ''}" data-cover-preset="${k}" type="button"
+                aria-pressed="${idx >= 0}" aria-label="표지 사진 ${k} ${idx >= 0 ? (idx + 1) + '번째로 선택됨' : '선택'}">
+          <span class="cover-thumb">${Media.render(k, 'cover_' + k)}</span>
+          ${idx >= 0 ? `<span class="cover-order">${idx + 1}</span>` : ''}
+        </button>`;
+    }).join('');
+  }
+
+  function toggleCoverPreset(preset) {
+    const i = ui.coverDraft.indexOf(preset);
+    if (i >= 0) ui.coverDraft.splice(i, 1);
+    else {
+      if (ui.coverDraft.length >= 2) ui.coverDraft.shift();
+      ui.coverDraft.push(preset);
+    }
+    renderCoverGrid();
+  }
+
+  function saveCover() {
+    if (!ui.coverGroupId) return;
+    const res = store.setGroupCoverPhotos(ui.coverGroupId, ui.coverDraft);
+    if (!res.ok) {
+      showToast(res.reason === 'empty' ? '표지 사진을 한 장 이상 골라주세요' : '표지를 저장하지 못했어요', 'warning');
+      return;
+    }
+    closeModal(el.coverModal);
+    renderGallery();
+    if (store.isGroupJoined(ui.coverGroupId) && isGroupMode() && ui.groupSpaceId === ui.coverGroupId) {
+      renderHomeHero(homeGroup());
+    }
+    showToast('모임 카드 표지를 바꿨어요');
+  }
+
+  /** 탐색 조건 한 줄 요약 — 취미 · 나이 · 거리 · 지역. */
+  function renderExploreSummary() {
+    if (!el.exploreSummary) return;
+    const s = store.getExploreSummary();
+    el.exploreSummary.textContent = s.text;
+    el.exploreSummary.classList.toggle('is-filtered', s.activeCount > 0);
+    el.exploreSummary.setAttribute('aria-label', `지금 탐색 조건 · ${s.text}`);
+  }
+
+  function openExploreCardEditor() {
+    const card = store.getMyExploreCard();
+    ui.exploreCardPreset = card.mediaPreset;
+    renderExploreCardMedia();
+    if (el.exploreCardIntro) el.exploreCardIntro.value = card.intro || '';
+    openModal(el.exploreCardModal);
+  }
+
+  function renderExploreCardMedia() {
+    if (!el.exploreCardMedia) return;
+    el.exploreCardMedia.innerHTML = Media.PRESETS.map((preset) => `
+      <button class="media-option ${ui.exploreCardPreset === preset.key ? 'active' : ''}" data-explore-card-media="${preset.key}" type="button">
+        <span class="media-thumb">${Media.render(preset.key, 'card_' + preset.key)}</span>
+        <span class="media-option-label">${preset.label}</span>
+        <span class="media-option-check">✓</span>
+      </button>`).join('');
+  }
+
+  function saveExploreCard() {
+    const res = store.setMyExploreCard({
+      mediaPreset: ui.exploreCardPreset,
+      intro: el.exploreCardIntro ? el.exploreCardIntro.value : ''
+    });
+    if (!res.ok) { showToast('카드를 저장하지 못했어요', 'warning'); return; }
+    closeModal(el.exploreCardModal);
+    ui.exploreBuffer = null;
+    renderExploreWithSkeleton();
+    showToast('탐색 카드를 꾸몄어요');
   }
 
   /** 모임 안 내정보 상단 한 줄 — 어느 모임의 내정보인지. */
@@ -1082,20 +1888,42 @@ document.addEventListener('DOMContentLoaded', () => {
   function sendDm() {
     if (!ui.dmTargetId) return;
     const text = el.dmMessage ? el.dmMessage.value : '';
-    const res = store.startDirectMessage(ui.dmTargetId, text);
+    const targetId = ui.dmTargetId;
+    const res = store.startDirectMessage(targetId, text);
     if (!res.ok) { showToast('쪽지를 보내지 못했어요', 'warning'); return; }
     const name = res.room ? res.room.partnerName : '상대';
     closeModal(el.dmComposeModal);
     if (el.personDetailModal && el.personDetailModal.classList.contains('active')) closeModal(el.personDetailModal);
     ui.dmTargetId = null;
     ui.highlightRoomId = res.room ? res.room.id : null;
-    /* 그룹 안에 있었어도 쪽지는 '전체 디엠함'에 꺽 바로 보인다. */
+    /* Sprint 17 — 쪽지를 보낸 직후 상대 프로필로 바로 갈 수 있게 기억한다. */
+    ui.dmSent = { partnerId: targetId, name, roomId: res.room ? res.room.id : null };
+    /* 그룹 안에 있었어도 쪽지는 '전체 디엠함'에 곧바로 보인다. */
     ui.groupSpaceId = null;
     syncNavMode();
     renderChatRooms();
     updateBadges();
     switchTab('tab-chat');
     showToast(`${name}님에게 쪽지를 보냈어요 · 전체 디엠함에 있어요`);
+  }
+
+  /** Sprint 17 — 방금 보낸 쪽지 띠: 상대 프로필/대화로 바로 이동. */
+  function renderDmSentBanner() {
+    if (!el.dmSentBanner) return;
+    if (!ui.dmSent || isGroupMode()) {
+      el.dmSentBanner.hidden = true;
+      el.dmSentBanner.innerHTML = '';
+      return;
+    }
+    const { partnerId, name, roomId } = ui.dmSent;
+    el.dmSentBanner.hidden = false;
+    el.dmSentBanner.innerHTML = `
+      <span class="dmsb-text"><b>${escapeHtml(name)}</b>님에게 쪽지를 보냈어요</span>
+      <span class="dmsb-actions">
+        ${partnerId ? `<button class="dmsb-btn" data-dm-profile="${escapeHtml(partnerId)}" type="button">프로필 보기</button>` : ''}
+        ${roomId ? `<button class="dmsb-btn ghost" data-dm-open-room="${escapeHtml(roomId)}" type="button">대화 보기</button>` : ''}
+        <button class="dmsb-close" data-dm-sent-close="1" type="button" aria-label="안내 닫기">&times;</button>
+      </span>`;
   }
 
   function renderHomeHero(grp) {
@@ -1436,7 +2264,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return tb - ta;
       });
     if (el.chatGroupCount) el.chatGroupCount.textContent = `${groups.length}곳`;
-    el.chatGroupRooms.innerHTML = groups.map(({ group, chat, nextEvent }) => `
+    const shownGroups = ui.dmUnreadOnly ? groups.filter((g) => (g.chat.unread || 0) > 0) : groups;
+    el.chatGroupRooms.innerHTML = shownGroups.map(({ group, chat, nextEvent }) => `
       <article class="chat-group-item" data-home-chat="${group.id}" role="button" tabindex="0"
                aria-label="${escapeHtml(group.name)} 단체 채팅방 열기">
         <span class="chat-group-emoji" style="background:${group.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}">${escapeHtml((group.name || '?').charAt(0))}</span>
@@ -1613,6 +2442,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : `<p class="notice-item-text">${escapeHtml(n.text)}</p>`}
           ${perm.canManage && !editing ? `
             <div class="notice-item-actions">
+              <button class="notice-act read" data-notice-read="${n.id}" type="button">읽음 ${(store.getNoticeReadState(n.id) || {}).readCount || 0}/${(store.getNoticeReadState(n.id) || {}).total || 0}</button>
               <button class="notice-act ${n.pinned ? 'on' : ''}" data-notice-pin="${n.id}" type="button">${n.pinned ? '고정 해제' : '상단 고정'}</button>
               <button class="notice-act" data-notice-edit="${n.id}" type="button">수정</button>
               <button class="notice-act danger" data-notice-delete="${n.id}" type="button">삭제</button>
@@ -1886,6 +2716,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.galleryGrid) {
       el.galleryGrid.addEventListener('click', (e) => {
         if (e.target.closest('[data-home-find]')) { switchTab('tab-explore'); return; }
+        if (e.target.closest('[data-gallery-new]')) { openGroupCreate(); return; }
         openFromCard(e.target.closest('[data-open-group]'));
       });
       el.galleryGrid.addEventListener('keydown', (e) => {
@@ -1899,9 +2730,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.galleryEmpty) {
       el.galleryEmpty.addEventListener('click', (e) => {
         if (e.target.closest('[data-home-find]')) switchTab('tab-explore');
+        if (e.target.closest('[data-gallery-new]')) openGroupCreate();
       });
     }
     if (el.btnGalleryFind) el.btnGalleryFind.addEventListener('click', () => switchTab('tab-explore'));
+    /* Sprint 17 — 갤러리 정렬 */
+    if (el.gallerySort) {
+      el.gallerySort.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-gallery-sort]');
+        if (!btn) return;
+        store.setGallerySort(btn.dataset.gallerySort);
+        renderGallery();
+      });
+    }
   }
   bindGallery();
 
@@ -1923,8 +2764,29 @@ document.addEventListener('DOMContentLoaded', () => {
   if (el.storyBar) {
     el.storyBar.addEventListener('click', (e) => {
       if (e.target.closest('[data-story-new]')) { openStoryComposer(); return; }
+      if (e.target.closest('[data-story-archive-open]')) { openStoryArchive(); return; }
+      const ring = e.target.closest('[data-story-ring]');
+      if (ring) { openStoryRing(ring.dataset.storyRing); return; }
       const item = e.target.closest('[data-story-open]');
       if (item) openStoryViewer(item.dataset.storyOpen);
+    });
+  }
+  /* Sprint 17 — 스토리 답장 */
+  if (el.storyReplyForm) {
+    el.storyReplyForm.addEventListener('submit', (e) => { e.preventDefault(); sendStoryReply(); });
+  }
+  el.btnStoryArchive && el.btnStoryArchive.addEventListener('click', openStoryArchive);
+  $('#btn-close-archive') && $('#btn-close-archive').addEventListener('click', () => closeModal(el.storyArchiveModal));
+  if (el.storyArchiveGrid) {
+    el.storyArchiveGrid.addEventListener('click', (e) => {
+      const del = e.target.closest('[data-archive-del]');
+      if (del) {
+        const res = store.deleteArchivedStory(del.dataset.archiveDel);
+        if (res.ok) { renderStoryArchive(); paintMyAvatars(); showToast('보관함에서 지웠어요', 'info'); }
+        return;
+      }
+      const open = e.target.closest('[data-archive-open]');
+      if (open) openArchivedStory(open.dataset.archiveOpen);
     });
   }
 
@@ -1983,6 +2845,56 @@ document.addEventListener('DOMContentLoaded', () => {
   el.btnNoticeOpen && el.btnNoticeOpen.addEventListener('click', () => {
     if (ui.groupSpaceId) openNoticeSheet(ui.groupSpaceId);
   });
+  /* Sprint 17 — 게시판에서 바로 사진 올리기 · 후기 모아보기 · 지난 공지 · 공지 읽음 */
+  el.btnBoardPhoto && el.btnBoardPhoto.addEventListener('click', () => {
+    if (!isGroupMode()) return;
+    openComposer(ui.groupSpaceId);
+    /* 게시판에서 '사진 올리기'를 누르면 곧바로 앨범이 열린다(사진부터 고르는 흐름). */
+    setTimeout(() => {
+      const album = $('#composer-photo-album');
+      const row = $('#composer-photo-upload');
+      if (row) row.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      if (album) album.click();
+    }, 200);
+  });
+  el.btnBoardReview && el.btnBoardReview.addEventListener('click', () => {
+    ui.boardTag = '후기';
+    renderBoardPosts(homeGroup());
+  });
+  el.btnNoticeMore && el.btnNoticeMore.addEventListener('click', () => {
+    ui.boardNoticeExpanded = !ui.boardNoticeExpanded;
+    renderBoardNotices(homeGroup());
+  });
+  /* 공지 읽음 — 게시판 목록과 공지 시트 어디서 눌러도 같은 시트가 열린다. */
+  document.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-notice-read]');
+    if (row) openNoticeRead(row.dataset.noticeRead);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const row = e.target.closest('[data-notice-read]');
+    if (!row) return;
+    e.preventDefault();
+    openNoticeRead(row.dataset.noticeRead);
+  });
+  $('#btn-close-notice-read') && $('#btn-close-notice-read').addEventListener('click', () => closeModal(el.noticeReadModal));
+  /* 표지 고르기 */
+  $('#btn-close-cover') && $('#btn-close-cover').addEventListener('click', () => closeModal(el.coverModal));
+  if (el.coverGrid) {
+    el.coverGrid.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-cover-preset]');
+      if (btn) toggleCoverPreset(btn.dataset.coverPreset);
+    });
+  }
+  $('#btn-cover-save') && $('#btn-cover-save').addEventListener('click', saveCover);
+  $('#btn-cover-reset') && $('#btn-cover-reset').addEventListener('click', () => {
+    const res = store.clearGroupCover(ui.coverGroupId);
+    if (res.ok) { ui.coverDraft = (res.cover.presets || []).slice(0, 2); renderCoverGrid(); renderGallery(); }
+  });
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cover-open]');
+    if (btn) openCoverPicker(btn.dataset.coverOpen);
+  });
 
   /* 탐색 — 내 프로필 올리기 토글 */
   function renderExploreProfileToggle() {
@@ -2024,6 +2936,136 @@ document.addEventListener('DOMContentLoaded', () => {
       switchTab('tab-chat');
     }
   });
+
+  /* ==================================================================
+   * Sprint 17 — 디엠함 정렬/안 읽은 대화 · 쪽지 후 프로필 · 탐색 카드 · 계정
+   * ================================================================== */
+  if (el.dmViewSeg) {
+    el.dmViewSeg.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-dm-view]');
+      if (!btn) return;
+      ui.dmView = btn.dataset.dmView === 'group' ? 'group' : 'recent';
+      renderChatRooms();
+    });
+  }
+  el.dmUnreadToggle && el.dmUnreadToggle.addEventListener('click', () => {
+    ui.dmUnreadOnly = !ui.dmUnreadOnly;
+    renderChatRooms();
+  });
+  if (el.dmSentBanner) {
+    el.dmSentBanner.addEventListener('click', (e) => {
+      if (e.target.closest('[data-dm-sent-close]')) { ui.dmSent = null; renderDmSentBanner(); return; }
+      const profile = e.target.closest('[data-dm-profile]');
+      if (profile) {
+        const id = profile.dataset.dmProfile;
+        if (store.getMatchProfile(id)) openPersonDetail(id);
+        else showToast('이 대화 상대는 모임 멤버예요 · 대화에서 프로필을 볼 수 있어요', 'info');
+        return;
+      }
+      const room = e.target.closest('[data-dm-open-room]');
+      if (room && room.dataset.dmOpenRoom) openChatRoom(room.dataset.dmOpenRoom);
+    });
+  }
+
+  el.btnExploreCardEdit && el.btnExploreCardEdit.addEventListener('click', openExploreCardEditor);
+  $('#btn-explore-card-cancel') && $('#btn-explore-card-cancel').addEventListener('click', () => closeModal(el.exploreCardModal));
+  $('#btn-explore-card-save') && $('#btn-explore-card-save').addEventListener('click', saveExploreCard);
+  if (el.exploreCardMedia) {
+    el.exploreCardMedia.addEventListener('click', (e) => {
+      const pick = e.target.closest('[data-explore-card-media]');
+      if (!pick) return;
+      ui.exploreCardPreset = pick.dataset.exploreCardMedia;
+      renderExploreCardMedia();
+    });
+  }
+
+  /* 계정 — 로그아웃 · 데이터 초기화 · 프로필 사진 등록/변경 · 스토리 보관함 */
+  $('#menu-logout') && $('#menu-logout').addEventListener('click', () => {
+    askConfirm('로그아웃할까요?', '이 기기에 계정과 프로필은 남고, 회원가입(로그인) 화면으로 돌아가요.', '로그아웃', runSignOut);
+  });
+  $('#menu-reset-data') && $('#menu-reset-data').addEventListener('click', () => {
+    askConfirm('데이터를 초기화할까요?', '내 계정·모임·글·스토리·디엠·알림 기록이 모두 비워지고 회원가입부터 다시 시작해요. 되돌릴 수 없어요.',
+      '초기화', runResetData);
+  });
+  $('#menu-story-archive') && $('#menu-story-archive').addEventListener('click', openStoryArchive);
+  $('#menu-edit-photo') && $('#menu-edit-photo').addEventListener('click', () => {
+    el.profilePhotoInput && el.profilePhotoInput.click();
+  });
+  el.profilePhotoInput && el.profilePhotoInput.addEventListener('change', () => {
+    const file = el.profilePhotoInput.files && el.profilePhotoInput.files[0];
+    if (!file) return;
+    readImageFile(file, (url) => {
+      store.updateProfilePhoto(url);
+      paintMyAvatars();
+      renderProfileHeader();
+      renderHome();
+      ui.exploreBuffer = null;
+      renderExploreWithSkeleton();
+      showToast('프로필 사진을 등록했어요');
+    });
+    el.profilePhotoInput.value = '';
+  });
+  el.confirmOk && el.confirmOk.addEventListener('click', () => {
+    const fn = ui.confirmAction;
+    ui.confirmAction = null;
+    closeModal(el.confirmModal);
+    if (fn) fn();
+  });
+  $('#btn-confirm-cancel') && $('#btn-confirm-cancel').addEventListener('click', () => {
+    ui.confirmAction = null;
+    closeModal(el.confirmModal);
+  });
+
+  /* ==================================================================
+   * Sprint 17 — 회원가입 화면 이벤트(위임)
+   * ================================================================== */
+  if (el.onboardingBody) {
+    el.onboardingBody.addEventListener('click', (e) => {
+      const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+      const target = e.target.closest('button');
+      if (!target) return;
+      if (target.id === 'ob-quick-start') {
+        d.quickStart = true;
+        ui.onboardingStep = 1;
+        renderOnboarding();
+        return;
+      }
+      if (target.id === 'ob-to-login') { ui.onboardingMode = 'login'; renderOnboarding(); return; }
+      if (target.id === 'ob-restart-signup') { ui.onboardingMode = 'signup'; ui.onboardingStep = 0; renderOnboarding(); return; }
+      if (target.id === 'ob-next') { collectOnboardingInputs(); onboardingNext(); return; }
+      if (target.id === 'ob-back') { collectOnboardingInputs(); onboardingBack(); return; }
+      if (target.id === 'ob-submit') { collectOnboardingInputs(); submitOnboarding(); return; }
+      if (target.id === 'ob-login-submit') { submitOnboardingLogin(); return; }
+      const swatch = target.closest('[data-ob-gradient]');
+      if (swatch) {
+        collectOnboardingInputs();
+        const list = store.getOnboardingState().avatarGradients || [];
+        d.avatarGradient = list[Number(swatch.dataset.obGradient)] || d.avatarGradient;
+        renderOnboarding();
+        return;
+      }
+      const hobby = target.closest('[data-ob-hobby]');
+      if (hobby) {
+        collectOnboardingInputs();
+        const id = hobby.dataset.obHobby;
+        if (d.hobbies.includes(id)) d.hobbies = d.hobbies.filter((h) => h !== id);
+        else if (d.hobbies.length >= 3) { showOnboardingError('대표 취미는 3개까지 고를 수 있어요'); return; }
+        else d.hobbies = d.hobbies.concat(id);
+        renderOnboarding();
+      }
+    });
+    el.onboardingBody.addEventListener('change', (e) => {
+      const input = e.target.closest('#ob-photo-input');
+      if (!input) return;
+      const file = input.files && input.files[0];
+      if (!file) return;
+      collectOnboardingInputs();
+      readImageFile(file, (url) => {
+        ui.onboardingDraft.photoUrl = url;
+        renderOnboarding();
+      });
+    });
+  }
 
   /* ------------------------------------------------------------------
    * 홈 이벤트 배선 (Sprint 14) — 위임 한 곳에서 처리
@@ -2501,6 +3543,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderExploreToolbar() {
     renderExploreTypeSeg();
     renderRegionButton();
+    renderExploreSummary();
     const chips = activeFilterChips();
     if (el.exploreFilterCount) {
       el.exploreFilterCount.textContent = String(chips.length);
@@ -2710,7 +3753,9 @@ document.addEventListener('DOMContentLoaded', () => {
                data-person-id="${p.id}" data-card-type="person" role="button" tabindex="0"
                aria-label="${escapeHtml(p.nickname)} ${p.age}세 · ${escapeHtml(p.hobbyStyle)} 프로필 보기">
         <div class="person-media">
-          ${Media.render(p.mediaPreset, 'x_' + p.id)}
+          ${p.isMe && p.photoUrl
+            ? `<img class="person-photo-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.nickname)} 프로필 사진" loading="lazy" decoding="async">`
+            : Media.render(p.mediaPreset, 'x_' + p.id)}
           <span class="person-badge">${escapeHtml(p.badge || `${p.hobbyEmoji} ${p.hobbyLabel}`)}</span>
           <span class="person-fade" aria-hidden="true"></span>
           <div class="person-info">
@@ -3850,6 +4895,15 @@ document.addEventListener('DOMContentLoaded', () => {
                        aria-label="그룹 내 1:1 대화 허용"><span class="switch-knob" aria-hidden="true"></span></button>`
             : `<span class="ops-state ${dm.enabled ? 'on' : 'off'}">${dm.enabled ? '허용' : '꺼둠'}</span>`}
         </div>
+        <div class="ops-toggle-row">
+          <span class="ops-toggle-text">
+            <span class="ops-toggle-title">가입 카드 표지 사진</span>
+            <span class="ops-toggle-desc">갤러리 카드에 보일 사진을 그룹장이 직접 고를 수 있어요</span>
+          </span>
+          ${isLeader
+            ? `<button class="btn-secondary ops-cover-btn" data-cover-open="${grp.id}" type="button">표지 고르기</button>`
+            : `<span class="ops-state">${(store.getGroupCover(grp.id) || {}).custom ? '그룹장이 고름' : '최근 사진'}</span>`}
+        </div>
       </section>`;
   }
 
@@ -4657,7 +5711,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다(모임 선택 한 번 줄임). */
     const viewing = ui.activeTab === 'tab-home' ? (ui.homeGroupId || store.getHomeGroupId()) : null;
     const startGroup = store.getGroup(prefillGroupId || viewing || ui.feedGroupId) || joined[0];
-    ui.composer = { groupId: startGroup.id, tag: null, mediaPreset: null };
+    ui.composer = { groupId: startGroup.id, tag: null, mediaPreset: null, photoUrl: null };
+    renderPhotoPreview('composer');
     /* Sprint 16 — 마지막으로 둔 '돋보기 노출' 값을 기본값으로 기억한다(11/15 18:36 답). */
     ui.composerExplore = store.getComposePrefs().exploreVisible;
 
@@ -4754,7 +5809,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const caption = el.composerCaption.value.trim();
     const hasMedia = !!ui.composer.mediaPreset;
     const hasUrl = /^https?:\/\//i.test((el.composerPhotoUrl ? el.composerPhotoUrl.value : '').trim());
-    el.publishBtn.disabled = !(ui.composer.groupId && (caption || hasMedia || hasUrl));
+    const hasPhoto = !!ui.composer.photoUrl;
+    el.publishBtn.disabled = !(ui.composer.groupId && (caption || hasMedia || hasUrl || hasPhoto));
     el.publishBtn.classList.toggle('ready', !el.publishBtn.disabled);
   }
 
@@ -4785,6 +5841,14 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePublishState();
   });
 
+  /* Sprint 17 — 앨범/카메라 사진 (게시물·스토리·오픈 글) */
+  wirePhotoPicker('composer', el.composerPhotoAlbum, el.composerPhotoCamera,
+    $('#btn-composer-album'), $('#btn-composer-camera'), $('#btn-composer-photo-remove'));
+  wirePhotoPicker('story', el.storyPhotoAlbum, el.storyPhotoCamera,
+    $('#btn-story-album'), $('#btn-story-camera'), $('#btn-story-photo-remove'));
+  wirePhotoPicker('explore', el.explorePhotoAlbum, el.explorePhotoCamera,
+    $('#btn-explore-album'), $('#btn-explore-camera'), $('#btn-explore-photo-remove'));
+
   el.composerPhotoUrl && el.composerPhotoUrl.addEventListener('input', () => {
     updatePublishState();
     updatePhotoPreview();
@@ -4809,7 +5873,7 @@ document.addEventListener('DOMContentLoaded', () => {
       caption: el.composerCaption.value,
       mediaPreset: ui.composer.mediaPreset,
       mediaCaption: el.composerMediaCaption.value,
-      photoUrl: el.composerPhotoUrl ? el.composerPhotoUrl.value : '',
+      photoUrl: ui.composer.photoUrl || (el.composerPhotoUrl ? el.composerPhotoUrl.value : ''),
       explore: ui.composerExplore
     });
     if (!post) {
@@ -4839,10 +5903,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const scopeGroup = inGroup ? store.getGroup(ui.groupSpaceId) : null;
     renderChatGroupRooms();
     const allRooms = store.state.chatRooms;
-    /* 모임 안에서는 그 모임에서 시작한 1:1 방만 보인다. */
-    const rooms = inGroup
+    /* 모임 안에서는 그 모임에서 시작한 1:1 방만 보인다. Sprint 17 — 안 읽은 것만 필터. */
+    const roomsAll = inGroup
       ? allRooms.filter((r) => store.getChatRoomGroupId(r.id) === ui.groupSpaceId)
       : allRooms;
+    const rooms = ui.dmUnreadOnly ? roomsAll.filter((r) => (r.unreadCount || 0) > 0) : roomsAll;
+    /* Sprint 17 — 모임별/최근순 전환 · 안 읽은 대화만 */
+    if (el.dmViewSeg) {
+      el.dmViewSeg.innerHTML = [
+        { id: 'recent', label: '최근순' },
+        { id: 'group', label: '모임별' }
+      ].map((o) => `<button class="dm-view-btn ${ui.dmView === o.id ? 'active' : ''}" data-dm-view="${o.id}"
+        type="button" aria-pressed="${ui.dmView === o.id}">${o.label}</button>`).join('');
+      el.dmViewSeg.hidden = inGroup;
+    }
+    if (el.dmUnreadToggle) {
+      el.dmUnreadToggle.setAttribute('aria-pressed', String(ui.dmUnreadOnly));
+      el.dmUnreadToggle.classList.toggle('on', ui.dmUnreadOnly);
+    }
+    renderDmSentBanner();
     if (el.dmScope) {
       el.dmScope.hidden = !inGroup;
       if (inGroup && el.dmScopeName) {
@@ -4872,8 +5951,10 @@ document.addEventListener('DOMContentLoaded', () => {
       el.chatRooms.innerHTML = `
         <div class="empty-state chat-empty">
           ${emptyArt('chat')}
-          <p class="empty-title">아직 대화방이 없어요</p>
-          <p class="empty-desc">탐색에서 서로 LIKE하면 이곳에 1:1 대화방이 열립니다.<br>취미가 맞는 사람에게 먼저 하트를 보내보세요.</p>
+          <p class="empty-title">${ui.dmUnreadOnly ? '안 읽은 대화가 없어요' : '아직 대화방이 없어요'}</p>
+          <p class="empty-desc">${ui.dmUnreadOnly
+            ? '모든 대화를 다 읽었어요. 탐색에서 새 사람에게 인사해 보세요.'
+            : '탐색에서 마음에 드는 사람에게 바로 쪽지를 보내보세요.<br>보낸 쪽지는 이곳에 바로 올라옵니다.'}</p>
           <div class="empty-actions">
             <button class="btn-primary" data-go-match="1">취미친구 보러 가기</button>
           </div>
@@ -4943,6 +6024,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const used = new Set();
     const chunks = [];
+    /* Sprint 17 — '모임별' 보기: 모임마다 단체방 + 그 모임 1:1 을 한 묶음으로. */
+    const grouped = ui.dmView === 'group' && !inGroup;
+    if (grouped) {
+      const sections = store.getDmInboxSections();
+      sections.sections.forEach((section) => {
+        const list = ui.dmUnreadOnly ? section.directs.filter((r) => r.unread > 0) : section.directs;
+        if (!list.length) return;
+        chunks.push(`<div class="chat-day-head dm-group-head">
+          <span>${section.group ? escapeHtml(section.group.name) : '모임 밖 대화'}</span>
+          <span class="chat-day-count">${list.length}</span>
+        </div>`);
+        list.forEach((it) => chunks.push(itemHtml(it.room)));
+      });
+      if (!chunks.length) {
+        chunks.push('<p class="board-empty">안 읽은 1:1 대화가 없어요.</p>');
+      }
+      el.chatRooms.innerHTML = chunks.join('');
+      return;
+    }
     buckets.forEach((bucket, i) => {
       const group = sorted.filter((room) => {
         if (used.has(room.id)) return false;
@@ -5400,7 +6500,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.explorePublish) return;
     const caption = el.exploreComposeCaption ? el.exploreComposeCaption.value.trim() : '';
     /* Sprint 16 — 취미를 고르지 않아도 '오픈 글'로 올릴 수 있다(내용이나 사진만 있으면). */
-    const ready = !!(caption || ui.exploreCompose.mediaPreset);
+    const ready = !!(caption || ui.exploreCompose.mediaPreset || ui.exploreCompose.photoUrl);
     el.explorePublish.disabled = !ready;
     el.explorePublish.classList.toggle('ready', ready);
   }
@@ -5427,8 +6527,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openExploreCompose() {
-    ui.exploreCompose = { hobbyId: null, mediaPreset: null };
+    ui.exploreCompose = { hobbyId: null, mediaPreset: null, photoUrl: null };
     if (el.exploreComposeCaption) el.exploreComposeCaption.value = '';
+    renderPhotoPreview('explore');
     renderExploreCompose();
     openModal(el.exploreComposeModal);
   }
@@ -5458,6 +6559,7 @@ document.addEventListener('DOMContentLoaded', () => {
       hobbyId: ui.exploreCompose.hobbyId,
       caption: el.exploreComposeCaption ? el.exploreComposeCaption.value : '',
       mediaPreset: ui.exploreCompose.mediaPreset,
+      photoUrl: ui.exploreCompose.photoUrl,
       open: true
     });
     if (!result.ok) {
@@ -5477,8 +6579,8 @@ document.addEventListener('DOMContentLoaded', () => {
    * ======================================================================== */
   function renderProfileHeader() {
     const u = store.currentUser;
-    if (el.profileNickname) el.profileNickname.textContent = u.nickname;
-    if (el.profileAvatarLetter) el.profileAvatarLetter.textContent = u.avatarText || u.nickname.charAt(0);
+    if (el.profileNickname) el.profileNickname.textContent = u.nickname || '내 닉네임';
+    paintMyAvatars();
     if (el.profileBio) el.profileBio.textContent = u.bio || '한 줄 소개를 채워보세요';
     if (el.profileSpecs) {
       const chips = [`<span class="spec-chip">${escapeHtml(u.location || '동네 미설정')}</span>`];
@@ -5486,6 +6588,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const chip = store.getHobbyChip(id);
         if (chip) chips.push(`<span class="spec-chip">${chip.emoji} ${escapeHtml(chip.name)}</span>`);
       });
+      if (u.age) chips.push(`<span class="spec-chip">${u.age}세</span>`);
       chips.push(`<span class="spec-chip">${u.activityEmoji || '🔁'} ${escapeHtml(u.activity || '상시')}</span>`);
       el.profileSpecs.innerHTML = chips.join('');
     }
@@ -7894,6 +8997,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHome();
   renderExplore();
   renderProfileHeader();
+  paintMyAvatars();
+  /* Sprint 17 — 가입 전이면 회원가입 화면만 보인다(입구). */
+  applySignInGate();
   updateBadges();
   syncExploreSearchClear();
   setupExploreObserver();
@@ -8033,6 +9139,27 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleExploreProfile: (on) => setExploreProfileVisible(on === undefined ? !store.isMyProfileExploreVisible() : on),
     openDmComposer, sendDm, startDirectMessage: (id, text) => store.startDirectMessage(id, text),
     getDmInbox: () => store.getDmInbox(),
-    getSpaceState: () => ({ groupSpaceId: ui.groupSpaceId, groupMode: isGroupMode(), tab: ui.activeTab })
+    getSpaceState: () => ({ groupSpaceId: ui.groupSpaceId, groupMode: isGroupMode(), tab: ui.activeTab }),
+    /* Sprint 17 — 회원가입 · 스토리 링/보관함 · 공지 읽음 · 표지 · 디엠 정렬 */
+    applySignInGate, renderOnboarding, submitOnboarding, submitOnboardingLogin,
+    signOut: runSignOut, resetAllData: runResetData, askConfirm,
+    getOnboardingDraft: () => ({ ...(ui.onboardingDraft || {}), step: ui.onboardingStep, mode: ui.onboardingMode }),
+    setOnboardingStep: (n) => { ui.onboardingStep = Math.max(0, Math.min(2, n)); renderOnboarding(); },
+    getStoryRings: (gid) => store.getStoryRings(gid || ui.groupSpaceId),
+    openStoryRing, openStoryArchive, renderStoryArchive, sendStoryReply, openArchivedStory,
+    getStoryViewerState: () => ({
+      open: !!(el.storyViewer && !el.storyViewer.hidden), ring: ui.storyRingId,
+      archive: ui.storyArchiveView, storyId: ui.storyId,
+      segments: document.querySelectorAll('#story-viewer-progress .story-seg').length
+    }),
+    getStoryArchiveState: () => ({ count: store.getStoryArchiveStats().count, items: store.getMyStoryArchive().length }),
+    openNoticeRead, getNoticeRead: (id) => store.getNoticeReadState(id),
+    openCoverPicker, renderCoverGrid, toggleCoverPreset, saveCover,
+    getCoverState: () => ({ groupId: ui.coverGroupId, draft: ui.coverDraft.slice() }),
+    renderGallerySort, renderExploreSummary, openExploreCardEditor, saveExploreCard,
+    getExploreCardState: () => ({ preset: ui.exploreCardPreset, card: store.getMyExploreCard() }),
+    setDmView: (v) => { ui.dmView = v === 'group' ? 'group' : 'recent'; renderChatRooms(); },
+    setDmUnreadOnly: (on) => { ui.dmUnreadOnly = !!on; renderChatRooms(); },
+    getDmViewState: () => ({ view: ui.dmView, unreadOnly: ui.dmUnreadOnly, sent: ui.dmSent })
   };
 });

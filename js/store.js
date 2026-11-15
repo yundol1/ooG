@@ -120,9 +120,13 @@
  * ============================================================================
  */
 
-const STORAGE_KEY = 'oog_app_state_v14';
-const STORAGE_SCHEMA_VERSION = 14;
-const LEGACY_KEYS = ['oog_app_state_v13', 'oog_app_state_v12', 'oog_app_state_v11', 'oog_app_state_v10', 'oog_app_state_v9', 'oog_app_state_v8', 'oog_app_state_v7', 'oog_app_state_v6', 'oog_app_state_v5', 'oog_app_state_v4'];   // 이전 저장 상태 마이그레이션용
+const STORAGE_KEY = 'oog_app_state_v15';
+const STORAGE_SCHEMA_VERSION = 15;
+/* Sprint 17 — v14 이하 저장 상태는 '내 활동'이 남아 있다. v15 는 클린 스타트(회원가입부터)라
+   옛 키를 읽어도 개인 데이터를 물려받지 않고 새 상태로 시작한다(아래 loadState 참고). */
+const LEGACY_KEYS = ['oog_app_state_v14', 'oog_app_state_v13', 'oog_app_state_v12', 'oog_app_state_v11', 'oog_app_state_v10', 'oog_app_state_v9', 'oog_app_state_v8', 'oog_app_state_v7', 'oog_app_state_v6', 'oog_app_state_v5', 'oog_app_state_v4'];   // 이전 저장 상태 마이그레이션용
+/* 데모 개발용 페르소나(예전 '나') — 클린 스타트의 기준 id. 이 id 로 남은 개인 데이터는 모두 지운다. */
+const LEGACY_PERSONA_ID = 'user_rookie';
 
 /* 최초 실행 시점 기준 상대 시간(분)으로 시드 데이터의 작성 시각을 만든다. */
 const MINUTE = 60 * 1000;
@@ -168,6 +172,12 @@ const GROUP_NOTICE_SEED = [
     authorId: 'user_rookie',
     authorName: '루키',
     authorRole: 'leader',
+    /* Sprint 17 — 공지 읽음 표시(누가 읽었는지). 알림은 만들지 않는다. */
+    readers: [
+      { memberId: 'user_kettle', name: '케틀벨러버', avatarText: '케', at: ago(5 * HOUR) },
+      { memberId: 'user_toe', name: '오늘의 토우', avatarText: '토', at: ago(4 * HOUR) },
+      { memberId: 'user_iron', name: '아이언', avatarText: '아', at: ago(3 * HOUR) }
+    ],
     at: ago(6 * HOUR)
   },
   {
@@ -699,10 +709,18 @@ const SIMULATED_PERSONAS = [
  * ------------------------------------------------------------------------- */
 
 const defaultInitialState = {
-  /* 저장 스키마 버전 — 마이그레이션(v7 → v8) 판단에만 쓴다. */
+  /* 저장 스키마 버전 — 마이그레이션 판단에만 쓴다. */
   schemaVersion: STORAGE_SCHEMA_VERSION,
 
-  /* ---------------- 현재 로그인 유저 : 루키 ---------------- */
+  /* ---------------- Sprint 17 — 회원가입(온보딩) 상태 ----------------
+   * completed=false 면 앱 대신 **회원가입 화면**이 뜨고, 계정·프로필은 가입에서 정한다.
+   * account: { loginId, passwordHash, createdAt } — 로컬 데모 인증(서버 인증으로 교체 예정).
+   * ------------------------------------------------------------------------- */
+  onboarding: { completed: false, completedAt: null, step: 0 },
+  account: null,
+  sessionActive: false,
+
+  /* ---------------- 현재 로그인 유저 : 루키 (데모 계정) ---------------- */
   currentUser: {
     id: 'user_rookie',
     nickname: '루키',
@@ -711,6 +729,11 @@ const defaultInitialState = {
     membership: 'plus',
     avatarText: '루',
     avatarGradient: 'linear-gradient(135deg, #10B981 0%, #059669 55%, #047857 100%)',
+    /* Sprint 17 — 가입 시 올린 프로필 사진(Data URL) · 가입 완료 여부 */
+    photoUrl: null,
+    registered: true,
+    /* Sprint 17 — 탐색 사람 카드 꾸미기(대표 사진 프리셋 · 한 줄 소개) */
+    exploreCard: { mediaPreset: 'selfie', intro: '주 3회 크로스핏 · 퇴근 후 땀' },
     location: '서울 성동구 성수동',
     coords: { lat: 37.5446, lng: 127.0560 },
     /* Sprint 7 — 내 생활권 (탐색 지역 필터·새 글/모임 작성 시 기본 지역) */
@@ -783,6 +806,17 @@ const defaultInitialState = {
    * 위 STORY_SEED 참고. 읽을 때 24시간 지난 것은 걸러낸다.
    * ------------------------------------------------------------------------- */
   stories: JSON.parse(JSON.stringify(STORY_SEED)),
+
+  /* ---------------- Sprint 17 — 내 스토리 보관함 ----------------
+   * 24시간이 지난 **내** 스토리는 지우지 않고 이곳으로 옮긴다(인스타그램 보관함).
+   * 스토리 바에는 나오지 않고, 내정보 › 스토리 보관함에서만 다시 본다.
+   * ------------------------------------------------------------------------- */
+  storyArchive: [],
+
+  /* ---------------- Sprint 17 — 내 그룹 갤러리 정렬 기억 ----------------
+   * 'recent'(최근 활동순) | 'name'(가나다순) | 'leader'(내가 그룹장 먼저)
+   * ------------------------------------------------------------------------- */
+  galleryPrefs: { sort: 'recent' },
 
   /* ---------------- 모임 나이 제한 옵션 (Sprint 4.5 · Sprint 5 강조) ----------------
    * 그룹장이 개설·설정에서 고르는 4가지. min·max 는 신청자 나이 판정에 쓴다.
@@ -1268,10 +1302,10 @@ const defaultInitialState = {
       authorName: '오늘의토우',
       authorAvatarText: '토',
       authorGradient: 'linear-gradient(135deg, #A7F3D0, #10B981)',
-      tag: '식단인증',
-      caption: '운동 끝나고 단백질 42g 채운 도시락. 닭가슴살이 질릴 때는 이렇게 소스만 바꿔주면 먹을 만해요.',
-      mediaPreset: 'meal',
-      mediaCaption: '운동 후 식사',
+      tag: '후기',
+      caption: '입문 한 달 후기. 처음엔 스케일드로 따라갔는데 이제 RX로 두 개는 완주해요. 코치님이 자세를 계속 봐주셔서 어깨가 편해졌습니다.',
+      mediaPreset: 'gym',
+      mediaCaption: '한 달 기록',
       likes: 8,
       likedByMe: false,
       bookmarkedByMe: false,
@@ -2785,8 +2819,193 @@ defaultInitialState.feedPosts.forEach((p) => {
   p.exploreVisible = DOKBO_POST_SEED.includes(p.id);
 });
 
+/** Sprint 17 — '후기' 말머리 판정(후기 · 리뷰 · 후기/리뷰). */
+function isReviewTag(tag) {
+  const t = String(tag || '').trim();
+  return t === '후기' || t === '리뷰' || t === '후기/리뷰' || t.indexOf('후기') >= 0;
+}
+
 /* Sprint 7 — 시드 전체에 regionId 를 채운다(사람·모임·글). */
 applyRegionIds(defaultInitialState);
+
+/* ============================================================================
+ * Sprint 17 — 회원가입(온보딩) · 클린 스타트
+ * ----------------------------------------------------------------------------
+ * 11/15 21:32 사용자: "회원가입 기능도 넣어주소 프로필 사진 등록하는거 닉넴까지 다 해주고
+ *  이제 데이터는 초기화해줘 실사용해보게".
+ *  · 실사용자는 **회원가입 화면**에서 시작한다 — 내 계정·내 모임·내 글·내 스토리·
+ *    내 디엠·내 알림·내 활동이 모두 비어 있는 상태.
+ *  · 앱이 백지가 되지 않도록 탐색에 구경할 **타인·공개 모임·공개 글**은 남긴다.
+ *  · 테스트·미리보기는 seedDemoAccount() 로 예전 데모 계정(#demo)을 되살린다.
+ * ========================================================================== */
+const SIGNUP_AVATAR_GRADIENTS = [
+  'linear-gradient(135deg, #10B981 0%, #059669 55%, #047857 100%)',
+  'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)',
+  'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
+  'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)',
+  'linear-gradient(135deg, #EC4899 0%, #9D174D 100%)',
+  'linear-gradient(135deg, #475569 0%, #0F172A 100%)'
+];
+const SIGNUP_LIMITS = { nicknameMin: 2, nicknameMax: 12, passwordMin: 4, passwordMax: 64, ageMin: 14, ageMax: 99 };
+
+/** 가입 전의 빈 내 계정 — 닉네임·사진·나이·지역·취미가 모두 비어 있다. */
+function blankCurrentUser() {
+  return {
+    id: 'user_me',
+    nickname: '',
+    handle: '@me',
+    role: 'MEMBER',
+    membership: 'free',
+    avatarText: '',
+    avatarGradient: SIGNUP_AVATAR_GRADIENTS[0],
+    photoUrl: null,
+    registered: false,
+    location: '',
+    coords: null,
+    regionId: null,
+    age: null,
+    hobbies: [],
+    hobbyIds: [],
+    activity: '',
+    activityEmoji: '',
+    workoutSpec: '',
+    bio: '',
+    joinedGroupIds: [],
+    exploreProfileVisible: false,
+    /* Sprint 17 — 탐색 사람 카드 꾸미기(대표 사진·한 줄 소개) */
+    exploreCard: { mediaPreset: 'selfie', intro: '' }
+  };
+}
+
+/**
+ * 시드 상태에서 **내(예전 페르소나)의 흔적만** 지운다. 타인·공개 모임·공개 글은 남는다.
+ * @param {object} state buildCleanState() 안에서만 쓰는 사본
+ */
+function stripPersonalData(state) {
+  const mine = LEGACY_PERSONA_ID;
+  /* ① 모임 — 내가 그룹장이던 모임은 데모 인물에게 넘긴다(빈 모임이 되지 않게). */
+  state.groups = (state.groups || []).map((g) => {
+    if (g.leaderId !== mine) return g;
+    return { ...g, leaderId: 'leader_jun', leaderName: '코치준' };
+  });
+  /* ② 내가 쓴 피드 글과 내 댓글 */
+  state.feedPosts = (state.feedPosts || [])
+    .filter((p) => p.authorId !== mine)
+    .map((p) => ({
+      ...p,
+      comments: (p.comments || []).filter((c) => c.authorId !== mine),
+      likedByMe: false,
+      bookmarked: false
+    }));
+  /* ③ 내가 쓴 공개 글 */
+  state.explorePosts = (state.explorePosts || [])
+    .filter((p) => p.authorId !== mine)
+    .map((p) => ({
+      ...p,
+      comments: (p.comments || []).filter((c) => c.authorId !== mine),
+      likedByMe: false,
+      isMine: false
+    }));
+  /* ④ 내 스토리(살아 있는 것·지난 것 모두) */
+  state.stories = (state.stories || []).filter((s) => s.authorId !== mine);
+  state.storyArchive = [];
+  /* ⑤ 내가 쓴 공지 — 그룹장에게 넘긴다 */
+  state.groupNotices = (state.groupNotices || []).map((n) => (n.authorId === mine
+    ? { ...n, authorId: 'leader_jun', authorName: '코치준', authorRole: 'leader', readers: [] }
+    : n));
+  /* ⑥ 내 디엠·단체방 메시지·알림·가입 신청·스와이프·활동 */
+  state.chatRooms = [];
+  state.groupChats = (state.groupChats || []).map((c) => ({
+    ...c,
+    messages: (c.messages || []).filter((m) => m.from !== 'me' && m.authorId !== mine)
+  }));
+  state.notificationLog = [];
+  state.groupApplications = [];
+  state.matchSwipes = [];
+  state.hotEntryState = {};
+  state.hotRankSnapshots = {};
+  state.hotEntryBaseline = null;
+  /* ⑦ 내 프로필·가입 상태·마지막 모임 */
+  state.currentUser = blankCurrentUser();
+  state.homePrefs = { groupId: null };
+  state.composePrefs = { exploreVisible: false };
+  state.explorePrefs = { filter: 'all', age: 'all', region: 'all', radius: 'all', ageMin: 0, ageMax: 99 };
+  state.pwa = { installDismissed: false, installed: false };
+  return state;
+}
+
+/** 클린 스타트 상태 — 앱을 처음 연 사람이 보는 상태(회원가입 전). */
+function buildCleanState() {
+  const state = JSON.parse(JSON.stringify(defaultInitialState));
+  stripPersonalData(state);
+  state.schemaVersion = STORAGE_SCHEMA_VERSION;
+  state.onboarding = { completed: false, completedAt: null, step: 0 };
+  state.account = null;
+  state.sessionActive = false;
+  state.storyArchive = [];
+  state.galleryPrefs = { sort: 'recent' };
+  applyRegionIds(state);
+  return state;
+}
+
+/** 데모 계정 상태 — 테스트·미리보기(#demo) 전용. 예전 '루키' 계정을 되살린다. */
+function buildDemoState() {
+  const state = JSON.parse(JSON.stringify(defaultInitialState));
+  state.schemaVersion = STORAGE_SCHEMA_VERSION;
+  state.onboarding = { completed: true, completedAt: ago(2 * HOUR), step: 3, demo: true };
+  state.account = { loginId: 'demo', passwordHash: oogHashPassword('demo'), createdAt: ago(30 * 24 * HOUR) };
+  state.sessionActive = true;
+  state.storyArchive = JSON.parse(JSON.stringify(STORY_ARCHIVE_SEED));
+  state.galleryPrefs = { sort: 'recent' };
+  state.currentUser.registered = true;
+  state.currentUser.photoUrl = null;
+  if (!state.currentUser.exploreCard) state.currentUser.exploreCard = { mediaPreset: 'selfie', intro: '' };
+  applyRegionIds(state);
+  return state;
+}
+
+/** 로컬 데모용 비밀번호 해시 — 서버 인증으로 바꿀 때 서버 해시로 대체한다(STORE_API.md). */
+function oogHashPassword(text) {
+  const src = String(text == null ? '' : text);
+  let h1 = 0x811c9dc5;
+  let h2 = 0x1000193;
+  for (let i = 0; i < src.length; i += 1) {
+    const c = src.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
+    h2 = Math.imul(h2 + c * (i + 7), 2246822519) >>> 0;
+  }
+  return `${h1.toString(36)}${h2.toString(36)}`;
+}
+
+/* Sprint 17 — 내 스토리 보관함 시드(데모 계정 전용). 24시간이 지난 내 스토리 두 개. */
+const STORY_ARCHIVE_SEED = [
+  {
+    id: 'story_arc_1',
+    groupId: 'grp_crossfit_1',
+    authorId: 'user_rookie',
+    authorName: '루키',
+    authorAvatarText: '루',
+    authorGradient: 'linear-gradient(135deg, #10B981, #047857)',
+    mediaPreset: 'wod',
+    mediaCaption: '10월 마지막 와드',
+    caption: '10월 마지막 날 와드 완주 기록',
+    createdAt: ago(30 * HOUR),
+    archivedAt: ago(6 * HOUR)
+  },
+  {
+    id: 'story_arc_2',
+    groupId: 'grp_crossfit_1',
+    authorId: 'user_rookie',
+    authorName: '루키',
+    authorAvatarText: '루',
+    authorGradient: 'linear-gradient(135deg, #10B981, #047857)',
+    mediaPreset: 'barbell',
+    mediaCaption: 'PR 90kg',
+    caption: '데드리프트 90kg 갱신한 날',
+    createdAt: ago(58 * HOUR),
+    archivedAt: ago(34 * HOUR)
+  }
+];
 
 /* ============================================================================
  * Store
@@ -2806,9 +3025,16 @@ class Store {
   /* ---------------- persistence ---------------- */
   loadState() {
     const raw = this.readRawState();
-    if (!raw) return JSON.parse(JSON.stringify(defaultInitialState));
+    if (!raw) return buildCleanState();
     try {
       const parsed = JSON.parse(raw);
+      /* ===== Sprint 17 (v14 → v15) — 클린 스타트 =====
+       * 11/15 21:32 사용자: "이제 데이터는 초기화해줘 실사용해보게".
+       * v15 이전 저장 상태에는 내 계정·내 모임·내 글·내 디엠·내 알림이 남아 있으므로
+       * 병합하지 않고 회원가입 전 상태로 새로 시작한다(개인 데이터는 옮기지 않는다). */
+      if (Number(parsed.schemaVersion) < STORAGE_SCHEMA_VERSION) {
+        return buildCleanState();
+      }
       /* 얕은 병합 + 새 필드가 추가되었을 때를 위한 기본값 보정 */
       const merged = {
         ...defaultInitialState,
@@ -3026,11 +3252,31 @@ class Store {
         merged.currentUser.exploreProfileVisible = false;
       }
       applyRegionIds(merged);
+      /* Sprint 17 — v15 새 자리 보정(이미 가입한 사람의 저장 상태) */
+      const prevOnb = merged.onboarding || {};
+      merged.onboarding = {
+        completed: !!prevOnb.completed,
+        completedAt: prevOnb.completedAt || null,
+        step: prevOnb.step || 0
+      };
+      /* 데모 표식은 저장 상태에서 이어진다(테스트·미리보기 #demo 가 매 새로고침마다 초기화되지 않게). */
+      if (prevOnb.demo) merged.onboarding.demo = true;
+      if (!Array.isArray(merged.storyArchive)) merged.storyArchive = [];
+      if (!merged.galleryPrefs || typeof merged.galleryPrefs !== 'object') {
+        merged.galleryPrefs = { sort: 'recent' };
+      }
+      if (!merged.currentUser.exploreCard || typeof merged.currentUser.exploreCard !== 'object') {
+        merged.currentUser.exploreCard = { mediaPreset: 'selfie', intro: '' };
+      }
+      if (typeof merged.sessionActive !== 'boolean') {
+        merged.sessionActive = merged.onboarding.completed === true;
+      }
+      merged.currentUser.registered = merged.currentUser.registered !== false;
       return merged;
     } catch (e) {
       console.warn('[ooG] 저장된 상태를 불러오지 못했습니다.', e);
     }
-    return JSON.parse(JSON.stringify(defaultInitialState));
+    return buildCleanState();
   }
 
   /** 현재 키 → (없으면) 이전 버전 키 순서로 원본 JSON 문자열을 찾는다. */
@@ -3282,7 +3528,9 @@ class Store {
     if (!group) return null;
     if (!this.isGroupJoined(groupId)) return null;          // 가입한 모임에만 작성
     const caption = (data.caption || '').trim();
-    const photoUrl = /^https?:\/\//i.test((data.photoUrl || '').trim()) ? data.photoUrl.trim() : null;
+    /* Sprint 17 — 사진 주소(https) 또는 **기기 앨범·카메라로 고른 사진(Data URL)** 둘 다 받는다. */
+    const rawPhoto = String(data.photoUrl || '').trim();
+    const photoUrl = /^https?:\/\//i.test(rawPhoto) || /^data:image\//i.test(rawPhoto) ? rawPhoto : null;
     if (!caption && !data.mediaPreset && !photoUrl) return null;
 
     const tag = data.tag && group.customTags.includes(data.tag) ? data.tag : null;
@@ -3294,6 +3542,7 @@ class Store {
       authorName: user.nickname,
       authorAvatarText: user.avatarText,
       authorGradient: user.avatarGradient,
+      authorPhotoUrl: user.photoUrl || null,
       tag,
       caption: caption.slice(0, 500),
       /* 사진 없이 글만 쓰는 것도 허용한다 (mediaPreset: null)
@@ -4363,7 +4612,10 @@ class Store {
     if (!chip && !isFree) return { ok: false, reason: 'hobby' };
     const caption = String(d.caption || '').trim();
     const preset = d.mediaPreset && this.mediaLibrary.includes(d.mediaPreset) ? d.mediaPreset : null;
-    if (!caption && !preset) return { ok: false, reason: 'empty' };
+    /* Sprint 17 — 앨범·카메라 사진(Data URL)도 오픈 글 사진이 된다. */
+    const rawPhoto = String(d.photoUrl || '').trim();
+    const photoUrl = /^data:image\//i.test(rawPhoto) || /^https?:\/\//i.test(rawPhoto) ? rawPhoto : null;
+    if (!caption && !preset && !photoUrl) return { ok: false, reason: 'empty' };
     const user = this.state.currentUser;
     const post = {
       id: `pub_${Date.now()}`,
@@ -4371,6 +4623,7 @@ class Store {
       authorName: user.nickname,
       authorAvatarText: user.avatarText || user.nickname.charAt(0),
       authorGradient: user.avatarGradient,
+      authorPhotoUrl: user.photoUrl || null,
       hobbyId: chip ? chip.id : null,
       hobbyLabel: chip ? chip.name : '자유게시판',
       hobbyEmoji: chip ? chip.emoji : '',
@@ -4379,6 +4632,7 @@ class Store {
       tag: String(d.tag || '').trim().slice(0, 8) || null,
       caption: caption.slice(0, 300),
       mediaPreset: preset,
+      photoUrl,
       mediaCaption: String(d.mediaCaption || '').trim().slice(0, 40),
       ratio: d.ratio === 'wide' ? 'wide' : 'square',
       groupName: chip ? '공개 취미 피드' : '탐색 게시판',
@@ -7144,14 +7398,23 @@ class Store {
    * 나열되고, 그룹을 탭해서 들어가면 그 그룹 전용 공간으로 전환".
    * 갤러리 카드 하나에 필요한 것만 한 번에 모아 준다(모임·표지·사진·스토리·약속).
    * ======================================================================== */
-  getGroupGallery() {
-    return this.getJoinedGroups().map((group) => {
+  getGroupGallery(options = {}) {
+    const sort = options.sort || this.getGallerySort();
+    const items = this.getJoinedGroups().map((group) => {
       const posts = this.getGroupPhotoPosts(group.id);
       const photos = posts.filter((p) => p.mediaPreset || p.photoUrl);
       const next = this.getNextGroupEvent(group.id);
       const chat = this.getGroupChatPreview(group.id);
       const stories = this.getGroupStories(group.id);
+      const rings = this.getStoryRings(group.id);
       const last = posts[0] || null;
+      const cover = this.getGroupCover(group.id);
+      const activityAt = Math.max(
+        last ? new Date(last.createdAt).getTime() : 0,
+        stories.length ? new Date(stories[stories.length - 1].createdAt).getTime() : 0,
+        chat && chat.lastAt ? new Date(chat.lastAt).getTime() : 0,
+        next ? new Date(next.when).getTime() : 0
+      );
       return {
         id: group.id,
         group,
@@ -7164,14 +7427,26 @@ class Store {
         photoCount: photos.length,
         postCount: posts.length,
         storyCount: stories.length,
-        storyAuthors: stories.slice(0, 4).map((s) => ({ name: s.authorName, avatarText: s.authorAvatarText, gradient: s.authorGradient })),
+        storyRingCount: rings.length,
+        storyAuthors: rings.slice(0, 4).map((r) => ({ name: r.authorName, avatarText: r.avatarText, gradient: r.gradient, photoUrl: r.photoUrl, count: r.count })),
         nextEvent: next,
         chat,
         lastPostAt: last ? last.createdAt : null,
-        coverPresets: photos.slice(0, 2).map((p) => p.mediaPreset).filter(Boolean),
+        activityAt,
+        coverPresets: cover ? cover.presets : [],
+        coverCustom: !!(cover && cover.custom),
         isLeader: this.isGroupLeader(group.id)
       };
     });
+    if (sort === 'name') {
+      items.sort((a, b) => String(a.name).localeCompare(String(b.name), 'ko'));
+    } else if (sort === 'leader') {
+      items.sort((a, b) => (b.isLeader ? 1 : 0) - (a.isLeader ? 1 : 0)
+        || b.activityAt - a.activityAt);
+    } else {
+      items.sort((a, b) => b.activityAt - a.activityAt);
+    }
+    return items;
   }
 
   /* ==========================================================================
@@ -7228,8 +7503,11 @@ class Store {
     const groupId = d.groupId;
     if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
     const preset = d.mediaPreset && this.mediaLibrary.includes(d.mediaPreset) ? d.mediaPreset : null;
+    /* Sprint 17 — 앨범·카메라로 고른 사진(Data URL)도 스토리 사진이 된다. */
+    const rawPhoto = String(d.photoUrl || '').trim();
+    const photoUrl = /^data:image\//i.test(rawPhoto) || /^https?:\/\//i.test(rawPhoto) ? rawPhoto : null;
     const caption = String(d.caption || '').trim().slice(0, 60);
-    if (!preset && !caption) return { ok: false, reason: 'empty' };
+    if (!preset && !photoUrl && !caption) return { ok: false, reason: 'empty' };
     const user = this.state.currentUser;
     const story = {
       id: `story_${Date.now()}`,
@@ -7238,7 +7516,9 @@ class Store {
       authorName: user.nickname,
       authorAvatarText: user.avatarText || user.nickname.charAt(0),
       authorGradient: user.avatarGradient,
+      authorPhotoUrl: user.photoUrl || null,
       mediaPreset: preset,
+      photoUrl,
       mediaCaption: String(d.mediaCaption || '').trim().slice(0, 24),
       caption,
       createdAt: new Date().toISOString()
@@ -7259,11 +7539,26 @@ class Store {
     return { ok: true };
   }
 
-  /** 24시간이 지난 스토리를 저장 상태에서 정리한다(앱을 열 때·스토리 바를 그릴 때). */
+  /** 24시간이 지난 스토리를 저장 상태에서 정리한다.
+   *  Sprint 17 — **내** 스토리는 지우지 않고 storyArchive(보관함)로 옮긴다. */
   pruneExpiredStories(now) {
     const at = now == null ? Date.now() : now;
-    const before = (this.state.stories || []).length;
-    this.state.stories = (this.state.stories || []).filter((s) => !Store.storyExpired(s, at));
+    const all = this.state.stories || [];
+    const before = all.length;
+    const me = this.currentUser.id;
+    const expired = all.filter((s) => Store.storyExpired(s, at));
+    const mine = expired.filter((s) => s.authorId === me);
+    if (mine.length) {
+      if (!Array.isArray(this.state.storyArchive)) this.state.storyArchive = [];
+      const known = new Set(this.state.storyArchive.map((s) => s.id));
+      mine.forEach((s) => {
+        if (known.has(s.id)) return;
+        this.state.storyArchive.unshift({ ...s, archivedAt: new Date(at).toISOString() });
+        known.add(s.id);
+      });
+      this.state.storyArchive = this.state.storyArchive.slice(0, 60);
+    }
+    this.state.stories = all.filter((s) => !Store.storyExpired(s, at));
     const removed = before - this.state.stories.length;
     if (removed > 0) this.saveState();
     return removed;
@@ -7348,6 +7643,10 @@ class Store {
       hobbyIds: u.hobbyIds || [],
       hobbyStyle: u.workoutSpec || '',
       bio: u.bio || '',
+      /* Sprint 17 — 내 사람 카드 꾸미기(대표 사진·한 줄 소개) */
+      mediaPreset: this.getMyExploreCard().mediaPreset,
+      intro: this.getMyExploreCard().intro,
+      photoUrl: u.photoUrl || null,
       badge: '내 프로필',
       ratio: 'mid',
       isMe: true,
@@ -7394,8 +7693,9 @@ class Store {
     return { ok: true, room, created: opened.created, message };
   }
 
-  /** 전체 디엠함 — 모든 모임 단체방 + 모든 1:1 방을 한 번에(바깥 3번째 탭). */
-  getDmInbox() {
+  /** 전체 디엠함 — 모든 모임 단체방 + 모든 1:1 방을 한 번에(바깥 3번째 탭).
+   *  Sprint 17 — sort:'recent'|'group' · unreadOnly 로 모임별/읽지 않은 대화 보기. */
+  getDmInbox(options = {}) {
     const groupRooms = this.getJoinedGroups().map((group) => {
       const chat = this.getGroupChatPreview(group.id);
       return { kind: 'group', groupId: group.id, group, chat };
@@ -7416,17 +7716,584 @@ class Store {
       };
     });
     const groupUnread = groupRooms.reduce((sum, r) => sum + (r.chat.unread || 0), 0);
+    let directs = directRooms.sort((a, b) => b.lastAt - a.lastAt);
+    if (options.sort === 'group') {
+      directs = directs.slice().sort((a, b) => {
+        const an = a.group ? a.group.name : '\uffff';
+        const bn = b.group ? b.group.name : '\uffff';
+        return String(an).localeCompare(String(bn), 'ko') || b.lastAt - a.lastAt;
+      });
+    }
+    const total = groupRooms.length + directs.length;
     return {
       groupRooms,
-      directRooms: directRooms.sort((a, b) => b.lastAt - a.lastAt),
-      total: groupRooms.length + directRooms.length,
-      unread: groupUnread + directRooms.reduce((sum, r) => sum + r.unread, 0)
+      directRooms: directs,
+      total,
+      unread: groupUnread + directs.reduce((sum, r) => sum + r.unread, 0),
+      sort: options.sort === 'group' ? 'group' : 'recent'
     };
   }
 
   getUnreadDmCount() {
     return this.getDmInbox().unread;
   }
+
+  /* ==========================================================================
+   * 17-A. Sprint 17 — 회원가입(온보딩) · 로그인 · 데이터 초기화
+   * -------------------------------------------------------------------------
+   * 11/15 21:32 사용자: "회원가입 기능도 넣어주소 프로필 사진 등록하는거 닉넴까지 다 해주고
+   * 이제 데이터는 초기화해줘 실사용해보게".
+   *  · 가입 전: onboarding.completed=false → 화면은 회원가입만 보여준다.
+   *  · 가입 후: 정한 닉네임·사진이 앱 전체(피드·스토리·게시판·디엠·내정보·탐색)에 그대로 쓰인다.
+   *  · 로컬 데모 인증이다 — 서버로 옮길 때 signUp/signIn 자리가 서버 인증이 된다(STORE_API.md).
+   * ========================================================================== */
+  isSignedIn() {
+    const ob = this.state.onboarding || {};
+    return ob.completed === true && this.state.sessionActive !== false
+      && this.state.currentUser && this.state.currentUser.registered !== false;
+  }
+
+  getOnboardingState() {
+    const ob = this.state.onboarding || {};
+    const acc = this.state.account || null;
+    return {
+      completed: ob.completed === true,
+      signedIn: this.isSignedIn(),
+      hasAccount: !!acc,
+      loginId: acc ? acc.loginId : '',
+      step: ob.step || 0,
+      nickname: this.state.currentUser ? this.state.currentUser.nickname : '',
+      avatarGradients: SIGNUP_AVATAR_GRADIENTS.slice(),
+      limits: { ...SIGNUP_LIMITS }
+    };
+  }
+
+  /**
+   * 회원가입 — 닉네임(필수)·프로필 사진/기본 아바타·나이·지역·대표 취미를 받아 계정을 만든다.
+   * 이메일/아이디 없이 '간편 시작'도 허용한다(quickStart).
+   * @returns {{ok:boolean, reason?:string, user?:object}}
+   */
+  signUp(data) {
+    const d = data || {};
+    const nickname = String(d.nickname || '').trim();
+    if (nickname.length < SIGNUP_LIMITS.nicknameMin) return { ok: false, reason: 'nickname_short' };
+    if (nickname.length > SIGNUP_LIMITS.nicknameMax) return { ok: false, reason: 'nickname_long' };
+
+    const quick = d.quickStart === true;
+    const loginId = String(d.loginId || '').trim().toLowerCase();
+    let passwordHash = null;
+    if (!quick) {
+      if (loginId.length < 3) return { ok: false, reason: 'login_id_short' };
+      const password = String(d.password || '');
+      if (password.length < SIGNUP_LIMITS.passwordMin) return { ok: false, reason: 'password_short' };
+      if (password.length > SIGNUP_LIMITS.passwordMax) return { ok: false, reason: 'password_long' };
+      if (String(d.passwordConfirm == null ? password : d.passwordConfirm) !== password) {
+        return { ok: false, reason: 'password_mismatch' };
+      }
+      passwordHash = oogHashPassword(password);
+    }
+
+    const age = d.age == null || d.age === '' ? null : Number(d.age);
+    if (age != null && (!Number.isFinite(age) || age < SIGNUP_LIMITS.ageMin || age > SIGNUP_LIMITS.ageMax)) {
+      return { ok: false, reason: 'age_range' };
+    }
+    const hobbies = (Array.isArray(d.hobbies) ? d.hobbies : [])
+      .filter((h) => !!this.getHobbyChip(h))
+      .filter((h, i, arr) => arr.indexOf(h) === i)
+      .slice(0, 3);
+    const location = String(d.location || '').trim().slice(0, 30);
+    const photoUrl = typeof d.photoUrl === 'string' && d.photoUrl.startsWith('data:image/') ? d.photoUrl : null;
+    const gradient = SIGNUP_AVATAR_GRADIENTS.includes(d.avatarGradient)
+      ? d.avatarGradient : SIGNUP_AVATAR_GRADIENTS[0];
+
+    const user = blankCurrentUser();
+    user.nickname = nickname;
+    user.handle = `@${(d.handle || nickname.replace(/\s+/g, '')).slice(0, 12).toLowerCase() || 'me'}`;
+    user.avatarText = nickname.charAt(0);
+    user.avatarGradient = gradient;
+    user.photoUrl = photoUrl;
+    user.registered = true;
+    user.age = age;
+    user.location = location;
+    user.regionId = location ? (deriveRegionId(location) || null) : null;
+    user.hobbies = hobbies.map((id) => this.getHobbyChip(id).name);
+    user.hobbyIds = hobbies.slice();
+    user.bio = String(d.bio || '').trim().slice(0, 120);
+    user.exploreProfileVisible = d.exploreProfileVisible === true;
+    user.exploreCard = {
+      mediaPreset: this.mediaLibrary.includes(d.cardPreset) ? d.cardPreset : 'selfie',
+      intro: String(d.cardIntro || '').trim().slice(0, 40)
+    };
+    if (location) user.coords = null;
+
+    this.state.currentUser = user;
+    this.state.account = {
+      loginId: quick ? `guest_${Date.now().toString(36)}` : loginId,
+      passwordHash,
+      quickStart: quick,
+      createdAt: new Date().toISOString()
+    };
+    this.state.onboarding = { completed: true, completedAt: new Date().toISOString(), step: 3 };
+    this.state.sessionActive = true;
+    this.state.homePrefs = { groupId: null };
+    this.saveState();
+    return { ok: true, user, onboarding: this.getOnboardingState() };
+  }
+
+  /** 로그인 — 저장된 로컬 계정과 비교한다(간편 시작 계정은 비밀번호가 없다). */
+  signIn(data) {
+    const d = data || {};
+    const account = this.state.account;
+    if (!account) return { ok: false, reason: 'no_account' };
+    const loginId = String(d.loginId || '').trim().toLowerCase();
+    if (loginId !== String(account.loginId || '').toLowerCase()) return { ok: false, reason: 'login_mismatch' };
+    if (account.passwordHash) {
+      if (oogHashPassword(String(d.password || '')) !== account.passwordHash) {
+        return { ok: false, reason: 'password_mismatch' };
+      }
+    }
+    this.state.onboarding = { ...(this.state.onboarding || {}), completed: true, completedAt: new Date().toISOString() };
+    this.state.sessionActive = true;
+    this.state.currentUser.registered = true;
+    this.saveState();
+    return { ok: true, user: this.state.currentUser };
+  }
+
+  /** 로그아웃 — 계정·프로필은 남기고 회원가입(로그인) 화면으로 돌아간다. */
+  signOut() {
+    this.state.sessionActive = false;
+    this.state.onboarding = { ...(this.state.onboarding || {}), completed: false };
+    this.saveState();
+    return { ok: true, onboarding: this.getOnboardingState() };
+  }
+
+  /** 데이터 초기화 — 내 계정·활동을 모두 지우고 회원가입부터 다시 시작한다. */
+  resetAllData() {
+    this.state = buildCleanState();
+    try {
+      LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+    } catch (e) { /* 저장소가 막혔어도 새 상태로는 진행한다 */ }
+    this.saveState();
+    return { ok: true, onboarding: this.getOnboardingState() };
+  }
+
+  /** 프로필 사진 바꾸기(Data URL) — 내 글·스토리·디엠 표시에도 함께 반영된다. */
+  updateProfilePhoto(photoUrl) {
+    const url = typeof photoUrl === 'string' && photoUrl.startsWith('data:image/') ? photoUrl : null;
+    const user = this.state.currentUser;
+    user.photoUrl = url;
+    (this.state.feedPosts || []).forEach((p) => { if (p.authorId === user.id) p.authorPhotoUrl = url; });
+    (this.state.explorePosts || []).forEach((p) => { if (p.authorId === user.id) p.authorPhotoUrl = url; });
+    (this.state.stories || []).filter((s) => s.authorId === user.id).forEach((s) => { s.authorPhotoUrl = url; });
+    this.saveState();
+    return { ok: true, photoUrl: url };
+  }
+
+  /** 테스트·미리보기 전용 — 예전 데모 계정(내 모임·내 글·내 디엠)으로 되돌린다. */
+  seedDemoAccount() {
+    this.state = buildDemoState();
+    this.saveState();
+    return { ok: true, user: this.state.currentUser };
+  }
+
+  /** 데모 계정 여부(테스트·#demo 미리보기 판별). */
+  isDemoAccount() {
+    return !!(this.state.onboarding && this.state.onboarding.demo === true);
+  }
+
+  /* ==========================================================================
+   * 17-B. 스토리 2차 — 사람별 링 · 짧은 답장 · 내 스토리 보관함
+   * -------------------------------------------------------------------------
+   * 11/15 21:31 사용자 답: "응 인스타처럼 사람별 링으로 기간 지난건 응 보관함에".
+   *  · 링은 **멤버당 1개** — 그 멤버가 24시간 안에 올린 스토리를 오래된 것부터 묶는다.
+   *  · 24시간이 지난 **내** 스토리는 지우지 않고 storyArchive 로 옮긴다(보관함).
+   *  · 남의 스토리에 답장하면 그 모임의 1:1 대화방으로 이어진다.
+   * ========================================================================== */
+
+  /** 스토리 바의 사람별 링 — 내 링이 먼저, 그 다음 최근에 올린 사람 순. */
+  getStoryRings(groupId, options = {}) {
+    const live = this.getGroupStories(groupId, options);
+    const me = this.currentUser.id;
+    const map = new Map();
+    live.forEach((s) => {
+      if (!map.has(s.authorId)) map.set(s.authorId, []);
+      map.get(s.authorId).push(s);
+    });
+    const rings = Array.from(map.entries()).map(([authorId, stories]) => {
+      const last = stories[stories.length - 1];
+      return {
+        authorId,
+        authorName: last.authorName,
+        avatarText: last.authorAvatarText || (last.authorName || '').charAt(0),
+        gradient: last.authorGradient,
+        photoUrl: last.authorPhotoUrl || null,
+        stories,
+        count: stories.length,
+        latestAt: last.createdAt,
+        firstAt: stories[0].createdAt,
+        isMine: authorId === me
+      };
+    });
+    rings.sort((a, b) => (b.isMine ? 1 : 0) - (a.isMine ? 1 : 0)
+      || new Date(b.latestAt).getTime() - new Date(a.latestAt).getTime());
+    return rings;
+  }
+
+  /** 특정 멤버의 링(그 사람 스토리만, 오래된 것부터). */
+  getStoryRing(groupId, authorId, options = {}) {
+    return this.getStoryRings(groupId, options).find((r) => r.authorId === authorId) || null;
+  }
+
+  getStoryRingStats(groupId, options = {}) {
+    const rings = this.getStoryRings(groupId, options);
+    return {
+      rings: rings.length,
+      stories: rings.reduce((sum, r) => sum + r.count, 0),
+      mine: rings.filter((r) => r.isMine).length,
+      others: rings.filter((r) => !r.isMine).length
+    };
+  }
+
+  /** 내 스토리 보관함 — 24시간이 지나 스토리 바에서 내려간 내 스토리(최신순). */
+  getMyStoryArchive(options = {}) {
+    const me = this.currentUser.id;
+    const list = (this.state.storyArchive || [])
+      .filter((s) => s.authorId === me)
+      .filter((s) => !options.groupId || s.groupId === options.groupId)
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return list.map((s) => ({
+      ...s,
+      groupName: (this.getGroup(s.groupId) || {}).name || '모임',
+      archivedLabel: s.archivedAt ? s.archivedAt : null
+    }));
+  }
+
+  /** 보관함에서 내 스토리 지우기 — 내 것만. */
+  deleteArchivedStory(storyId) {
+    const story = (this.state.storyArchive || []).find((s) => s.id === storyId);
+    if (!story) return { ok: false, reason: 'not_found' };
+    if (story.authorId !== this.currentUser.id) return { ok: false, reason: 'permission' };
+    this.state.storyArchive = this.state.storyArchive.filter((s) => s.id !== storyId);
+    this.saveState();
+    return { ok: true };
+  }
+
+  getStoryArchiveStats() {
+    const list = this.getMyStoryArchive();
+    return {
+      count: list.length,
+      groups: [...new Set(list.map((s) => s.groupId))].length,
+      latestAt: list.length ? list[0].createdAt : null
+    };
+  }
+
+  /** 스토리에 짧은 답장 — 그 모임의 1:1 대화방으로 보낸다(없으면 연다). */
+  replyToStory(storyId, text) {
+    const story = this.getStory(storyId);
+    if (!story) return { ok: false, reason: 'not_found' };
+    if (story.authorId === this.currentUser.id) return { ok: false, reason: 'mine' };
+    const body = String(text == null ? '' : text).trim().slice(0, 200);
+    if (!body) return { ok: false, reason: 'empty' };
+    const opened = this.ensureMemberChat(story.groupId, story.authorId);
+    if (!opened.ok) return { ok: false, reason: opened.reason || 'not_found', message: opened.message || '' };
+    const room = this.getChatRoom(opened.roomId);
+    if (!room) return { ok: false, reason: 'not_found' };
+    const message = this.sendChatMessage(room.id, body);
+    if (!Array.isArray(story.replies)) story.replies = [];
+    story.replies.push({ id: `sr_${Date.now()}`, fromMe: true, text: body, at: new Date().toISOString() });
+    this.saveState();
+    return {
+      ok: true, room, message, partnerName: room.partnerName,
+      replyCount: story.replies.length
+    };
+  }
+
+  /* ==========================================================================
+   * 17-C. 게시판 2차 — 공지 읽음(알림 없음) · 지난 공지 · 후기 모아보기
+   * -------------------------------------------------------------------------
+   * 공지 읽음은 **기록만** 한다 — 알림(notificationLog·푸시)은 절대 만들지 않는다.
+   * ========================================================================== */
+
+  /** 공지를 읽음으로 표시 — 같은 사람은 한 번만. 알림을 만들지 않는다. */
+  markNoticeRead(noticeId, memberId) {
+    const notice = this.getGroupNotice(noticeId);
+    if (!notice) return { ok: false, reason: 'not_found' };
+    const mid = memberId || this.currentUser.id;
+    if (mid === this.currentUser.id && !this.isGroupJoined(notice.groupId)) {
+      return { ok: false, reason: 'not_member' };
+    }
+    if (!Array.isArray(notice.readers)) notice.readers = [];
+    if (notice.readers.some((r) => r.memberId === mid)) {
+      return { ok: true, already: true, notice, read: this.getNoticeReadState(noticeId) };
+    }
+    const member = this.getGroupRoster(notice.groupId).members.find((m) => m.id === mid);
+    notice.readers.push({
+      memberId: mid,
+      name: member ? member.name : (mid === this.currentUser.id ? (this.currentUser.nickname || '나') : '멤버'),
+      avatarText: member ? member.avatarText : (this.currentUser.avatarText || (this.currentUser.nickname || '나').charAt(0)),
+      gradient: member ? member.gradient : this.currentUser.avatarGradient,
+      photoUrl: member && member.isMe ? (this.currentUser.photoUrl || null) : null,
+      at: new Date().toISOString()
+    });
+    this.saveState();
+    return { ok: true, already: false, notice, read: this.getNoticeReadState(noticeId) };
+  }
+
+  /** 공지 읽음 상태 — 누가 읽었는지(멤버 시트·읽음 표시에 쓰인다). */
+  getNoticeReadState(noticeId) {
+    const notice = this.getGroupNotice(noticeId);
+    if (!notice) return null;
+    const roster = this.getGroupRoster(notice.groupId);
+    const readers = (notice.readers || []).slice()
+      .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+    const readIds = new Set(readers.map((r) => r.memberId));
+    const me = this.currentUser.id;
+    const unread = roster.members.filter((m) => !readIds.has(m.id) && !m.isMe);
+    return {
+      noticeId,
+      groupId: notice.groupId,
+      readCount: readers.length,
+      total: roster.total,
+      readers,
+      unread: unread.map((m) => ({ memberId: m.id, name: m.name, avatarText: m.avatarText, gradient: m.gradient })),
+      iRead: readIds.has(me),
+      percent: roster.total ? Math.round((readers.length / roster.total) * 100) : 0
+    };
+  }
+
+  /** 게시판을 열면 아직 안 읽은 공지를 내 이름으로 읽음 처리한다(알림 없음). */
+  markGroupNoticesRead(groupId) {
+    if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member', marked: 0 };
+    let marked = 0;
+    this.getGroupNotices(groupId).forEach((n) => {
+      const state = this.getNoticeReadState(n.id);
+      if (state && !state.iRead) {
+        this.markNoticeRead(n.id);
+        marked += 1;
+      }
+    });
+    return { ok: true, marked };
+  }
+
+  /** 지난 공지 묶음 — 최근(펼쳐 두는 것)과 지난 것(접히는 것)을 나눔. */
+  getGroupNoticeGroups(groupId, options = {}) {
+    const pinnedNow = this.getPinnedGroupNotice(groupId);
+    const rest = this.getGroupNotices(groupId).filter((n) => !pinnedNow || n.id !== pinnedNow.id);
+    const recentCount = Math.max(1, options.recentCount || 3);
+    return {
+      pinned: pinnedNow,
+      recent: rest.slice(0, recentCount),
+      past: rest.slice(recentCount),
+      total: rest.length
+    };
+  }
+
+  /** 후기 모아보기 — 말머리에 '후기'가 붙은 글만(최신순). */
+  getGroupReviewPosts(groupId) {
+    const reviews = (this.state.feedPosts || [])
+      .filter((p) => p.groupId === groupId && isReviewTag(p.tag))
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return reviews;
+  }
+
+  /* ==========================================================================
+   * 17-D. 갤러리 2차 — 표지 직접 선택 · 정렬 · 새 모임 진입
+   * ========================================================================== */
+
+  /** 모임 카드 표지 — 그룹장이 고른 표지(사진 1~2장)가 있으면 그것, 없으면 글 사진에서. */
+  getGroupCover(groupId) {
+    const group = this.getGroup(groupId);
+    if (!group) return null;
+    const custom = Array.isArray(group.coverPresets) ? group.coverPresets.filter((k) => this.mediaLibrary.includes(k)) : [];
+    const photos = this.getGroupPhotoPosts(groupId).filter((p) => p.mediaPreset || p.photoUrl);
+    return {
+      groupId,
+      presets: custom.length ? custom.slice(0, 2) : photos.slice(0, 2).map((p) => p.mediaPreset).filter(Boolean),
+      custom: custom.length > 0,
+      gradient: group.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)',
+      options: this.mediaLibrary.slice()
+    };
+  }
+
+  /** 그룹장이 표지 사진을 직접 고른다(1~2장). */
+  setGroupCoverPhotos(groupId, presets) {
+    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    const group = this.getGroup(groupId);
+    if (!group) return { ok: false, reason: 'not_found' };
+    const list = (Array.isArray(presets) ? presets : [presets])
+      .filter((k) => this.mediaLibrary.includes(k))
+      .filter((k, i, arr) => arr.indexOf(k) === i)
+      .slice(0, 2);
+    if (!list.length) return { ok: false, reason: 'empty' };
+    group.coverPresets = list;
+    this.saveState();
+    return { ok: true, cover: this.getGroupCover(groupId) };
+  }
+
+  /** 표지를 기본(최근 글 사진)으로 되돌린다. */
+  clearGroupCover(groupId) {
+    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    const group = this.getGroup(groupId);
+    if (!group) return { ok: false, reason: 'not_found' };
+    delete group.coverPresets;
+    this.saveState();
+    return { ok: true, cover: this.getGroupCover(groupId) };
+  }
+
+  getGallerySortOptions() {
+    return [
+      { id: 'recent', label: '최근 활동순' },
+      { id: 'name', label: '가나다순' },
+      { id: 'leader', label: '내가 그룹장' }
+    ];
+  }
+
+  getGallerySort() {
+    const sort = this.state.galleryPrefs && this.state.galleryPrefs.sort;
+    return ['recent', 'name', 'leader'].includes(sort) ? sort : 'recent';
+  }
+
+  setGallerySort(sort) {
+    if (!['recent', 'name', 'leader'].includes(sort)) return { ok: false, reason: 'unknown' };
+    this.state.galleryPrefs = { ...(this.state.galleryPrefs || {}), sort };
+    this.saveState();
+    return { ok: true, sort };
+  }
+
+  /* ==========================================================================
+   * 17-E. 탐색 2차 — 취미 조합 한 줄 요약 · 내 프로필 카드 꾸미기
+   * (필터 프리셋 '저장' 기능은 사용자가 거절했으므로 만들지 않는다 — 마지막 상태 기억만)
+   * ========================================================================== */
+
+  /** 지금 적용된 탐색 조건을 한 줄로 — 취미 · 나이 · 거리 · 지역. */
+  getExploreSummary() {
+    const prefs = this.getExplorePrefs();
+    const href = this.getHobbyChip(prefs.filter);
+    const range = this.getExploreAgeRange();
+    const radius = this.getRadiusOption(prefs.radius);
+    const region = prefs.region === 'all' ? null : this.getRegion(prefs.region);
+    const hobbyLabel = href ? href.name : '전체 취미';
+    const ageLabel = range.active ? `${range.min}~${range.max}세` : '나이 전체';
+    const radiusLabel = prefs.radius === 'all' ? '내 동네 전체' : (radius ? `내 동네 ${radius.km}km` : '내 동네 전체');
+    const regionLabel = region ? region.short || region.name : '전체 지역';
+    const activeCount = [!!href, range.active, prefs.radius !== 'all', prefs.region !== 'all'].filter(Boolean).length;
+    return {
+      hobbyId: href ? href.id : 'all',
+      hobbyLabel,
+      ageLabel,
+      radiusLabel,
+      regionLabel,
+      activeCount,
+      text: `${hobbyLabel} · ${ageLabel} · ${radiusLabel} · ${regionLabel}`
+    };
+  }
+
+  /** 내 탐색 사람 카드 꾸미기 값 — 대표 사진 · 한 줄 소개. */
+  getMyExploreCard() {
+    const u = this.state.currentUser;
+    const card = u.exploreCard || {};
+    const preset = this.mediaLibrary.includes(card.mediaPreset) ? card.mediaPreset : 'selfie';
+    return {
+      mediaPreset: preset,
+      intro: String(card.intro || '').slice(0, 40),
+      photoUrl: u.photoUrl || null,
+      nickname: u.nickname || '나',
+      options: this.mediaLibrary.slice()
+    };
+  }
+
+  /** 대표 사진(프리셋)과 한 줄 소개를 저장한다. */
+  setMyExploreCard(patch) {
+    const d = patch || {};
+    const u = this.state.currentUser;
+    const card = { ...(u.exploreCard || {}) };
+    if (d.mediaPreset != null) {
+      if (!this.mediaLibrary.includes(d.mediaPreset)) return { ok: false, reason: 'preset' };
+      card.mediaPreset = d.mediaPreset;
+    }
+    if (d.intro != null) card.intro = String(d.intro).trim().slice(0, 40);
+    u.exploreCard = card;
+    this.saveState();
+    return { ok: true, card: this.getMyExploreCard() };
+  }
+
+  /* ==========================================================================
+   * 17-F. 전체 디엠함 2차 — 모임별/최근순 · 읽지 않은 대화 · 상대 프로필
+   * ========================================================================== */
+
+  /** 모임별로 묶은 디엠함 — 모임 단체방 + 그 모임에서 시작한 1:1 을 한 칸에. */
+  getDmInboxSections() {
+    const inbox = this.getDmInbox();
+    const sections = this.getJoinedGroups().map((group) => {
+      const groupRoom = inbox.groupRooms.find((r) => r.groupId === group.id);
+      const directs = inbox.directRooms.filter((r) => r.group && r.group.id === group.id);
+      return {
+        id: group.id, group, groupRoom,
+        directs,
+        unread: (groupRoom ? groupRoom.chat.unread : 0) + directs.reduce((sum, r) => sum + r.unread, 0),
+        total: directs.length + (groupRoom ? 1 : 0)
+      };
+    }).filter((s) => s.total > 0);
+    const loose = inbox.directRooms.filter((r) => !r.group);
+    if (loose.length) {
+      sections.push({
+        id: 'unassigned', group: null, groupRoom: null, directs: loose,
+        unread: loose.reduce((sum, r) => sum + r.unread, 0), total: loose.length
+      });
+    }
+    return {
+      sections,
+      recent: inbox.directRooms.slice(),
+      groupRooms: inbox.groupRooms,
+      unread: inbox.unread,
+      total: inbox.total
+    };
+  }
+
+  /** 읽지 않은 대화만 — 단체방·1:1 을 따로 센다. */
+  getUnreadDmThreads() {
+    const inbox = this.getDmInbox();
+    return {
+      groupRooms: inbox.groupRooms.filter((r) => r.chat.unread > 0),
+      directRooms: inbox.directRooms.filter((r) => r.unread > 0),
+      total: inbox.unread
+    };
+  }
+
+  /* ==========================================================================
+   * 17-G. store → 서버 API 교체 경계 (STORE_API.md 5-1)
+   * -------------------------------------------------------------------------
+   * 화면은 지금 동기 선택자를 쓴다. 서버로 옮길 때는 아래 readAsync 의 한 자리만
+   * fetch 로 바꾸면 되고, 기존 getXxx 동기 호출·테스트는 그대로 둔다(호환 유지).
+   * ========================================================================== */
+  static getReadBoundary() {
+    return {
+      mode: 'local',      // 'server' 로 바꾸면 readAsync 가 서버를 본다
+      reads: {
+        stories: 'getGroupStories',
+        storyRings: 'getStoryRings',
+        dmInbox: 'getDmInbox',
+        gallery: 'getGroupGallery',
+        notices: 'getGroupNotices'
+      }
+    };
+  }
+
+  /** 이름 하나로 읽기를 기다리는 경계 — 지금은 로컬 상태를 Promise 로 돌려준다. */
+  readAsync(key, ...args) {
+    const map = Store.getReadBoundary().reads;
+    const fn = map[key];
+    if (!fn || typeof this[fn] !== 'function') return Promise.resolve(null);
+    return Promise.resolve().then(() => this[fn](...args));
+  }
+
+  getGroupStoriesAsync(groupId, options) { return this.readAsync('stories', groupId, options); }
+  getStoryRingsAsync(groupId, options) { return this.readAsync('storyRings', groupId, options); }
+  getDmInboxAsync(options) { return this.readAsync('dmInbox', options); }
+  getGroupGalleryAsync(options) { return this.readAsync('gallery', options); }
+  getGroupNoticesAsync(groupId) { return this.readAsync('notices', groupId); }
 }
 
 /* ---------------------------------------------------------------------------

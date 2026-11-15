@@ -26,6 +26,27 @@
       ooG(우그)는 자바스크립트로 동작합니다. 브라우저에서 자바스크립트를 켜 주세요.
     </div>
   </noscript>
+
+  <!-- ==================== Sprint 17 — 회원가입(온보딩) ====================
+       11/15 21:32 사용자: "회원가입 기능도 넣어주소 프로필 사진 등록하는거 닉넴까지 다 해주고
+       이제 데이터는 초기화해줘 실사용해보게".
+       · 가입 전에는 앱 대신 이 화면만 보인다(body.onboarding-mode).
+       · 가입을 마치면 정한 닉네임·사진이 앱 전체에 그대로 반영된다. -->
+  <div class="onboarding" id="onboarding" hidden>
+    <div class="onboarding-panel" id="onboarding-panel">
+      <header class="onboarding-head">
+        <span class="onboarding-logo">ooG</span>
+        <span class="onboarding-tag">Our Own Group</span>
+      </header>
+      <div class="onboarding-steps" id="onboarding-steps" aria-hidden="true">
+        <span class="onboarding-dot on"></span>
+        <span class="onboarding-dot"></span>
+        <span class="onboarding-dot"></span>
+      </div>
+      <div class="onboarding-body" id="onboarding-body"><!-- JS --></div>
+    </div>
+  </div>
+
   <div class="app-container">
 
     <!-- ==================== 상단 헤더 (화이트 글래스) ==================== -->
@@ -78,6 +99,8 @@
             </div>
             <button class="gallery-find" id="btn-gallery-find" type="button">모임 찾기</button>
           </div>
+          <!-- Sprint 17 — 갤러리 정렬(최근 활동순 · 가나다순 · 내가 그룹장) -->
+          <div class="gallery-sort" id="gallery-sort" role="group" aria-label="갤러리 정렬"><!-- JS --></div>
           <div class="gallery-grid" id="group-gallery-grid" aria-live="polite"><!-- JS --></div>
           <div class="gallery-empty" id="group-gallery-empty" hidden><!-- JS --></div>
           <p class="gallery-note">모임을 열면 그 모임의 피드·게시판·디엠·내정보가 하단 4탭으로 바뀌고,
@@ -148,6 +171,8 @@
           </div>
           <div class="home-notice-bar" id="home-notice-bar" aria-live="polite"><!-- JS --></div>
           <div class="board-notice-list" id="board-notice-list"><!-- JS --></div>
+          <!-- Sprint 17 — 지난 공지 접기/펼치기 -->
+          <button class="board-notice-more" id="btn-notice-more" type="button" hidden>지난 공지 더 보기</button>
         </section>
 
         <!-- 일정 (다가오는 약속 · RSVP) -->
@@ -168,6 +193,11 @@
               자유·후기 게시판 <span class="section-count" id="board-post-count">0</span>
             </h3>
             <button class="board-block-more" id="btn-board-write-2" type="button">＋ 글쓰기</button>
+          </div>
+          <!-- Sprint 17 — 게시판 탭에서 바로 사진 올리기 -->
+          <div class="board-photo-row">
+            <button class="board-photo-btn" id="btn-board-photo" type="button">사진 올리기</button>
+            <button class="board-photo-btn ghost" id="btn-board-review" type="button">후기 모아보기</button>
           </div>
           <div class="board-filter-chips" id="board-filter-chips" role="group" aria-label="게시판 말머리"><!-- JS --></div>
           <div class="board-post-list" id="board-posts" aria-live="polite"><!-- JS --></div>
@@ -205,6 +235,8 @@
           <!-- 적용된 세부 조건만 작은 칩 1줄로 — 누르면 바로 해제된다 -->
           <div class="explore-active-filters" id="explore-active-filters" role="group"
                aria-label="적용된 탐색 조건" hidden><!-- JS --></div>
+          <!-- Sprint 17 — 취미 조합 한 줄 요약(나이·거리·지역 포함) -->
+          <p class="explore-summary" id="explore-summary">전체 취미 · 나이 전체 · 내 동네 전체 · 전체 지역</p>
 
           <!-- Sprint 16 — 0~99세 듀얼 레인지 나이 슬라이더 (11/15 19:05 "나이는 0~99세 드래그 슬라이더로") -->
           <div class="age-range" id="age-range" role="group" aria-label="나이 범위">
@@ -259,6 +291,8 @@
             <span class="epp-title">탐색에 내 프로필 올리기</span>
             <span class="epp-desc" id="epp-desc">끄면 사람 카드에 나오지 않아요</span>
           </span>
+          <!-- Sprint 17 — 내 프로필 카드 꾸미기(대표 사진·한 줄 소개) -->
+          <button class="epp-edit" id="btn-explore-card-edit" type="button">카드 꾸미기</button>
           <button class="switch-toggle" id="explore-profile-toggle" role="switch" aria-checked="false"
                   aria-label="탐색에 내 프로필 올리기" type="button">
             <span class="switch-knob" aria-hidden="true"></span>
@@ -302,6 +336,14 @@
           <button class="dm-scope-all" id="btn-dm-scope-all" type="button">전체 디엠함 보기</button>
         </div>
 
+        <!-- Sprint 17 — 모임별/최근순 전환 · 읽지 않은 대화만 -->
+        <div class="dm-controls">
+          <div class="dm-view-seg" id="dm-view-seg" role="group" aria-label="디엠함 정렬"><!-- JS --></div>
+          <button class="dm-unread-toggle" id="dm-unread-toggle" type="button" aria-pressed="false">안 읽은 대화만</button>
+        </div>
+        <!-- Sprint 17 — 쪽지를 보낸 직후 상대 프로필로 바로 이동 -->
+        <div class="dm-sent-banner" id="dm-sent-banner" hidden></div>
+
         <!-- Sprint 14~15 — 모임 전체방(단체 채팅) -->
         <section class="chat-group-section" aria-labelledby="chat-group-title">
           <div class="chat-section-head">
@@ -330,7 +372,7 @@
           <button class="pgc-back" id="btn-profile-group-back" type="button">다른 모임 보기</button>
         </div>
         <div class="profile-header-area">
-          <div class="profile-avatar-large"><span class="avatar-letter" id="profile-avatar-letter">루</span><span class="online-indicator"></span></div>
+          <div class="profile-avatar-large"><span class="avatar-letter" id="profile-avatar-letter">루</span><img class="avatar-img" id="profile-avatar-img" alt="" hidden><span class="online-indicator"></span></div>
           <div class="profile-info-block">
             <div class="profile-name-row">
               <h2 class="profile-nickname" id="profile-nickname">루키</h2>
@@ -432,6 +474,22 @@
               <span class="menu-label">프라이버시 &amp; 사진 공개 범위</span>
               <span class="menu-val">그룹 전용</span>
             </div>
+            <div class="menu-item" id="menu-story-archive" role="button" tabindex="0">
+              <span class="menu-label">스토리 보관함</span>
+              <span class="menu-val" id="menu-story-archive-count">0개</span>
+            </div>
+            <div class="menu-item" id="menu-edit-photo" role="button" tabindex="0">
+              <span class="menu-label">프로필 사진 등록·변경</span>
+              <span class="menu-val" id="menu-photo-state">기본 아바타</span>
+            </div>
+            <div class="menu-item" id="menu-logout" role="button" tabindex="0">
+              <span class="menu-label">로그아웃</span>
+              <span class="menu-val">다시 로그인</span>
+            </div>
+            <div class="menu-item danger" id="menu-reset-data" role="button" tabindex="0">
+              <span class="menu-label">데이터 초기화 (처음부터 다시)</span>
+              <span class="menu-val">회원가입부터</span>
+            </div>
             <div class="menu-item" id="btn-open-create-group" role="button" tabindex="0">
               <span class="menu-label">새 소모임 만들기</span>
               <span class="menu-val">준비 중</span>
@@ -481,7 +539,23 @@
           </div>
 
           <div class="field-group">
-            <label class="field-label">사진 <span class="field-hint">운동·취미 프리셋</span></label>
+            <label class="field-label">사진 <span class="field-hint">앨범・카메라・예시</span></label>
+            <!-- Sprint 17 — 기기 앨범에서 고르거나 바로 찍은 사진 (1080px로 줄여 저장) -->
+            <div class="photo-upload" id="composer-photo-upload">
+              <div class="photo-upload-btns">
+                <button class="photo-upload-btn" id="btn-composer-album" type="button">앨범에서 선택</button>
+                <button class="photo-upload-btn ghost" id="btn-composer-camera" type="button">사진 찍기</button>
+                <input class="photo-file" id="composer-photo-album" type="file" accept="image/*" hidden>
+                <input class="photo-file" id="composer-photo-camera" type="file" accept="image/*" capture="environment" hidden>
+              </div>
+              <div class="photo-upload-preview" id="composer-photo-preview" hidden>
+                <img class="photo-upload-img" id="composer-photo-img" alt="올릴 사진 미리보기">
+                <div class="photo-upload-meta">
+                  <span class="photo-upload-note" id="composer-photo-note"></span>
+                  <button class="photo-upload-remove" id="btn-composer-photo-remove" type="button">삭제</button>
+                </div>
+              </div>
+            </div>
             <div class="media-picker" id="media-picker"><!-- JS --></div>
           </div>
 
@@ -588,6 +662,21 @@
           </div>
           <div class="field-group">
             <label class="field-label">사진 <span class="field-hint">선택</span></label>
+            <div class="photo-upload" id="explore-photo-upload">
+              <div class="photo-upload-btns">
+                <button class="photo-upload-btn" id="btn-explore-album" type="button">앨범에서 선택</button>
+                <button class="photo-upload-btn ghost" id="btn-explore-camera" type="button">사진 찍기</button>
+                <input class="photo-file" id="explore-photo-album" type="file" accept="image/*" hidden>
+                <input class="photo-file" id="explore-photo-camera" type="file" accept="image/*" capture="environment" hidden>
+              </div>
+              <div class="photo-upload-preview" id="explore-photo-preview" hidden>
+                <img class="photo-upload-img" id="explore-photo-img" alt="올릴 사진 미리보기">
+                <div class="photo-upload-meta">
+                  <span class="photo-upload-note" id="explore-photo-note"></span>
+                  <button class="photo-upload-remove" id="btn-explore-photo-remove" type="button">삭제</button>
+                </div>
+              </div>
+            </div>
             <div class="media-picker" id="explore-compose-media"><!-- JS --></div>
           </div>
           <div class="field-group">
@@ -835,6 +924,21 @@
           <p class="compose-note">스토리는 <strong>24시간</strong> 뒤에 자동으로 사라져요. 이 모임 멤버만 볼 수 있습니다.</p>
           <div class="field-group">
             <label class="field-label">사진</label>
+            <div class="photo-upload" id="story-photo-upload">
+              <div class="photo-upload-btns">
+                <button class="photo-upload-btn" id="btn-story-album" type="button">앨범에서 선택</button>
+                <button class="photo-upload-btn ghost" id="btn-story-camera" type="button">사진 찍기</button>
+                <input class="photo-file" id="story-photo-album" type="file" accept="image/*" hidden>
+                <input class="photo-file" id="story-photo-camera" type="file" accept="image/*" capture="environment" hidden>
+              </div>
+              <div class="photo-upload-preview" id="story-photo-preview" hidden>
+                <img class="photo-upload-img" id="story-photo-img" alt="올릴 스토리 사진 미리보기">
+                <div class="photo-upload-meta">
+                  <span class="photo-upload-note" id="story-photo-note"></span>
+                  <button class="photo-upload-remove" id="btn-story-photo-remove" type="button">삭제</button>
+                </div>
+              </div>
+            </div>
             <div class="media-picker" id="story-media"><!-- JS --></div>
           </div>
           <div class="field-group">
@@ -870,6 +974,13 @@
         <button class="story-nav-btn prev" id="btn-story-prev" type="button" aria-label="이전 스토리">‹</button>
         <button class="story-nav-btn next" id="btn-story-next" type="button" aria-label="다음 스토리">›</button>
       </div>
+      <!-- Sprint 17 — 스토리에 짧은 답장(그 모임 1:1 대화로) -->
+      <form class="story-reply" id="story-reply-form">
+        <input class="story-reply-input" id="story-reply-input" type="text" maxlength="120"
+               autocomplete="off" aria-label="스토리에 답장" placeholder="스토리에 짧은 답장 보내기">
+        <button class="story-reply-send" id="btn-story-reply-send" type="submit">보내기</button>
+      </form>
+      <button class="story-archive-link" id="btn-story-archive" type="button">내 스토리 보관함</button>
     </div>
 
     <!-- ==================== 모달 18. 쪽지(디엠) 보내기 (Sprint 16) ==================== -->
@@ -1024,6 +1135,88 @@
         </form>
       </div>
     </div>
+
+    <!-- ==================== Sprint 17. 스토리 보관함 ==================== -->
+    <div class="modal-overlay" id="story-archive-modal" role="dialog" aria-modal="true" aria-label="내 스토리 보관함">
+      <div class="modal-sheet archive-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-archive" aria-label="닫기">&times;</button>
+        <div class="archive-head">
+          <h2 class="sheet-title">내 스토리 보관함</h2>
+          <p class="joined-sub">24시간이 지나 스토리 바에서 내려간 내 스토리예요. 지우기 전까지는 계속 다시 볼 수 있어요.</p>
+        </div>
+        <div class="archive-grid" id="story-archive-grid"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== Sprint 17. 모임 카드 표지 고르기 (그룹장) ==================== -->
+    <div class="modal-overlay" id="cover-modal" role="dialog" aria-modal="true" aria-label="모임 카드 표지 고르기">
+      <div class="modal-sheet cover-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-cover" aria-label="닫기">&times;</button>
+        <div class="cover-head">
+          <h2 class="sheet-title">모임 카드 표지</h2>
+          <p class="joined-sub">사진을 최대 2장까지 고를 수 있어요. 고른 순서대로 카드 표지가 됩니다.</p>
+        </div>
+        <div class="cover-grid" id="cover-grid"><!-- JS --></div>
+        <div class="cover-actions">
+          <button class="btn-secondary" id="btn-cover-reset" type="button">기본 표지로</button>
+          <button class="btn-primary" id="btn-cover-save" type="button">표지 저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Sprint 17. 공지 읽음 상태 ==================== -->
+    <div class="modal-overlay" id="notice-read-modal" role="dialog" aria-modal="true" aria-label="공지 읽음">
+      <div class="modal-sheet notice-read-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-notice-read" aria-label="닫기">&times;</button>
+        <div class="notice-read-head">
+          <h2 class="sheet-title">공지 읽음</h2>
+          <p class="joined-sub" id="notice-read-sub">읽은 사람만 모아 봐요. 읽음 표시는 알림을 만들지 않아요.</p>
+        </div>
+        <div class="notice-read-list" id="notice-read-list"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== Sprint 17. 탐색 내 프로필 카드 꾸미기 ==================== -->
+    <div class="modal-overlay" id="explore-card-modal" role="dialog" aria-modal="true" aria-label="탐색 내 프로필 카드 꾸미기">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-explore-card-cancel" type="button">취소</button>
+          <h3 class="composer-title">내 카드 꾸미기</h3>
+          <button class="btn-publish ready" id="btn-explore-card-save" type="button">저장</button>
+        </div>
+        <div class="composer-body">
+          <p class="compose-note">탐색 '사람' 카드에 보이는 대표 사진과 한 줄 소개를 정해요.</p>
+          <div class="field-group">
+            <label class="field-label">대표 사진</label>
+            <div class="media-picker" id="explore-card-media"><!-- JS --></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label" for="explore-card-intro">한 줄 소개 <span class="field-hint">40자까지</span></label>
+            <input type="text" class="text-input" id="explore-card-intro" maxlength="40" autocomplete="off"
+                   placeholder="예: 주 3회 크로스핏 · 퇴근 후 땀">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Sprint 17. 확인 시트(로그아웃 · 데이터 초기화) ==================== -->
+    <div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-label="확인">
+      <div class="modal-sheet confirm-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <h2 class="sheet-title" id="confirm-title">확인</h2>
+        <p class="joined-sub" id="confirm-desc"></p>
+        <div class="confirm-actions">
+          <button class="btn-secondary" id="btn-confirm-cancel" type="button">취소</button>
+          <button class="btn-primary danger" id="btn-confirm-ok" type="button">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="profile-photo-input" accept="image/*" hidden>
 
     <!-- ==================== 토스트 알림 ==================== -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
