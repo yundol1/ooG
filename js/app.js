@@ -582,8 +582,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderChatRooms(); renderProfileHeader(); renderNotificationSettings(); renderProfileGroupContext();
     }
 
-    /* 글쓰기 FAB은 모임 피드·게시판에서만 노출 */
-    el.fab.classList.toggle('visible', tabId === 'tab-home' || tabId === 'tab-board');
+    /* 글쓰기 FAB은 그 모임 피드·게시판에서만 노출 (바깥 갤러리에는 없다) */
+    el.fab.classList.toggle('visible',
+      tabId === 'tab-board' || (tabId === 'tab-home' && isGroupMode()));
 
     /* 같은 탭 재선택이면 맨 위로, 탭 전환이면 기억한 위치로 (Sprint 9 — 복원 정확도 2차) */
     const saved = prevTab === tabId ? 0 : (ui.scrollByTab[tabId] || 0);
@@ -731,7 +732,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHomeFeed(grp);
     renderHomeChatPreview(grp);
     if (el.navHomeBadge) {
-      const upcoming = store.getUpcomingGroupEvents(grp.id, 9).length;
+      const upcoming = isGroupMode() ? store.getUpcomingGroupEvents(grp.id, 9).length : 0;
       el.navHomeBadge.textContent = String(upcoming);
       el.navHomeBadge.classList.toggle('hide', upcoming === 0);
     }
@@ -7595,9 +7596,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function updateBadges() {
     renderProfileStats();
     renderProfileBlocks();
-    /* Sprint 14 — 홈 배지 = 그 모임의 다가오는 약속 수 */
+    /* Sprint 14~16 — 홈 배지 = 그 모임의 다가오는 약속 수 (바깥 갤러리에서는 숨김) */
     if (el.navHomeBadge) {
-      const homeId = store.getHomeGroupId();
+      const homeId = isGroupMode() ? store.getHomeGroupId() : null;
       const upcoming = homeId ? store.getUpcomingGroupEvents(homeId, 9).length : 0;
       el.navHomeBadge.textContent = String(upcoming);
       el.navHomeBadge.classList.toggle('hide', upcoming === 0);
@@ -7900,7 +7901,8 @@ document.addEventListener('DOMContentLoaded', () => {
   /* Sprint 5 — PWA: 설치 카드 + Service Worker 등록(오프라인 캐시·푸시 기반) */
   renderPwaCard();
   registerServiceWorker();
-  el.fab.classList.add('visible');    // 홈이 기본 탭 — 그 모임에 사진을 올린다
+  /* Sprint 16 — 첫 화면은 바깥 갤러리라 FAB 은 모임 안에서만 켠다 */
+  el.fab.classList.toggle('visible', isGroupMode());
 
   /* Sprint 8 — 첫 렌더 계측(성능 회귀 확인용): 경과·DOM 노드 수 */
   const bootMs = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - bootStart) * 10) / 10;
