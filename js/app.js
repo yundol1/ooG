@@ -994,12 +994,17 @@ document.addEventListener('DOMContentLoaded', () => {
   /** 게시판의 공지 목록 — 고정 → 최신 순. */
   function renderBoardNotices(grp) {
     if (!el.boardNoticeList) return;
+    /* 상단 고정 공지 바에 이미 있는 공지는 목록에서 빼고, 나머지를 최신순으로. */
+    const pinnedNow = store.getPinnedGroupNotice(grp.id);
     const notices = store.getGroupNotices(grp.id)
+      .filter((n) => !pinnedNow || n.id !== pinnedNow.id)
       .slice()
       .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)
         || new Date(b.at).getTime() - new Date(a.at).getTime());
     if (!notices.length) {
-      el.boardNoticeList.innerHTML = '<p class="board-empty">아직 공지가 없어요. 그룹장과 부방장이 공지를 남길 수 있어요.</p>';
+      el.boardNoticeList.innerHTML = `<p class="board-empty">${pinnedNow
+        ? '고정 공지 외에 다른 공지는 아직 없어요.'
+        : '아직 공지가 없어요. 그룹장과 부방장이 공지를 남길 수 있어요.'}</p>`;
       return;
     }
     el.boardNoticeList.innerHTML = notices.slice(0, 5).map((n) => {
@@ -1107,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <h2 class="home-hero-name">${escapeHtml(grp.name)}</h2>
           <p class="home-hero-meta">멤버 ${grp.memberCount}명 · 사진 ${info.photoCount || 0}장 · 대화 ${chat.count}개</p>
           <p class="home-hero-next">${next
-            ? `<span class="home-hero-next-dot" aria-hidden="true"></span>${next.kindMeta.emoji} ${escapeHtml(next.title)} · ${escapeHtml(next.whenLabel)} · 참석 ${next.yes}명`
+            ? `<span class="home-hero-next-dot" aria-hidden="true"></span>${escapeHtml(next.title)} · ${escapeHtml(next.whenLabel)} · 참석 ${next.yes}명`
             : '<span class="home-hero-next-dot quiet" aria-hidden="true"></span>이번 주 약속은 아직 없어요'}</p>
         </div>
       </div>
@@ -1165,12 +1170,12 @@ document.addEventListener('DOMContentLoaded', () => {
       : (myMeta ? `${myMeta.emoji} ${myMeta.label}` : '');
     const yesLabel = full && ev.myRsvp !== 'yes';
     const labelOf = (r) => (r.id === 'yes' && yesLabel ? '대기 신청' : r.label);
-    const emojiOf = (r) => (r.id === 'yes' && yesLabel ? '⏳' : r.emoji);
+    const emojiOf = (r) => (r.id === 'yes' && yesLabel ? '⏳' : '');
     return `
       <article class="event-card tone-${kind.tone} ${ev.myRsvp ? 'is-joined' : ''} ${ev.past ? 'is-past' : ''} ${full ? 'is-full' : ''}"
                data-event-id="${ev.id}" aria-label="${escapeHtml(kind.label)} ${escapeHtml(ev.title)}">
         <div class="event-top">
-          <span class="event-kind">${kind.emoji} ${escapeHtml(kind.label)}</span>
+          <span class="event-kind">${escapeHtml(kind.label)}</span>
           <span class="event-when">${escapeHtml(ev.whenLabel)}</span>
           ${ev.past ? '<span class="event-past">지난 일정</span>'
             : (myBadge ? `<span class="event-my rs-${ev.myRsvp}">${myBadge}</span>` : '')}
@@ -1191,7 +1196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="rsvp-btn rs-${r.id} ${ev.myRsvp === r.id ? 'active' : ''}"
                     data-rsvp-status="${r.id}" data-rsvp-event="${ev.id}"
                     aria-pressed="${ev.myRsvp === r.id}" type="button">
-              <span aria-hidden="true">${emojiOf(r)}</span> ${labelOf(r)}
+              ${emojiOf(r) ? `<span aria-hidden="true">${emojiOf(r)}</span> ` : ''}${labelOf(r)}
             </button>`).join('')}
         </div>`}
       </article>`;
@@ -1658,7 +1663,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.eventDetailBody.innerHTML = `
       <div class="event-detail-head tone-${kind.tone}">
         <div class="event-detail-top">
-          <span class="event-kind">${kind.emoji} ${escapeHtml(kind.label)}</span>
+          <span class="event-kind">${escapeHtml(kind.label)}</span>
           <span class="event-when">${escapeHtml(s.whenLabel)}</span>
         </div>
         <h2 class="sheet-title">${escapeHtml(ev.title)}</h2>
@@ -1678,7 +1683,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <button class="rsvp-btn rs-${r.id} ${s.myRsvp === r.id ? 'active' : ''}"
                       data-rsvp-status="${r.id}" data-rsvp-event="${ev.id}"
                       aria-pressed="${s.myRsvp === r.id}" type="button">
-                <span aria-hidden="true">${emojiOf(r)}</span> ${labelOf(r)}
+                ${emojiOf(r) ? `<span aria-hidden="true">${emojiOf(r)}</span> ` : ''}${labelOf(r)}
               </button>`).join('')}
           </div>
           <p class="event-detail-hint">${full
