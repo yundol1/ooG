@@ -117,7 +117,10 @@
               <h2 class="group-topbar-name" id="group-space-name">모임</h2>
               <p class="group-topbar-meta" id="group-space-meta"></p>
             </div>
-            <button class="group-topbar-act" id="btn-group-space-members" type="button">멤버</button>
+            <button class="group-topbar-act group-topbar-menu" id="btn-group-drawer" type="button"
+                    aria-label="모임 메뉴 열기(멤버·설정)" aria-controls="group-drawer" aria-expanded="false">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+            </button>
           </div>
 
           <!-- 인스타그램형 24시간 스토리 바 -->
@@ -160,6 +163,10 @@
             <h2 class="group-topbar-name" id="board-space-name">그룹게시판</h2>
             <p class="group-topbar-meta" id="board-space-meta">공지 · 일정 · 자유/후기 글</p>
           </div>
+          <button class="group-topbar-act" id="btn-board-drawer" type="button"
+                  aria-label="모임 메뉴 열기(멤버·설정)" aria-controls="group-drawer" aria-expanded="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+          </button>
           <button class="group-topbar-act" id="btn-board-write" type="button">글쓰기</button>
         </div>
 
@@ -264,18 +271,6 @@
           </div>
         </div>
 
-        <!-- ===== Sprint 15 — 돋보기 그리드: **공개에 동의한** 타 모임 사진만 ===== -->
-        <section class="dokbo-section" id="dokbo-section" aria-labelledby="dokbo-title">
-          <div class="dokbo-head">
-            <div class="dokbo-head-text">
-              <h3 class="dokbo-title" id="dokbo-title">돋보기 <span class="section-count" id="dokbo-count">0</span></h3>
-              <p class="dokbo-sub" id="dokbo-sub">다른 모임이 '돋보기에 노출'을 켠 사진만 보여요</p>
-            </div>
-            <span class="dokbo-privacy" id="dokbo-privacy">끈 사진은 모임 안에만</span>
-          </div>
-          <div class="dokbo-grid" id="dokbo-grid" aria-live="polite"><!-- JS --></div>
-        </section>
-
         <div class="explore-actions">
           <button class="explore-action-btn" id="btn-explore-compose" type="button">
             <span aria-hidden="true">＋</span> 오픈 게시글 쓰기
@@ -366,6 +361,17 @@
 
       <!-- ========== 4. 프로필 탭 ========== -->
       <section class="tab-view" id="tab-profile">
+        <!-- Sprint 18 — 내정보 상단: 설정은 사이드바로 모으고, 본문은 내 프로필·피드·활동만 -->
+        <div class="profile-topbar">
+          <div class="profile-topbar-text">
+            <h2 class="profile-topbar-title" id="profile-topbar-title">내정보</h2>
+            <p class="profile-topbar-sub" id="profile-topbar-sub">내 피드와 활동</p>
+          </div>
+          <button class="profile-menu-btn" id="btn-profile-drawer" type="button"
+                  aria-label="내정보 메뉴 열기(설정)" aria-controls="profile-drawer" aria-expanded="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+          </button>
+        </div>
         <!-- Sprint 16 — 모임 안에서 본 내정보: 어느 모임의 내정보인지 한 줄로 -->
         <div class="profile-group-context" id="profile-group-context" hidden>
           <span class="pgc-name" id="profile-group-context-name">모임</span>
@@ -385,7 +391,6 @@
               <span class="spec-chip">크로스핏 6개월</span>
               <span class="spec-chip">볼더링 입문</span>
             </div>
-            <button class="profile-edit-btn" id="btn-edit-profile" type="button">프로필 수정</button>
           </div>
         </div>
 
@@ -399,7 +404,7 @@
         <section class="profile-block" aria-labelledby="profile-feed-title">
           <div class="profile-block-head">
             <h3 class="profile-block-title" id="profile-feed-title">내 피드 <span class="section-count" id="profile-feed-count">0</span></h3>
-            <span class="profile-feed-sub" id="profile-feed-sub">사진 <b>0</b> · 돋보기 공개 <b>0</b></span>
+            <span class="profile-feed-sub" id="profile-feed-sub">사진 <b>0</b> · 글 <b>0</b></span>
           </div>
           <div class="profile-feed-grid" id="profile-feed-grid" aria-live="polite"><!-- JS --></div>
         </section>
@@ -428,78 +433,6 @@
           <div class="profile-recent-list" id="profile-recent-list"><!-- JS --></div>
         </section>
 
-        <!-- ===== PWA · 홈 화면에 추가 (Sprint 5) ===== -->
-        <section class="pwa-card" id="pwa-card" aria-labelledby="pwa-card-title" hidden>
-          <div class="pwa-card-head">
-            <h3 class="pwa-card-title" id="pwa-card-title"><span>홈 화면에 ooG 추가</span></h3>
-            <span class="pwa-card-state" id="pwa-card-state">확인 중</span>
-          </div>
-          <p class="pwa-card-desc" id="pwa-card-desc">홈 화면에 추가하면 앱처럼 열리고, 앱을 꺼도 푸시 알림을 받을 수 있어요.</p>
-          <div class="pwa-card-actions" id="pwa-card-actions"><!-- JS --></div>
-        </section>
-
-        <!-- ===== 알림 설정 (Sprint 4.5) ===== -->
-        <section class="notif-settings-card" aria-labelledby="notif-settings-title">
-          <div class="notif-settings-head">
-            <h3 class="notif-settings-title" id="notif-settings-title">알림 설정</h3>
-            <span class="notif-settings-state" id="notif-permission-state">권한 확인 중</span>
-          </div>
-          <div id="notif-settings-body"><!-- JS --></div>
-        </section>
-
-        <div class="profile-nav-sections">
-          <div class="nav-section-title">활동 및 설정</div>
-          <div class="settings-menu-list">
-            <div class="menu-item" id="menu-open-chat" role="button" tabindex="0">
-              <span class="menu-label">1:1 대화방</span>
-              <span class="menu-val" id="menu-chat-count">0개</span>
-            </div>
-            <div class="menu-item" id="menu-joined-manage" role="button" tabindex="0">
-              <span class="menu-label">가입한 소모임 관리</span>
-              <span class="menu-val" id="menu-joined-count">3개</span>
-            </div>
-            <div class="menu-item" id="menu-my-applications" role="button" tabindex="0">
-              <span class="menu-label">내 모임 가입 신청</span>
-              <span class="menu-val" id="menu-my-applications-count">0건</span>
-            </div>
-            <div class="menu-item" id="menu-activity-log" role="button" tabindex="0">
-              <span class="menu-label">내 활동 로그</span>
-              <span class="menu-val" id="menu-activity-count">0건</span>
-            </div>
-            <div class="menu-item" id="menu-liked-people" role="button" tabindex="0">
-              <span class="menu-label">내가 좋아요한 취미친구</span>
-              <span class="menu-val" id="menu-liked-count">0명</span>
-            </div>
-            <div class="menu-item">
-              <span class="menu-label">프라이버시 &amp; 사진 공개 범위</span>
-              <span class="menu-val">그룹 전용</span>
-            </div>
-            <div class="menu-item" id="menu-story-archive" role="button" tabindex="0">
-              <span class="menu-label">스토리 보관함</span>
-              <span class="menu-val" id="menu-story-archive-count">0개</span>
-            </div>
-            <div class="menu-item" id="menu-edit-photo" role="button" tabindex="0">
-              <span class="menu-label">프로필 사진 등록·변경</span>
-              <span class="menu-val" id="menu-photo-state">기본 아바타</span>
-            </div>
-            <div class="menu-item" id="menu-logout" role="button" tabindex="0">
-              <span class="menu-label">로그아웃</span>
-              <span class="menu-val">다시 로그인</span>
-            </div>
-            <div class="menu-item danger" id="menu-reset-data" role="button" tabindex="0">
-              <span class="menu-label">데이터 초기화 (처음부터 다시)</span>
-              <span class="menu-val">회원가입부터</span>
-            </div>
-            <div class="menu-item" id="btn-open-create-group" role="button" tabindex="0">
-              <span class="menu-label">새 소모임 만들기</span>
-              <span class="menu-val">준비 중</span>
-            </div>
-            <div class="menu-item highlight-menu">
-              <span class="menu-label">ooG 플러스 멤버십</span>
-              <span class="menu-badge">이용 중</span>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
 
@@ -539,7 +472,7 @@
           </div>
 
           <div class="field-group">
-            <label class="field-label">사진 <span class="field-hint">앨범・카메라・예시</span></label>
+            <label class="field-label">사진 <span class="field-hint">앨범・카메라</span></label>
             <!-- Sprint 17 — 기기 앨범에서 고르거나 바로 찍은 사진 (1080px로 줄여 저장) -->
             <div class="photo-upload" id="composer-photo-upload">
               <div class="photo-upload-btns">
@@ -556,7 +489,6 @@
                 </div>
               </div>
             </div>
-            <div class="media-picker" id="media-picker"><!-- JS --></div>
           </div>
 
           <div class="field-group">
@@ -571,20 +503,6 @@
           <div class="field-group">
             <label class="field-label">사진 위 문구 <span class="field-hint">선택</span></label>
             <input type="text" class="text-input" id="composer-media-caption" aria-label="사진 위 문구" maxlength="40" placeholder="예: 20.11 WOD · 22분 캡">
-          </div>
-
-          <!-- Sprint 15 — 돋보기(타 그룹) 노출 토글 -->
-          <div class="field-group">
-            <div class="privacy-toggle-row" id="composer-explore-row">
-                            <span class="privacy-toggle-text">
-                <span class="privacy-toggle-title">돋보기에 노출</span>
-                <span class="privacy-toggle-desc" id="composer-explore-desc">끄면 이 모임 피드에만 남아요</span>
-              </span>
-              <button class="switch-toggle" id="composer-explore-toggle" role="switch" aria-checked="false"
-                      aria-label="돋보기(타 그룹)에 노출" type="button">
-                <span class="switch-knob" aria-hidden="true"></span>
-              </button>
-            </div>
           </div>
 
           <div class="field-group">
@@ -677,7 +595,6 @@
                 </div>
               </div>
             </div>
-            <div class="media-picker" id="explore-compose-media"><!-- JS --></div>
           </div>
           <div class="field-group">
             <label class="field-label">내용</label>
@@ -939,7 +856,6 @@
                 </div>
               </div>
             </div>
-            <div class="media-picker" id="story-media"><!-- JS --></div>
           </div>
           <div class="field-group">
             <label class="field-label" for="story-caption">한 줄</label>
@@ -1191,8 +1107,8 @@
         <div class="composer-body">
           <p class="compose-note">탐색 '사람' 카드에 보이는 대표 사진과 한 줄 소개를 정해요.</p>
           <div class="field-group">
-            <label class="field-label">대표 사진</label>
-            <div class="media-picker" id="explore-card-media"><!-- JS --></div>
+            <label class="field-label">대표 사진 <span class="field-hint">내가 올린 사진에서</span></label>
+            <div class="media-picker media-picker-photos" id="explore-card-media"><!-- JS --></div>
           </div>
           <div class="field-group">
             <label class="field-label" for="explore-card-intro">한 줄 소개 <span class="field-hint">40자까지</span></label>
@@ -1217,6 +1133,125 @@
     </div>
 
     <input type="file" id="profile-photo-input" accept="image/*" hidden>
+
+    <!-- ==================== Sprint 18 — 모임 사이드바(멤버 · 모임 설정) ==================== -->
+    <div class="drawer-layer" id="group-drawer" hidden>
+      <div class="drawer-scrim" data-drawer-close="1"></div>
+      <aside class="drawer drawer-group" role="dialog" aria-modal="true" aria-label="모임 메뉴" tabindex="-1">
+        <header class="drawer-head">
+          <span class="drawer-avatar" id="group-drawer-avatar" aria-hidden="true">·</span>
+          <div class="drawer-head-text">
+            <h2 class="drawer-title" id="group-drawer-name">모임</h2>
+            <p class="drawer-sub" id="group-drawer-meta"></p>
+          </div>
+          <button class="drawer-close" data-drawer-close="1" type="button" aria-label="사이드바 닫기">&times;</button>
+        </header>
+        <div class="drawer-body" id="group-drawer-body"><!-- JS --></div>
+      </aside>
+    </div>
+
+    <!-- ==================== Sprint 18 — 내정보 사이드바(설정 모음) ==================== -->
+    <div class="drawer-layer" id="profile-drawer" hidden>
+      <div class="drawer-scrim" data-drawer-close="1"></div>
+      <aside class="drawer drawer-profile" role="dialog" aria-modal="true" aria-label="내정보 메뉴" tabindex="-1">
+        <header class="drawer-head">
+          <span class="drawer-avatar" id="profile-drawer-avatar" aria-hidden="true">·</span>
+          <div class="drawer-head-text">
+            <h2 class="drawer-title" id="profile-drawer-name">내정보</h2>
+            <p class="drawer-sub" id="profile-drawer-meta">설정과 활동</p>
+          </div>
+          <button class="drawer-close" data-drawer-close="1" type="button" aria-label="사이드바 닫기">&times;</button>
+        </header>
+        <div class="drawer-body" id="profile-drawer-body">
+          <section class="drawer-section" aria-labelledby="drawer-profile-account-title">
+            <h3 class="drawer-section-title" id="drawer-profile-account-title">내 계정</h3>
+            <div class="settings-menu-list">
+              <div class="menu-item" id="menu-edit-profile" role="button" tabindex="0">
+                <span class="menu-label">프로필 수정</span>
+                <span class="menu-val">닉네임 · 소개</span>
+              </div>
+              <div class="menu-item" id="menu-edit-photo" role="button" tabindex="0">
+                <span class="menu-label">프로필 사진 등록·변경</span>
+                <span class="menu-val" id="menu-photo-state">기본 아바타</span>
+              </div>
+              <div class="menu-item" id="menu-joined-manage" role="button" tabindex="0">
+                <span class="menu-label">가입한 소모임 관리</span>
+                <span class="menu-val" id="menu-joined-count">0개</span>
+              </div>
+              <div class="menu-item" id="menu-my-applications" role="button" tabindex="0">
+                <span class="menu-label">내 모임 가입 신청</span>
+                <span class="menu-val" id="menu-my-applications-count">0건</span>
+              </div>
+              <div class="menu-item" id="btn-open-create-group" role="button" tabindex="0">
+                <span class="menu-label">새 모임 만들기</span>
+                <span class="menu-val">바로 시작</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="drawer-section" aria-labelledby="drawer-profile-activity-title">
+            <h3 class="drawer-section-title" id="drawer-profile-activity-title">활동</h3>
+            <div class="settings-menu-list">
+              <div class="menu-item" id="menu-open-chat" role="button" tabindex="0">
+                <span class="menu-label">1:1 대화방</span>
+                <span class="menu-val" id="menu-chat-count">0개</span>
+              </div>
+              <div class="menu-item" id="menu-activity-log" role="button" tabindex="0">
+                <span class="menu-label">내 활동 로그</span>
+                <span class="menu-val" id="menu-activity-count">0건</span>
+              </div>
+              <div class="menu-item" id="menu-liked-people" role="button" tabindex="0">
+                <span class="menu-label">내가 좋아요한 취미친구</span>
+                <span class="menu-val" id="menu-liked-count">0명</span>
+              </div>
+              <div class="menu-item" id="menu-story-archive" role="button" tabindex="0">
+                <span class="menu-label">스토리 보관함</span>
+                <span class="menu-val" id="menu-story-archive-count">0개</span>
+              </div>
+              <div class="menu-item">
+                <span class="menu-label">프라이버시 &amp; 사진 공개 범위</span>
+                <span class="menu-val">그룹 전용</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="drawer-section" aria-labelledby="drawer-profile-notif-title">
+            <h3 class="drawer-section-title" id="drawer-profile-notif-title">알림 · 설치</h3>
+            <!-- ===== 알림 설정 (Sprint 4.5) ===== -->
+            <section class="notif-settings-card" aria-labelledby="notif-settings-title">
+              <div class="notif-settings-head">
+                <h4 class="notif-settings-title" id="notif-settings-title">알림 설정</h4>
+                <span class="notif-settings-state" id="notif-permission-state">권한 확인 중</span>
+              </div>
+              <div id="notif-settings-body"><!-- JS --></div>
+            </section>
+            <!-- ===== PWA · 홈 화면에 추가 (Sprint 5) ===== -->
+            <section class="pwa-card" id="pwa-card" aria-labelledby="pwa-card-title" hidden>
+              <div class="pwa-card-head">
+                <h4 class="pwa-card-title" id="pwa-card-title"><span>홈 화면에 ooG 추가</span></h4>
+                <span class="pwa-card-state" id="pwa-card-state">확인 중</span>
+              </div>
+              <p class="pwa-card-desc" id="pwa-card-desc">홈 화면에 추가하면 앱처럼 열려요.</p>
+              <div class="pwa-card-actions" id="pwa-card-actions"><!-- JS --></div>
+            </section>
+          </section>
+
+          <section class="drawer-section" aria-labelledby="drawer-profile-danger-title">
+            <h3 class="drawer-section-title" id="drawer-profile-danger-title">계정</h3>
+            <div class="settings-menu-list">
+              <div class="menu-item" id="menu-logout" role="button" tabindex="0">
+                <span class="menu-label">로그아웃</span>
+                <span class="menu-val">다시 로그인</span>
+              </div>
+              <div class="menu-item danger" id="menu-reset-data" role="button" tabindex="0">
+                <span class="menu-label">데이터 초기화 (처음부터 다시)</span>
+                <span class="menu-val">회원가입부터</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
 
     <!-- ==================== 토스트 알림 ==================== -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -1283,7 +1318,6 @@
   </div>
 
   <script src="js/store.js"></script>
-  <script src="js/media.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

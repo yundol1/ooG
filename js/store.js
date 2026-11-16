@@ -91,7 +91,7 @@
  *   store.getGroupedNotifications({mergeRoutine:true});  // 실베 진입·시스템을 종류별 한 칸으로
  *   주간 알림 요약·활동 월간 리포트는 **사용자 지시로 제거**했다(다시 만들지 않는다).
  *
- * ▶ Sprint 15 — 인스타그램형 4탭 (피드 · 돋보기 · 디엠 · 내정보)
+ * ▶ Sprint 15 — 인스타그램형 4탭 (피드 · 탐색 · 디엠 · 내정보)
  *   store.getGroupNotices(groupId);               // 모임 공지(고정 우선) — 작성·고정은 그룹장+부방장
  *   store.getGroupNoticePermission(groupId);      // { role:'leader'|'deputy'|'member', canManage }
  *   store.createGroupNotice(groupId, '공지 문구');  // 그룹장·부방장만
@@ -99,7 +99,6 @@
  *   store.setGroupDeputy(groupId, memberId, true);// 그룹장이 부방장 지정/해제
  *   store.getGroupDmPolicy(groupId);              // { enabled } 그룹 내 1:1 대화 허용 여부
  *   store.updateGroupDmPolicy(groupId, false);    // 그룹장만 ON/OFF
- *   store.getDokboTiles();                        // 돋보기(타 그룹) 사진 — 공개 동의한 글만
  *   store.getMyFeedPosts();                       // 내정보 탭 '내 피드'(내가 올린 글)
  *   store.setGroupEventRsvp(id, 'yes');           // 정원이 차면 자동으로 '대기'로 들어간다
  *
@@ -120,11 +119,11 @@
  * ============================================================================
  */
 
-const STORAGE_KEY = 'oog_app_state_v15';
-const STORAGE_SCHEMA_VERSION = 15;
+const STORAGE_KEY = 'oog_app_state_v16';
+const STORAGE_SCHEMA_VERSION = 16;
 /* Sprint 17 — v14 이하 저장 상태는 '내 활동'이 남아 있다. v15 는 클린 스타트(회원가입부터)라
    옛 키를 읽어도 개인 데이터를 물려받지 않고 새 상태로 시작한다(아래 loadState 참고). */
-const LEGACY_KEYS = ['oog_app_state_v14', 'oog_app_state_v13', 'oog_app_state_v12', 'oog_app_state_v11', 'oog_app_state_v10', 'oog_app_state_v9', 'oog_app_state_v8', 'oog_app_state_v7', 'oog_app_state_v6', 'oog_app_state_v5', 'oog_app_state_v4'];   // 이전 저장 상태 마이그레이션용
+const LEGACY_KEYS = ['oog_app_state_v15', 'oog_app_state_v14', 'oog_app_state_v13', 'oog_app_state_v12', 'oog_app_state_v11', 'oog_app_state_v10', 'oog_app_state_v9', 'oog_app_state_v8', 'oog_app_state_v7', 'oog_app_state_v6', 'oog_app_state_v5', 'oog_app_state_v4'];   // 이전 저장 상태 마이그레이션용
 /* 데모 개발용 페르소나(예전 '나') — 클린 스타트의 기준 id. 이 id 로 남은 개인 데이터는 모두 지운다. */
 const LEGACY_PERSONA_ID = 'user_rookie';
 
@@ -233,7 +232,6 @@ const STORY_SEED = [
     authorName: '코치준',
     authorAvatarText: '준',
     authorGradient: 'linear-gradient(135deg, #0F172A, #334155)',
-    mediaPreset: 'wod',
     mediaCaption: '오늘 와드',
     caption: '19:10반 와드 브리핑 짧게 올려요',
     createdAt: ago(2 * HOUR)
@@ -245,7 +243,6 @@ const STORY_SEED = [
     authorName: '케틀벨러버',
     authorAvatarText: '케',
     authorGradient: 'linear-gradient(135deg, #FBBF24, #B45309)',
-    mediaPreset: 'kettle',
     mediaCaption: '케틀벨 스윙',
     caption: '오늘 스윙 100개 채웠습니다',
     createdAt: ago(6 * HOUR)
@@ -257,7 +254,6 @@ const STORY_SEED = [
     authorName: '루키',
     authorAvatarText: '루',
     authorGradient: 'linear-gradient(135deg, #10B981, #047857)',
-    mediaPreset: 'selfie',
     mediaCaption: '오운완',
     caption: '샤워하고 나오는 길, 오늘도 해냈다',
     createdAt: ago(11 * HOUR)
@@ -269,7 +265,6 @@ const STORY_SEED = [
     authorName: '아이언',
     authorAvatarText: '아',
     authorGradient: 'linear-gradient(135deg, #64748B, #0F172A)',
-    mediaPreset: 'barbell',
     mediaCaption: '벤치 100',
     caption: '주말 원정 준비 중',
     createdAt: ago(4 * HOUR)
@@ -281,7 +276,6 @@ const STORY_SEED = [
     authorName: '준서',
     authorAvatarText: '준',
     authorGradient: 'linear-gradient(135deg, #38BDF8, #0369A1)',
-    mediaPreset: 'climbing_boulder',
     mediaCaption: 'V4 도전',
     caption: '새 벽 세팅 진짜 좋네요',
     createdAt: ago(9 * HOUR)
@@ -294,7 +288,6 @@ const STORY_SEED = [
     authorName: '오늘의토우',
     authorAvatarText: '오',
     authorGradient: 'linear-gradient(135deg, #A78BFA, #6D28D9)',
-    mediaPreset: 'gym',
     mediaCaption: '어제 와드',
     caption: '어제 기록 (24시간 지나 사라짐)',
     createdAt: ago(26 * HOUR)
@@ -305,20 +298,7 @@ const STORY_SEED = [
    금지 사례를 하나 둬서 OFF 안내가 어떻게 보이는지 홈에서 바로 볼 수 있게 한다. */
 const GROUP_DM_SEED = { grp_climbing_1: false };
 
-/* 돋보기(타 그룹) 노출을 **허락한** 사진 글. 여기 없는 글은 모임 피드에만 남는다. */
-const DOKBO_POST_SEED = ['post_cf_02', 'post_ft_01', 'post_run_01', 'post_game_01'];
-
-/* 전체 멤버 시트의 이름·취미 풀 — 멤버 수만큼 결정적으로 채워 넣는다(저장하지 않음). */
-const GROUP_ROSTER_NAMES = [
-  '코치준', '케틀벨러버', '오늘의토우', '아이언', '홀드', '야간비행', '미드장인',
-  '준서', '태오', '도현', '민규', '성현', '지훈', '우진', '현수', '재영',
-  '승우', '건우', '동현', '시우', '정민', '한결', '윤재', '태양', '규민',
-  '상혁', '진영', '병철', '재윤', '하람', '도윤', '은찬', '세준', '원준', '기태',
-  '강토', '루틴', '보늬', '세라', '유하', '주원', '태건', '민서', '하준', '지완',
-  '예준', '시현', '도경', '재민', '건', '겸', '규', '찬', '솔', '담',
-  '온', '별', '결', '훈', '람', '진', '혁', '광', '석', '범',
-  '겨울', '여름', '노을', '새벽', '한강', '성동', '성수', '서울숲'
-];
+/* 멤버 아바타의 기본 색조 — 이름을 지어내지 않고, 실제 멤버의 이니셜 원에만 쓴다. */
 const GROUP_ROSTER_HOBBIES = [
   { name: '크로스핏', emoji: '🏋️' }, { name: '러닝', emoji: '🏃' },
   { name: '클라이밍', emoji: '🧗' }, { name: '헬스', emoji: '💪' },
@@ -666,15 +646,15 @@ const SIMULATED_PERSONAS = [
  * currentUser : { id, nickname, handle, role, membership, avatarGradient,
  *                 location, coords, hobbies, workoutSpec, bio,
  *                 joinedGroupIds[] }
- * group       : { id, name, category, categoryName, hobbyId, emoji, coverPreset,
+ * group       : { id, name, category, categoryName, hobbyId, emoji,
  *                 location, distanceKm, memberCount, maxMembers, meetLabel,
  *                 privacyType, privacyLabel, description, tags[], rules,
- *                 leaderId, leaderName, customTags[], ratio }
+ *                 leaderId, leaderName, customTags[], ratio, members[] }
  *                 ← hobbyId: 탐색 취미 필터와 맞물리는 키 (category 와 별개로 정규화)
- *                 ← coverPreset: 메이슨리 모임 카드의 커버 일러스트
+ *                 ← members: 실제로 승인된 멤버(없으면 그룹장·나만) — 지어낸 이름은 쓰지 않는다
  *                 ← ratio: 'wide'(4:3) | 'square'(1:1) — 2열 메이슨리의 높이 변주
  * post        : { id, groupId, authorId, authorName, authorAvatarText,
- *                 authorGradient, tag, caption, mediaPreset, mediaCaption,
+ *                 authorGradient, tag, caption, photoUrl, mediaCaption,
  *                 likes, likedByMe, bookmarkedByMe,
  *                 comments[{ id, authorId, authorName, text, createdAt }],
  *                 createdAt }               ← createdAt 은 ISO 문자열
@@ -685,7 +665,7 @@ const SIMULATED_PERSONAS = [
  *                 hobbyStyle,                           ← A: 취미 스타일·구력 ("롤 다이아 · 원딜")
  *                 cycle, cycleEmoji,                    ← 선호 활동 주기·시간대
  *                 hobbies[], specChips[{icon,label,value}], bio,
- *                 mediaPreset, avatarText, avatarGradient, ratio,
+ *                 photoUrl, avatarText, avatarGradient, ratio,
  *                 likesMe, verified }
  *                 ← ratio: 'tall'(3:4) | 'mid'(4:5) | 'square'(1:1) — 메이슨리 높이 변주
  *                 ← likesMe: 이미 나를 LIKE한 상대 (상호 LIKE 판정의 유일한 근거)
@@ -698,7 +678,7 @@ const SIMULATED_PERSONAS = [
  *                 ← Sprint 4: 인앱 1:1 대화방의 실제 메시지 내역
  * chatMessage : { id, from, text, at }
  * explorePost : { id, authorId, authorName, authorAvatarText, authorGradient,
- *                 hobbyId, hobbyLabel, tag, caption, mediaPreset, mediaCaption,
+ *                 hobbyId, hobbyLabel, tag, caption, photoUrl, mediaCaption,
  *                 ratio:'wide'(4:3)|'square'(1:1), groupName,
  *                 likes, likedByMe, comments[{ id, authorName, text, createdAt }],
  *                 createdAt, isMine }
@@ -733,7 +713,7 @@ const defaultInitialState = {
     photoUrl: null,
     registered: true,
     /* Sprint 17 — 탐색 사람 카드 꾸미기(대표 사진 프리셋 · 한 줄 소개) */
-    exploreCard: { mediaPreset: 'selfie', intro: '주 3회 크로스핏 · 퇴근 후 땀' },
+    exploreCard: { photoUrl: null, intro: '주 3회 크로스핏 · 퇴근 후 땀' },
     location: '서울 성동구 성수동',
     coords: { lat: 37.5446, lng: 127.0560 },
     /* Sprint 7 — 내 생활권 (탐색 지역 필터·새 글/모임 작성 시 기본 지역) */
@@ -796,12 +776,6 @@ const defaultInitialState = {
    * ------------------------------------------------------------------------- */
   ageRangeBounds: { min: 0, max: 99 },
 
-  /* ---------------- Sprint 16 — 글 올릴 때 마지막 선택 기억 ----------------
-   * 11/15 18:36 사용자 답: "돋보기 기본값 = 마지막 선택 기억".
-   * 작성 모달의 '돋보기에 노출' 토글을 마지막으로 둔 값으로 다음 작성도 시작한다.
-   * ------------------------------------------------------------------------- */
-  composePrefs: { exploreVisible: false },
-
   /* ---------------- Sprint 16 — 24시간 스토리 (모임 단위) ----------------
    * 위 STORY_SEED 참고. 읽을 때 24시간 지난 것은 걸러낸다.
    * ------------------------------------------------------------------------- */
@@ -849,7 +823,6 @@ const defaultInitialState = {
       category: 'crossfit',
       categoryName: '크로스핏',
       hobbyId: 'fitness',
-      coverPreset: 'barbell',
       meetLabel: '월·수·금 19:10',
       ratio: 'wide',
       emoji: '🏋️',
@@ -876,7 +849,6 @@ const defaultInitialState = {
       category: 'fitness',
       categoryName: '헬스·웨이트',
       hobbyId: 'fitness',
-      coverPreset: 'dumbbell',
       meetLabel: '주말 원정 · 상시',
       ratio: 'square',
       emoji: '💪',
@@ -901,7 +873,6 @@ const defaultInitialState = {
       category: 'climb',
       categoryName: '클라이밍',
       hobbyId: 'climb',
-      coverPreset: 'climbing_boulder',
       meetLabel: '평일 저녁 · 주말 낮',
       ratio: 'wide',
       emoji: '🧗',
@@ -926,7 +897,6 @@ const defaultInitialState = {
       category: 'run',
       categoryName: '러닝',
       hobbyId: 'run',
-      coverPreset: 'running_track',
       meetLabel: '화·목 20:00',
       ratio: 'square',
       emoji: '🏃',
@@ -951,7 +921,6 @@ const defaultInitialState = {
       category: 'swim',
       categoryName: '수영',
       hobbyId: 'swim',
-      coverPreset: 'swimming_pool',
       meetLabel: '월·수·금 06:00',
       ratio: 'wide',
       emoji: '🏊',
@@ -976,7 +945,6 @@ const defaultInitialState = {
       category: 'game',
       categoryName: '롤·e스포츠',
       hobbyId: 'game',
-      coverPreset: 'gaming_room',
       meetLabel: '상시 · 디스코드',
       ratio: 'square',
       emoji: '🎮',
@@ -1001,7 +969,6 @@ const defaultInitialState = {
       category: 'hike',
       categoryName: '등산·트레킹',
       hobbyId: 'hike',
-      coverPreset: 'climbing_boulder',
       meetLabel: '토 08:00 출발',
       ratio: 'wide',
       emoji: '⛰️',
@@ -1026,7 +993,6 @@ const defaultInitialState = {
       category: 'boardgame',
       categoryName: '보드게임',
       hobbyId: 'boardgame',
-      coverPreset: 'boardgame_table',
       meetLabel: '토·일 14:00',
       ratio: 'square',
       emoji: '🎲',
@@ -1051,7 +1017,6 @@ const defaultInitialState = {
       category: 'movie',
       categoryName: '영화·전시',
       hobbyId: 'movie',
-      coverPreset: 'cinema_film',
       meetLabel: '금·토 심야',
       ratio: 'wide',
       emoji: '🎬',
@@ -1076,7 +1041,6 @@ const defaultInitialState = {
       category: 'cafe',
       categoryName: '카페/맛집',
       hobbyId: 'cafe',
-      coverPreset: 'cafe_coffee',
       meetLabel: '주말 11:00~15:00',
       ratio: 'square',
       emoji: '☕',
@@ -1102,7 +1066,6 @@ const defaultInitialState = {
       category: 'movie',
       categoryName: '영화·전시',
       hobbyId: 'movie',
-      coverPreset: 'cinema_film',
       meetLabel: '금·토 심야',
       ratio: 'wide',
       emoji: '🎬',
@@ -1129,7 +1092,6 @@ const defaultInitialState = {
       category: 'run',
       categoryName: '러닝',
       hobbyId: 'run',
-      coverPreset: 'running_track',
       meetLabel: '화·목 06:30',
       ratio: 'square',
       emoji: '🏃',
@@ -1156,7 +1118,6 @@ const defaultInitialState = {
       category: 'boardgame',
       categoryName: '보드게임',
       hobbyId: 'boardgame',
-      coverPreset: 'boardgame_table',
       meetLabel: '일 15:00',
       ratio: 'square',
       emoji: '🎲',
@@ -1183,7 +1144,6 @@ const defaultInitialState = {
       category: 'climb',
       categoryName: '클라이밍',
       hobbyId: 'climb',
-      coverPreset: 'climbing_boulder',
       meetLabel: '평일 20:00',
       ratio: 'wide',
       emoji: '🧗',
@@ -1210,7 +1170,6 @@ const defaultInitialState = {
       category: 'run',
       categoryName: '러닝',
       hobbyId: 'run',
-      coverPreset: 'running_track',
       meetLabel: '월·수 20:00',
       ratio: 'square',
       emoji: '🏃',
@@ -1244,7 +1203,6 @@ const defaultInitialState = {
       authorGradient: 'linear-gradient(135deg, #10B981, #047857)',
       tag: 'WOD기록',
       caption: '오늘 19:10 WOD 완주! 물구나무 푸시업은 아직 무리지만 정자세 푸시업 50개는 다 채웠습니다 🔥 샤워하고 나오니 잡생각이 싹 사라지네요.',
-      mediaPreset: 'wod',
       mediaCaption: '20.11 WOD · 22분 캡',
       likes: 14,
       likedByMe: false,
@@ -1265,7 +1223,6 @@ const defaultInitialState = {
       authorGradient: 'linear-gradient(135deg, #0F172A, #334155)',
       tag: '오운완',
       caption: '데드리프트 140kg 3회 성공. 무게보다 등 각도가 먼저라는 말, 이제 좀 알 것 같습니다. 다들 부상 없이 갑시다 💪',
-      mediaPreset: 'barbell',
       mediaCaption: '3RM 갱신',
       likes: 32,
       likedByMe: true,
@@ -1285,7 +1242,6 @@ const defaultInitialState = {
       authorGradient: 'linear-gradient(135deg, #059669, #10B981)',
       tag: 'PR달성',
       caption: '파머스 워크 24kg 왕복 4세트. 전완근이 터지는 줄 알았지만 PR 갱신해서 기분 좋습니다 ㅋㅋ 내일도 출석 도장 찍어요!',
-      mediaPreset: 'kettle',
       mediaCaption: '왕복 4세트',
       likes: 11,
       likedByMe: false,
@@ -1304,7 +1260,6 @@ const defaultInitialState = {
       authorGradient: 'linear-gradient(135deg, #A7F3D0, #10B981)',
       tag: '후기',
       caption: '입문 한 달 후기. 처음엔 스케일드로 따라갔는데 이제 RX로 두 개는 완주해요. 코치님이 자세를 계속 봐주셔서 어깨가 편해졌습니다.',
-      mediaPreset: 'gym',
       mediaCaption: '한 달 기록',
       likes: 8,
       likedByMe: false,
@@ -1321,7 +1276,6 @@ const defaultInitialState = {
       authorGradient: 'linear-gradient(135deg, #334155, #0F172A)',
       tag: '3대측정',
       caption: '3대 500 도전 8주차. 스쿼트 170 / 벤치 115 / 데드 175 = 460kg. 다음 달에 500 찍고 인증샷 올립니다 🔥',
-      mediaPreset: 'gym',
       mediaCaption: '8주차 · 460kg',
       likes: 41,
       likedByMe: false,
@@ -1341,7 +1295,6 @@ const defaultInitialState = {
       authorGradient: 'linear-gradient(135deg, #047857, #10B981)',
       tag: '완등인증',
       caption: '성수 블록스 빨강 V4 완등! 마지막 홀드에서 두 번 떨어지고 세 번째에 붙었습니다. 손가락 살리느라 테이핑 필수예요.',
-      mediaPreset: 'climb',
       mediaCaption: '빨강 3트라이',
       likes: 19,
       likedByMe: true,
@@ -1360,7 +1313,6 @@ const defaultInitialState = {
       authorGradient: 'linear-gradient(135deg, #1E3A8A, #0EA5E9)',
       tag: '기록인증',
       caption: '여의도 샛강 10K 52분 31초. 밤에 달리면 강바람이 등에 붙어서 낮보다 30초는 빨라지는 것 같아요. 다음 주 화요일도 나옵니다.',
-      mediaPreset: 'nightrun',
       mediaCaption: '샛강 코스',
       likes: 47,
       likedByMe: false,
@@ -1379,7 +1331,6 @@ const defaultInitialState = {
       authorGradient: 'linear-gradient(135deg, #4C1D95, #7C3AED)',
       tag: '승급전',
       caption: '3연패 뒤에 3연승으로 골드 승급했습니다. 새벽 2시에 이기고 자면 다음 날이 제일 개운해요 ㅋㅋ 다들 승급전 화이팅!',
-      mediaPreset: 'lol',
       mediaCaption: '승급전 3연승',
       likes: 23,
       likedByMe: false,
@@ -1412,7 +1363,6 @@ const defaultInitialState = {
       hobbyLabel: '크로스핏',
       tag: '오운완',
       caption: '오늘 WOD: 클린 60kg 5x3 + 스내치 테크닉 20분. 마지막 세트에서 팔이 아니라 다리로 들었다는 느낌이 왔습니다. 내일 19:10반에 또 갑니다.',
-      mediaPreset: 'barbell',
       mediaCaption: '클린 60kg · 5x3',
       ratio: 'wide',
       groupName: '성수 레벨업 퇴근 와드팟',
@@ -1435,7 +1385,6 @@ const defaultInitialState = {
       hobbyLabel: '클라이밍',
       tag: '완등인증',
       caption: '성수 볼더링 입문 3주차. 오늘 파랑 V2 완등했습니다. 아직 발끝이 잘 안 잡히지만 재미가 더 커요.',
-      mediaPreset: 'climbing_boulder',
       mediaCaption: 'V2 첫 완등',
       ratio: 'square',
       groupName: '블록스 성수 볼더링 원정대',
@@ -1457,7 +1406,6 @@ const defaultInitialState = {
       hobbyLabel: '게임',
       tag: '내전',
       caption: '어제 5인 내전 세 판 전부 이겼습니다. 칼바람만 하다가 소환사의 협곡 들어가니 손이 굳더라고요 ㅋㅋ 이번 주말에 한 판 더 모실 분?',
-      mediaPreset: 'lol',
       mediaCaption: '5인 내전 3연승',
       ratio: 'wide',
       groupName: '심야 롤 칼바람 & 자랭 소환사들',
@@ -1479,7 +1427,6 @@ const defaultInitialState = {
       hobbyLabel: '러닝',
       tag: '오운완',
       caption: '뚝섬한강공원 10K 51분 12초. 어제보다 40초 당겼습니다. 목요일 저녁 같이 뛰실 분은 편하게 말 걸어주세요, 대화 되는 속도로 갑니다.',
-      mediaPreset: 'nightrun',
       mediaCaption: '10K · 51분 12초',
       ratio: 'square',
       groupName: '한강 나이트 러닝 크루',
@@ -1501,7 +1448,6 @@ const defaultInitialState = {
       hobbyLabel: '카페/맛집',
       tag: '카페투어',
       caption: '연남동에 새로 생긴 로스터리 다녀왔습니다. 산미 살아있는 에티오피아 원두 핸드드립이 진짜 좋았어요. 사진은 창가 자리에서.',
-      mediaPreset: 'meal',
       mediaCaption: '연남동 · 핸드드립',
       ratio: 'wide',
       groupName: '성수 카페투어 & 디저트 크루',
@@ -1522,7 +1468,6 @@ const defaultInitialState = {
       hobbyLabel: '클라이밍',
       tag: '완등인증',
       caption: '성수 블록스 파랑 V4 완등. 마지막 홀드에서 두 번 떨어지고 세 번째에 붙었습니다. 발쓰기만 잡히면 진짜 편해져요.',
-      mediaPreset: 'climb',
       mediaCaption: '빨강 루트 3트라이',
       ratio: 'square',
       groupName: '블록스 성수 볼더링 원정대',
@@ -1541,7 +1486,6 @@ const defaultInitialState = {
       hobbyLabel: '수영',
       tag: '새벽수영',
       caption: '06시 레인. 물 온도가 딱 좋아서 1,500m를 한 번에 갔습니다. 출근 전에 이만큼 하고 나면 하루가 다릅니다.',
-      mediaPreset: 'pool',
       mediaCaption: '1,500m · 29분',
       ratio: 'wide',
       groupName: '성동구민센터 새벽 모닝스윔',
@@ -1562,7 +1506,6 @@ const defaultInitialState = {
       hobbyLabel: '영화·전시',
       tag: '영화토크',
       caption: '금요일 심야로 독립영화 한 편 봤습니다. 엔딩 크레딧 끝까지 앉아 있었던 건 오랜만이에요. 스포 없이 이야기할 사람 구합니다.',
-      mediaPreset: 'cinema_film',
       mediaCaption: '금요 심야 · 21:40',
       ratio: 'square',
       groupName: '영등포/용산 심야 시네마 & 전시',
@@ -1581,7 +1524,6 @@ const defaultInitialState = {
       hobbyLabel: '보드게임',
       tag: '번개',
       caption: '토요일 14시 왕십리 보드게임카페에서 아그리콜라 4인 한 판 돌립니다. 뉴비도 룰 설명 듣고 바로 앉으실 수 있어요. 두 자리 남았습니다.',
-      mediaPreset: 'boardgame_table',
       mediaCaption: '토 14:00 · 왕십리',
       ratio: 'wide',
       groupName: '강남·왕십리 전략 보드게임 클럽',
@@ -1603,7 +1545,6 @@ const defaultInitialState = {
       hobbyLabel: '크로스핏',
       tag: 'WOD기록',
       caption: '19:10반 오늘 WOD 완주. 클린 60kg 첫 성공했습니다. 운동 끝나고 단백질 한 잔 같이 하실 분 계실까요?',
-      mediaPreset: 'barbell',
       mediaCaption: '클린 60kg PR',
       ratio: 'square',
       groupName: '성수 레벨업 퇴근 와드팟',
@@ -1624,7 +1565,6 @@ const defaultInitialState = {
       hobbyLabel: '카페/맛집',
       tag: '맛집',
       caption: '성수 순대국 골목 세 번째 집이 제일 깔끔했습니다. 운동하고 다음 날 아침에 가면 국물이 더 시원해요.',
-      mediaPreset: 'meal',
       mediaCaption: '성수 순대국',
       ratio: 'wide',
       groupName: '성수 카페투어 & 디저트 크루',
@@ -1643,7 +1583,6 @@ const defaultInitialState = {
       hobbyLabel: '게임',
       tag: '승급전',
       caption: '3연패 뒤에 3연승으로 골드 승급했습니다. 새벽 2시에 이기고 자면 다음 날이 제일 개운해요 ㅋㅋ 다들 승급전 화이팅!',
-      mediaPreset: 'lol',
       mediaCaption: '승급전 3연승',
       ratio: 'square',
       groupName: '심야 롤 칼바람 & 자랭 소환사들',
@@ -1662,7 +1601,6 @@ const defaultInitialState = {
       hobbyLabel: '크로스핏',
       tag: 'PR달성',
       caption: '파머스 워크 24kg 왕복 4세트. 전완근이 터지는 줄 알았지만 PR 갱신했습니다. 악력은 진짜 배신을 안 하네요.',
-      mediaPreset: 'kettle',
       mediaCaption: '24kg · 왕복 4세트',
       ratio: 'wide',
       groupName: '성수 레벨업 퇴근 와드팟',
@@ -1683,7 +1621,6 @@ const defaultInitialState = {
       hobbyLabel: '러닝',
       tag: '기록인증',
       caption: '여의도 샛강 10K 52분 31초. 밤에 달리면 강바람이 등에 붙어서 낮보다 30초는 빨라지는 것 같아요. 화요일도 나옵니다.',
-      mediaPreset: 'nightrun',
       mediaCaption: '샛강 코스 · 야간런',
       ratio: 'square',
       groupName: '한강 나이트 러닝 크루',
@@ -1703,7 +1640,6 @@ const defaultInitialState = {
       hobbyLabel: '영화·전시',
       tag: '영화토크',
       caption: '합정 아트하우스에서 재개봉작 봤습니다. 엔딩이 열린 채로 끝나서 나오는 길에 계속 생각났어요. 스포 없이 이야기할 사람 구해요.',
-      mediaPreset: 'cinema_film',
       mediaCaption: '합정 · 재개봉작',
       ratio: 'wide',
       groupName: '홍대 심야영화 & 전시 크루',
@@ -1726,7 +1662,6 @@ const defaultInitialState = {
       hobbyLabel: '카페/맛집',
       tag: '카페투어',
       caption: '성수 골목 안쪽 로스터리. 사람 없는 오후 3시가 제일 좋습니다. 원두는 케냐, 산미보다 단맛 쪽이에요.',
-      mediaPreset: 'cafe_coffee',
       mediaCaption: '성수 · 케냐 AA',
       ratio: 'square',
       groupName: '성수 카페투어 & 디저트 크루',
@@ -1747,7 +1682,6 @@ const defaultInitialState = {
       hobbyLabel: '보드게임',
       tag: '게임후기',
       caption: '일요일 을지로에서 4인 헤비게임 한 판. 3시간 반 걸렸고 2점 차로 졌습니다. 이 맛에 합니다.',
-      mediaPreset: 'boardgame_table',
       mediaCaption: '을지로 · 4인 전략',
       ratio: 'wide',
       groupName: '종로 전략 보드게임 & 독서',
@@ -1769,7 +1703,6 @@ const defaultInitialState = {
       hobbyLabel: '클라이밍',
       tag: '완등인증',
       caption: '이태원에서 V3 첫 완등. 손가락이 아직 얼얼한데 기분은 좋습니다. 이번 주 한 번 더 갈 사람?',
-      mediaPreset: 'climbing_boulder',
       mediaCaption: 'V3 첫 완등',
       ratio: 'square',
       groupName: '이태원·한남 클라이밍 크루',
@@ -1790,7 +1723,6 @@ const defaultInitialState = {
       hobbyLabel: '러닝',
       tag: '오운완',
       caption: '판교 탄천 6K 31분. 퇴근하고 이거 하나면 하루가 정리됩니다. 판교 사시는 분들 같이 뛰어요.',
-      mediaPreset: 'running_track',
       mediaCaption: '탄천 · 6K',
       ratio: 'square',
       groupName: '판교·분당 퇴근 러닝',
@@ -1809,7 +1741,6 @@ const defaultInitialState = {
       hobbyLabel: '수영',
       tag: '새벽수영',
       caption: '여의도 수영장 저녁 레인. 오늘은 1,000m 24분으로 끊었습니다. 사람 적어서 좋네요.',
-      mediaPreset: 'pool',
       mediaCaption: '1,000m · 24분',
       ratio: 'wide',
       groupName: '성동구민센터 새벽 모닝스윔',
@@ -1846,7 +1777,6 @@ const defaultInitialState = {
         { icon: '🎯', label: '전문', value: '클린 · 스내치' }
       ],
       bio: '성수박스에서 19:10반을 맡고 있습니다. 무게보다 자세 먼저, 부상 없이 오래 가는 게 목표예요.',
-      mediaPreset: 'barbell',
       avatarText: '준',
       avatarGradient: 'linear-gradient(135deg, #0F172A 0%, #334155 100%)',
       badge: '🏋️ 박스 코치 8년차',
@@ -1874,7 +1804,6 @@ const defaultInitialState = {
         { icon: '🎧', label: '성향', value: '즐겜 · 디스코드' }
       ],
       bio: '퇴근하면 디스코드부터 켭니다. 랭겜은 진지하게, 칼바람은 웃으면서 해요.',
-      mediaPreset: 'gaming_room',
       avatarText: '미',
       avatarGradient: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)',
       badge: '🎮 골드 미드 · 칼바람',
@@ -1926,7 +1855,6 @@ const defaultInitialState = {
         { icon: '🎧', label: '성향', value: '승패보다 분위기' }
       ],
       bio: '퇴근하고 디스코드 켜서 칼바람 몇 판 하실 분? 랭겜은 진지하게, 칼바람은 웃으면서 해요.',
-      mediaPreset: 'gaming_room',
       avatarText: '준',
       avatarGradient: 'linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)',
       badge: '🎮 롤 다이아 원딜',
@@ -1953,7 +1881,6 @@ const defaultInitialState = {
         { icon: '🗺️', label: '주 코스', value: '뚝섬한강 · 샛강' }
       ],
       bio: '뚝섬한강공원에서 화·목 저녁에 달려요. 같이 뛰면서 대화가 되는 속도로만 갑니다.',
-      mediaPreset: 'running_track',
       avatarText: '민',
       avatarGradient: 'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)',
       badge: '🏃 10K 52분 러너',
@@ -1980,7 +1907,6 @@ const defaultInitialState = {
         { icon: '☀️', label: '탐방 시간', value: '주말 11시~17시' }
       ],
       bio: '주말마다 카페 두세 곳 돌면서 원두 이야기 하는 게 낙이에요. 사진은 제가 찍어드릴게요.',
-      mediaPreset: 'cafe_coffee',
       avatarText: '도',
       avatarGradient: 'linear-gradient(135deg, #F59E0B 0%, #92400E 100%)',
       badge: '☕ 핸드드립 3년차',
@@ -2007,7 +1933,6 @@ const defaultInitialState = {
         { icon: '🌃', label: '관람 시간', value: '금요 심야 ~ 21시' }
       ],
       bio: '금요일 밤 심야 영화 보고 근처 포차에서 30분만 이야기하는 코스 좋아해요. 스포는 안 합니다.',
-      mediaPreset: 'cinema_film',
       avatarText: '서',
       avatarGradient: 'linear-gradient(135deg, #334155 0%, #0F172A 100%)',
       badge: '🎬 올해 84편 관람',
@@ -2034,7 +1959,6 @@ const defaultInitialState = {
         { icon: '🕑', label: '모임 시간', value: '주말 14시~' }
       ],
       bio: '설명은 제가 친절하게 해드려요. 2인 전략게임 진지하게 꼬박 3시간 앉아 있을 수 있는 분 환영.',
-      mediaPreset: 'boardgame_table',
       avatarText: '현',
       avatarGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
       badge: '🎲 아그리콜라 러버',
@@ -2061,7 +1985,6 @@ const defaultInitialState = {
         { icon: '💪', label: '목표', value: '푸시업 50개 · 클린 60kg' }
       ],
       bio: '레벨업 박스 19:10반 레귤러예요. 운동 끝나고 단백질 한 잔 같이 하실 분, 어색해도 먼저 말 걸게요.',
-      mediaPreset: 'wod',
       avatarText: '지',
       avatarGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
       badge: '🏋️ 크로스핏 6개월차',
@@ -2088,7 +2011,6 @@ const defaultInitialState = {
         { icon: '🥽', label: '레벨', value: '상급반' }
       ],
       bio: '새벽 6시에 물에 들어가면 하루가 달라집니다. 같이 출근 전에 수영하실 분.',
-      mediaPreset: 'swimming_pool',
       avatarText: '태',
       avatarGradient: 'linear-gradient(135deg, #22D3EE 0%, #0E7490 100%)',
       badge: '🏊 자유형 1,500m',
@@ -2115,7 +2037,6 @@ const defaultInitialState = {
         { icon: '📍', label: '주 지점', value: '신사 · 성수' }
       ],
       bio: '발쓰기만 제대로 해도 반은 먹고 들어가요. 성수 블록스 갈 때 같이 가실 분, 루트 읽어드립니다.',
-      mediaPreset: 'climbing_boulder',
       avatarText: '성',
       avatarGradient: 'linear-gradient(135deg, #64748B 0%, #1E293B 100%)',
       badge: '🧗 V4 볼더러',
@@ -2142,7 +2063,6 @@ const defaultInitialState = {
         { icon: '🕑', label: '모임 시간', value: '주말 15시~' }
       ],
       bio: '성수에서 태어나서 성수만 아는 사람입니다. 순대국부터 보드게임까지 코스 찍어드릴게요.',
-      mediaPreset: 'cafe_coffee',
       avatarText: '하',
       avatarGradient: 'linear-gradient(135deg, #F97316 0%, #9A3412 100%)',
       badge: '✨ 성수 맛집 지도',
@@ -2169,7 +2089,6 @@ const defaultInitialState = {
         { icon: '⏰', label: '운동 시간', value: '주말 07:00' }
       ],
       bio: '주말 아침에 산 오르고 내려와서 국밥 먹는 게 최고예요. 강남에서 출발해도 괜찮아요.',
-      mediaPreset: 'climbing_boulder',
       avatarText: '우',
       avatarGradient: 'linear-gradient(135deg, #0F766E 0%, #064E3B 100%)',
       badge: '💪 3대 420 · 아차산',
@@ -2198,7 +2117,6 @@ const defaultInitialState = {
         { icon: '🌃', label: '관람 시간', value: '금·토 심야' }
       ],
       bio: '합정에서 심야 상영 보고 걸어서 집에 오는 코스가 좋아요. 보고 나서 30분은 이야기하고 싶습니다.',
-      mediaPreset: 'cinema_film',
       avatarText: '지',
       avatarGradient: 'linear-gradient(135deg, #4338CA 0%, #1E1B4B 100%)',
       badge: '🎬 올해 96편',
@@ -2226,7 +2144,6 @@ const defaultInitialState = {
         { icon: '☀️', label: '탐방 시간', value: '주말 12~18시' }
       ],
       bio: '성수에서 5년 살았습니다. 줄 서는 집보다 조용한 집을 알아요. 같이 도장깨기 하실 분.',
-      mediaPreset: 'cafe_coffee',
       avatarText: '성',
       avatarGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
       badge: '☕ 핸드드립 5년차',
@@ -2254,7 +2171,6 @@ const defaultInitialState = {
         { icon: '🕑', label: '모임 시간', value: '주말 15시~' }
       ],
       bio: '홍대 보드게임카페 단골입니다. 뉴비한테 설명하는 거 좋아해요. 무거운 게임도 천천히 같이 가요.',
-      mediaPreset: 'boardgame_table',
       avatarText: '동',
       avatarGradient: 'linear-gradient(135deg, #0E7490 0%, #164E63 100%)',
       badge: '🎲 홍대 보겜 단골',
@@ -2282,7 +2198,6 @@ const defaultInitialState = {
         { icon: '🗺️', label: '주 코스', value: '뚝섬 · 건대' }
       ],
       bio: '아침에 5K만 뛰고 하루를 시작합니다. 속도보다 같이 나오는 게 어려운 거더라고요.',
-      mediaPreset: 'running_track',
       avatarText: '겨',
       avatarGradient: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)',
       badge: '🏃 아침 5K 습관',
@@ -2310,7 +2225,6 @@ const defaultInitialState = {
         { icon: '🕑', label: '모임 시간', value: '일 15시~' }
       ],
       bio: '말 없이 한 판 두 시간 앉아 있는 걸 좋아합니다. 끝나고 한 잔 하면서 복기하는 것도요.',
-      mediaPreset: 'boardgame_table',
       avatarText: '태',
       avatarGradient: 'linear-gradient(135deg, #78350F 0%, #451A03 100%)',
       badge: '🎲 헤비 전략파',
@@ -2338,7 +2252,6 @@ const defaultInitialState = {
         { icon: '📍', label: '주 지점', value: '이태원 · 한남' }
       ],
       bio: '이태원에서 클라이밍 1년차예요. 잘하는 사람보다 꾸준한 사람이랑 같이 하고 싶습니다.',
-      mediaPreset: 'climbing_boulder',
       avatarText: '이',
       avatarGradient: 'linear-gradient(135deg, #0F766E 0%, #134E4A 100%)',
       badge: '🧗 V3 1년차',
@@ -2366,7 +2279,6 @@ const defaultInitialState = {
         { icon: '🗺️', label: '주 코스', value: '탄천 · 판교' }
       ],
       bio: '판교에서 일합니다. 퇴근하고 6K 뛰고 집에 가는 게 하루 마무리예요. 주말엔 서울 나갑니다.',
-      mediaPreset: 'gym',
       avatarText: '준',
       avatarGradient: 'linear-gradient(135deg, #475569 0%, #1E293B 100%)',
       badge: '🏋️ 3대 380 · 퇴근런',
@@ -2394,7 +2306,6 @@ const defaultInitialState = {
         { icon: '🥽', label: '레벨', value: '중급반' }
       ],
       bio: '여의도에서 일하고 수영장 들렀다 집에 갑니다. 같이 레인 쓰실 분, 페이스 맞춰요.',
-      mediaPreset: 'swimming_pool',
       avatarText: '보',
       avatarGradient: 'linear-gradient(135deg, #0891B2 0%, #155E75 100%)',
       badge: '🏊 자유형 1,000m',
@@ -2812,11 +2723,7 @@ defaultInitialState.groups.forEach((g) => {
   /* Sprint 15 — 부방장 · 그룹 내 1:1 대화 허용 여부 */
   g.deputyIds = (GROUP_DEPUTY_SEED[g.id] || []).slice();
   g.dmEnabled = GROUP_DM_SEED[g.id] === false ? false : true;
-});
-
-/* Sprint 15 — 돋보기(타 그룹) 노출을 허락한 사진 글만 표시한다. */
-defaultInitialState.feedPosts.forEach((p) => {
-  p.exploreVisible = DOKBO_POST_SEED.includes(p.id);
+  if (!Array.isArray(g.members)) g.members = [];
 });
 
 /** Sprint 17 — '후기' 말머리 판정(후기 · 리뷰 · 후기/리뷰). */
@@ -2873,76 +2780,53 @@ function blankCurrentUser() {
     joinedGroupIds: [],
     exploreProfileVisible: false,
     /* Sprint 17 — 탐색 사람 카드 꾸미기(대표 사진·한 줄 소개) */
-    exploreCard: { mediaPreset: 'selfie', intro: '' }
+    exploreCard: { photoUrl: null, intro: '' }
   };
 }
 
 /**
- * 시드 상태에서 **내(예전 페르소나)의 흔적만** 지운다. 타인·공개 모임·공개 글은 남는다.
+ * 콘텐츠를 **전부 비운다** — Sprint 18의 '아예 싹 처음부터'.
+ * 11/16 사용자: "게시판내 데이터도 초기로해줘 아예 싹 처음으로 지금 시뢩해".
+ *  · 남기는 것은 선택지(취미 칩·지역·나이 제한·알림 종류) 같은 **도구**뿐이다.
+ *  · 모임·피드·게시판 글·공지·일정·스토리·사람·쪽지·알림·가입 신청은 하나도 남기지 않는다.
+ *    (예전에는 '구경용' 타인 데이터를 남겼지만, 이제는 새 계정이 진짜 빈 앱에서 시작한다.)
  * @param {object} state buildCleanState() 안에서만 쓰는 사본
  */
-function stripPersonalData(state) {
-  const mine = LEGACY_PERSONA_ID;
-  /* ① 모임 — 내가 그룹장이던 모임은 데모 인물에게 넘긴다(빈 모임이 되지 않게). */
-  state.groups = (state.groups || []).map((g) => {
-    if (g.leaderId !== mine) return g;
-    return { ...g, leaderId: 'leader_jun', leaderName: '코치준' };
-  });
-  /* ② 내가 쓴 피드 글과 내 댓글 */
-  state.feedPosts = (state.feedPosts || [])
-    .filter((p) => p.authorId !== mine)
-    .map((p) => ({
-      ...p,
-      comments: (p.comments || []).filter((c) => c.authorId !== mine),
-      likedByMe: false,
-      bookmarked: false
-    }));
-  /* ③ 내가 쓴 공개 글 */
-  state.explorePosts = (state.explorePosts || [])
-    .filter((p) => p.authorId !== mine)
-    .map((p) => ({
-      ...p,
-      comments: (p.comments || []).filter((c) => c.authorId !== mine),
-      likedByMe: false,
-      isMine: false
-    }));
-  /* ④ 내 스토리(살아 있는 것·지난 것 모두) */
-  state.stories = (state.stories || []).filter((s) => s.authorId !== mine);
-  state.storyArchive = [];
-  /* ⑤ 내가 쓴 공지 — 그룹장에게 넘긴다 */
-  state.groupNotices = (state.groupNotices || []).map((n) => (n.authorId === mine
-    ? { ...n, authorId: 'leader_jun', authorName: '코치준', authorRole: 'leader', readers: [] }
-    : n));
-  /* ⑥ 내 디엠·단체방 메시지·알림·가입 신청·스와이프·활동 */
+function stripAllContent(state) {
+  state.groups = [];
+  state.feedPosts = [];
+  state.explorePosts = [];
+  state.matchProfiles = [];
+  state.partnerProfiles = [];
   state.chatRooms = [];
-  state.groupChats = (state.groupChats || []).map((c) => ({
-    ...c,
-    messages: (c.messages || []).filter((m) => m.from !== 'me' && m.authorId !== mine)
-  }));
-  state.notificationLog = [];
+  state.chatReplyPools = [];
+  state.stories = [];
+  state.storyArchive = [];
+  state.groupNotices = [];
+  state.groupEvents = [];
+  state.groupChats = [];
   state.groupApplications = [];
+  state.notificationLog = [];
   state.matchSwipes = [];
   state.hotEntryState = {};
   state.hotRankSnapshots = {};
   state.hotEntryBaseline = null;
-  /* ⑦ 내 프로필·가입 상태·마지막 모임 */
+  /* 내 프로필·세션·마지막 위치 */
   state.currentUser = blankCurrentUser();
   state.homePrefs = { groupId: null };
-  state.composePrefs = { exploreVisible: false };
   state.explorePrefs = { filter: 'all', age: 'all', region: 'all', radius: 'all', ageMin: 0, ageMax: 99 };
   state.pwa = { installDismissed: false, installed: false };
   return state;
 }
 
-/** 클린 스타트 상태 — 앱을 처음 연 사람이 보는 상태(회원가입 전). */
+/** 클린 스타트 상태 — 앱을 처음 연 사람이 보는 상태(회원가입 전, 콘텐츠 0). */
 function buildCleanState() {
   const state = JSON.parse(JSON.stringify(defaultInitialState));
-  stripPersonalData(state);
+  stripAllContent(state);
   state.schemaVersion = STORAGE_SCHEMA_VERSION;
   state.onboarding = { completed: false, completedAt: null, step: 0 };
   state.account = null;
   state.sessionActive = false;
-  state.storyArchive = [];
   state.galleryPrefs = { sort: 'recent' };
   applyRegionIds(state);
   return state;
@@ -2959,7 +2843,7 @@ function buildDemoState() {
   state.galleryPrefs = { sort: 'recent' };
   state.currentUser.registered = true;
   state.currentUser.photoUrl = null;
-  if (!state.currentUser.exploreCard) state.currentUser.exploreCard = { mediaPreset: 'selfie', intro: '' };
+  if (!state.currentUser.exploreCard) state.currentUser.exploreCard = { photoUrl: null, intro: '' };
   applyRegionIds(state);
   return state;
 }
@@ -2986,7 +2870,6 @@ const STORY_ARCHIVE_SEED = [
     authorName: '루키',
     authorAvatarText: '루',
     authorGradient: 'linear-gradient(135deg, #10B981, #047857)',
-    mediaPreset: 'wod',
     mediaCaption: '10월 마지막 와드',
     caption: '10월 마지막 날 와드 완주 기록',
     createdAt: ago(30 * HOUR),
@@ -2999,7 +2882,6 @@ const STORY_ARCHIVE_SEED = [
     authorName: '루키',
     authorAvatarText: '루',
     authorGradient: 'linear-gradient(135deg, #10B981, #047857)',
-    mediaPreset: 'barbell',
     mediaCaption: 'PR 90kg',
     caption: '데드리프트 90kg 갱신한 날',
     createdAt: ago(58 * HOUR),
@@ -3014,264 +2896,108 @@ class Store {
   constructor() {
     this.state = this.loadState();
     this.listeners = [];
-    this.mediaLibrary = [
-      'wod', 'barbell', 'kettle', 'gym', 'climb', 'nightrun', 'pool', 'meal', 'lol', 'selfie',
-      /* Sprint 3 — 다양한 취미용 신규 프리셋 */
-      'gaming_room', 'cafe_coffee', 'cinema_film', 'boardgame_table',
-      'swimming_pool', 'climbing_boulder', 'running_track'
-    ];
   }
 
   /* ---------------- persistence ---------------- */
+  /**
+   * 저장 상태 불러오기.
+   * Sprint 18(v16) — **콘텐츠는 저장된 것만 쓴다.**
+   *  · v16 이전(더미 모임·피드·게시판 글·사람이 섞인 상태)은 옮기지 않고 회원가입 전 빈 상태로 시작한다.
+   *  · 불러올 때 시드로 빈 배열을 다시 채우지 않는다(예전에는 빈 배열을 시드로 보정해
+   *    사용자가 지운 데이터가 되살아났다). 빈 모임·빈 게시판이 정상 상태다.
+   *  · 서버 API 로 교체할 때 이 함수 하나만 fetch 로 바꾸면 된다(STORE_API.md).
+   */
   loadState() {
     const raw = this.readRawState();
     if (!raw) return buildCleanState();
     try {
       const parsed = JSON.parse(raw);
-      /* ===== Sprint 17 (v14 → v15) — 클린 스타트 =====
-       * 11/15 21:32 사용자: "이제 데이터는 초기화해줘 실사용해보게".
-       * v15 이전 저장 상태에는 내 계정·내 모임·내 글·내 디엠·내 알림이 남아 있으므로
-       * 병합하지 않고 회원가입 전 상태로 새로 시작한다(개인 데이터는 옮기지 않는다). */
-      if (Number(parsed.schemaVersion) < STORAGE_SCHEMA_VERSION) {
-        return buildCleanState();
-      }
-      /* 얕은 병합 + 새 필드가 추가되었을 때를 위한 기본값 보정 */
+      /* v16 이전 저장 상태는 병합하지 않는다 — 더미 콘텐츠·예전 계정을 물려받지 않는다.
+         schemaVersion 이 아예 없는 아주 옛 저장 상태도 '이전'으로 본다. */
+      const savedVersion = Number(parsed.schemaVersion);
+      if (!Number.isFinite(savedVersion) || savedVersion < STORAGE_SCHEMA_VERSION) return buildCleanState();
+
       const merged = {
         ...defaultInitialState,
         ...parsed,
-        currentUser: {
-          ...defaultInitialState.currentUser,
-          ...(parsed.currentUser || {})
-        }
+        currentUser: { ...defaultInitialState.currentUser, ...(parsed.currentUser || {}) }
       };
-      /* Sprint 7 — 지역 개념이 없던 저장 상태(v8 이하)는 기본 지역을 물려받지 않고
-         저장된 활동 지역 문장에서 생활권을 해석한다(applyRegionIds). */
-      if (parsed.currentUser && !parsed.currentUser.regionId) {
-        delete merged.currentUser.regionId;
-      }
-      /* 구조가 바뀐 컬렉션은 기본 시드로 보정한다 (빈 배열·타입 오류 방어) */
-      if (!Array.isArray(merged.matchProfiles) || !merged.matchProfiles.length) {
-        merged.matchProfiles = JSON.parse(JSON.stringify(defaultInitialState.matchProfiles));
-      }
-      /* Sprint 7 — 다른 생활권 시드 인원이 저장 상태에 없으면 더한다(지역 탐색이 빈 지역 없이).
-         사용자가 지운 사람을 되살리지는 않는다 — 옛 저장 상태에 없던 사람만 넣는다. */
-      const knownProfiles = new Set(merged.matchProfiles.map((p) => p.id));
-      defaultInitialState.matchProfiles.forEach((seed) => {
-        if (!knownProfiles.has(seed.id)) {
-          merged.matchProfiles.push(JSON.parse(JSON.stringify(seed)));
-        }
-      });
-      if (!Array.isArray(merged.matchSwipes)) merged.matchSwipes = [];
-      if (!Array.isArray(merged.chatRooms)) merged.chatRooms = [];
-      if (!Array.isArray(merged.partnerProfiles) || !merged.partnerProfiles.length) {
-        merged.partnerProfiles = JSON.parse(JSON.stringify(defaultInitialState.partnerProfiles));
-      }
-      if (!Array.isArray(merged.chatReplyPools) || !merged.chatReplyPools.length) {
-        merged.chatReplyPools = JSON.parse(JSON.stringify(defaultInitialState.chatReplyPools));
-      }
-      if (!Array.isArray(merged.activityOptions) || !merged.activityOptions.length) {
-        merged.activityOptions = JSON.parse(JSON.stringify(defaultInitialState.activityOptions));
-      }
-      if (!Array.isArray(merged.exploreHobbyChips) || !merged.exploreHobbyChips.length) {
-        merged.exploreHobbyChips = JSON.parse(JSON.stringify(defaultInitialState.exploreHobbyChips));
-      }
-      /* Sprint 4.5 — 나이 제한 옵션 · 가입 질문 프리셋 · 가입 신청서 · 알림 */
-      if (!Array.isArray(merged.ageLimitOptions) || !merged.ageLimitOptions.length) {
-        merged.ageLimitOptions = JSON.parse(JSON.stringify(defaultInitialState.ageLimitOptions));
-      }
-      if (!Array.isArray(merged.joinQuestionPresets) || !merged.joinQuestionPresets.length) {
-        merged.joinQuestionPresets = JSON.parse(JSON.stringify(defaultInitialState.joinQuestionPresets));
-      }
-      if (!Array.isArray(merged.groupApplications) || !merged.groupApplications.length) {
-        /* 옛 저장 상태(v4·v5)로 들어와도 그룹장 승인 UI 를 바로 체험할 수 있도록
-           대기 신청자 시드를 함께 넣는다(알림함 시드와 짝을 맞춘다). */
-        merged.groupApplications = JSON.parse(JSON.stringify(defaultInitialState.groupApplications));
-      }
-      if (!Array.isArray(merged.notificationLog) || !merged.notificationLog.length) {
-        merged.notificationLog = JSON.parse(JSON.stringify(defaultInitialState.notificationLog));
-      }
+      /* 콘텐츠 컬렉션은 저장된 그대로 — 없거나 타입이 틀리면 '빈 것'으로 본다. */
+      ['groups', 'feedPosts', 'explorePosts', 'matchProfiles', 'partnerProfiles', 'chatRooms',
+        'stories', 'storyArchive', 'groupNotices', 'groupEvents', 'groupChats',
+        'groupApplications', 'notificationLog', 'matchSwipes'
+      ].forEach((key) => { if (!Array.isArray(merged[key])) merged[key] = []; });
+      if (!Array.isArray(merged.currentUser.joinedGroupIds)) merged.currentUser.joinedGroupIds = [];
+      if (!Array.isArray(merged.currentUser.hobbies)) merged.currentUser.hobbies = [];
+      if (!Array.isArray(merged.currentUser.hobbyIds)) merged.currentUser.hobbyIds = [];
+
+      /* 설정·선택지는 기본값 위에 저장값을 덮는다(사용자가 고른 값만 이어간다). */
       merged.notificationSettings = {
         ...defaultInitialState.notificationSettings,
         ...(parsed.notificationSettings || {})
       };
-      /* Sprint 7 — 방해 금지(야간) 예외 종류는 중첩 객체 · 기본값(join_result:true) 위에 저장값을 덮는다. */
       merged.notificationSettings.dndExceptions = {
         ...defaultInitialState.notificationSettings.dndExceptions,
         ...((parsed.notificationSettings && parsed.notificationSettings.dndExceptions) || {})
       };
-      /* Sprint 6 — 종류별 토글(channels)은 중첩 객체라 한 단계 더 합칩니다.
-         v7 이하의 3종(reaction · membership)은 5종으로 펼치고, 새 키만 있으면 그대로 쓴다. */
       merged.notificationSettings.channels = Store.migrateNotificationChannels(
         parsed.notificationSettings && parsed.notificationSettings.channels
       );
-      /* Sprint 6 — 옛 알림 기록은 kind('group')와 3종 category 를 5종으로 해석해 되메운다. */
-      merged.notificationLog = (merged.notificationLog || []).map((n) => ({
-        ...n,
-        kind: n.kind === 'group'
-          ? (n.action === 'join_result' ? 'join_result' : 'join_request')
-          : (n.kind || 'system'),
-        category: resolveNotificationCategory(n),
-        postId: n.postId || null
-      }));
-      merged.schemaVersion = STORAGE_SCHEMA_VERSION;
       merged.pwa = { ...defaultInitialState.pwa, ...(parsed.pwa || {}) };
-      /* Sprint 4 — 공개 취미 게시글. 옛 저장 상태에 없으면 시드로 채운다. */
-      if (!Array.isArray(merged.explorePosts) || !merged.explorePosts.length) {
-        merged.explorePosts = JSON.parse(JSON.stringify(defaultInitialState.explorePosts));
-      }
-      /* Sprint 4 — 대화방마다 메시지 배열을 보장하고, 옛 방은 시드 내역을 이어붙인다. */
-      merged.chatRooms = (merged.chatRooms || []).map((room) => {
-        const seed = defaultInitialState.chatRooms.find((s) => s.id === room.id);
-        const messages = Array.isArray(room.messages)
-          ? room.messages
-          : (seed ? JSON.parse(JSON.stringify(seed.messages || [])) : []);
-        return { ...room, messages };
-      });
-      /* 모임 카드가 메이슨리 규격(hobbyId·coverPreset·ratio)을 갖추도록 보정 */
-      merged.groups = (merged.groups || []).map((g) => {
-        const seed = defaultInitialState.groups.find((s) => s.id === g.id);
-        if (!seed) return g;
-        return { ...seed, ...g, ratio: g.ratio || seed.ratio, hobbyId: g.hobbyId || seed.hobbyId,
-                 coverPreset: g.coverPreset || seed.coverPreset,
-                 meetLabel: g.meetLabel || seed.meetLabel };
-      });
-      /* Sprint 4.5 — 가입 정책 필드가 없던 저장 상태에 기본값을 넣는다 */
-      merged.groups = (merged.groups || []).map((g) => ({
+      merged.homePrefs = { ...defaultInitialState.homePrefs, ...(parsed.homePrefs || {}) };
+      merged.galleryPrefs = { ...defaultInitialState.galleryPrefs, ...(parsed.galleryPrefs || {}) };
+      merged.ageRangeBounds = { min: 0, max: 99 };
+      merged.hotRankSnapshots = (merged.hotRankSnapshots && typeof merged.hotRankSnapshots === 'object') ? merged.hotRankSnapshots : {};
+      merged.hotEntryState = (merged.hotEntryState && typeof merged.hotEntryState === 'object') ? merged.hotEntryState : {};
+      if (!merged.hotEntryBaseline || typeof merged.hotEntryBaseline !== 'object') merged.hotEntryBaseline = null;
+      if ('weeklyDigest' in merged) delete merged.weeklyDigest;
+
+      const storedPrefs = parsed.explorePrefs && typeof parsed.explorePrefs === 'object' ? parsed.explorePrefs : {};
+      merged.explorePrefs = Store.normalizeExplorePrefs(storedPrefs, merged);
+
+      /* 모임마다 설정 기본값을 갖춘다(가입 방식·나이 제한·부방장·1:1 허용). */
+      merged.groups = merged.groups.map((g) => ({
         ...g,
         joinMode: g.joinMode || (g.privacyType === 'open' ? 'open' : 'approval'),
         ageLimit: g.ageLimit || 'all',
         joinQuestions: Array.isArray(g.joinQuestions) ? g.joinQuestions
-          : ((g.joinMode || g.privacyType !== 'open') ? ['취미 구력이나 선호 요일을 적어주세요!'] : [])
+          : ((g.joinMode || g.privacyType !== 'open') ? ['취미 구력이나 선호 요일을 적어주세요!'] : []),
+        deputyIds: Array.isArray(g.deputyIds) ? g.deputyIds : [],
+        dmEnabled: g.dmEnabled !== false,
+        deputyCanModerate: g.deputyCanModerate === true,
+        members: Array.isArray(g.members) ? g.members : []
       }));
-      /* ===== Sprint 7 (v8 → v9) 마이그레이션 =====
-       * ① 지역 목록(exploreRegions) 보장
-       * ② 마지막 탐색 필터(explorePrefs) 보장 — 나이·지역·종류
-       * ③ 모든 사람·모임·글의 regionId 정리(applyRegionIds)
-       * ④ 지역이 다른 새 모임 시드도 더한다(사용자가 만든 모임은 건드리지 않는다)
-       */
-      if (!Array.isArray(merged.exploreRegions) || !merged.exploreRegions.length) {
-        merged.exploreRegions = JSON.parse(JSON.stringify(EXPLORE_REGIONS));
-      }
-      /* Sprint 8 (v9 → v10) — 반경 옵션 · 반경 필터 · 실베 순위 기억 · 내 글 시드 */
-      if (!Array.isArray(merged.exploreRadiusOptions) || !merged.exploreRadiusOptions.length) {
-        merged.exploreRadiusOptions = JSON.parse(JSON.stringify(EXPLORE_RADIUS_OPTIONS));
-      }
-      const storedPrefs = parsed.explorePrefs && typeof parsed.explorePrefs === 'object'
-        ? parsed.explorePrefs : {};
-      merged.explorePrefs = Store.normalizeExplorePrefs(storedPrefs, merged);
-      if (!merged.hotRankSnapshots || typeof merged.hotRankSnapshots !== 'object') {
-        merged.hotRankSnapshots = {};
-      }
-      if (!merged.hotEntryState || typeof merged.hotEntryState !== 'object') {
-        merged.hotEntryState = {};
-      }
-      /* ===== Sprint 10 (v10 → v11) 마이그레이션 =====
-       * ① hotEntryBaseline — 첫 실행 기준선 표식. 옛 저장 상태에는 없으므로 null 로 두고,
-       *    다음 확인 때 `checkHotEntryNotifications()` 이 조용히 기준선을 잡는다
-       *    (알림함을 뒤늦게 채우지 않는다 — 11/15 "1. 그냥 조용히 넘어가").
-       * ② Sprint 11 — 주간 요약 발송 기록(weeklyDigest)은 사용자 지시로 제거했다.
-       *    옛 저장 상태에 남아 있어도 읽지 않고, 다음 저장 때 사라진다.
-       */
-      if (!merged.hotEntryBaseline || typeof merged.hotEntryBaseline !== 'object') {
-        merged.hotEntryBaseline = null;
-      }
-      if ('weeklyDigest' in merged) delete merged.weeklyDigest;
-      /* ===== Sprint 14 (v11 → v12) 마이그레이션 =====
-       * ① homePrefs — 홈에서 볼 모임. 저장된 모임이 없거나 탈퇴했으면 첫 가입 모임으로 보정.
-       * ② groupChats — 모임 단체 채팅방. 없던 저장 상태면 시드로 채운다.
-       * ③ groupEvents — 모임 안의 오프라인 약속. 없으면 시드로 채운다.
-       *    (사용자가 지운 일정·채팅을 되살리지는 않는다 — 배열이 비어 있을 때만 채운다.)
-       */
-      merged.homePrefs = { ...defaultInitialState.homePrefs, ...(parsed.homePrefs || {}) };
-      if (!Array.isArray(merged.groupChats) || !merged.groupChats.length) {
-        merged.groupChats = JSON.parse(JSON.stringify(defaultInitialState.groupChats));
-      }
-      if (!Array.isArray(merged.groupEvents) || !merged.groupEvents.length) {
-        merged.groupEvents = JSON.parse(JSON.stringify(defaultInitialState.groupEvents));
-      }
-      /* 새로 가입한 모임에는 빈 단체 채팅방을 하나 만들어 둔다(첫 인사 자리). */
-      const chatGroupIds = new Set(merged.groupChats.map((c) => c.groupId));
-      (merged.currentUser.joinedGroupIds || []).forEach((gid) => {
-        if (!chatGroupIds.has(gid)) merged.groupChats.push({ groupId: gid, messages: [] });
-      });
+      merged.feedPosts = merged.feedPosts.map((p) => ({
+        ...p,
+        comments: Array.isArray(p.comments) ? p.comments : []
+      }));
+      merged.explorePosts = merged.explorePosts.map((p) => ({
+        ...p,
+        comments: Array.isArray(p.comments) ? p.comments : []
+      }));
       /* 홈 모임이 내 모임이 아니면(탈퇴 등) 첫 가입 모임으로 돌린다. */
       const homeValid = merged.homePrefs.groupId
-        && (merged.currentUser.joinedGroupIds || []).includes(merged.homePrefs.groupId);
-      if (!homeValid) {
-        merged.homePrefs.groupId = (merged.currentUser.joinedGroupIds || [])[0] || null;
-      }
-      /* 내가 쓴 공개 글 시드 — 옛 저장 상태에 없던 글만 더한다(사용자가 지운 글은 되살리지 않는다). */
-      const knownPostIds = new Set((merged.explorePosts || []).map((p) => p.id));
-      defaultInitialState.explorePosts.forEach((seed) => {
-        if (seed.isMine && !knownPostIds.has(seed.id)) {
-          merged.explorePosts.push(JSON.parse(JSON.stringify(seed)));
-        }
-      });
-      const knownGroupIds = new Set((merged.groups || []).map((g) => g.id));
-      defaultInitialState.groups.forEach((seed) => {
-        if (!knownGroupIds.has(seed.id)) merged.groups.push(JSON.parse(JSON.stringify(seed)));
-      });
-      /* ===== Sprint 15 (v12 → v13) 마이그레이션 =====
-       * ① groupNotices — 모임 공지. 없던 저장 상태면 시드로 채운다.
-       * ② groups[].deputyIds / dmEnabled — 부방장·그룹 내 1:1 대화 허용(기본 true).
-       * ③ feedPosts[].exploreVisible — 돋보기(타 그룹) 노출 동의 여부. 기본 false = 모임에만.
-       *    프라이버시 기본값은 '비공개'다 — 사용자가 올릴 때 토글을 켠 글만 돋보기에 나간다.
-       */
-      if (!Array.isArray(merged.groupNotices)) {
-        merged.groupNotices = JSON.parse(JSON.stringify(GROUP_NOTICE_SEED));
-      }
-      merged.groups = (merged.groups || []).map((g) => ({
-        ...g,
-        deputyIds: Array.isArray(g.deputyIds) ? g.deputyIds : [],
-        dmEnabled: g.dmEnabled === false ? false : true
-      }));
-      merged.feedPosts = (merged.feedPosts || []).map((p) => ({
-        ...p,
-        exploreVisible: p.exploreVisible === true
-      }));
-      /* ===== Sprint 16 (v13 → v14) 마이그레이션 =====
-       * ① stories — 24시간 스토리. 없던 저장 상태면 시드로 채운다.
-       * ② groups[].deputyCanModerate — 부방장에게 '멤버 승인·강퇴'까지 맡길지(기본 OFF).
-       *    공지·일정 작성은 부방장이 늘 할 수 있고, 승인·강퇴만 그룹장이 따로 켠다.
-       * ③ composePrefs — 글 올릴 때 마지막으로 둔 '돋보기 노출' 값.
-       * ④ explorePrefs.ageMin/ageMax — 0~99세 슬라이더(기본 0~99 = 조건 없음).
-       * ⑤ currentUser.exploreProfileVisible — 내 프로필을 탐색에 올렸는지(기본 OFF).
-       */
-      if (!Array.isArray(merged.stories)) {
-        merged.stories = JSON.parse(JSON.stringify(STORY_SEED));
-      }
-      merged.groups = (merged.groups || []).map((g) => ({
-        ...g,
-        deputyCanModerate: g.deputyCanModerate === true
-      }));
-      merged.composePrefs = {
-        exploreVisible: !!(parsed.composePrefs && parsed.composePrefs.exploreVisible === true)
-      };
-      merged.ageRangeBounds = { min: 0, max: 99 };
-      if (typeof merged.currentUser.exploreProfileVisible !== 'boolean') {
-        merged.currentUser.exploreProfileVisible = false;
-      }
+        && merged.currentUser.joinedGroupIds.includes(merged.homePrefs.groupId);
+      if (!homeValid) merged.homePrefs.groupId = merged.currentUser.joinedGroupIds[0] || null;
+
       applyRegionIds(merged);
-      /* Sprint 17 — v15 새 자리 보정(이미 가입한 사람의 저장 상태) */
+
+      /* 회원가입(온보딩)·세션 상태 */
       const prevOnb = merged.onboarding || {};
       merged.onboarding = {
         completed: !!prevOnb.completed,
         completedAt: prevOnb.completedAt || null,
         step: prevOnb.step || 0
       };
-      /* 데모 표식은 저장 상태에서 이어진다(테스트·미리보기 #demo 가 매 새로고침마다 초기화되지 않게). */
       if (prevOnb.demo) merged.onboarding.demo = true;
-      if (!Array.isArray(merged.storyArchive)) merged.storyArchive = [];
-      if (!merged.galleryPrefs || typeof merged.galleryPrefs !== 'object') {
-        merged.galleryPrefs = { sort: 'recent' };
-      }
-      if (!merged.currentUser.exploreCard || typeof merged.currentUser.exploreCard !== 'object') {
-        merged.currentUser.exploreCard = { mediaPreset: 'selfie', intro: '' };
-      }
       if (typeof merged.sessionActive !== 'boolean') {
         merged.sessionActive = merged.onboarding.completed === true;
       }
       merged.currentUser.registered = merged.currentUser.registered !== false;
+      if (!merged.currentUser.exploreCard || typeof merged.currentUser.exploreCard !== 'object') {
+        merged.currentUser.exploreCard = { photoUrl: null, intro: '' };
+      }
+      merged.schemaVersion = STORAGE_SCHEMA_VERSION;
       return merged;
     } catch (e) {
       console.warn('[ooG] 저장된 상태를 불러오지 못했습니다.', e);
@@ -3338,23 +3064,14 @@ class Store {
   getGroupMembers(groupId) {
     const group = this.getGroup(groupId);
     if (!group) return { people: [], hidden: 0, total: 0 };
-    const seen = new Set();
-    const people = [];
-    const push = (name, role, gradient, avatarText) => {
-      if (!name || seen.has(name)) return;
-      seen.add(name);
-      people.push({ name, role, gradient, avatarText: avatarText || name.charAt(0) });
-    };
-    push(group.leaderName, 'leader', 'linear-gradient(135deg, #10B981 0%, #047857 100%)');
-    (this.state.feedPosts || [])
-      .filter((p) => p.groupId === groupId)
-      .forEach((p) => push(p.authorName, 'member', p.authorGradient, p.authorAvatarText));
-    if (this.isGroupJoined(groupId)) {
-      const me = this.state.currentUser;
-      push(me.nickname, 'me', 'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)');
-    }
-    const total = Math.max(people.length, group.memberCount || people.length);
-    return { people, hidden: Math.max(0, total - people.length), total };
+    const roster = this.getGroupRoster(groupId);
+    const people = roster.members.slice(0, 8).map((m) => ({
+      name: m.name,
+      role: m.role === 'leader' ? 'leader' : (m.isMe ? 'me' : 'member'),
+      gradient: m.gradient,
+      avatarText: m.avatarText
+    }));
+    return { people, hidden: Math.max(0, roster.total - people.length), total: roster.total };
   }
 
   /**
@@ -3468,6 +3185,44 @@ class Store {
   }
 
   /**
+   * 모임 나가기 — Sprint 18 사이드바 '모임 설정'의 탈퇴.
+   * 내 가입 목록·멤버 수·홈 모임에서 빠지고, 그 모임의 단체방은 목록에서 사라진다.
+   * 그룹장은 나갈 수 없다(모임을 지우는 deleteGroup 을 쓴다).
+   */
+  leaveGroup(groupId) {
+    const group = this.getGroup(groupId);
+    if (!group) return { ok: false, reason: 'not_found' };
+    if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
+    if (group.leaderId === this.currentUser.id) return { ok: false, reason: 'leader' };
+    this.state.currentUser.joinedGroupIds = this.state.currentUser.joinedGroupIds.filter((id) => id !== groupId);
+    group.memberCount = Math.max(1, (group.memberCount || 1) - 1);
+    if (this.state.homePrefs && this.state.homePrefs.groupId === groupId) {
+      this.state.homePrefs.groupId = this.state.currentUser.joinedGroupIds[0] || null;
+    }
+    this.saveState();
+    return { ok: true, groupId, nextGroupId: this.state.homePrefs ? this.state.homePrefs.groupId : null };
+  }
+
+  /** 그룹장이 모임을 지운다 — 모임·그 모임의 글·공지·일정·단체방·스토리까지 함께 정리한다. */
+  deleteGroup(groupId) {
+    const group = this.getGroup(groupId);
+    if (!group) return { ok: false, reason: 'not_found' };
+    if (group.leaderId !== this.currentUser.id) return { ok: false, reason: 'permission' };
+    this.state.groups = this.state.groups.filter((g) => g.id !== groupId);
+    this.state.currentUser.joinedGroupIds = this.state.currentUser.joinedGroupIds.filter((id) => id !== groupId);
+    this.state.feedPosts = (this.state.feedPosts || []).filter((p) => p.groupId !== groupId);
+    this.state.groupNotices = (this.state.groupNotices || []).filter((n) => n.groupId !== groupId);
+    this.state.groupEvents = (this.state.groupEvents || []).filter((e) => e.groupId !== groupId);
+    this.state.groupChats = (this.state.groupChats || []).filter((c) => c.groupId !== groupId);
+    this.state.stories = (this.state.stories || []).filter((s) => s.groupId !== groupId);
+    if (this.state.homePrefs && this.state.homePrefs.groupId === groupId) {
+      this.state.homePrefs.groupId = this.state.currentUser.joinedGroupIds[0] || null;
+    }
+    this.saveState();
+    return { ok: true, groupId };
+  }
+
+  /**
    * 좋아요 토글. 화면에서 하트 애니메이션을 위해 변경된 상태를 함께 돌려준다.
    * @returns {{liked:boolean, likes:number}|null}
    */
@@ -3519,7 +3274,7 @@ class Store {
 
   /**
    * 새 글 작성 (인스타형 피드).
-   * @param {{groupId:string, tag:string|null, caption:string, mediaPreset:string}} data
+   * @param {{groupId:string, tag:string|null, caption:string, photoUrl?:string, mediaCaption?:string}} data
    * @returns {object|null} 생성된 post
    */
   createPost(data) {
@@ -3531,7 +3286,7 @@ class Store {
     /* Sprint 17 — 사진 주소(https) 또는 **기기 앨범·카메라로 고른 사진(Data URL)** 둘 다 받는다. */
     const rawPhoto = String(data.photoUrl || '').trim();
     const photoUrl = /^https?:\/\//i.test(rawPhoto) || /^data:image\//i.test(rawPhoto) ? rawPhoto : null;
-    if (!caption && !data.mediaPreset && !photoUrl) return null;
+    if (!caption && !photoUrl) return null;
 
     const tag = data.tag && group.customTags.includes(data.tag) ? data.tag : null;
     const user = this.state.currentUser;
@@ -3545,13 +3300,9 @@ class Store {
       authorPhotoUrl: user.photoUrl || null,
       tag,
       caption: caption.slice(0, 500),
-      /* 사진 없이 글만 쓰는 것도 허용한다 (mediaPreset: null)
-         photoUrl(직접 입력한 이미지 주소)이 있으면 그 사진이 우선한다. */
-      mediaPreset: data.mediaPreset && this.mediaLibrary.includes(data.mediaPreset) ? data.mediaPreset : null,
+      /* 사진 없이 글만 쓰는 것도 허용한다 — 사진은 사용자가 올린 것만 쓴다(예시 이미지 없음). */
       photoUrl,
       mediaCaption: (data.mediaCaption || '').trim().slice(0, 40),
-      /* Sprint 15 — 돋보기(타 그룹) 노출 동의. 기본은 꺼짐(모임 안에서만). */
-      exploreVisible: data.explore === true,
       likes: 0,
       likedByMe: false,
       bookmarkedByMe: false,
@@ -4600,7 +4351,7 @@ class Store {
 
   /**
    * 탐색 피드에 공개 취미 글을 쓴다.
-   * @param {{hobbyId:string, caption:string, mediaPreset:string|null,
+   * @param {{hobbyId:string, caption:string, photoUrl?:string,
    *          mediaCaption?:string, tag?:string, ratio?:'wide'|'square'}} data
    * @returns {{ok:boolean, reason?:string, post?:object}}
    */
@@ -4611,11 +4362,10 @@ class Store {
     const isFree = !chip && (d.open === true || !d.hobbyId);
     if (!chip && !isFree) return { ok: false, reason: 'hobby' };
     const caption = String(d.caption || '').trim();
-    const preset = d.mediaPreset && this.mediaLibrary.includes(d.mediaPreset) ? d.mediaPreset : null;
     /* Sprint 17 — 앨범·카메라 사진(Data URL)도 오픈 글 사진이 된다. */
     const rawPhoto = String(d.photoUrl || '').trim();
     const photoUrl = /^data:image\//i.test(rawPhoto) || /^https?:\/\//i.test(rawPhoto) ? rawPhoto : null;
-    if (!caption && !preset && !photoUrl) return { ok: false, reason: 'empty' };
+    if (!caption && !photoUrl) return { ok: false, reason: 'empty' };
     const user = this.state.currentUser;
     const post = {
       id: `pub_${Date.now()}`,
@@ -4631,7 +4381,6 @@ class Store {
       scope: chip ? 'hobby' : 'open',
       tag: String(d.tag || '').trim().slice(0, 8) || null,
       caption: caption.slice(0, 300),
-      mediaPreset: preset,
       photoUrl,
       mediaCaption: String(d.mediaCaption || '').trim().slice(0, 40),
       ratio: d.ratio === 'wide' ? 'wide' : 'square',
@@ -4743,16 +4492,6 @@ class Store {
     return (this.state.exploreHobbyChips || []).find((h) => h.id === hobbyId) || null;
   }
 
-  /** 취미 키 → 모임 카드 커버 일러스트 프리셋 */
-  hobbyPreset(hobbyId) {
-    const map = {
-      game: 'gaming_room', run: 'running_track', cafe: 'cafe_coffee',
-      movie: 'cinema_film', boardgame: 'boardgame_table', fitness: 'wod',
-      swim: 'swimming_pool', climb: 'climbing_boulder'
-    };
-    return map[hobbyId] || 'selfie';
-  }
-
   /**
    * 사람 카드/대화방이 가리키는 사람의 프로필. 매칭 프로필 → 모임 동료(보조 프로필) →
    * 대화방 정보로 만든 최소 프로필 순서로 찾는다.
@@ -4779,7 +4518,6 @@ class Store {
       hobbies: [],
       specChips: [],
       bio: '대화로 취미를 알아가는 중이에요.',
-      mediaPreset: room.partnerPreset || null,
       avatarText: room.partnerAvatarText,
       avatarGradient: room.partnerGradient,
       badge: room.partnerHobby || '취미 메이트',
@@ -4875,7 +4613,6 @@ class Store {
       category: chip.id,
       categoryName: chip.name,
       hobbyId: chip.id,
-      coverPreset: this.hobbyPreset(chip.id),
       meetLabel,
       ratio: this.state.groups.length % 2 === 0 ? 'wide' : 'square',
       emoji: chip.emoji,
@@ -4898,6 +4635,7 @@ class Store {
       leaderName: user.nickname,
       customTags: ['공지', '번개', '오운완'],
       joinPolicy: [meetLabel],
+      members: [],
       isMine: true,
       createdAt: new Date().toISOString()
     };
@@ -5010,7 +4748,6 @@ class Store {
       partnerHobby: profile ? `${profile.hobbyEmoji || ''} ${profile.hobbyLabel || ''}`.trim() : '취미 메이트',
       partnerAvatarText: profile ? profile.avatarText || profile.nickname.charAt(0) : '?',
       partnerGradient: profile ? profile.avatarGradient : 'linear-gradient(135deg, #10B981, #047857)',
-      partnerPreset: profile ? profile.mediaPreset : null,
       lastMessage: '🎉 서로 LIKE! 먼저 인사해 보세요',
       lastTime: '방금',
       unreadCount: 1,
@@ -6129,6 +5866,17 @@ class Store {
     app.status = 'approved';
     app.decidedAt = new Date().toISOString();
     app.decisionNote = '수락';
+    if (!Array.isArray(group.members)) group.members = [];
+    if (!group.members.some((m) => m.id === app.applicantId)) {
+      group.members.push({
+        id: app.applicantId,
+        name: app.applicantName,
+        avatarText: app.applicantAvatarText || String(app.applicantName || '').charAt(0),
+        gradient: app.applicantGradient || GROUP_ROSTER_GRADIENTS[0],
+        hobbies: [],
+        joinedAt: app.decidedAt
+      });
+    }
     group.memberCount = Math.max(1, group.memberCount + 1);
     this.setStateChanged();
     return {
@@ -6582,7 +6330,7 @@ class Store {
       id: group.id,
       isHome: group.id === this.getHomeGroupId(),
       postCount: (this.state.feedPosts || []).filter((p) => p.groupId === group.id).length,
-      photoCount: this.getGroupPhotoPosts(group.id).filter((p) => p.mediaPreset || p.photoUrl).length,
+      photoCount: this.getGroupPhotoPosts(group.id).filter((p) => p.photoUrl).length,
       nextEvent: this.getNextGroupEvent(group.id),
       chat: this.getGroupChatPreview(group.id)
     }));
@@ -6925,113 +6673,93 @@ class Store {
   }
 
   /* ------------------------------------------------------ 14-4. 전체 멤버 */
-  /** 모임 id → 결정적 정수(멤버 이름·가입 시점을 매번 같게 고르는 데 쓴다). */
-  _rosterHash(text) {
-    let h = 7;
-    const s = String(text || '');
-    for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) % 99991;
-    return h;
-  }
-
   /**
-   * 전체 멤버 목록 — 그룹장 · 나 · 글 쓴 사람 · 나머지 멤버(결정적 채우기).
-   * memberCount 만큼 이름을 채우되 **저장하지 않는다**(같은 모임은 늘 같은 명단).
+   * 전체 멤버 목록 — **실제로 있는 사람만** 센다.
+   * Sprint 18: 예전에는 memberCount 만큼 이름을 지어내 채웠다. 이제 사용자가 만든 모임은
+   * 그룹장(나) 한 명에서 시작하고, 승인된 가입 신청·실제 글 작성자만 명단에 오른다.
    * @returns {{total:number, members:Array}}
    */
   getGroupRoster(groupId) {
     const group = this.getGroup(groupId);
     if (!group) return { total: 0, members: [] };
     const me = this.currentUser;
-    const total = Math.max(2, Number(group.memberCount) || 0);
-    const seed = this._rosterHash(groupId);
     const members = [];
     const seen = new Set();
-    const seenIds = new Set();
     const push = (entry) => {
       const name = String(entry.name || '').trim();
-      if (!name || seen.has(name) || (entry.id && seenIds.has(entry.id))) return false;
+      if (!name || seen.has(name)) return false;
       seen.add(name);
-      if (entry.id) seenIds.add(entry.id);
       members.push(entry);
       return true;
     };
-    const hobbyOf = (i) => {
-      const own = GROUP_ROSTER_HOBBIES.find((h) => h.name === (group.categoryName || '').split(/[·\s]/)[0]);
-      const list = [];
-      if (own) list.push(own);
-      const extra = GROUP_ROSTER_HOBBIES[(seed + i * 3) % GROUP_ROSTER_HOBBIES.length];
-      if (extra && !list.some((h) => h.name === extra.name)) list.push(extra);
-      return list.slice(0, 2);
-    };
-    const joinLabel = (days) => {
-      const d = new Date(Date.now() - days * 24 * HOUR);
+    const joinLabel = (iso) => {
+      const d = iso ? new Date(iso) : new Date();
+      if (Number.isNaN(d.getTime())) return '';
       return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')} 가입`;
     };
+    const hobbyList = (hobbyNames) => (hobbyNames || []).slice(0, 2)
+      .map((name) => ({ name, emoji: '·' }));
 
     /* 1) 그룹장 */
     const leaderIsMe = group.leaderId === me.id;
     push({
-      id: group.leaderId,
-      name: leaderIsMe ? me.nickname : group.leaderName,
+      id: group.leaderId || 'leader',
+      name: leaderIsMe ? me.nickname : (group.leaderName || '그룹장'),
       role: 'leader',
       isLeader: true,
       isMe: leaderIsMe,
-      avatarText: leaderIsMe ? me.avatarText : (group.leaderName || '').charAt(0),
-      gradient: group.leaderId === me.id ? me.avatarGradient : GROUP_ROSTER_GRADIENTS[0],
-      hobbies: hobbyOf(0),
-      joinedAt: group.createdAt || ago(200 * 24 * HOUR),
-      joinedLabel: joinLabel(240)
+      avatarText: leaderIsMe ? (me.avatarText || me.nickname.charAt(0)) : (group.leaderName || '그').charAt(0),
+      gradient: leaderIsMe ? me.avatarGradient : GROUP_ROSTER_GRADIENTS[0],
+      hobbies: leaderIsMe ? hobbyList(me.hobbies) : [],
+      joinedAt: group.createdAt || null,
+      joinedLabel: joinLabel(group.createdAt)
     });
-    /* 2) 이 모임 피드에 글을 쓴 사람 */
-    (this.state.feedPosts || []).filter((p) => p.groupId === groupId).forEach((p, i) => {
+    /* 2) 승인되어 실제로 들어온 멤버 */
+    (group.members || []).forEach((m) => {
+      push({
+        id: m.id,
+        name: m.name,
+        role: 'member',
+        isLeader: false,
+        isMe: m.id === me.id,
+        avatarText: m.avatarText || String(m.name).charAt(0),
+        gradient: m.gradient || GROUP_ROSTER_GRADIENTS[members.length % GROUP_ROSTER_GRADIENTS.length],
+        hobbies: hobbyList(m.hobbies),
+        joinedAt: m.joinedAt || null,
+        joinedLabel: joinLabel(m.joinedAt)
+      });
+    });
+    /* 3) 이 모임에 실제로 글을 쓴 사람 */
+    (this.state.feedPosts || []).filter((p) => p.groupId === groupId).forEach((p) => {
       push({
         id: p.authorId || `author_${p.id}`,
         name: p.authorName,
         role: p.authorId === me.id ? 'me' : 'member',
         isLeader: false,
         isMe: p.authorId === me.id,
-        avatarText: p.authorAvatarText || (p.authorName || '').charAt(0),
-        gradient: p.authorGradient || GROUP_ROSTER_GRADIENTS[(i + 1) % GROUP_ROSTER_GRADIENTS.length],
-        hobbies: hobbyOf(i + 2),
-        joinedAt: p.createdAt,
-        joinedLabel: joinLabel(30 + ((seed + i * 17) % 160))
+        avatarText: p.authorAvatarText || String(p.authorName || '').charAt(0),
+        gradient: p.authorGradient || GROUP_ROSTER_GRADIENTS[members.length % GROUP_ROSTER_GRADIENTS.length],
+        hobbies: [],
+        joinedAt: null,
+        joinedLabel: ''
       });
     });
-    /* 3) 나 (아직 없으면) */
+    /* 4) 나 (아직 없으면) */
     if (this.isGroupJoined(groupId)) {
       push({
         id: me.id,
         name: me.nickname,
-        role: 'me',
-        isLeader: group.leaderId === me.id,
+        role: leaderIsMe ? 'leader' : 'me',
+        isLeader: leaderIsMe,
         isMe: true,
-        avatarText: me.avatarText,
+        avatarText: me.avatarText || me.nickname.charAt(0),
         gradient: me.avatarGradient,
-        hobbies: (me.hobbies || []).slice(0, 2).map((name, i) => ({ name, emoji: ['🏋️', '🧗'][i] || '🎯' })),
-        joinedAt: ago(60 * 24 * HOUR),
-        joinedLabel: joinLabel(60)
+        hobbies: hobbyList(me.hobbies),
+        joinedAt: null,
+        joinedLabel: ''
       });
     }
-    /* 4) 남은 인원 — 이름·취미·가입 시점을 결정적으로 채운다 */
-    const pick = seed % GROUP_ROSTER_NAMES.length;
-    for (let i = 0; members.length < total && i < GROUP_ROSTER_NAMES.length * 2; i += 1) {
-      const name = GROUP_ROSTER_NAMES[(pick + i) % GROUP_ROSTER_NAMES.length];
-      if (seen.has(name)) continue;
-      const j = members.length;
-      push({
-        id: `gm_${groupId}_${j}`,
-        name,
-        role: 'member',
-        isLeader: false,
-        isMe: false,
-        avatarText: name.charAt(0),
-        gradient: GROUP_ROSTER_GRADIENTS[(seed + j) % GROUP_ROSTER_GRADIENTS.length],
-        hobbies: hobbyOf(j),
-        joinedAt: ago((20 + ((seed + j * 13) % 300)) * 24 * HOUR),
-        joinedLabel: joinLabel(20 + ((seed + j * 13) % 300))
-      });
-    }
-    return { total: members.length, requestedTotal: total, members };
+    return { total: members.length, members };
   }
 
   /** 멤버 → 1:1 대화방 — 이미 있으면 그 방, 없으면 만든다(프로필에서 말 걸기).
@@ -7263,89 +6991,6 @@ class Store {
     return g ? g.id : null;
   }
 
-  /* ------------------------------------ 15-4. 돋보기(타 그룹) 노출 */
-  /**
-   * 돋보기 사진 — **공개에 동의한 글만** 모은다.
-   *  · kind 'group': 모임 피드에 올릴 때 '돋보기에 노출' 토글을 켠 글(내 모임·타 모임 모두)
-   *  · kind 'hobby': 원래 공개 취미 게시글(탐색 피드에 있던 것)
-   *  돋보기를 끈(exploreVisible:false) 모임 사진은 여기에 절대 들어오지 않는다.
-   */
-  getDokboTiles(options = {}) {
-    const limit = Number(options.limit) || 0;
-    const groupTiles = (this.state.feedPosts || [])
-      .filter((p) => p.exploreVisible === true)
-      .map((p) => {
-        const g = this.getGroup(p.groupId);
-        return {
-          kind: 'group',
-          id: p.id,
-          postId: p.id,
-          groupId: p.groupId,
-          groupName: g ? g.name : '',
-          groupEmoji: g ? g.emoji : '📁',
-          isMyPost: p.authorId === this.currentUser.id,
-          authorName: p.authorName,
-          authorAvatarText: p.authorAvatarText,
-          authorGradient: p.authorGradient,
-          caption: p.caption || '',
-          tag: p.tag || null,
-          mediaPreset: p.mediaPreset || null,
-          photoUrl: p.photoUrl || null,
-          mediaCaption: p.mediaCaption || '',
-          likes: p.likes || 0,
-          comments: (p.comments || []).length,
-          likedByMe: !!p.likedByMe,
-          createdAt: p.createdAt
-        };
-      });
-    const hobbyTiles = (this.state.explorePosts || []).map((p) => ({
-      kind: 'hobby',
-      id: p.id,
-      postId: p.id,
-      hobbyId: p.hobbyId,
-      hobbyLabel: p.hobbyLabel,
-      hobbyEmoji: p.hobbyEmoji,
-      groupName: '',
-      isMyPost: !!p.isMine || p.authorId === this.currentUser.id,
-      authorName: p.authorName,
-      authorAvatarText: p.authorAvatarText,
-      authorGradient: p.authorGradient,
-      caption: p.caption || '',
-      tag: p.tag || null,
-      mediaPreset: p.mediaPreset || null,
-      photoUrl: p.photoUrl || null,
-      mediaCaption: '',
-      likes: p.likes || 0,
-      comments: (p.comments || []).length,
-      likedByMe: !!p.likedByMe,
-      createdAt: p.createdAt
-    }));
-    const all = groupTiles.concat(hobbyTiles)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    return limit ? all.slice(0, limit) : all;
-  }
-
-  getDokboStats() {
-    const tiles = this.getDokboTiles();
-    return {
-      total: tiles.length,
-      groupPhotos: tiles.filter((t) => t.kind === 'group').length,
-      hobbyPosts: tiles.filter((t) => t.kind === 'hobby').length,
-      mine: tiles.filter((t) => t.isMyPost).length,
-      groupNames: Array.from(new Set(tiles.filter((t) => t.kind === 'group').map((t) => t.groupName)))
-    };
-  }
-
-  /** 내 글의 돋보기 노출을 나중에 바꾼다 — 내 글만. */
-  setPostExploreVisibility(postId, on) {
-    const post = this.getPost(postId);
-    if (!post) return { ok: false, reason: 'not_found' };
-    if (post.authorId !== this.currentUser.id) return { ok: false, reason: 'permission' };
-    post.exploreVisible = !!on;
-    this.saveState();
-    return { ok: true, exploreVisible: post.exploreVisible, post };
-  }
-
   /* ------------------------------------------------ 15-5. 내 피드 */
   /** 내가 올린 피드 — 내정보 탭의 3열 그리드(최신순). */
   getMyFeedPosts(limit = 0) {
@@ -7361,7 +7006,7 @@ class Store {
           groupName: g ? g.name : '',
           groupEmoji: g ? g.emoji : '📁',
           commentCount: (p.comments || []).length,
-          photo: !!(p.mediaPreset || p.photoUrl)
+          photo: !!p.photoUrl
         };
       });
     return limit ? list.slice(0, limit) : list;
@@ -7374,7 +7019,7 @@ class Store {
       photos: posts.filter((p) => p.photo).length,
       likes: posts.reduce((sum, p) => sum + (p.likes || 0), 0),
       comments: posts.reduce((sum, p) => sum + (p.commentCount || 0), 0),
-      explore: posts.filter((p) => p.exploreVisible).length
+      explore: posts.filter((p) => p.photoUrl).length
     };
   }
 
@@ -7402,7 +7047,7 @@ class Store {
     const sort = options.sort || this.getGallerySort();
     const items = this.getJoinedGroups().map((group) => {
       const posts = this.getGroupPhotoPosts(group.id);
-      const photos = posts.filter((p) => p.mediaPreset || p.photoUrl);
+      const photos = posts.filter((p) => p.photoUrl);
       const next = this.getNextGroupEvent(group.id);
       const chat = this.getGroupChatPreview(group.id);
       const stories = this.getGroupStories(group.id);
@@ -7433,7 +7078,7 @@ class Store {
         chat,
         lastPostAt: last ? last.createdAt : null,
         activityAt,
-        coverPresets: cover ? cover.presets : [],
+        coverPhotos: cover ? cover.photos : [],
         coverCustom: !!(cover && cover.custom),
         isLeader: this.isGroupLeader(group.id)
       };
@@ -7502,12 +7147,11 @@ class Store {
     const d = data || {};
     const groupId = d.groupId;
     if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
-    const preset = d.mediaPreset && this.mediaLibrary.includes(d.mediaPreset) ? d.mediaPreset : null;
-    /* Sprint 17 — 앨범·카메라로 고른 사진(Data URL)도 스토리 사진이 된다. */
+    /* 앨범·카메라로 고른 사진(Data URL)이 스토리 사진이다 — 예시 이미지는 쓰지 않는다. */
     const rawPhoto = String(d.photoUrl || '').trim();
     const photoUrl = /^data:image\//i.test(rawPhoto) || /^https?:\/\//i.test(rawPhoto) ? rawPhoto : null;
     const caption = String(d.caption || '').trim().slice(0, 60);
-    if (!preset && !photoUrl && !caption) return { ok: false, reason: 'empty' };
+    if (!photoUrl && !caption) return { ok: false, reason: 'empty' };
     const user = this.state.currentUser;
     const story = {
       id: `story_${Date.now()}`,
@@ -7517,7 +7161,6 @@ class Store {
       authorAvatarText: user.avatarText || user.nickname.charAt(0),
       authorGradient: user.avatarGradient,
       authorPhotoUrl: user.photoUrl || null,
-      mediaPreset: preset,
       photoUrl,
       mediaCaption: String(d.mediaCaption || '').trim().slice(0, 24),
       caption,
@@ -7601,22 +7244,6 @@ class Store {
   }
 
   /* ==========================================================================
-   * 16-D. 글 올릴 때 마지막 선택 기억 (돋보기 노출)
-   * ======================================================================== */
-  getComposePrefs() {
-    if (!this.state.composePrefs || typeof this.state.composePrefs !== 'object') {
-      this.state.composePrefs = { exploreVisible: false };
-    }
-    return { exploreVisible: this.state.composePrefs.exploreVisible === true };
-  }
-
-  setComposeExploreDefault(on) {
-    this.state.composePrefs = { exploreVisible: !!on };
-    this.saveState();
-    return { ok: true, prefs: this.getComposePrefs() };
-  }
-
-  /* ==========================================================================
    * 16-E. 탐색에 내 프로필 올리기 · 오픈 글
    * -------------------------------------------------------------------------
    * 11/15 19:05 사용자: "그룹과 별개로 누구나 탐색에 게시글과 본인 프로필을 올릴 수 있게".
@@ -7644,13 +7271,11 @@ class Store {
       hobbyStyle: u.workoutSpec || '',
       bio: u.bio || '',
       /* Sprint 17 — 내 사람 카드 꾸미기(대표 사진·한 줄 소개) */
-      mediaPreset: this.getMyExploreCard().mediaPreset,
       intro: this.getMyExploreCard().intro,
       photoUrl: u.photoUrl || null,
       badge: '내 프로필',
       ratio: 'mid',
-      isMe: true,
-      exploreVisible: true
+      isMe: true
     };
   }
 
@@ -7821,7 +7446,7 @@ class Store {
     user.bio = String(d.bio || '').trim().slice(0, 120);
     user.exploreProfileVisible = d.exploreProfileVisible === true;
     user.exploreCard = {
-      mediaPreset: this.mediaLibrary.includes(d.cardPreset) ? d.cardPreset : 'selfie',
+      photoUrl: photoUrl || null,
       intro: String(d.cardIntro || '').trim().slice(0, 40)
     };
     if (location) user.coords = null;
@@ -8102,32 +7727,35 @@ class Store {
    * 17-D. 갤러리 2차 — 표지 직접 선택 · 정렬 · 새 모임 진입
    * ========================================================================== */
 
-  /** 모임 카드 표지 — 그룹장이 고른 표지(사진 1~2장)가 있으면 그것, 없으면 글 사진에서. */
+  /** 모임 카드 표지 — 그룹장이 고른 **사진(1~2장)** 이 있으면 그것, 없으면 모임 글 사진에서.
+   *  Sprint 18 — 예시 일러스트 프리셋은 없앴다. 표지는 사용자가 올린 사진만 쓴다. */
   getGroupCover(groupId) {
     const group = this.getGroup(groupId);
     if (!group) return null;
-    const custom = Array.isArray(group.coverPresets) ? group.coverPresets.filter((k) => this.mediaLibrary.includes(k)) : [];
-    const photos = this.getGroupPhotoPosts(groupId).filter((p) => p.mediaPreset || p.photoUrl);
+    const photos = this.getGroupPhotoPosts(groupId).filter((p) => p.photoUrl);
+    const custom = Array.isArray(group.coverPhotos) ? group.coverPhotos.filter(Boolean) : [];
     return {
       groupId,
-      presets: custom.length ? custom.slice(0, 2) : photos.slice(0, 2).map((p) => p.mediaPreset).filter(Boolean),
+      photos: custom.length ? custom.slice(0, 2) : photos.slice(0, 2).map((p) => p.photoUrl),
       custom: custom.length > 0,
       gradient: group.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)',
-      options: this.mediaLibrary.slice()
+      /* 고를 수 있는 사진 — 이 모임에 올라온 실제 사진들 */
+      options: photos.slice(0, 24).map((p) => ({ id: p.id, photoUrl: p.photoUrl, caption: p.caption || '' }))
     };
   }
 
-  /** 그룹장이 표지 사진을 직접 고른다(1~2장). */
-  setGroupCoverPhotos(groupId, presets) {
+  /** 그룹장이 표지 사진을 직접 고른다(1~2장 · 모임에 올라온 사진만). */
+  setGroupCoverPhotos(groupId, photoUrls) {
     if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
-    const list = (Array.isArray(presets) ? presets : [presets])
-      .filter((k) => this.mediaLibrary.includes(k))
-      .filter((k, i, arr) => arr.indexOf(k) === i)
+    const allowed = new Set(this.getGroupPhotoPosts(groupId).filter((p) => p.photoUrl).map((p) => p.photoUrl));
+    const list = (Array.isArray(photoUrls) ? photoUrls : [photoUrls])
+      .filter((u) => allowed.has(u))
+      .filter((u, i, arr) => arr.indexOf(u) === i)
       .slice(0, 2);
     if (!list.length) return { ok: false, reason: 'empty' };
-    group.coverPresets = list;
+    group.coverPhotos = list;
     this.saveState();
     return { ok: true, cover: this.getGroupCover(groupId) };
   }
@@ -8137,7 +7765,7 @@ class Store {
     if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
-    delete group.coverPresets;
+    delete group.coverPhotos;
     this.saveState();
     return { ok: true, cover: this.getGroupCover(groupId) };
   }
@@ -8194,24 +7822,21 @@ class Store {
   getMyExploreCard() {
     const u = this.state.currentUser;
     const card = u.exploreCard || {};
-    const preset = this.mediaLibrary.includes(card.mediaPreset) ? card.mediaPreset : 'selfie';
     return {
-      mediaPreset: preset,
+      photoUrl: card.photoUrl || u.photoUrl || null,
       intro: String(card.intro || '').slice(0, 40),
-      photoUrl: u.photoUrl || null,
-      nickname: u.nickname || '나',
-      options: this.mediaLibrary.slice()
+      nickname: u.nickname || '나'
     };
   }
 
-  /** 대표 사진(프리셋)과 한 줄 소개를 저장한다. */
+  /** 대표 사진(내가 올린 사진)과 한 줄 소개를 저장한다. */
   setMyExploreCard(patch) {
     const d = patch || {};
     const u = this.state.currentUser;
     const card = { ...(u.exploreCard || {}) };
-    if (d.mediaPreset != null) {
-      if (!this.mediaLibrary.includes(d.mediaPreset)) return { ok: false, reason: 'preset' };
-      card.mediaPreset = d.mediaPreset;
+    if (d.photoUrl !== undefined) {
+      const raw = String(d.photoUrl || '').trim();
+      card.photoUrl = raw ? raw : null;
     }
     if (d.intro != null) card.intro = String(d.intro).trim().slice(0, 40);
     u.exploreCard = card;
