@@ -14257,3 +14257,10 @@ img[hidden] { display: none !important; }
 }
 .gallery-cover-emoji .oo-ic { width: 32px; height: 32px; }
 .group-tile-emoji .oo-ic { width: 40px; height: 40px; }
+
+/* Sprint 20 — 상세 시트의 섹션 블록도 안쪽 여백 (제목이 테두리에 붙지 않게) */
+.sheet-block {
+  padding: 14px 12px 12px;
+}
+.sheet-block > .sheet-section-title:first-child,
+.sheet-block > .sheet-section-head:first-child { margin-top: 0; }
