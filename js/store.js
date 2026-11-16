@@ -3747,6 +3747,51 @@ class Store {
   constructor() {
     this.state = this.loadState();
     this.listeners = [];
+    /* Sprint 25 — 서버 API 경계(js/api.js). 붙기 전에는 null 이고, 붙어도 화면은
+       지금처럼 동기 store 를 그대로 쓴다(경계는 데이터 출처를 바꾸는 자리다). */
+    this.api = null;
+    this.storageAdapter = null;
+    this.persistence = { writes: 0, failures: 0, lastAt: null, lastError: null, lastBytes: 0 };
+  }
+
+  /* ==========================================================================
+   * Sprint 25 — API 경계 연결 (js/api.js)
+   * ------------------------------------------------------------------------
+   *  · bindApi(client)         : api 클라이언트를 store 에 붙인다
+   *  · apiCall(name, params)   : 화면이 경계를 직접 부르고 싶을 때(비동기)
+   *  · setStorageAdapter(adapter) : 저장(write)만 다른 곳으로 넘긴다(서버로 바꿀 자리)
+   *  · getApiState()           : 지금 경계가 어디를 보고 있는지(테스트·설정 화면)
+   * ======================================================================== */
+  bindApi(client) {
+    if (!client || typeof client.call !== 'function') return { ok: false, reason: 'invalid_client' };
+    this.api = client;
+    return { ok: true, contract: client.contract, adapter: client.adapterId, mode: client.mode };
+  }
+
+  apiCall(name, params, options) {
+    if (!this.api) return Promise.resolve({ ok: false, data: null, error: { code: 'unavailable', message: 'API 경계가 연결되지 않았어요', retryable: false, details: null }, meta: { source: null, attempts: 0 } });
+    return this.api.call(name, params, options);
+  }
+
+  setStorageAdapter(adapter) {
+    if (adapter && typeof adapter.write === 'function') {
+      this.storageAdapter = adapter;
+      return { ok: true, adapter: 'custom' };
+    }
+    this.storageAdapter = null;
+    return { ok: true, adapter: 'localStorage' };
+  }
+
+  getApiState() {
+    const p = this.persistence || {};
+    return {
+      bound: !!this.api,
+      contract: this.api ? this.api.contract : null,
+      adapter: this.api ? this.api.adapterId : null,
+      mode: this.api ? this.api.mode : null,
+      storageAdapter: !!this.storageAdapter,
+      persistence: { writes: p.writes || 0, failures: p.failures || 0, lastAt: p.lastAt || null, lastError: p.lastError || null, lastBytes: p.lastBytes || 0 }
+    };
   }
 
   /* ---------------- persistence ---------------- */
@@ -3906,12 +3951,31 @@ class Store {
   }
 
   saveState() {
+    let payload = null;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      payload = JSON.stringify(this.state);
+      localStorage.setItem(STORAGE_KEY, payload);
     } catch (e) {
       console.warn('[ooG] 상태를 저장하지 못했습니다.', e);
       /* 화면(app.js)이 사용자에게 안내할 수 있도록 이벤트로 알린다 */
       window.dispatchEvent(new CustomEvent('oog:storage-error', { detail: String(e) }));
+    }
+    /* Sprint 25 — 저장 경계. localStorage 는 그대로 쓰고, 그다음 어댑터(서버로 바꿀 자리)에 넘긴다.
+       어댑터가 실패해도 화면·저장은 멈추지 않는다(실패는 세어 두었다가 다음 저장에서 다시 시도). */
+    if (this.storageAdapter && payload) {
+      try {
+        this.storageAdapter.write(payload, { at: Date.now() });
+        if (this.persistence) {
+          this.persistence.writes += 1;
+          this.persistence.lastAt = new Date().toISOString();
+          this.persistence.lastBytes = payload.length;
+        }
+      } catch (e) {
+        if (this.persistence) {
+          this.persistence.failures += 1;
+          this.persistence.lastError = String(e && e.message || e);
+        }
+      }
     }
     this.notify();
   }
@@ -8734,6 +8798,25 @@ class Store {
     u.album[key] = next;
     this.saveState();
     return { ok: true, photos: next };
+  }
+
+  /**
+   * Sprint 25 — 같은 칸의 사진을 다른 사진으로 바꾼다(자리 유지).
+   * 확대 보기에서 '사진 바꾸기'를 눌렀을 때 쓴다. 새 사진을 넣고 지우는 두 번의
+   * 변경 대신 한 번에 바꿔, 칸 순서가 흔들리지 않고 되돌릴 여지도 남기지 않는다.
+   */
+  replaceMyAlbumPhoto(kind, photoId, dataUrl) {
+    const key = kind === 'secret' ? 'secret' : 'public';
+    const url = String(dataUrl || '');
+    if (!/^data:image\//.test(url)) return { ok: false, reason: 'invalid' };
+    const u = this.state.currentUser;
+    const list = (u.album && Array.isArray(u.album[key])) ? u.album[key] : [];
+    const index = list.findIndex((p) => p.id === photoId);
+    if (index < 0) return { ok: false, reason: 'not_found' };
+    const previous = list[index].url;
+    list[index] = { ...list[index], url, at: new Date().toISOString() };
+    this.saveState();
+    return { ok: true, photo: list[index], index, previous, photos: list };
   }
 
   /** 이 1:1 상대에게 내 비밀앨범을 공개했는가. */

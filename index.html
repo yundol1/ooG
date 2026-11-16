@@ -1238,6 +1238,30 @@
       </div>
     </div>
 
+
+    <!-- ==================== Sprint 25. 앨범 사진 확대 보기 (라이트박스) ==================== -->
+    <div class="album-viewer" id="album-viewer" role="dialog" aria-modal="true" aria-label="사진 크게 보기" hidden>
+      <div class="album-viewer-scrim" data-album-viewer-close="1"></div>
+      <div class="album-viewer-stage">
+        <div class="album-viewer-head">
+          <span class="album-viewer-count" id="album-viewer-count">1 / 1</span>
+          <button class="album-viewer-close" id="btn-album-viewer-close" type="button" aria-label="닫기">&times;</button>
+        </div>
+        <div class="album-viewer-frame">
+          <img class="album-viewer-img" id="album-viewer-img" alt="">
+          <div class="album-viewer-nav">
+            <button id="btn-album-viewer-prev" type="button" aria-label="이전 사진">&lsaquo;</button>
+            <button id="btn-album-viewer-next" type="button" aria-label="다음 사진">&rsaquo;</button>
+          </div>
+        </div>
+        <p class="album-viewer-hint" id="album-viewer-hint">좌우로 넘기거나 화살표로 넘겨 보세요</p>
+        <div class="album-viewer-foot">
+          <button class="album-viewer-act" id="btn-album-viewer-replace" type="button">사진 바꾸기</button>
+          <button class="album-viewer-act is-danger" id="btn-album-viewer-delete" type="button">지우기</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== Sprint 17. 확인 시트(로그아웃 · 데이터 초기화) ==================== -->
     <div class="modal-overlay" id="confirm-modal" role="dialog" aria-modal="true" aria-label="확인">
       <div class="modal-sheet confirm-sheet" tabindex="-1">
@@ -1480,6 +1504,7 @@
 
   <script src="js/icons.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/api.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

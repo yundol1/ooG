@@ -266,6 +266,16 @@ document.addEventListener('DOMContentLoaded', () => {
     secretAlbumModal: $('#secret-album-modal'),
     secretAlbumBody: $('#secret-album-body'),
     secretAlbumShare: $('#btn-secret-album-share'),
+    /* Sprint 25 — 앨범 확대 보기(라이트박스) */
+    albumViewer: $('#album-viewer'),
+    albumViewerImg: $('#album-viewer-img'),
+    albumViewerCount: $('#album-viewer-count'),
+    albumViewerHint: $('#album-viewer-hint'),
+    albumViewerPrev: $('#btn-album-viewer-prev'),
+    albumViewerNext: $('#btn-album-viewer-next'),
+    albumViewerReplace: $('#btn-album-viewer-replace'),
+    albumViewerDelete: $('#btn-album-viewer-delete'),
+    albumViewerClose: $('#btn-album-viewer-close'),
     headerHomeBtn: $('#btn-header-home'),
     dmViewSeg: $('#dm-view-seg'),
     dmUnreadToggle: $('#dm-unread-toggle'),
@@ -4946,6 +4956,25 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {string} region 지금 고른 지역 id
    * @param {(id:string)=>string} dataAttr 칩의 data 속성 이름
    */
+  /**
+   * Sprint 25 — 가로 칩 줄이 화면보다 길 때만 오른쪽을 부드럽게 흐려 '더 있다'를 알린다.
+   *  (짧은 줄까지 흐려지면 마지막 칩이 흐린 것처럼 보인다.)
+   */
+  function markChipScroller(node) {
+    if (!node) return;
+    const apply = () => {
+      const more = node.scrollWidth - node.clientWidth - node.scrollLeft > 4;
+      node.classList.toggle('is-scrollable', more);
+    };
+    apply();
+    if (node.dataset.scrollBound !== '1') {
+      node.dataset.scrollBound = '1';
+      node.addEventListener('scroll', apply, { passive: true });
+      if (typeof ResizeObserver !== 'undefined') new ResizeObserver(apply).observe(node);
+    }
+    requestAnimationFrame(apply);
+  }
+
   function paintRegionChips(chipsEl, subEl, region) {
     if (!chipsEl) return;
     const selected = store.getRegion(region);
@@ -4957,10 +4986,11 @@ document.addEventListener('DOMContentLoaded', () => {
                       type="button" aria-pressed="${on}">
                 ${ic(c.icon || (c.id === 'all' ? 'grid' : 'pin'))}
                 <span>${escapeHtml(c.name)}</span>
-                <span class="explore-region-chip-count">${c.count}</span>
+                <span class="explore-region-chip-count${c.count ? '' : ' is-zero'}">${c.count}</span>
               </button>`;
     }).join('');
     keepChipVisible(chipsEl, '.explore-region-chip.active');
+    markChipScroller(chipsEl);
 
     /* 하위 권역이 둘 이상인 큰 분류만 둘째 줄 — [전체] + 권역들 (제주·해외·베어는 없음) */
     if (!subEl) return;
@@ -4976,6 +5006,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  aria-pressed="${region === r.id}">${escapeHtml(r.name)}</button>`)
       ].join('');
       keepChipVisible(subEl, '.explore-sub-chip.active');
+      markChipScroller(subEl);
     } else {
       subEl.hidden = true;
       subEl.innerHTML = '';
@@ -5760,14 +5791,18 @@ document.addEventListener('DOMContentLoaded', () => {
       /* Sprint 18 — 세상이 아직 비어 있는 경우(새 계정·완전 초기화)에는 필터 안내 대신 첫 행동을 안내한다. */
       const fieldEmpty = !store.state.matchProfiles.length && !store.state.groups.length
         && !store.state.explorePosts.length;
+      /* Sprint 25 — 첫 화면에서는 바로 위의 '글쓰기' 줄·프로필 올리기 줄을 접는다.
+         같은 행동을 두 곳에서 권하면 오히려 무엇을 눌러야 할지 흐려진다. */
+      const exploreSection = document.getElementById('tab-explore');
+      if (exploreSection) exploreSection.classList.toggle('is-field-empty', fieldEmpty);
       if (fieldEmpty && !ui.exploreQuery && !radiusOn && !ageOn && (!activeFilter || activeFilter.id === 'all')) {
         el.exploreMasonry.innerHTML = `
           <div class="empty-state explore-empty is-field-empty">
             <p class="empty-title">아직 아무도 없어요</p>
-            <p class="empty-desc">우리 동네에 첫 글을 남기면 여기서 만날 사람이 생겨요.<br>내 프로필을 올리면 사람들이 나를 먼저 찾을 수 있어요.</p>
-            <div class="empty-actions">
-              <button class="btn-primary" data-explore-compose-here="1" type="button">우리 동네 첫 글 쓰기</button>
+            <p class="empty-desc">우리 동네에 첫 글을 남기면 만날 사람이 생겨요.<br>올린 내 프로필은 두 시간 동안 보여요.</p>
+            <div class="empty-actions btn-pair">
               <button class="btn-secondary" data-explore-profile-publish="1" type="button">내 프로필 올리기</button>
+              <button class="btn-primary" data-explore-compose-here="1" type="button">첫 글 쓰기</button>
             </div>
           </div>`;
         ui.exploreRendered = true;
@@ -5800,6 +5835,9 @@ document.addEventListener('DOMContentLoaded', () => {
       notePerf('lastExploreRenderMs', (typeof performance !== 'undefined' ? performance.now() : Date.now()) - renderStart);
       return;
     }
+
+    const exploreSectionReset = document.getElementById('tab-explore');
+    if (exploreSectionReset) exploreSectionReset.classList.remove('is-field-empty');
 
     const keepPages = options.preserve ? Math.max(1, ui.explorePage) : 1;
     const keepScroll = options.preserve && el.main ? el.main.scrollTop : 0;
@@ -10762,10 +10800,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------------------------------------- 내 프로필 탭 · 앨범 */
   function albumFilledHTML(kind, photo, index) {
+    const label = kind === 'secret' ? '비밀앨범' : '공개';
     return `<figure class="album-slot is-filled" data-album-photo="${escapeHtml(photo.id)}" data-album-kind="${kind}">
-      <img class="album-img" src="${escapeHtml(photo.url)}" alt="${kind === 'secret' ? '비밀앨범' : '공개'} 사진 ${index + 1}" loading="lazy" decoding="async">
+      <img class="album-img" src="${escapeHtml(photo.url)}" alt="${label} 사진 ${index + 1}" loading="lazy" decoding="async">
+      <button class="album-open" data-album-open="${escapeHtml(photo.id)}" data-album-kind="${kind}" data-album-index="${index}" type="button"
+              aria-label="${label} 사진 ${index + 1} 크게 보기"></button>
       <button class="album-remove" data-album-remove="${escapeHtml(photo.id)}" data-album-kind="${kind}" type="button"
-              aria-label="사진 지우기">&times;</button>
+              aria-label="${label} 사진 ${index + 1} 지우기">&times;</button>
     </figure>`;
   }
 
@@ -10822,17 +10863,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /**
+   * 사진 한 장 넣기 — Sprint 25 부터는 **API 경계**를 지난다(js/api.js).
+   *  · 경계가 없으면(스크립트를 못 읽은 오프라인 사본 등) store 를 바로 부른다.
+   *  · 경계의 로컬 어댑터는 결국 같은 store 규칙을 쓰므로 결과는 같다.
+   */
   function pickAlbumPhoto(kind, file) {
     if (!file) return;
     readImageFile(file, (url) => {
-      const res = store.addMyAlbumPhoto(kind, url);
-      if (!res.ok) {
-        showToast(res.reason === 'full' ? '사진은 4장까지 올릴 수 있어요' : '사진을 올리지 못했어요', 'warning');
+      const done = () => {
+        afterAlbumChange(kind);
+        showToast(kind === 'secret' ? '비밀앨범에 사진을 넣었어요' : '공개 사진에 넣었어요', 'success');
+      };
+      const fail = (reason) => {
+        showToast(reason === 'full' ? '사진은 4장까지 올릴 수 있어요' : '사진을 올리지 못했어요', 'warning');
+      };
+      if (window.OOGAPI) {
+        window.OOGAPI.call('album.add', { kind, dataUrl: url }).then((env) => {
+          if (!env.ok) { fail((env.error && env.error.details && env.error.details.reason) || ''); return; }
+          done();
+        }).catch(() => fail(''));
         return;
       }
-      renderMyProfileTab();
-      if (kind === 'secret' && ui.secretAlbumPartnerId) renderSecretAlbumBody();
-      showToast(kind === 'secret' ? '비밀앨범에 사진을 넣었어요' : '공개 사진에 넣었어요', 'success');
+      const res = store.addMyAlbumPhoto(kind, url);
+      if (!res.ok) { fail(res.reason); return; }
+      done();
     }, 720);
   }
 
@@ -10848,9 +10903,183 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!input) return;
     input.addEventListener('change', () => {
       const file = input.files && input.files[0];
-      if (file) pickAlbumPhoto(kind, file);
+      /* 확대 보기에서 연 사진 고르기는 '추가'가 아니라 '그 자리 교체'다. */
+      if (file && albumViewer.open && albumViewer.kind === kind) replaceAlbumViewerPhoto(file);
+      else if (file) pickAlbumPhoto(kind, file);
       input.value = '';
     });
+  });
+
+  /* ------------------------------------------- Sprint 25 · 앨범 확대 보기
+   * 사진을 탭하면 화면 가득 보여주고, 그 자리에서 넘기기·바꾸기·지우기를 한다.
+   *  · 칸 순서는 그대로 두고(바꾸기는 같은 자리 교체), 좌우 스와이프·화살표 키를 지원한다.
+   *  · 닫으면 원래 앨범(내 프로필 탭 또는 1:1 대화방 시트)으로 정확히 돌아간다.
+   * ====================================================================== */
+  const albumViewer = {
+    kind: 'public',
+    index: 0,
+    open: false,
+    from: 'profile'       // 'profile' | 'secret'
+  };
+
+  function albumViewerPhotos(kind) {
+    return store.getMyAlbum(kind).slice();
+  }
+
+  function renderAlbumViewer() {
+    if (!el.albumViewer || !albumViewer.open) return;
+    const photos = albumViewerPhotos(albumViewer.kind);
+    if (!photos.length) { closeAlbumViewer(); return; }
+    albumViewer.index = Math.max(0, Math.min(photos.length - 1, albumViewer.index));
+    const photo = photos[albumViewer.index];
+    const kindLabel = albumViewer.kind === 'secret' ? '비밀앨범' : '공개 사진';
+    if (el.albumViewerImg) {
+      el.albumViewerImg.src = photo.url;
+      el.albumViewerImg.alt = `${kindLabel} ${albumViewer.index + 1}`;
+    }
+    if (el.albumViewerCount) {
+      el.albumViewerCount.innerHTML = `<span class="album-viewer-kind">${kindLabel}</span> ${albumViewer.index + 1} / ${photos.length}`;
+    }
+    const single = photos.length < 2;
+    if (el.albumViewerPrev) el.albumViewerPrev.disabled = single;
+    if (el.albumViewerNext) el.albumViewerNext.disabled = single;
+    if (el.albumViewerHint) el.albumViewerHint.textContent = single ? '' : '좌우로 넘기거나 화살표로 넘겨 보세요';
+  }
+
+  function openAlbumViewer(kind, index, from) {
+    if (!el.albumViewer) return { ok: false, reason: 'no_viewer' };
+    const photos = albumViewerPhotos(kind);
+    if (!photos.length) return { ok: false, reason: 'empty' };
+    albumViewer.kind = kind === 'secret' ? 'secret' : 'public';
+    albumViewer.index = Number.isFinite(Number(index)) ? Number(index) : 0;
+    albumViewer.from = from || 'profile';
+    albumViewer.open = true;
+    el.albumViewer.hidden = false;
+    el.albumViewer.classList.add('is-open');
+    document.body.classList.add('is-album-viewing');
+    renderAlbumViewer();
+    syncProfilesBackdrop();
+    if (el.albumViewerClose) el.albumViewerClose.focus({ preventScroll: true });
+    return { ok: true, index: albumViewer.index, kind: albumViewer.kind };
+  }
+
+  function closeAlbumViewer() {
+    if (!el.albumViewer || !albumViewer.open) return { open: false };
+    albumViewer.open = false;
+    el.albumViewer.hidden = true;
+    el.albumViewer.classList.remove('is-open');
+    document.body.classList.remove('is-album-viewing');
+    if (el.albumViewerImg) el.albumViewerImg.removeAttribute('src');
+    syncProfilesBackdrop();
+    return { open: false };
+  }
+
+  function stepAlbumViewer(delta) {
+    const photos = albumViewerPhotos(albumViewer.kind);
+    if (photos.length < 2) return { index: albumViewer.index };
+    albumViewer.index = (albumViewer.index + delta + photos.length) % photos.length;
+    renderAlbumViewer();
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(4);
+    return { index: albumViewer.index, total: photos.length };
+  }
+
+  /** 확대 보기에서 '사진 바꾸기' — 같은 칸의 사진만 교체한다(칸 순서 유지). */
+  function replaceAlbumViewerPhoto(file) {
+    if (!file) return { ok: false, reason: 'no_file' };
+    const photos = albumViewerPhotos(albumViewer.kind);
+    const photo = photos[albumViewer.index];
+    if (!photo) return { ok: false, reason: 'not_found' };
+    const kind = albumViewer.kind;
+    readImageFile(file, (url) => {
+      const apply = () => {
+        afterAlbumChange(kind);
+        renderAlbumViewer();
+        showToast('사진을 바꿨어요', 'success');
+      };
+      if (window.OOGAPI) {
+        window.OOGAPI.call('album.replace', { kind, photoId: photo.id, dataUrl: url })
+          .then((env) => {
+            if (!env.ok) { showToast('사진을 바꾸지 못했어요', 'warning'); return; }
+            apply();
+          })
+          .catch(() => showToast('사진을 바꾸지 못했어요', 'warning'));
+        return;
+      }
+      const res = store.replaceMyAlbumPhoto(kind, photo.id, url);
+      if (!res.ok) { showToast('사진을 바꾸지 못했어요', 'warning'); return; }
+      apply();
+    }, 720);
+    return { ok: true };
+  }
+
+  function deleteAlbumViewerPhoto() {
+    const photos = albumViewerPhotos(albumViewer.kind);
+    const photo = photos[albumViewer.index];
+    if (!photo) return { ok: false, reason: 'not_found' };
+    const kind = albumViewer.kind;
+    const finish = () => {
+      afterAlbumChange(kind);
+      if (!albumViewerPhotos(kind).length) { closeAlbumViewer(); showToast('사진을 지웠어요', 'info'); return; }
+      renderAlbumViewer();
+      showToast('사진을 지웠어요', 'info');
+    };
+    /* 지우기는 화면에서 즉시(동기) 반영한다 — 실수로 지운 사진이 잠깐 남아 보이지 않게.
+       (서버가 붙으면 api.call('album.remove') 로 바꾸고, 실패 시 되돌리는 자리는 finish() 다.) */
+    const res = store.removeMyAlbumPhoto(kind, photo.id);
+    if (!res.ok) return res;
+    finish();
+    return res;
+  }
+
+  /** 앨범이 바뀌면 그 앨범을 보여주던 화면들을 함께 다시 그린다. */
+  function afterAlbumChange(kind) {
+    renderMyProfileTab();
+    if (kind === 'secret' && ui.secretAlbumPartnerId) renderSecretAlbumBody();
+  }
+
+  function syncProfilesBackdrop() {
+    document.documentElement.classList.toggle('is-album-viewing', !!albumViewer.open);
+  }
+
+  el.albumViewerClose && el.albumViewerClose.addEventListener('click', () => closeAlbumViewer());
+  el.albumViewer && el.albumViewer.addEventListener('click', (e) => {
+    if (e.target.closest('[data-album-viewer-close]')) { closeAlbumViewer(); return; }
+    const prev = e.target.closest('#btn-album-viewer-prev');
+    if (prev) { stepAlbumViewer(-1); return; }
+    const next = e.target.closest('#btn-album-viewer-next');
+    if (next) { stepAlbumViewer(1); return; }
+    if (e.target.closest('#btn-album-viewer-delete')) { deleteAlbumViewerPhoto(); return; }
+    if (e.target.closest('#btn-album-viewer-replace')) {
+      openAlbumPicker(albumViewer.kind, false);
+    }
+  });
+
+  /* 좌우 스와이프 */
+  (function wireAlbumViewerSwipe() {
+    if (!el.albumViewer) return;
+    let startX = 0, startY = 0, tracking = false;
+    el.albumViewer.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      tracking = true;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+    el.albumViewer.addEventListener('touchend', (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (Math.abs(dx) > 44 && Math.abs(dx) > Math.abs(dy) * 1.4) stepAlbumViewer(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  })();
+
+  document.addEventListener('keydown', (e) => {
+    if (!albumViewer.open) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeAlbumViewer(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); stepAlbumViewer(-1); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); stepAlbumViewer(1); }
   });
 
   const myProfileTabNode = $('#tab-myprofile');
@@ -10859,9 +11088,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (rm) {
       const kind = rm.dataset.albumKind === 'secret' ? 'secret' : 'public';
       store.removeMyAlbumPhoto(kind, rm.dataset.albumRemove);
-      renderMyProfileTab();
-      if (kind === 'secret' && ui.secretAlbumPartnerId) renderSecretAlbumBody();
+      afterAlbumChange(kind);
+      if (albumViewer.open) renderAlbumViewer();
       showToast('사진을 지웠어요', 'info');
+      return;
+    }
+    const open = e.target.closest('[data-album-open]');
+    if (open) {
+      openAlbumViewer(open.dataset.albumKind === 'secret' ? 'secret' : 'public',
+        Number(open.dataset.albumIndex || 0), 'profile');
       return;
     }
     const add = e.target.closest('[data-album-add]');
@@ -10927,6 +11162,12 @@ document.addEventListener('DOMContentLoaded', () => {
   el.secretAlbumShare && el.secretAlbumShare.addEventListener('click', () => toggleSecretAlbumShare());
   $('#btn-secret-album-close') && $('#btn-secret-album-close').addEventListener('click', () => closeModal(el.secretAlbumModal));
   el.secretAlbumModal && el.secretAlbumModal.addEventListener('click', (e) => {
+    const open = e.target.closest('[data-album-open]');
+    if (open) {
+      /* 대화방 시트 위에서 열린 확대 보기는 닫았을 때 이 시트로 돌아온다. */
+      openAlbumViewer('secret', Number(open.dataset.albumIndex || 0), 'secret');
+      return;
+    }
     const rm = e.target.closest('[data-album-remove]');
     if (rm) {
       store.removeMyAlbumPhoto(rm.dataset.albumKind === 'secret' ? 'secret' : 'public', rm.dataset.albumRemove);
@@ -11163,6 +11404,20 @@ document.addEventListener('DOMContentLoaded', () => {
     getExplorePublishState: () => store.getMyExplorePublishState(),
     renderMyProfileTab, setDarkMode: (on) => applyThemePreference(on), getDarkMode: () => store.isDarkMode(),
     openSecretAlbum: (partnerId) => openSecretAlbum(partnerId), setSecretAlbumShared: (on) => toggleSecretAlbumShare(on === undefined ? undefined : on),
+    /* Sprint 25 — 앨범 확대 보기(라이트박스) */
+    openAlbumViewer: (kind, index, from) => openAlbumViewer(kind, index, from),
+    closeAlbumViewer: () => closeAlbumViewer(),
+    stepAlbumViewer: (delta) => stepAlbumViewer(delta),
+    deleteAlbumViewerPhoto: () => deleteAlbumViewerPhoto(),
+    getAlbumViewerState: () => ({
+      open: !!albumViewer.open,
+      kind: albumViewer.kind,
+      index: albumViewer.index,
+      total: albumViewerPhotos(albumViewer.kind).length,
+      count: el.albumViewerCount ? el.albumViewerCount.textContent : '',
+      src: el.albumViewerImg ? el.albumViewerImg.getAttribute('src') : null,
+      hidden: !!(el.albumViewer && el.albumViewer.hidden)
+    }),
     /* Sprint 18 — 사이드바(모임 멤버·설정 / 내정보 설정) */
     openDrawer, closeDrawer, renderGroupDrawer, renderProfileDrawer,
     getDrawerState: () => ({ open: ui.drawerOpen }),

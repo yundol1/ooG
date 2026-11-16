@@ -16618,3 +16618,321 @@ html[data-theme="dark"] .btn-secondary.ops-deputy-btn { background: var(--clay-c
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ==========================================================================
+ * 26. Sprint 25 (정규) — 390×844 실사용 마감 · 앨범 확대 보기 · 빈 상태
+ * ------------------------------------------------------------------------
+ * 24.5 / 25.5 에서 만든 표면을 390px 폭에서 다시 재 보고 고친 것들:
+ *  · 내 프로필 올리기 시트의 만남 목적 칩이 **브라우저 기본 버튼**으로 보이던 문제
+ *    (.composer-tag 클래스에 스타일이 없었다)
+ *  · 지역 가로 칩 줄 — 마지막 칩이 뚝 잘리지 않게 스크롤 여지 표시·터치 높이
+ *  · 비밀앨범 시트 헤더의 '공개 해제'가 시트 밖으로 삐져나오던 문제
+ *  · 앨범 사진 탭 → 확대 보기(라이트박스) · 그 자리에서 교체/삭제
+ *  · 첫 실행 빈 화면 — 같은 행동을 두 번 권하던 버튼 줄 정리
+ * ========================================================================== */
+
+/* ---------------------------------------- 26-1. 시트 안 선택 칩(만남 목적) */
+.composer-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--clay-cream, #FFFDF7);
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: var(--fw-label);
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease, transform 0.16s var(--spring, ease);
+}
+
+.composer-tag:active { transform: scale(0.96); }
+.composer-tag.active {
+  background: var(--green-dark);
+  border-color: transparent;
+  color: #FFFFFF;
+  box-shadow: 0 8px 16px -12px rgba(4, 120, 87, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.meet-style-list { display: flex; flex-wrap: wrap; gap: 7px; }
+
+/* ---------------------------------------- 26-2. 지역 가로 칩 마감 */
+.explore-region-chips,
+.explore-region-sub { padding-right: 16px; }
+
+.explore-region-chips.is-scrollable {
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), rgba(0, 0, 0, 0.15) 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 26px), rgba(0, 0, 0, 0.15) 100%);
+}
+.explore-region-sub.is-scrollable {
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), rgba(0, 0, 0, 0.15) 100%);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), rgba(0, 0, 0, 0.15) 100%);
+}
+
+.explore-region-chip { min-height: 32px; }
+.explore-sub-chip { min-height: 28px; padding: 7px 11px; font-size: 11px; font-weight: var(--fw-label); }
+.explore-region-chip-count.is-zero { display: none; }
+
+.filter-region .explore-region-chips,
+.filter-region .explore-region-sub { padding-right: 14px; }
+
+/* ---------------------------------------- 26-3. 상단 종류·더보기 터치 높이 */
+.explore-type-btn { min-height: 30px; }
+.hot-more { min-height: 30px; padding: 4px 10px; }
+.push-banner-close { min-width: 28px; min-height: 28px; }
+
+/* ---------------------------------------- 26-4. 앨범 칸 — 탭하면 확대 */
+.album-slot.is-filled { cursor: zoom-in; }
+
+.album-open {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  z-index: 1;
+}
+
+.album-remove {
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  z-index: 2;
+  font-size: 14px;
+  background: rgba(12, 20, 16, 0.58);
+  box-shadow: 0 4px 10px -6px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+}
+/* 손가락이 정확히 닿지 않아도 지워지도록 보이지 않는 8px 여유 */
+.album-remove::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+}
+
+/* ---------------------------------------- 26-5. 비밀앨범 시트 헤더 */
+#secret-album-modal .composer-header { gap: 8px; }
+#secret-album-modal .composer-title { flex: 1 1 auto; min-width: 0; text-align: center; }
+#secret-album-modal .composer-header > .text-btn,
+#secret-album-modal .composer-header > .btn-publish { flex: 0 0 auto; }
+#btn-secret-album-share { padding: 8px 13px; font-size: 12px; font-weight: var(--fw-label); }
+#btn-secret-album-share.is-shared { background: var(--clay-cream-soft, var(--bg-subtle)); color: var(--text-sub); }
+#btn-secret-album-close { min-height: 34px; padding: 0 4px; }
+
+/* ---------------------------------------- 26-6. 앨범 확대 보기(라이트박스) */
+.album-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 14px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+.album-viewer[hidden] { display: none; }
+
+.album-viewer-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 14, 11, 0.9);
+  backdrop-filter: blur(10px) saturate(0.9);
+  animation: viewerFade 0.18s ease both;
+}
+
+@keyframes viewerFade { from { opacity: 0; } to { opacity: 1; } }
+
+.album-viewer-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 430px;
+  max-height: 100%;
+  animation: viewerIn 0.24s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+
+@keyframes viewerIn {
+  from { opacity: 0; transform: scale(0.94) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.album-viewer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 10px;
+}
+
+.album-viewer-count {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+  color: #F1F6F3;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.album-viewer-count .album-viewer-kind { color: #6EE7B7; }
+
+.album-viewer-close {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.album-viewer-close:active { transform: scale(0.93); }
+
+.album-viewer-frame {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.album-viewer-img {
+  display: block;
+  max-width: 100%;
+  max-height: min(66vh, 560px);
+  border-radius: 20px;
+  object-fit: contain;
+  background: #0B1210;
+  box-shadow: 0 28px 60px -30px rgba(0, 0, 0, 0.9);
+}
+
+.album-viewer-nav {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.album-viewer-nav button {
+  pointer-events: auto;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(12, 20, 16, 0.56);
+  color: #FFFFFF;
+  font-size: 20px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(6px);
+}
+
+.album-viewer-nav button:disabled { opacity: 0.25; }
+.album-viewer-nav button:active { transform: scale(0.94); }
+
+.album-viewer-foot {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.album-viewer-act {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 680;
+  letter-spacing: -0.2px;
+}
+
+.album-viewer-act.is-danger { background: rgba(248, 113, 113, 0.2); color: #FECACA; }
+.album-viewer-act:active { transform: scale(0.97); }
+.album-viewer-hint {
+  width: 100%;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(241, 246, 243, 0.6);
+  letter-spacing: -0.1px;
+}
+
+/* ---------------------------------------- 26-7. 첫 실행 빈 화면 정리 */
+.empty-state .empty-desc { word-break: keep-all; }
+
+/* 첫 화면에서 겹치는 것은 '글쓰기' 줄과 빈 실베뿐이다.
+   프로필 올리기 스위치는 설정이라 그대로 둔다(아래 빈 안내의 버튼과 같은 시트를 연다). */
+#tab-explore.is-field-empty .explore-actions,
+#tab-explore.is-field-empty .hot-strip { display: none; }
+
+#tab-explore.is-field-empty .empty-state.is-field-empty { padding: 46px 14px 30px; }
+#tab-explore.is-field-empty .empty-state.is-field-empty .empty-desc { max-width: 276px; line-height: 1.65; }
+#tab-explore.is-field-empty .empty-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+
+/* ---------------------------------------- 26-8. 필터 시트 마감 */
+.filter-sheet .filter-region .explore-region-chip { min-height: 34px; }
+.filter-nearby-chip { min-height: 30px; padding: 4px 2px; }
+.filter-sheet-foot { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+
+/* ---------------------------------------- 26-9. 다크 대응 */
+html[data-theme="dark"] .composer-tag {
+  background: var(--clay-cream-soft);
+  border-color: var(--border);
+  color: var(--text-sub);
+  box-shadow: inset 0 1px 0 rgba(203, 236, 224, 0.06);
+}
+html[data-theme="dark"] .composer-tag.active {
+  background: var(--green-grad);
+  border-color: transparent;
+  color: #04150F;
+}
+html[data-theme="dark"] .album-open { background: transparent; }
+html[data-theme="dark"] .album-slot { background: rgba(203, 236, 224, 0.06); }
+html[data-theme="dark"] .album-slot.is-filled { background: var(--bg-soft); }
+
+/* 26-10. 남은 터치 마감 — 배너 닫기 · 조건 해제 칩 · 앨범 삭제 버튼 */
+.ppb-close { width: 28px; height: 28px; display: grid; place-items: center; }
+.explore-active-filters .explore-chip,
+.explore-active-filters button { min-height: 28px; }
+.album-remove { padding: 0; overflow: hidden; font-size: 14px; line-height: 24px; }
+
+/* 26-11. 필터 시트 나이 슬라이더 — 눈금 글자가 손잡이 밑으로 숨지 않게 */
+.age-range-foot {
+  margin-top: 3px;
+  padding: 0 2px;
+  font-size: 9.5px;
+  font-weight: var(--fw-meta);
+  line-height: 1.2;
+  letter-spacing: -0.1px;
+}
+.age-range-track { margin-bottom: 2px; }
+
+/* 26-12. 확대 보기 동안 배경 스크롤을 잠근다 */
+html.is-album-viewing,
+body.is-album-viewing { overflow: hidden; }
+.album-viewer button:focus { outline: none; }
+.album-viewer button:focus-visible { outline: 2px solid #6EE7B7; outline-offset: 2px; }
+.explore-sub-chip { font-weight: 680; }
+#btn-secret-album-share { font-weight: 680; }
+.age-range-foot { font-weight: 640; }
