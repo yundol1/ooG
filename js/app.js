@@ -3723,9 +3723,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const notices = store.getGroupNotices(grp.id);
     if (el.noticeTitle) el.noticeTitle.textContent = `${grp.name} 공지`;
     if (el.noticeSub) {
-      el.noticeSub.textContent = perm.canManage
-        ? `공지 ${notices.length}개 · ${perm.label}으로 쓰기·고정·수정·삭제할 수 있어요`
-        : `공지 ${notices.length}개 · 그룹장과 그룹장이 지정한 부방장만 쓸 수 있어요`;
+      /* Sprint 24 — 설명 대신 개수만. 권한은 버튼이 보이고 사라지는 것으로 이미 안다. */
+      el.noticeSub.textContent = `공지 ${notices.length}개`;
     }
     el.noticeList.innerHTML = notices.length ? notices.map((n) => {
       const editing = ui.noticeEditingId === n.id;
@@ -5006,8 +5005,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.btnAgeClear) el.btnAgeClear.hidden = !range.active;
     if (el.filterAgeNote) {
       el.filterAgeNote.textContent = range.active
-        ? `지금은 ${range.min}~${range.max}세의 사람·모임·글만 보고 있어요`
-        : '지금은 나이 조건 없이 전체를 보고 있어요';
+        ? `${range.min}~${range.max}세만`
+        : '';
     }
   }
 
@@ -5752,9 +5751,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const list = store.getHotPosts({ limit: HOT_SHEET_LIMIT, regionId: ui.exploreRegion });
     const region = store.getRegion(ui.exploreRegion);
     if (el.hotSheetSub) {
-      el.hotSheetSub.textContent = region
-        ? `${region.name} · 좋아요·댓글과 최신성으로 계산한 순위 · 화살표는 직전 집계 대비`
-        : '좋아요·댓글과 최신성으로 계산한 지금의 인기 순위 · 화살표는 직전 집계 대비';
+      el.hotSheetSub.textContent = region ? `${region.name}` : '';
     }
     if (!list.length) {
       el.hotList.innerHTML = `<div class="empty-state">${emptyArt('explore')}<p class="empty-title">아직 반응이 모인 글이 없어요</p><p class="empty-desc">좋아요와 댓글이 모이면 여기에 순위가 생깁니다.</p></div>`;
