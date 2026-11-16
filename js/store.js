@@ -453,55 +453,130 @@ function resolveNotificationActor(entry) {
  * · 시드 데이터는 `location` 한 문장만 적어도 아래 keywords 로 생활권이 해석된다
  *   (`applyRegionIds()` 가 부팅·마이그레이션 때 한 번 정리).
  * · 지역은 '실제 생활권' 기준이다 — 행정구 하나가 아니라 사람들이 발로 묶는 동네
- *   (성동·성수의 성수/왕십리, 동대문·중랑의 장안/청량리 …).
+ *   (성동·동작의 성수/왕십리, 성동·건대의 성수/건대 …).
  * ------------------------------------------------------------------------- */
-const EXPLORE_REGIONS = [
-  {
-    id: 'gwanak', name: '동대문·중랑', short: '동대문', icon: 'tree',
-    label: '장안 · 전농 · 답십리 · 청량리 · 회기',
-    keywords: ['동대문', '장안', '전농', '답십리', '청량리', '회기', '중랑', '면목']
-  },
-  {
-    id: 'gangnam', name: '강남·서초', short: '강남', icon: 'building',
-    label: '강남 · 대치 · 선릉 · 신논현 · 서초 · 양재',
-    keywords: ['강남', '대치', '선릉', '신논현', '서초', '양재', '삼성동', '청담']
-  },
-  {
-    id: 'mapo', name: '마포·홍대', short: '마포', icon: 'palette',
-    label: '홍대 · 합정 · 연남 · 상수 · 공덕',
-    keywords: ['마포', '홍대', '합정', '연남', '상수', '공덕', '서교']
-  },
-  {
-    id: 'yongsan', name: '용산·이태원', short: '용산', icon: 'bridge',
-    label: '용산 · 이태원 · 한남 · 경리단',
-    keywords: ['용산', '이태원', '한남', '경리단', '이촌', '남영']
-  },
-  {
-    id: 'jongno', name: '종로·중구', short: '종로', icon: 'temple',
-    label: '종로 · 을지로 · 광화문 · 명동 · 충무로',
-    keywords: ['종로', '중구', '을지로', '광화문', '명동', '충무로', '시청']
-  },
-  {
-    id: 'seongdong', name: '성동·건대', short: '성동', icon: 'leaf',
-    label: '성수 · 왕십리 · 건대 · 광진 · 자양',
-    keywords: ['성동', '성수', '왕십리', '건대', '광진', '자양', '뚝섬', '화양']
-  },
-  {
-    id: 'yeongdeungpo', name: '영등포·여의도', short: '영등포', icon: 'riverside',
-    label: '여의도 · 영등포 · 당산 · 신도림',
-    keywords: ['영등포', '여의도', '당산', '신도림', '문래', '샛강']
-  },
-  {
-    id: 'gyeonggi', name: '경기·수도권', short: '경기', icon: 'train',
-    label: '판교 · 분당 · 수원 · 인천 · 일산',
-    keywords: ['경기', '판교', '분당', '수원', '인천', '일산', '안양', '부천', '성남', '고양', '광교']
-  },
-  {
-    id: 'online', name: '전국·온라인', short: '온라인', icon: 'globe',
-    label: '디스코드 · 전국 어디서나',
-    keywords: ['전국', '디스코드', '온라인']
-  }
+/* Sprint 23 — 지역 카테고리(2단) — 이반시티 '우리동네/사람찾기' 구조
+ * ---------------------------------------------------------------------------
+ * 11/16 23:47 사용자 지시: "탐색 탭을 지역별 사람 구하기 게시판으로 바꿔.
+ *  서울(성수·성동·동작 / 강남·서초 / 홍대·마포·신촌 / 종로·이태원·중구 / 강동·송파·잠실 /
+ *  영등포·강서·구로 / 노원·강북·성북), 경기, 인천, 부산, 대구, 대전, 광주, 울산·세종,
+ *  강원, 충청, 전라, 경상, 제주."
+ *
+ *  · 큰 분류(EXPLORE_REGION_GROUPS) → 동네(EXPLORE_REGIONS). 서울만 7개 동네로 나뉜다.
+ *  · 사람·모임·글은 **동네 id** 하나를 갖는다(regionId). 큰 분류는 그 동네의 groupId 다.
+ *  · '전체'와 '내 주변'은 화면 전용 조건이다 — 데이터에는 저장하지 않는다.
+ *  · 옛 생활권 id(gwanak·gangnam·mapo·yongsan·jongno·seongdong·yeongdeungpo)는
+ *    REGION_ALIASES 로 지금 동네에 이어 붙인다(저장 상태 마이그레이션 안전).
+ * ------------------------------------------------------------------------- */
+const EXPLORE_REGION_GROUPS = [
+  { id: 'seoul', name: '서울', short: '서울', icon: 'building', label: '성수·강남·홍대·종로·강동·영등포·노원' },
+  { id: 'gyeonggi', name: '경기', short: '경기', icon: 'train', label: '수원 · 성남 · 고양 · 부천 · 안양' },
+  { id: 'incheon', name: '인천', short: '인천', icon: 'bridge', label: '송도 · 부평 · 구월 · 남동' },
+  { id: 'busan', name: '부산', short: '부산', icon: 'riverside', label: '서면 · 해운대 · 광안리 · 부산대' },
+  { id: 'daegu', name: '대구', short: '대구', icon: 'building', label: '동성로 · 수성 · 범어 · 성서' },
+  { id: 'daejeon', name: '대전', short: '대전', icon: 'tree', label: '둔산 · 은행동 · 유성 · 대전역' },
+  { id: 'gwangju', name: '광주', short: '광주', icon: 'palette', label: '충장로 · 상무지구 · 첨단' },
+  { id: 'ulsan-sejong', name: '울산·세종', short: '울산·세종', icon: 'compass', label: '울산 삼산 · 세종 나성' },
+  { id: 'gangwon', name: '강원', short: '강원', icon: 'tent', label: '춘천 · 원주 · 강릉 · 속초' },
+  { id: 'chungcheong', name: '충청', short: '충청', icon: 'leaf', label: '천안 · 청주 · 충주 · 아산' },
+  { id: 'jeolla', name: '전라', short: '전라', icon: 'tree', label: '전주 · 익산 · 순천 · 목포' },
+  { id: 'gyeongsang', name: '경상', short: '경상', icon: 'train', label: '창원 · 포항 · 구미 · 진주' },
+  { id: 'jeju', name: '제주', short: '제주', icon: 'palette', label: '제주시 · 서귀포' }
 ];
+
+const EXPLORE_REGIONS = [
+  /* ---- 서울 7개 동네 ---- */
+  {
+    id: 'seoul-seongsu', groupId: 'seoul', name: '성수·성동·동작', short: '성수', icon: 'tree',
+    label: '성수 · 서울숲 · 뚝섬 · 한양대 · 왕십리 · 뚝섬한강',
+    keywords: ['성동', '성수', '서울숲', '뚝섬', '한양대', '왕십리', '뚝섬한강', '동작', '옥수', '신대방']
+  },
+  {
+    id: 'seoul-gangnam', groupId: 'seoul', name: '강남·서초', short: '강남', icon: 'building',
+    label: '강남 · 대치 · 선릉 · 신논현 · 서초 · 양재 · 청담',
+    keywords: ['강남', '대치', '선릉', '신논현', '서초', '양재', '삼성동', '청담', '논현', '교대']
+  },
+  {
+    id: 'seoul-hongdae', groupId: 'seoul', name: '홍대·마포·신촌', short: '홍대', icon: 'palette',
+    label: '홍대 · 합정 · 연남 · 상수 · 공덕 · 신촌 · 망원',
+    keywords: ['마포', '홍대', '합정', '연남', '상수', '공덕', '서교', '신촌', '망원', '이대']
+  },
+  {
+    id: 'seoul-jongno', groupId: 'seoul', name: '종로·이태원·중구', short: '종로', icon: 'temple',
+    label: '종로 · 을지로 · 광화문 · 명동 · 충무로 · 이태원 · 한남',
+    keywords: ['종로', '중구', '을지로', '광화문', '명동', '충무로', '시청', '이태원', '한남', '경리단', '용산', '남영']
+  },
+  {
+    id: 'seoul-gangdong', groupId: 'seoul', name: '강동·송파·잠실', short: '강동', icon: 'leaf',
+    label: '강동 · 천호 · 송파 · 잠실 · 문정 · 성수 · 건대',
+    keywords: ['강동', '천호', '송파', '잠실', '가락', '문정', '성동', '성수', '뚝섬', '왕십리', '건대', '광진', '자양']
+  },
+  {
+    id: 'seoul-yeongdeungpo', groupId: 'seoul', name: '영등포·강서·구로', short: '영등포', icon: 'riverside',
+    label: '영등포 · 여의도 · 당산 · 신도림 · 강서 · 구로 · 마곡',
+    keywords: ['영등포', '여의도', '당산', '신도림', '문래', '샛강', '강서', '구로', '마곡', '화곡', '목동']
+  },
+  {
+    id: 'seoul-nowon', groupId: 'seoul', name: '노원·강북·성북', short: '노원', icon: 'home',
+    label: '노원 · 상계 · 창동 · 수유 · 미아 · 성북 · 길음',
+    keywords: ['노원', '상계', '창동', '도봉', '강북', '수유', '미아', '성북', '길음', '성신']
+  },
+  /* ---- 그 밖의 지역(큰 분류 하나 = 동네 하나) ---- */
+  { id: 'gyeonggi', groupId: 'gyeonggi', name: '경기', short: '경기', icon: 'train', label: '수원 · 성남 · 고양 · 부천 · 안양 · 용인', keywords: ['경기', '수원', '성남', '분당', '판교', '고양', '일산', '부천', '안양', '용인', '광교', '의정부'] },
+  { id: 'incheon', groupId: 'incheon', name: '인천', short: '인천', icon: 'bridge', label: '송도 · 부평 · 구월 · 남동 · 검단', keywords: ['인천', '송도', '부평', '구월', '남동', '검단'] },
+  { id: 'busan', groupId: 'busan', name: '부산', short: '부산', icon: 'riverside', label: '서면 · 해운대 · 광안리 · 부산대', keywords: ['부산', '서면', '해운대', '광안리', '부산대'] },
+  { id: 'daegu', groupId: 'daegu', name: '대구', short: '대구', icon: 'building', label: '동성로 · 수성 · 범어 · 성서', keywords: ['대구', '동성로', '수성', '범어', '성서'] },
+  { id: 'daejeon', groupId: 'daejeon', name: '대전', short: '대전', icon: 'tree', label: '둔산 · 은행동 · 유성 · 대전역', keywords: ['대전', '둔산', '은행동', '유성'] },
+  { id: 'gwangju', groupId: 'gwangju', name: '광주', short: '광주', icon: 'palette', label: '충장로 · 상무지구 · 첨단', keywords: ['광주', '충장로', '상무지구', '첨단'] },
+  { id: 'ulsan-sejong', groupId: 'ulsan-sejong', name: '울산·세종', short: '울산·세종', icon: 'compass', label: '울산 삼산 · 세종 나성', keywords: ['울산', '세종', '삼산', '나성'] },
+  { id: 'gangwon', groupId: 'gangwon', name: '강원', short: '강원', icon: 'tent', label: '춘천 · 원주 · 강릉 · 속초', keywords: ['강원', '춘천', '원주', '강릉', '속초'] },
+  { id: 'chungcheong', groupId: 'chungcheong', name: '충청', short: '충청', icon: 'leaf', label: '천안 · 청주 · 충주 · 아산', keywords: ['충청', '천안', '청주', '충주', '아산'] },
+  { id: 'jeolla', groupId: 'jeolla', name: '전라', short: '전라', icon: 'tree', label: '전주 · 익산 · 순천 · 목포', keywords: ['전라', '전주', '익산', '순천', '목포'] },
+  { id: 'gyeongsang', groupId: 'gyeongsang', name: '경상', short: '경상', icon: 'train', label: '창원 · 포항 · 구미 · 진주', keywords: ['경상', '창원', '포항', '구미', '진주'] },
+  { id: 'jeju', groupId: 'jeju', name: '제주', short: '제주', icon: 'palette', label: '제주시 · 서귀포', keywords: ['제주', '서귀포'] },
+  /* 옛 데이터(전국·온라인)는 칩에 세우지 않고 '전체'에서만 만난다. */
+  { id: 'online', groupId: 'online', hidden: true, name: '전국·온라인', short: '온라인', icon: 'globe', label: '디스코드 · 전국 어디서나', keywords: ['전국', '디스코드', '온라인'] }
+];
+
+/** 옛 생활권 id → 지금 동네 id (저장 상태를 버리지 않고 이어 붙인다). */
+const REGION_ALIASES = {
+  gwanak: 'seoul-seongsu',
+  gangnam: 'seoul-gangnam',
+  mapo: 'seoul-hongdae',
+  yongsan: 'seoul-jongno',
+  jongno: 'seoul-jongno',
+  seongdong: 'seoul-gangdong',
+  yeongdeungpo: 'seoul-yeongdeungpo',
+  'gyeonggi': 'gyeonggi',
+  online: 'online'
+};
+
+/** 내 주변 — 기본 5km 안. (반경 필터를 직접 고르면 그 값이 우선한다) */
+const NEARBY_KM = 5;
+
+/** 만남 스타일 — 글을 올릴 때 하나 고르면 카드에 그대로 붙는다(선택). */
+const EXPLORE_MEET_STYLES = [
+  { id: 'now', name: '지금 번개', icon: 'sparkle', desc: '바로 만나요' },
+  { id: 'drink', name: '술번개', icon: 'wine', desc: '한잔하면서' },
+  { id: 'comfortable', name: '편한 만남', icon: 'chat', desc: '부담 없이' },
+  { id: 'dm', name: '1:1 대화', icon: 'send', desc: '둘이서 이야기' }
+];
+
+/** 지역 id → 동네 정의(옛 id 는 지금 id 로 바꿔 찾는다). */
+function regionDef(regionId) {
+  const id = REGION_ALIASES[regionId] || regionId;
+  return EXPLORE_REGIONS.find((r) => r.id === id) || null;
+}
+
+/** 큰 분류 정의 */
+function regionGroupDef(groupId) {
+  return EXPLORE_REGION_GROUPS.find((g) => g.id === groupId) || null;
+}
+
+/** 만남 스타일 정의 */
+function meetStyleDef(styleId) {
+  return EXPLORE_MEET_STYLES.find((s) => s.id === styleId) || null;
+}
 
 /* ---------------------------------------------------------------------------
  * Sprint 8 — 내 동네 반경(거리) 축
@@ -515,8 +590,11 @@ const EXPLORE_REGIONS = [
  * · RADIUS 옵션은 저장 상태(exploreRadiusOptions)에 두어 마이그레이션·검증에서 함께 쓴다.
  * ------------------------------------------------------------------------- */
 const REGION_DISTANCE_KM = {
-  gwanak: 11.3, gangnam: 7.2, mapo: 9.6, yongsan: 7.8, jongno: 10.4,
-  seongdong: 0.6, yeongdeungpo: 8.4, gyeonggi: 24, online: null
+  'seoul-seongsu': 0.6, 'seoul-gangnam': 7.2, 'seoul-hongdae': 9.6, 'seoul-jongno': 10.4,
+  'seoul-gangdong': 13.4, 'seoul-yeongdeungpo': 8.4, 'seoul-nowon': 15.8,
+  gyeonggi: 24, incheon: 31, busan: 325, daegu: 238, daejeon: 162, gwangju: 268,
+  'ulsan-sejong': 307, gangwon: 96, chungcheong: 118, jeolla: 214, gyeongsang: 231,
+  jeju: 452, online: null
 };
 
 const EXPLORE_RADIUS_OPTIONS = [
@@ -561,26 +639,51 @@ function distanceLabel(km) {
   return `${(Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, '')}km`;
 }
 
-/** 지역 id 가 실제 정의된 지역인가. */
+/** 동네 id 가 실제 정의된 동네인가. */
 function isKnownRegion(regionId) {
-  return EXPLORE_REGIONS.some((r) => r.id === regionId);
+  return !!regionDef(regionId);
+}
+
+/** 큰 분류 id 인가 (서울·경기·부산 …). */
+function isKnownRegionGroup(groupId) {
+  return !!regionGroupDef(groupId);
+}
+
+/** 옛 id 를 지금 id 로. 모르는 값은 null. */
+function normalizeRegionId(regionId) {
+  if (regionId == null || regionId === '') return null;
+  const id = REGION_ALIASES[regionId] || regionId;
+  return isKnownRegion(id) ? id : null;
+}
+
+/** 고른 지역 조건이 항목의 동네를 포함하는가 — 동네 id·큰 분류 id·'all' 을 모두 받는다. */
+function regionFilterMatches(filterId, itemRegionId) {
+  const id = normalizeRegionId(itemRegionId);
+  if (!filterId || filterId === 'all') return true;
+  if (filterId === 'nearby') return true;                 // 거리로 따로 판정한다
+  const group = regionGroupDef(filterId);
+  if (group) {
+    const def = regionDef(id);
+    return !!def && (def.groupId === group.id || def.id === group.id);
+  }
+  return id === normalizeRegionId(filterId);
 }
 
 /**
- * 자유 문장(활동 지역·모임 지역·태그)에서 생활권 id 를 해석한다. 못 찾으면 null.
+ * 자유 문장(활동 지역·모임 지역·태그)에서 동네 id 를 해석한다. 못 찾으면 null.
  * @param {string} text
  * @returns {string|null}
  */
 function deriveRegionId(text) {
   const hay = String(text || '');
   if (!hay.trim()) return null;
-  const hit = EXPLORE_REGIONS.find((r) => r.keywords.some((k) => hay.includes(k)));
+  const hit = EXPLORE_REGIONS.find((r) => (r.keywords || []).some((k) => hay.includes(k)));
   return hit ? hit.id : null;
 }
 
 /**
- * 저장 상태의 모든 사람·모임·글에 regionId 를 일관되게 채운다 (Sprint 7).
- * - 명시된 regionId 가 유효하면 그대로 존중한다(사용자가 직접 고른 지역).
+ * 저장 상태의 모든 사람·모임·글에 regionId 를 일관되게 채운다 (Sprint 7 · 23 개편).
+ * - 명시된 regionId 가 유효하면 그대로 존중한다(옛 id 는 새 동네 id 로 옮긴다).
  * - 없으면 location/태그 문장에서 해석하고, 글은 작성자·소속 모임의 지역을 따른다.
  * 부팅·마이그레이션·프로필 수정·개설/작성 직후 같은 함수를 쓴다 → 데이터가 어긋나지 않는다.
  * @param {object} state 저장 상태(직접 변경한다)
@@ -588,23 +691,25 @@ function deriveRegionId(text) {
  */
 function applyRegionIds(state) {
   if (!state) return state;
+  const fallback = 'seoul-seongsu';
   const pick = (explicit, ...texts) => {
-    if (explicit && isKnownRegion(explicit)) return explicit;
+    const known = normalizeRegionId(explicit);
+    if (known) return known;
     for (const t of texts) {
       const id = deriveRegionId(t);
       if (id) return id;
     }
-    return explicit || null;
+    return null;
   };
 
   (state.matchProfiles || []).forEach((p) => {
-    p.regionId = pick(p.regionId, p.location) || 'gwanak';
+    p.regionId = pick(p.regionId, p.location) || fallback;
   });
   (state.partnerProfiles || []).forEach((p) => {
-    p.regionId = pick(p.regionId, p.location) || 'gwanak';
+    p.regionId = pick(p.regionId, p.location) || fallback;
   });
   (state.groups || []).forEach((g) => {
-    g.regionId = pick(g.regionId, g.location, (g.tags || []).join(' ')) || 'gwanak';
+    g.regionId = pick(g.regionId, g.location, (g.tags || []).join(' ')) || fallback;
   });
 
   const personRegion = (authorId) => {
@@ -614,19 +719,19 @@ function applyRegionIds(state) {
   };
   const uid = (state.currentUser || {}).id;
   if (state.currentUser) {
-    state.currentUser.regionId = pick(state.currentUser.regionId, state.currentUser.location) || 'gwanak';
+    state.currentUser.regionId = pick(state.currentUser.regionId, state.currentUser.location) || fallback;
   }
   (state.explorePosts || []).forEach((post) => {
     post.regionId = pick(post.regionId, post.location, post.groupName)
       || (post.authorId === uid ? state.currentUser.regionId : personRegion(post.authorId))
-      || 'gwanak';
+      || fallback;
   });
   (state.feedPosts || []).forEach((post) => {
     const group = (state.groups || []).find((g) => g.id === post.groupId);
     post.regionId = pick(post.regionId, group ? group.location : '')
       || (group ? group.regionId : null)
       || (post.authorId === uid ? state.currentUser.regionId : personRegion(post.authorId))
-      || 'gwanak';
+      || fallback;
   });
   return state;
 }
@@ -833,7 +938,7 @@ const defaultInitialState = {
     location: '서울 성동구 성수동',
     coords: { lat: 37.5446, lng: 127.0560 },
     /* Sprint 7 — 내 생활권 (탐색 지역 필터·새 글/모임 작성 시 기본 지역) */
-    regionId: 'seongdong',
+    regionId: 'gwanak',
     /* Sprint 4.5 — 모임 나이 제한 판정의 기준 (프로필 수정에서 바꿀 수 있다) */
     age: 26,
     hobbies: ['크로스핏', '클라이밍'],
@@ -879,6 +984,11 @@ const defaultInitialState = {
    * 각 항목은 사람·모임·글의 regionId 와 맞물린다(applyRegionIds 참고).
    * ------------------------------------------------------------------------- */
   exploreRegions: JSON.parse(JSON.stringify(EXPLORE_REGIONS)),
+
+  /* ---------------- 지역 큰 분류(서울·경기·인천 …) — Sprint 23 ----------------
+   * 서울은 안쪽에 7개 동네를 두고, 나머지 지역은 큰 분류 하나가 동네 하나다.
+   * ------------------------------------------------------------------------- */
+  exploreRegionGroups: JSON.parse(JSON.stringify(EXPLORE_REGION_GROUPS)),
 
   /* ---------------- 내 동네 반경 옵션 — Sprint 8 ----------------
    * 11/14 22:59 사용자 지시: "내 동네 반경 필터 넣어줘".
@@ -1482,14 +1592,17 @@ const defaultInitialState = {
      * 알림 설정의 '실베 진입' 시뮬레이션을 누르면 반응이 몰려 10위 안으로 들어온다. */
     {
       id: 'pub_mine_wod',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'drink',
+      meetStyleLabel: '술번개',
       authorId: 'user_rookie',
       authorName: '루키',
       authorAvatarText: '루',
       authorGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
       hobbyId: 'fitness',
       hobbyLabel: '크로스핏',
-      tag: '오운완',
-      caption: '오늘 WOD: 클린 60kg 5x3 + 스내치 테크닉 20분. 마지막 세트에서 팔이 아니라 다리로 들었다는 느낌이 왔습니다. 내일 19:10반에 또 갑니다.',
+      tag: '한잔',
+      caption: '성수역 근처 지금 가볍게 한잔하실 분. 오늘 19:10 운동 끝나고 21시쯤 시간 됩니다. 편하게 말 걸어주세요.',
       mediaCaption: '클린 60kg · 5x3',
       ratio: 'wide',
       groupName: '성수 레벨업 퇴근 와드팟',
@@ -1504,14 +1617,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_mine_climb',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'now',
+      meetStyleLabel: '지금 번개',
       authorId: 'user_rookie',
       authorName: '루키',
       authorAvatarText: '루',
       authorGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
       hobbyId: 'climb',
       hobbyLabel: '클라이밍',
-      tag: '완등인증',
-      caption: '성수 볼더링 입문 3주차. 오늘 파랑 V2 완등했습니다. 아직 발끝이 잘 안 잡히지만 재미가 더 커요.',
+      tag: '번개',
+      caption: '성수 볼더링 끝나고 국수 한 그릇 하실 분. 오늘 21시까지 이 근처에 있어요.',
       mediaCaption: 'V2 첫 완등',
       ratio: 'square',
       groupName: '블록스 성수 볼더링 원정대',
@@ -1525,14 +1641,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_game_01',
+      regionId: 'seoul-gangnam',
+      meetStyle: 'comfortable',
+      meetStyleLabel: '편한 만남',
       authorId: 'match_junho',
       authorName: '준호',
       authorAvatarText: '준',
       authorGradient: 'linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)',
       hobbyId: 'game',
       hobbyLabel: '게임',
-      tag: '내전',
-      caption: '어제 5인 내전 세 판 전부 이겼습니다. 칼바람만 하다가 소환사의 협곡 들어가니 손이 굳더라고요 ㅋㅋ 이번 주말에 한 판 더 모실 분?',
+      tag: '퇴근후',
+      caption: '강남 퇴근 후 편하게 만날 분. 9시 이후 대치 근처에서 게임 한 판이나 맥주 한 잔 어때요.',
       mediaCaption: '5인 내전 3연승',
       ratio: 'wide',
       groupName: '심야 롤 칼바람 & 자랭 소환사들',
@@ -1546,14 +1665,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_run_01',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'now',
+      meetStyleLabel: '지금 번개',
       authorId: 'match_minwoo',
       authorName: '민우',
       authorAvatarText: '민',
       authorGradient: 'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)',
       hobbyId: 'run',
       hobbyLabel: '러닝',
-      tag: '오운완',
-      caption: '뚝섬한강공원 10K 51분 12초. 어제보다 40초 당겼습니다. 목요일 저녁 같이 뛰실 분은 편하게 말 걸어주세요, 대화 되는 속도로 갑니다.',
+      tag: '지금번개',
+      caption: '성수천 5K 같이 뛰실 분. 퇴근하고 8시에 한양대에서 출발합니다. 대화 되는 속도로 갑니다.',
       mediaCaption: '10K · 51분 12초',
       ratio: 'square',
       groupName: '한강 나이트 러닝 크루',
@@ -1567,14 +1689,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_cafe_01',
+      regionId: 'seoul-hongdae',
+      meetStyle: 'dm',
+      meetStyleLabel: '1:1 대화',
       authorId: 'match_dohyun',
       authorName: '도현',
       authorAvatarText: '도',
       authorGradient: 'linear-gradient(135deg, #F59E0B 0%, #92400E 100%)',
       hobbyId: 'cafe',
       hobbyLabel: '카페/맛집',
-      tag: '카페투어',
-      caption: '연남동에 새로 생긴 로스터리 다녀왔습니다. 산미 살아있는 에티오피아 원두 핸드드립이 진짜 좋았어요. 사진은 창가 자리에서.',
+      tag: '1:1대화',
+      caption: '홍대 20대 대화/번개. 연남동 카페에서 8시쯤 커피 한 잔 하실 분, 편하게 쪽지 주세요.',
       mediaCaption: '연남동 · 핸드드립',
       ratio: 'wide',
       groupName: '성수 카페투어 & 디저트 크루',
@@ -1587,14 +1712,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_climb_01',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'now',
+      meetStyleLabel: '지금 번개',
       authorId: 'match_seongmin',
       authorName: '성민',
       authorAvatarText: '성',
       authorGradient: 'linear-gradient(135deg, #64748B 0%, #1E293B 100%)',
       hobbyId: 'climb',
       hobbyLabel: '클라이밍',
-      tag: '완등인증',
-      caption: '성수 블록스 파랑 V4 완등. 마지막 홀드에서 두 번 떨어지고 세 번째에 붙었습니다. 발쓰기만 잡히면 진짜 편해져요.',
+      tag: '지금번개',
+      caption: '성수에서 클라이밍 같이 하실 분. 오늘 저녁 8시 볼더링장 앞에서 만나요.',
       mediaCaption: '빨강 루트 3트라이',
       ratio: 'square',
       groupName: '블록스 성수 볼더링 원정대',
@@ -1605,14 +1733,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_swim_01',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'now',
+      meetStyleLabel: '지금 번개',
       authorId: 'match_taemin',
       authorName: '태민',
       authorAvatarText: '태',
       authorGradient: 'linear-gradient(135deg, #22D3EE 0%, #0E7490 100%)',
       hobbyId: 'swim',
       hobbyLabel: '수영',
-      tag: '새벽수영',
-      caption: '06시 레인. 물 온도가 딱 좋아서 1,500m를 한 번에 갔습니다. 출근 전에 이만큼 하고 나면 하루가 다릅니다.',
+      tag: '새벽',
+      caption: '성수 새벽 수영 같이 하실 분. 6시 레인에서 만나서 1,500m 하고 같이 출근해요.',
       mediaCaption: '1,500m · 29분',
       ratio: 'wide',
       groupName: '성동구민센터 새벽 모닝스윔',
@@ -1625,14 +1756,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_movie_01',
+      regionId: 'seoul-yeongdeungpo',
+      meetStyle: 'comfortable',
+      meetStyleLabel: '편한 만남',
       authorId: 'match_seojun',
       authorName: '서준',
       authorAvatarText: '서',
       authorGradient: 'linear-gradient(135deg, #334155 0%, #0F172A 100%)',
       hobbyId: 'movie',
       hobbyLabel: '영화·전시',
-      tag: '영화토크',
-      caption: '금요일 심야로 독립영화 한 편 봤습니다. 엔딩 크레딧 끝까지 앉아 있었던 건 오랜만이에요. 스포 없이 이야기할 사람 구합니다.',
+      tag: '영화',
+      caption: '영등포 퇴근 후 편하게 영화 보실 분. 금요일 심야 21:40, 끝나고 5분만 이야기해요.',
       mediaCaption: '금요 심야 · 21:40',
       ratio: 'square',
       groupName: '영등포/용산 심야 시네마 & 전시',
@@ -1643,6 +1777,9 @@ const defaultInitialState = {
     },
     {
       id: 'pub_board_01',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'now',
+      meetStyleLabel: '지금 번개',
       authorId: 'match_hyunwoo',
       authorName: '현우',
       authorAvatarText: '현',
@@ -1650,7 +1787,7 @@ const defaultInitialState = {
       hobbyId: 'boardgame',
       hobbyLabel: '보드게임',
       tag: '번개',
-      caption: '토요일 14시 왕십리 보드게임카페에서 아그리콜라 4인 한 판 돌립니다. 뉴비도 룰 설명 듣고 바로 앉으실 수 있어요. 두 자리 남았습니다.',
+      caption: '왕십리 보드게임카페에서 아그리콜라 4인 번개. 토요일 14시, 뉴비 환영, 두 자리 남았습니다.',
       mediaCaption: '토 14:00 · 왕십리',
       ratio: 'wide',
       groupName: '강남·왕십리 전략 보드게임 클럽',
@@ -1664,14 +1801,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_wod_01',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'drink',
+      meetStyleLabel: '술번개',
       authorId: 'match_jihun',
       authorName: '지훈',
       authorAvatarText: '지',
       authorGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
       hobbyId: 'fitness',
       hobbyLabel: '크로스핏',
-      tag: 'WOD기록',
-      caption: '19:10반 오늘 WOD 완주. 클린 60kg 첫 성공했습니다. 운동 끝나고 단백질 한 잔 같이 하실 분 계실까요?',
+      tag: '운동후',
+      caption: '성수 19:10 운동 끝나고 단백질 한 잔 같이 하실 분. 오늘 클린 60kg 처음 성공했습니다.',
       mediaCaption: '클린 60kg PR',
       ratio: 'square',
       groupName: '성수 레벨업 퇴근 와드팟',
@@ -1684,14 +1824,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_food_01',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'comfortable',
+      meetStyleLabel: '편한 만남',
       authorId: 'match_haram',
       authorName: '하람',
       authorAvatarText: '하',
       authorGradient: 'linear-gradient(135deg, #F97316 0%, #9A3412 100%)',
       hobbyId: 'cafe',
       hobbyLabel: '카페/맛집',
-      tag: '맛집',
-      caption: '성수 순대국 골목 세 번째 집이 제일 깔끔했습니다. 운동하고 다음 날 아침에 가면 국물이 더 시원해요.',
+      tag: '아침',
+      caption: '성수 순대국 골목 아침 같이 가실 분. 9시까지 편하게, 말 걸어주세요.',
       mediaCaption: '성수 순대국',
       ratio: 'wide',
       groupName: '성수 카페투어 & 디저트 크루',
@@ -1702,14 +1845,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_lol_01',
+      regionId: 'online',
+      meetStyle: 'dm',
+      meetStyleLabel: '1:1 대화',
       authorId: 'user_faker',
       authorName: '미드장인',
       authorAvatarText: '미',
       authorGradient: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)',
       hobbyId: 'game',
       hobbyLabel: '게임',
-      tag: '승급전',
-      caption: '3연패 뒤에 3연승으로 골드 승급했습니다. 새벽 2시에 이기고 자면 다음 날이 제일 개운해요 ㅋㅋ 다들 승급전 화이팅!',
+      tag: '심야',
+      caption: '새벽 2시까지 롤 하실 분. 디스코드로 들어와서 편하게 한 판 하실 분 구해요.',
       mediaCaption: '승급전 3연승',
       ratio: 'square',
       groupName: '심야 롤 칼바람 & 자랭 소환사들',
@@ -1720,14 +1866,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_kettle_01',
+      regionId: 'seoul-seongsu',
+      meetStyle: 'comfortable',
+      meetStyleLabel: '편한 만남',
       authorId: 'user_kettle',
       authorName: '케틀벨러버',
       authorAvatarText: '케',
       authorGradient: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
       hobbyId: 'fitness',
       hobbyLabel: '크로스핏',
-      tag: 'PR달성',
-      caption: '파머스 워크 24kg 왕복 4세트. 전완근이 터지는 줄 알았지만 PR 갱신했습니다. 악력은 진짜 배신을 안 하네요.',
+      tag: '수다',
+      caption: '성수 운동 끝나고 20분만 수다 떨실 분. 편하게 나오세요.',
       mediaCaption: '24kg · 왕복 4세트',
       ratio: 'wide',
       groupName: '성수 레벨업 퇴근 와드팟',
@@ -1740,14 +1889,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_night_01',
+      regionId: 'seoul-yeongdeungpo',
+      meetStyle: 'now',
+      meetStyleLabel: '지금 번개',
       authorId: 'user_night',
       authorName: '야간비행',
       authorAvatarText: '야',
       authorGradient: 'linear-gradient(135deg, #1E3A8A 0%, #0EA5E9 100%)',
       hobbyId: 'run',
       hobbyLabel: '러닝',
-      tag: '기록인증',
-      caption: '여의도 샛강 10K 52분 31초. 밤에 달리면 강바람이 등에 붙어서 낮보다 30초는 빨라지는 것 같아요. 화요일도 나옵니다.',
+      tag: '야간런',
+      caption: '여의도 밤에 같이 뛰실 분. 9시 샛강에서 10K, 속도 맞춰 갑니다.',
       mediaCaption: '샛강 코스 · 야간런',
       ratio: 'square',
       groupName: '한강 나이트 러닝 크루',
@@ -1759,14 +1911,17 @@ const defaultInitialState = {
     /* ===== Sprint 7 — 지역별로 모아 보는 공개 글 (다른 생활권 6건) ===== */
     {
       id: 'pub_mapo_01',
+      regionId: 'seoul-hongdae',
+      meetStyle: 'dm',
+      meetStyleLabel: '1:1 대화',
       authorId: 'match_jiwoo',
       authorName: '지우',
       authorAvatarText: '지',
       authorGradient: 'linear-gradient(135deg, #4338CA 0%, #1E1B4B 100%)',
       hobbyId: 'movie',
       hobbyLabel: '영화·전시',
-      tag: '영화토크',
-      caption: '합정 아트하우스에서 재개봉작 봤습니다. 엔딩이 열린 채로 끝나서 나오는 길에 계속 생각났어요. 스포 없이 이야기할 사람 구해요.',
+      tag: '1:1대화',
+      caption: '합정 20대 대화/번개. 영화 보고 나와서 30분만 이야기하실 분 구해요.',
       mediaCaption: '합정 · 재개봉작',
       ratio: 'wide',
       groupName: '홍대 심야영화 & 전시 크루',
@@ -1781,14 +1936,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_seongdong_01',
+      regionId: 'seoul-gangdong',
+      meetStyle: 'comfortable',
+      meetStyleLabel: '편한 만남',
       authorId: 'match_seungho',
       authorName: '성호',
       authorAvatarText: '성',
       authorGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
       hobbyId: 'cafe',
       hobbyLabel: '카페/맛집',
-      tag: '카페투어',
-      caption: '성수 골목 안쪽 로스터리. 사람 없는 오후 3시가 제일 좋습니다. 원두는 케냐, 산미보다 단맛 쪽이에요.',
+      tag: '카페',
+      caption: '성수 오후 3시 카페에서 편하게 이야기하실 분. 조용한 로스터리 알아요.',
       mediaCaption: '성수 · 케냐 AA',
       ratio: 'square',
       groupName: '성수 카페투어 & 디저트 크루',
@@ -1801,14 +1959,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_jongno_01',
+      regionId: 'seoul-jongno',
+      meetStyle: 'now',
+      meetStyleLabel: '지금 번개',
       authorId: 'match_taeho',
       authorName: '태호',
       authorAvatarText: '태',
       authorGradient: 'linear-gradient(135deg, #78350F 0%, #451A03 100%)',
       hobbyId: 'boardgame',
       hobbyLabel: '보드게임',
-      tag: '게임후기',
-      caption: '일요일 을지로에서 4인 헤비게임 한 판. 3시간 반 걸렸고 2점 차로 졌습니다. 이 맛에 합니다.',
+      tag: '번개',
+      caption: '종로·을지로 일요일 4인 보드게임 번개. 헤비게임 좋아하시면 편하게 오세요.',
       mediaCaption: '을지로 · 4인 전략',
       ratio: 'wide',
       groupName: '종로 전략 보드게임 & 독서',
@@ -1822,14 +1983,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_yongsan_01',
+      regionId: 'seoul-jongno',
+      meetStyle: 'drink',
+      meetStyleLabel: '술번개',
       authorId: 'match_iseul',
       authorName: '이슬',
       authorAvatarText: '이',
       authorGradient: 'linear-gradient(135deg, #0F766E 0%, #134E4A 100%)',
       hobbyId: 'climb',
       hobbyLabel: '클라이밍',
-      tag: '완등인증',
-      caption: '이태원에서 V3 첫 완등. 손가락이 아직 얼얼한데 기분은 좋습니다. 이번 주 한 번 더 갈 사람?',
+      tag: '한잔',
+      caption: '이태원 저녁에 클라이밍 같이 하실 분. 끝나고 한 잔도 좋아요.',
       mediaCaption: 'V3 첫 완등',
       ratio: 'square',
       groupName: '이태원·한남 클라이밍 크루',
@@ -1842,14 +2006,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_gyeonggi_01',
+      regionId: 'gyeonggi',
+      meetStyle: 'now',
+      meetStyleLabel: '지금 번개',
       authorId: 'match_junseo',
       authorName: '준서',
       authorAvatarText: '준',
       authorGradient: 'linear-gradient(135deg, #475569 0%, #1E293B 100%)',
       hobbyId: 'run',
       hobbyLabel: '러닝',
-      tag: '오운완',
-      caption: '판교 탄천 6K 31분. 퇴근하고 이거 하나면 하루가 정리됩니다. 판교 사시는 분들 같이 뛰어요.',
+      tag: '퇴근후',
+      caption: '판교 퇴근 후 6K 같이 뛰실 분. 탄천 7시, 편하게요.',
       mediaCaption: '탄천 · 6K',
       ratio: 'square',
       groupName: '판교·분당 퇴근 러닝',
@@ -1860,14 +2027,17 @@ const defaultInitialState = {
     },
     {
       id: 'pub_yeongdeungpo_01',
+      regionId: 'seoul-yeongdeungpo',
+      meetStyle: 'comfortable',
+      meetStyleLabel: '편한 만남',
       authorId: 'match_boram',
       authorName: '보람',
       authorAvatarText: '보',
       authorGradient: 'linear-gradient(135deg, #0891B2 0%, #155E75 100%)',
       hobbyId: 'swim',
       hobbyLabel: '수영',
-      tag: '새벽수영',
-      caption: '여의도 수영장 저녁 레인. 오늘은 1,000m 24분으로 끊었습니다. 사람 적어서 좋네요.',
+      tag: '저녁',
+      caption: '여의도 저녁 수영 같이 하실 분. 8시 레인에서 1,000m 하고 근처서 국수 어때요.',
       mediaCaption: '1,000m · 24분',
       ratio: 'wide',
       groupName: '성동구민센터 새벽 모닝스윔',
@@ -3103,6 +3273,10 @@ class Store {
       /* Sprint 21 — 취미 분류 체계는 **코드가 가진 선택지**다(사용자 콘텐츠가 아니다).
          저장 상태에 옛 8종 칩이 남아 있어도 지금의 42종으로 맞춘다. */
       merged.exploreHobbyChips = JSON.parse(JSON.stringify(HOBBY_FLAT));
+      /* Sprint 23 — 지역 분류도 코드가 가진 선택지다. 저장 상태에 옛 9생활권이 남아 있어도
+         지금의 2단 분류(서울 7동네 + 12지역)로 맞춘다. 옛 regionId 값은 applyRegionIds 가 옮긴다. */
+      merged.exploreRegions = JSON.parse(JSON.stringify(EXPLORE_REGIONS));
+      merged.exploreRegionGroups = JSON.parse(JSON.stringify(EXPLORE_REGION_GROUPS));
       merged.customHobbies = Array.isArray(parsed.customHobbies)
         ? parsed.customHobbies.filter((h) => h && h.id && h.name).slice(0, 20) : [];
       const gd = parsed.guide && typeof parsed.guide === 'object' ? parsed.guide : {};
@@ -3594,12 +3768,19 @@ class Store {
       .concat((s.customHobbies || []).map((h) => h.id));
     const typeIds = ['all', 'people', 'posts', ...hobbyIds];
     const ageIds = ['all', 'for_me', 'none', ...(s.ageLimitOptions || []).filter((o) => o.id !== 'all').map((o) => o.id)];
-    const regionIds = ['all', ...(s.exploreRegions || EXPLORE_REGIONS).map((r) => r.id)];
+    /* Sprint 23 — 지역 조건은 동네 id · 큰 분류 id · 내 주변 을 모두 받는다. */
+    const regionIds = ['all', 'nearby',
+      ...(s.exploreRegionGroups || EXPLORE_REGION_GROUPS).map((g) => g.id),
+      ...(s.exploreRegions || EXPLORE_REGIONS).map((r) => r.id),
+      ...Object.keys(REGION_ALIASES)];
     const radiusIds = (s.exploreRadiusOptions || EXPLORE_RADIUS_OPTIONS).map((r) => r.id);
+    const regionValue = regionIds.includes(p.region) ? p.region : 'all';
+    const region = regionValue === 'all' || regionValue === 'nearby' || isKnownRegionGroup(regionValue)
+      ? regionValue : (normalizeRegionId(regionValue) || 'all');
     return {
       filter: typeIds.includes(p.filter) ? p.filter : 'all',
       age: ageIds.includes(p.age) ? p.age : 'all',
-      region: regionIds.includes(p.region) ? p.region : 'all',
+      region,
       radius: radiusIds.includes(p.radius) ? p.radius : 'all',
       /* Sprint 16 — 0~99세 듀얼 레인지. 두 값이 뒤집혔으면 바로잡고, 범위 밖은 잘라낸다. */
       ageMin: clampAge(p.ageMin, 0),
@@ -3681,13 +3862,77 @@ class Store {
    *    지역별 사람·모임·글 수를 돌려준다 → 칩/드로운다운에 숫자를 그대로 쓴다.
    * ======================================================================== */
 
-  /** 지역 메타 목록(9종) */
+  /** 동네 메타 목록 — 서울 7 + 그 밖의 지역 12 (+ 숨은 online). */
   getExploreRegions() {
     return (this.state.exploreRegions || EXPLORE_REGIONS).map((r) => ({ ...r }));
   }
 
+  /** 화면에 세우는 동네 목록(숨은 online 제외). */
+  getVisibleRegions() {
+    return this.getExploreRegions().filter((r) => !r.hidden);
+  }
+
+  /** 큰 분류(서울·경기·부산 …) 목록. */
+  getRegionGroups() {
+    return (this.state.exploreRegionGroups || EXPLORE_REGION_GROUPS).map((g) => ({ ...g }));
+  }
+
+  /** 큰 분류 하나에 속한 동네들 — 서울이면 7개, 나머지는 자기 하나. */
+  getSubRegions(groupId) {
+    return this.getVisibleRegions().filter((r) => r.groupId === groupId);
+  }
+
+  /**
+   * 지역 id 해석 — 동네 id · 큰 분류 id · 'all' · 'nearby' 를 모두 같은 모양으로 돌려준다.
+   * @returns {object|null} { id, name, short, icon, label, groupId?, group:boolean }
+   */
   getRegion(regionId) {
-    return this.getExploreRegions().find((r) => r.id === regionId) || null;
+    if (!regionId) return null;
+    if (regionId === 'nearby') {
+      return { id: 'nearby', name: '내 주변', short: '내 주변', icon: 'walk',
+        label: `내 동네 ${NEARBY_KM}km 안`, nearby: true };
+    }
+    const group = regionGroupDef(regionId);
+    if (group) {
+      return { ...group, group: true, label: `${group.label}` };
+    }
+    const id = normalizeRegionId(regionId);
+    return this.getExploreRegions().find((r) => r.id === id) || null;
+  }
+
+  /** 지역 표시 이름 — '서울 · 성수·성동·동작' 처럼 큰 분류를 앞에 붙인다. */
+  getRegionLabel(regionId) {
+    const region = this.getRegion(regionId);
+    if (!region) return '전체 지역';
+    if (region.group || region.nearby) return region.name;
+    const group = regionGroupDef(region.groupId);
+    return group && group.name !== region.name ? `${group.name} · ${region.name}` : region.name;
+  }
+
+  /**
+   * 상단 지역 칩 — [전체] [내 주변] [서울] [경기] … [제주] (+ 건수).
+   * 서울은 안쪽 동네 7개를 따로 고를 수 있다(getSubRegions).
+   */
+  getExploreRegionChips(filter = 'all', query = '', ageFilter = 'all', radius = 'all') {
+    const stats = this.getExploreRegionStats(filter, query, ageFilter, radius);
+    const byId = stats.reduce((map, s2) => { map[s2.id] = s2; return map; }, {});
+    return [
+      { id: 'all', name: '전체', icon: 'grid', count: byId.all ? byId.all.total : 0 },
+      { id: 'nearby', name: '내 주변', icon: 'walk', count: byId.nearby ? byId.nearby.total : 0 },
+      ...this.getRegionGroups().map((g) => ({
+        id: g.id, name: g.name, icon: g.icon, group: true,
+        count: byId[g.id] ? byId[g.id].total : 0
+      }))
+    ];
+  }
+
+  /** 만남 스타일 목록 — 글 쓸 때 하나 고른다(선택). */
+  getMeetStyles() {
+    return EXPLORE_MEET_STYLES.map((s) => ({ ...s }));
+  }
+
+  getMeetStyle(styleId) {
+    return meetStyleDef(styleId);
   }
 
   /** 사람 카드의 지역 */
@@ -3842,33 +4087,49 @@ class Store {
    */
   getExploreRegionStats(filter = 'all', query = '', ageFilter = 'all', radius = 'all') {
     const items = this.getExploreFeed(filter, query, null, ageFilter, 'all', radius);
-    const regions = this.getExploreRegions();
+    const regions = this.getVisibleRegions();
+    const groups = this.getRegionGroups();
     const seed = regions.reduce((map, r) => {
       map[r.id] = { id: r.id, name: r.name, short: r.short, icon: r.icon, label: r.label,
-        people: 0, groups: 0, posts: 0, total: 0 };
+        groupId: r.groupId, people: 0, groups: 0, posts: 0, total: 0 };
+      return map;
+    }, {});
+    const groupSeed = groups.reduce((map, g) => {
+      map[g.id] = { id: g.id, name: g.name, short: g.short, icon: g.icon, label: g.label,
+        group: true, people: 0, groups: 0, posts: 0, total: 0 };
       return map;
     }, {});
     let total = { people: 0, groups: 0, posts: 0 };
+    let nearby = { people: 0, groups: 0, posts: 0 };
     (items || []).forEach((item) => {
-      const id = this.itemRegionId(item);
-      if (item.type === 'person') total.people += 1;
-      if (item.type === 'group') total.groups += 1;
-      if (item.type === 'post') total.posts += 1;
+      const id = normalizeRegionId(this.itemRegionId(item));
+      const kind = item.type === 'person' ? 'people' : item.type === 'group' ? 'groups' : 'posts';
+      total[kind] += 1;
+      if (this.radiusAllows(String(NEARBY_KM), item.distanceKm)) nearby[kind] += 1;
       const bucket = seed[id];
       if (!bucket) return;
-      if (item.type === 'person') bucket.people += 1;
-      if (item.type === 'group') bucket.groups += 1;
-      if (item.type === 'post') bucket.posts += 1;
+      bucket[kind] += 1;
+      const g = groupSeed[bucket.groupId];
+      if (g) g[kind] += 1;
     });
     const list = regions.map((r) => {
       const b = seed[r.id];
       b.total = b.people + b.groups + b.posts;
       return b;
     });
-    return [{
-      id: 'all', name: '전체 지역', short: '전체', icon: 'map', label: '모든 생활권',
-      ...total, total: total.people + total.groups + total.posts
-    }, ...list];
+    const groupList = groups.map((g) => {
+      const b = groupSeed[g.id];
+      b.total = b.people + b.groups + b.posts;
+      return b;
+    });
+    return [
+      { id: 'all', name: '전체', short: '전체', icon: 'map', label: '모든 지역',
+        ...total, total: total.people + total.groups + total.posts },
+      { id: 'nearby', name: '내 주변', short: '내 주변', icon: 'walk', label: `내 동네 ${NEARBY_KM}km 안`,
+        ...nearby, total: nearby.people + nearby.groups + nearby.posts },
+      ...groupList,
+      ...list
+    ];
   }
 
   /* ==========================================================================
@@ -4030,10 +4291,13 @@ class Store {
     const q = String(o.query || '').trim().toLowerCase();
     const categoryId = o.categoryId && o.categoryId !== 'all' ? o.categoryId : 'all';
     const hobbyId = o.hobbyId && o.hobbyId !== 'all' ? o.hobbyId : 'all';
-    const regionId = o.region === 'all' || !o.region || isKnownRegion(o.region) ? (o.region || 'all') : 'all';
+    const regionArg = o.region || 'all';
+    const regionId = regionArg === 'all' || regionArg === 'nearby'
+      || isKnownRegion(regionArg) || isKnownRegionGroup(regionArg) ? regionArg : 'all';
     const radiusId = isKnownRadius(o.radius) ? o.radius : 'all';
     const age = this.getExploreAgeFilters().some((f) => f.id === o.age) ? o.age : 'all';
-    const inRegion = (id) => regionId === 'all' || id === regionId;
+    const inRegion = (id) => regionFilterMatches(regionId, id);
+    const nearbyOk = (km) => regionId !== 'nearby' || this.radiusAllows(String(NEARBY_KM), km);
     const mine = this.getTasteHobbyIds();
     const myCats = mine.map((id) => this.getHobbyTone(id));
     const joined = this.state.currentUser ? this.currentUser.joinedGroupIds || [] : [];
@@ -4046,6 +4310,7 @@ class Store {
       if (!this.ageRangeAllowsGroup(g)) return false;
       if (!inRegion(this.getGroupRegionId(g))) return false;
       if (!this.radiusAllows(radiusId, this.getGroupDistanceKm(g))) return false;
+      if (!nearbyOk(this.getGroupDistanceKm(g))) return false;
       if (!this.matchGroupQuery(g, q)) return false;
       return true;
     }).map((g) => {
@@ -4101,9 +4366,15 @@ class Store {
     const kind = filter || 'all';
     const q = String(query || '').trim().toLowerCase();
     const age = this.getExploreAgeFilters().some((f) => f.id === ageFilter) ? ageFilter : 'all';
-    const regionId = region === 'all' || isKnownRegion(region) ? region : 'all';
-    const radiusId = isKnownRadius(radius) ? radius : 'all';
-    const inRegion = (id) => regionId === 'all' || id === regionId;
+    const regionRaw = region && (region === 'all' || region === 'nearby'
+      || isKnownRegion(region) || isKnownRegionGroup(region)) ? region : 'all';
+    const regionId = regionRaw === 'all' || regionRaw === 'nearby'
+      ? 'all' : (isKnownRegionGroup(regionRaw) ? regionRaw : (normalizeRegionId(regionRaw) || 'all'));
+    const nearbyOnly = regionRaw === 'nearby';
+    const radiusId = nearbyOnly ? 'all' : (isKnownRadius(radius) ? radius : 'all');
+    /* 동네 id 하나 · 서울 같은 큰 분류 · 내 주변(5km) 을 같은 자로 판정한다. */
+    const inRegion = (id) => regionFilterMatches(regionId, id);
+    const nearbyOk = (km) => !nearbyOnly || this.radiusAllows(String(NEARBY_KM), km);
     const hobbyIds = (this.state.exploreHobbyChips || []).map((h) => h.id);
     const isHobby = hobbyIds.includes(kind);
 
@@ -4121,6 +4392,7 @@ class Store {
         if (!inRegion(this.getPersonRegionId(p))) return;
         const distanceKm = this.getPersonDistanceKm(p);
         if (!this.radiusAllows(radiusId, distanceKm)) return;
+        if (!nearbyOk(distanceKm)) return;
         if (!this.matchPersonQuery(p, q)) return;
         people.push({ type: 'person', id: p.id, ratio: p.ratio || 'mid', profile: p, distanceKm });
       });
@@ -4137,6 +4409,7 @@ class Store {
         if (!inRegion(this.getGroupRegionId(g))) return;
         const distanceKm = this.getGroupDistanceKm(g);
         if (!this.radiusAllows(radiusId, distanceKm)) return;
+        if (!nearbyOk(distanceKm)) return;
         if (!this.matchGroupQuery(g, q)) return;
         groups.push({
           type: 'group', id: g.id, ratio: g.ratio || 'wide',
@@ -4154,6 +4427,7 @@ class Store {
         if (!inRegion(this.getExplorePostRegionId(p))) return;
         const distanceKm = this.getExplorePostDistanceKm(p);
         if (!this.radiusAllows(radiusId, distanceKm)) return;
+        if (!nearbyOk(distanceKm)) return;
         if (!this.matchPostQuery(p, q)) return;
         posts.push({ type: 'post', id: p.id, ratio: p.ratio || 'square', post: p, distanceKm });
       });
@@ -4301,7 +4575,9 @@ class Store {
     const o = options || {};
     const limit = Math.max(1, Math.min(20, Number(o.limit) || 5));
     const now = o.now instanceof Date ? o.now.getTime() : (Number(o.now) || Date.now());
-    const region = o.regionId && o.regionId !== 'all' && isKnownRegion(o.regionId) ? o.regionId : 'all';
+    const region = o.regionId && o.regionId !== 'all'
+      && (isKnownRegion(o.regionId) || isKnownRegionGroup(o.regionId) || o.regionId === 'nearby')
+      ? o.regionId : 'all';
     const hobby = o.hobbyId || null;
     const persist = o.persist !== false;
     const scope = this.hotScopeOf(region, hobby);
@@ -4389,17 +4665,19 @@ class Store {
   rankHotPosts(atMs, options) {
     const o = options || {};
     const at = Number(atMs) || Date.now();
-    const region = o.regionId && o.regionId !== 'all' && isKnownRegion(o.regionId) ? o.regionId : 'all';
+    const region = o.regionId && o.regionId !== 'all'
+      && (isKnownRegion(o.regionId) || isKnownRegionGroup(o.regionId) || o.regionId === 'nearby')
+      ? o.regionId : 'all';
     const hobby = o.hobbyId || null;
-    const regions = this.getExploreRegions();
     const list = [];
     (this.state.explorePosts || []).forEach((post) => {
       const score = this.hotScoreAsOf(post, at);
       if (score == null) return;                       // 그 시각에 아직 없던 글
       const regionId = this.getExplorePostRegionId(post);
-      if (region !== 'all' && regionId !== region) return;
+      if (!regionFilterMatches(region, regionId)) return;
+      if (region === 'nearby' && !this.radiusAllows(String(NEARBY_KM), this.getExplorePostDistanceKm(post))) return;
       if (hobby && post.hobbyId !== hobby) return;
-      const meta = regions.find((r) => r.id === regionId);
+      const meta = this.getRegion(regionId);
       list.push({
         post,
         score,
@@ -4616,10 +4894,14 @@ class Store {
    */
   createExplorePost(data) {
     const d = data || {};
+    /* Sprint 23 — 탐색은 지역 게시판이다. **지역이 필수**이고 취미는 강제하지 않는다.
+       (옛 호출부 호환: hobbyId 가 와도 지역이 있으면 그대로 받는다 — 배지에만 쓰인다.) */
+    const regionId = normalizeRegionId(d.regionId)
+      || normalizeRegionId(this.state.currentUser.regionId)
+      || 'seoul-seongsu';
+    if (!isKnownRegion(regionId)) return { ok: false, reason: 'region' };
     const chip = this.getHobbyChip(d.hobbyId);
-    /* Sprint 16 — 취미를 고르지 않아도 '자유' 글로 올릴 수 있다(누구나 게시글 올리기). */
-    const isFree = !chip && (d.open === true || !d.hobbyId);
-    if (!chip && !isFree) return { ok: false, reason: 'hobby' };
+    const style = meetStyleDef(d.meetStyle);
     const caption = String(d.caption || '').trim();
     /* Sprint 17 — 앨범·카메라 사진(Data URL)도 오픈 글 사진이 된다. */
     const rawPhoto = String(d.photoUrl || '').trim();
@@ -4628,24 +4910,25 @@ class Store {
     const user = this.state.currentUser;
     const post = {
       id: `pub_${Date.now()}`,
+      regionId,
+      meetStyle: style ? style.id : null,
+      meetStyleLabel: style ? style.name : null,
       authorId: user.id,
       authorName: user.nickname,
       authorAvatarText: user.avatarText || user.nickname.charAt(0),
       authorGradient: user.avatarGradient,
       authorPhotoUrl: user.photoUrl || null,
       hobbyId: chip ? chip.id : null,
-      hobbyLabel: chip ? chip.name : '자유게시판',
+      hobbyLabel: chip ? chip.name : (style ? style.name : '지역만남'),
       hobbyIcon: chip ? chip.icon : '',
-      /* Sprint 16 — 그룹과 무관하게 올리는 '오픈 글' */
-      scope: chip ? 'hobby' : 'open',
-      tag: String(d.tag || '').trim().slice(0, 8) || null,
+      /* Sprint 23 — 그룹과 무관하게 올리는 '동네 글' */
+      scope: 'region',
+      tag: String(d.tag || '').trim().slice(0, 8) || (style ? style.name : null),
       caption: caption.slice(0, 300),
       photoUrl,
       mediaCaption: String(d.mediaCaption || '').trim().slice(0, 40),
       ratio: d.ratio === 'wide' ? 'wide' : 'square',
-      groupName: chip ? '공개 취미 피드' : '탐색 게시판',
-      /* Sprint 7 — 새 글은 내 생활권으로 분류된다(지역 탐색에 바로 잡힌다). */
-      regionId: user.regionId || deriveRegionId(user.location) || 'gwanak',
+      groupName: this.getRegionLabel(regionId),
       likes: 0,
       likedByMe: false,
       comments: [],
@@ -8436,7 +8719,9 @@ class Store {
     const region = prefs.region === 'all' ? null : this.getRegion(prefs.region);
     const hobbyLabel = href ? href.name : '전체 취미';
     const ageLabel = range.active ? `${range.min}~${range.max}세` : '나이 전체';
-    const radiusLabel = prefs.radius === 'all' ? '내 동네 전체' : (radius ? `내 동네 ${radius.km}km` : '내 동네 전체');
+    const radiusLabel = prefs.radius === 'all'
+      ? (prefs.region === 'nearby' ? '내 주변' : '내 동네 전체')
+      : (radius ? `내 동네 ${radius.km}km` : '내 동네 전체');
     const regionLabel = region ? region.short || region.name : '전체 지역';
     const activeCount = [!!href, range.active, prefs.radius !== 'all', prefs.region !== 'all'].filter(Boolean).length;
     return {

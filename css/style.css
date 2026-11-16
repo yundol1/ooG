@@ -11892,6 +11892,272 @@ body.group-mode #bottom-nav { display: none; }
 .story-add .story-ring { border: 1.5px dashed var(--border-strong); }
 .story-nav-btn.prev { margin-left: -2px; }
 .story-nav-btn.next { margin-right: -2px; }
+/* ==========================================================================
+ * 23-1. Sprint 23 — 탐색 지역 게시판 칩 (이반시티 우리동네 방식)
+ * ------------------------------------------------------------------------
+ * 11/16 23:47 사용자: "탐색 탭을 지역별 사람 구하기 게시판으로. 상단 필터 칩도
+ * 취미 칩 대신 지역 카테고리 칩."
+ * ========================================================================== */
+.explore-region-chips,
+.explore-region-sub {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 14px 2px 0;
+}
+.explore-region-chips::-webkit-scrollbar,
+.explore-region-sub::-webkit-scrollbar { display: none; }
+.explore-region-chips { margin-top: 8px; padding-bottom: 2px; }
+.explore-region-sub {
+  margin-top: 6px;
+  padding-bottom: 4px;
+  animation: regionSubIn 0.26s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+@keyframes regionSubIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.explore-region-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 11px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--text-muted);
+  font-size: 11.5px;
+  font-weight: var(--fw-label);
+  letter-spacing: -0.2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 3px 8px -7px rgba(20, 66, 50, 0.5);
+  transition: background var(--dur-quick) ease, color var(--dur-quick) ease, transform var(--dur-quick) var(--spring);
+}
+.explore-region-chip .oo-ic { width: 13px; height: 13px; }
+.explore-region-chip-count {
+  font-size: 9.5px;
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.1);
+}
+.explore-region-chip.active {
+  background: var(--green-dark);
+  color: #FFFFFF;
+  box-shadow: 0 8px 14px -10px rgba(4, 120, 87, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+.explore-region-chip.active .explore-region-chip-count {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.22);
+}
+.explore-region-chip:active { transform: scale(0.95); }
+.explore-sub-chip {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--clay-cream, #FFFDF7);
+  color: var(--green-deep, #065F46);
+  font-size: 10.5px;
+  font-weight: var(--fw-label);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.explore-sub-chip.active {
+  background: var(--clay-mint, #E8F8F0);
+  color: var(--green-dark);
+  box-shadow: inset 0 0 0 1px rgba(4, 120, 87, 0.28);
+}
+.explore-sub-chip:active { transform: scale(0.95); }
+
+/* 탐색 상단은 검색 + 세그먼트 + 지역 칩 3줄이지만 슬림하게 유지한다 */
+.explore-top .explore-search { margin-bottom: 2px; }
+.explore-top .explore-toolbar { margin-top: 6px; }
+
+/* 글 카드의 동네·만남 스타일 */
+
+
+.post-region,
+.post-style {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.post-region .oo-ic,
+.post-style .oo-ic { width: 10px; height: 10px; opacity: 0.75; }
+.post-region { color: var(--green-deep, #065F46); }
+.post-detail-style { color: var(--green-deep, #065F46); font-weight: var(--fw-label); }
+.post-detail-dm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: var(--clay-mint, #E8F8F0);
+  color: var(--green-dark);
+  font-size: 12px;
+  font-weight: var(--fw-label);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.post-detail-dm .oo-ic { width: 14px; height: 14px; }
+.post-detail-dm:active { transform: scale(0.96); }
+
+/* 글쓰기 시트 — 동네 select · 만남 스타일 */
+.explore-region-select {
+  appearance: none;
+  background-image: none;
+  font-weight: var(--fw-label);
+}
+.meet-style-list { gap: 7px; }
+.meet-style-pick { white-space: nowrap; }
+
+/* ==========================================================================
+ * 23-2. Sprint 23 — 홈 '모임 찾기' 통합 영역 + 추천 모임 가로 슬라이드
+ * ------------------------------------------------------------------------
+ * 11/16 23:47 사용자: "추천 모임과 모임 둘러보기를 하나의 구역으로 합치고,
+ * 위쪽 추천 모임은 왼쪽에서 오른쪽으로 가로 슬라이드(스크롤 스냅)."
+ * ========================================================================== */
+.home-discover {
+  margin: 20px 0 6px;
+  padding: 16px 14px 14px;
+  border-radius: 26px;
+  background: var(--clay-cream, #FFFDF7);
+  box-shadow: var(--clay-soft, 0 10px 24px -18px rgba(20, 66, 50, 0.5)),
+              inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+.home-discover-head { margin-bottom: 12px; }
+.home-discover-title {
+  font-size: 16px;
+  font-weight: var(--fw-display);
+  letter-spacing: -0.3px;
+  color: var(--text-strong);
+}
+.home-discover-sub {
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+/* 통합 영역 안의 두 블록은 카드 경계 없이 이어 붙는다 */
+.home-discover .home-recommend {
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.home-discover .home-browse {
+  margin: 4px -2px 0;
+  padding: 12px 2px 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border-top: 1px dashed rgba(4, 120, 87, 0.16);
+}
+.home-discover .home-recommend-more {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 16px;
+}
+/* 추천 모임 = 가로 슬라이드 (scroll-snap) */
+.home-discover .home-recommend-grid {
+  display: flex;
+  gap: 10px;
+  grid-template-columns: none;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 2px 2px 8px;
+  margin: 0 -2px;
+  scroll-padding-left: 2px;
+}
+.home-discover .home-recommend-grid::-webkit-scrollbar { display: none; }
+.home-discover .home-recommend-grid .recommend-card {
+  flex: 0 0 62%;
+  max-width: 250px;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.home-discover .home-recommend-grid .recommend-cover { height: 92px; }
+
+/* ==========================================================================
+ * 23-3. Sprint 23 — 스토리텔링 문구 먼저 → 입력란 스프링 등장
+ * ------------------------------------------------------------------------
+ * 11/16 23:47 사용자: "먼저 질문/내레이션 문구만 출력하고, 문구가 끝나면
+ * 입력란·버튼이 부드러운 스프링으로 딱 등장."
+ * ========================================================================== */
+.ob-narration { position: relative; }
+.ob-type-char { opacity: 0; }
+.ob-type-char.on { opacity: 1; }
+.ob-step.is-narrating .ob-desc { opacity: 0; }
+.ob-step.is-narrating .ob-hero .ob-desc { transition: opacity 0.3s ease; }
+.ob-step.narr-desc-in .ob-hero .ob-desc { opacity: 1; }
+.ob-answer {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.28s ease, transform 0.4s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1));
+}
+.ob-answer[hidden] { display: none; }
+.ob-answer.is-arriving {
+  animation: obAnswerIn 0.5s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+@keyframes obAnswerIn {
+  0% { opacity: 0; transform: translateY(14px) scale(0.985); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+.ob-skip-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 10.5px;
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.ob-step.narr-done .ob-skip-hint { display: none; }
+.guide-q-answer.is-arriving { animation: obAnswerIn 0.5s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both; }
+.guide-step.is-narrating .guide-pick-wrap { visibility: hidden; }
+
+
+/* ==========================================================================
+ * 23-4. Sprint 23 — 하단 탭바 자동 숨김 (움직임이 없으면 내려가고 움직이면 올라온다)
+ * ------------------------------------------------------------------------
+ * 11/16 23:47 사용자: "화면 움직임이 없으면 하단 탭바가 사라지고 움직이면 다시."
+ *  · 가이드 진행 중이거나 탭바에 포커스가 있으면 멈춘다(app.js 가 판단).
+ *  · 숨김은 transform + 높이 접기로 — 콘텐츠가 그만큼 넓어진다.
+ * ========================================================================== */
+.bottom-nav-bar {
+  transition:
+    transform 0.34s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)),
+    height 0.3s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)),
+    flex-basis 0.3s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)),
+    padding 0.3s ease,
+    border-top-color 0.24s ease,
+    opacity 0.24s ease;
+  will-change: transform;
+}
+.bottom-nav-bar.is-autohidden {
+  transform: translateY(100%);
+  height: 0;
+  flex-basis: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-top-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bottom-nav-bar.is-autohidden .nav-tab-item { pointer-events: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .modal-overlay.active,
   .modal-overlay.is-closing,
@@ -12003,7 +12269,16 @@ body.group-mode #bottom-nav { display: none; }
   .group-tile:hover,
   .post-card:hover,
   .feed-card:hover { transform: none; }
+  /* Sprint 23 — 스토리텔링 문구 연출 · 탭바 자동 숨김 · 지역 칩 등장 */
+  .ob-type-char { opacity: 1; }
+  .ob-step.is-narrating .ob-desc { opacity: 1; }
+  .ob-answer.is-arriving,
+  .guide-q-answer.is-arriving,
+  .explore-region-sub { animation: none !important; }
+  .bottom-nav-bar { transition: none; }
+  .home-recommend-grid { scroll-behavior: auto; }
 }
+
 
 /* <strong>·<b> 기본값은 부모 굵기에 상대(bolder)라 700 위에서 900 이 된다.
    강조는 680 으로 고정해 제목(700)보다 진해지지 않게 한다. */

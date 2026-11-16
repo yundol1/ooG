@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     typingRoomId: null,          // 상대가 답장을 쓰는 중인 방 (인디케이터)
     replyTimer: null,
     postSheetId: null,           // 열린 게시글 상세
-    exploreCompose: { hobbyId: null, photoUrl: null },
+    exploreCompose: { hobbyId: null, regionId: null, meetStyle: null, photoUrl: null },
     edit: { hobbyIds: [], activity: '' },   // 프로필 수정 드래프트
     groupDraft: { hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '' },
 
@@ -210,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     homeRecommend: $('#home-recommend'),
     homeRecommendSub: $('#home-recommend-sub'),
     homeRecommendGrid: $('#home-recommend-grid'),
-    btnHomeMoreGroups: $('#btn-home-more-groups'),
     btnHomeRecommendTaste: $('#btn-home-recommend-taste'),
     /* Sprint 22 — 홈의 '모임 둘러보기'(탐색에서 옮겨온 모임 목록·검색·필터·정렬) */
     homeBrowse: $('#home-browse'),
@@ -344,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     profileGroupContextName: $('#profile-group-context-name'),
     groupNav: $('#group-nav'),
     navIndicatorGroup: $('#nav-indicator-group'),
+    bottomNav: $('#bottom-nav'),
     // explore (토스쇼핑형 2열 메이슨리)
     exploreInput: $('#explore-search-input'),
     exploreClear: $('#explore-search-clear'),
@@ -490,7 +490,10 @@ document.addEventListener('DOMContentLoaded', () => {
     postModal: $('#explore-post-modal'),
     postBody: $('#explore-post-body'),
     exploreComposeModal: $('#explore-compose-modal'),
-    exploreComposeHobbies: $('#explore-compose-hobbies'),
+    exploreRegionChips: $('#explore-region-chips'),
+    exploreRegionSub: $('#explore-region-sub'),
+    exploreComposeRegion: $('#explore-compose-region'),
+    exploreComposeStyles: $('#explore-compose-styles'),
     exploreComposeCaption: $('#explore-compose-caption'),
     exploreCaptionCount: $('#explore-caption-count'),
     explorePublish: $('#btn-explore-publish'),
@@ -823,6 +826,125 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /* ------------------------------------------------------------------
+   * Sprint 23 — 스토리텔링 문구 먼저 → 입력란 스프링 등장
+   * ------------------------------------------------------------------
+   * 11/16 23:47 사용자: "각 단계가 열릴 때 먼저 질문/내레이션 문구만 출력하고,
+   * 문구 출력이 끝나면(약 700~950ms) 아래 입력란·버튼이 스프링으로 딱 등장.
+   * 문구 영역을 탭하면 기다리지 않고 즉시 스킵."
+   *
+   *  · 문구(제목)는 한 글자씩 찍히고, 설명은 그다음에 떠오른다.
+   *  · 그동안 입력란·선택 카드·다음 버튼은 hidden 이다.
+   *  · prefers-reduced-motion · 자동 테스트(webdriver) 에서는 기다리지 않고 바로 보여준다.
+   *    (?narr=1 로 강제, ?narr=0 으로 끔 · window.oog.setNarration)
+   * ---------------------------------------------------------------- */
+  const NARRATION_TIMING = { title: 430, desc: 220, reveal: 780 };
+
+  function narrationEnabled() {
+    if (!ui.narration || ui.narration.enabled === false) return false;
+    /* 동작 줄이기는 강제 설정보다 먼저다 — 기다림 없이 바로 답을 보여준다. */
+    if (prefersReducedMotion()) return false;
+    if (ui.narration.force === true) return true;
+    if (typeof navigator !== 'undefined' && navigator.webdriver) return false;
+    return true;
+  }
+
+  function clearNarrationTimers() {
+    (ui.narrationTimers || []).forEach((t) => { clearTimeout(t); clearInterval(t); });
+    ui.narrationTimers = [];
+  }
+
+  function narrationState() {
+    return ui.narration || (ui.narration = { enabled: true, force: null });
+  }
+
+  /** 제목을 한 글자씩 찍는다. 반환값을 부르면 남은 글자가 즉시 채워진다. */
+  function typeNarrationTitle(node, totalMs) {
+    if (!node) return () => {};
+    const raw = node.innerHTML;
+    const tokens = raw.match(/<br\s*\/?>|&[a-zA-Z#0-9]+;|[\s\S]/g) || [];
+    node.innerHTML = tokens.map((t, i) => (/^<br/i.test(t)
+      ? '<br>'
+      : `<span class="ob-type-char" data-i="${i}">${t === ' ' ? '&nbsp;' : t}</span>`)).join('');
+    const chars = Array.from(node.querySelectorAll('.ob-type-char'));
+    const per = Math.max(14, Math.min(46, Math.round(totalMs / Math.max(1, chars.length))));
+    let i = 0;
+    const timer = setInterval(() => {
+      if (i >= chars.length) { clearInterval(timer); return; }
+      chars[i].classList.add('on');
+      i += 1;
+    }, per);
+    ui.narrationTimers = (ui.narrationTimers || []).concat(timer);
+    return () => { chars.forEach((c) => c.classList.add('on')); clearInterval(timer); };
+  }
+
+  /** 온보딩 단계 하나에 내레이션을 건다 — 답(입력란·버튼)은 문구가 끝나야 나타난다. */
+  function applyOnboardingNarration(stepId) {
+    const step = el.onboardingBody && el.onboardingBody.querySelector('.ob-step');
+    if (!step) return;
+    const hero = step.querySelector('.ob-hero');
+    clearNarrationTimers();
+    const st = narrationState();
+    st.active = false; st.done = true; st.step = stepId; st.answerShown = true;
+    if (!hero) return;
+
+    /* 문구 뒤의 모든 것(입력란·오류·버튼)을 하나의 '답' 블록으로 묶는다 */
+    const answer = document.createElement('div');
+    answer.className = 'ob-answer';
+    let node = hero.nextSibling;
+    while (node) { const next = node.nextSibling; answer.appendChild(node); node = next; }
+    step.appendChild(answer);
+
+    const hint = document.createElement('p');
+    hint.className = 'ob-skip-hint';
+    hint.textContent = '문구를 누르면 바로 시작해요';
+    hero.parentNode.insertBefore(hint, answer);
+
+    const titleNode = hero.querySelector('.ob-title');
+    const reveal = () => {
+      if (st.done) return;
+      clearNarrationTimers();
+      step.classList.remove('is-narrating');
+      step.classList.add('narr-done');
+      answer.hidden = false;
+      answer.classList.add('is-arriving');
+      st.active = false; st.done = true; st.answerShown = true;
+    };
+
+    if (!narrationEnabled()) {
+      /* 동작 줄이기·자동 테스트 — 기다림 없이 답을 보여준다(문구는 그대로 남는다). */
+      step.classList.add('narr-done');
+      hint.remove();
+      return;
+    }
+
+    st.active = true; st.done = false; st.answerShown = false;
+    step.classList.add('is-narrating');
+    step.classList.remove('narr-done');
+    answer.hidden = true;
+    ui.narrationReveal = reveal;
+
+    const finishTyping = typeNarrationTitle(titleNode, NARRATION_TIMING.title);
+    ui.narrationTimers.push(setTimeout(() => {
+      step.classList.add('narr-desc-in');
+    }, NARRATION_TIMING.title - 60));
+    ui.narrationTimers.push(setTimeout(() => {
+      finishTyping();
+      reveal();
+    }, NARRATION_TIMING.reveal));
+
+    /* 문구 영역 탭 → 즉시 완결 */
+    const skip = (e) => {
+      if (!st.active) return;
+      if (e && e.target.closest('.ob-answer')) return;
+      e && e.preventDefault();
+      if (typeof finishTyping === 'function') finishTyping();
+      reveal();
+    };
+    hero.addEventListener('click', skip);
+    hint.addEventListener('click', skip);
+  }
+
   function renderOnboarding() {
     if (!el.onboardingBody) return;
     const ob = store.getOnboardingState();
@@ -1026,6 +1148,13 @@ document.addEventListener('DOMContentLoaded', () => {
     el.onboardingBody.className = `onboarding-body ob-step-${ui.obDir}`;
     el.onboardingBody.dataset.obMode = ui.onboardingMode;
     el.onboardingBody.innerHTML = `<div class="ob-step" data-ob-step="${stepId}" data-ob-mode="${ui.onboardingMode}">${body}</div>`;
+    /* Sprint 23 — 문구가 먼저, 입력란은 문구가 끝난 뒤(로그인·재설정 화면은 바로).
+       같은 단계의 재렌더(사진 미리보기 등)에서는 다시 가리지 않는다. */
+    const narrKey = `${ui.onboardingMode}:${stepId}`;
+    if (!loginMode && ui.obNarrKey !== narrKey) {
+      ui.obNarrKey = narrKey;
+      applyOnboardingNarration(stepId);
+    }
   }
 
   /** 온보딩 입력은 단계마다 새로 그려지므로 id 로 찾는 헬퍼. */
@@ -1671,12 +1800,13 @@ document.addEventListener('DOMContentLoaded', () => {
    * ======================================================================== */
 
   /** 추천 모임 카드 — 사진이 없으면 취미 대분류 색조(.tone-*)의 점토 타일로 표지를 만든다. */
-  function recommendCardHTML(item) {
+  function recommendCardHTML(item, index) {
     const g = item.group;
     const chip = store.getHobbyChip(g.hobbyId);
     const icon = g.icon || (chip && chip.icon) || 'sparkle';
     return `
       <article class="recommend-card tone-${escapeHtml(item.tone)}" data-open-group="${g.id}"
+               data-rail-index="${index || 0}"
                role="button" tabindex="0"
                aria-label="${escapeHtml(g.name)} 추천 모임 · ${escapeHtml(item.hobbyName)}">
         <div class="recommend-cover">
@@ -1705,16 +1835,19 @@ document.addEventListener('DOMContentLoaded', () => {
         : '취미를 고르면 잘 맞는 모임을 골라드려요';
     }
     const items = store.getRecommendedGroups({ limit: 6 });
+    /* Sprint 23 — 추천이 0개면 위쪽 슬라이드만 조용히 접고, 아래 '모임 둘러보기'가 바로 이어진다. */
+    const recommendBlock = $('#home-recommend');
+    const moreBlock = $('#home-recommend-more');
     if (!items.length) {
-      el.homeRecommendGrid.innerHTML = `
-        <div class="recommend-empty">
-          <p class="recommend-empty-title">아직 추천할 모임이 없어요</p>
-          <p class="recommend-empty-desc">모임이 열리면 내 취미에 맞춰 이곳에 먼저 보여드릴게요.</p>
-          <button class="recommend-empty-btn" data-gallery-new="1" type="button">첫 모임 만들기</button>
-        </div>`;
+      if (recommendBlock) recommendBlock.hidden = true;
+      if (moreBlock) moreBlock.hidden = true;
+      if (el.homeRecommendGrid) el.homeRecommendGrid.innerHTML = '';
+      if (el.homeRecommendSub) el.homeRecommendSub.textContent = '아직 추천할 모임이 없어요 — 아래에서 찾아보세요';
       return;
     }
-    el.homeRecommendGrid.innerHTML = items.map(recommendCardHTML).join('');
+    if (recommendBlock) recommendBlock.hidden = false;
+    if (moreBlock) moreBlock.hidden = false;
+    el.homeRecommendGrid.innerHTML = items.map((it, i) => recommendCardHTML(it, i)).join('');
   }
 
   /* ==========================================================================
@@ -1780,9 +1913,12 @@ document.addEventListener('DOMContentLoaded', () => {
   /** 홈의 '모임 둘러보기'로 시선을 옮긴다(탐색에 있던 모임 찾기의 새 자리). */
   function focusHomeBrowse() {
     if (ui.activeTab !== 'tab-home') switchTab('tab-home');
+    if (isGroupMode()) exitGroupSpace();
+    renderHomeRecommend();
     renderHomeBrowse();
-    if (el.homeBrowse) {
-      el.homeBrowse.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    const target = $('#home-browse') || $('#home-discover');
+    if (target) {
+      target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
     }
   }
 
@@ -2024,6 +2160,67 @@ document.addEventListener('DOMContentLoaded', () => {
     bubble.style.maxHeight = `${Math.round(vh * 0.62)}px`;
   }
 
+  /**
+   * Sprint 23 — 가이드의 취향 질문도 문구 먼저, 선택 카드는 문구가 끝난 뒤.
+   *  · 단계가 바뀔 때만 재생한다(같은 단계에서 취미를 고르면 다시 가리지 않는다).
+   *  · 말풍선 제목/설명을 누르면 즉시 완결.
+   */
+  function applyGuideNarration(step) {
+    if (!el.spotlightBubble) return;
+    clearNarrationTimers();
+    const st = narrationState();
+    const taste = step && ['taste-category', 'taste-hobby', 'taste-goal'].includes(step.id);
+    const body = el.spotlightBody;
+    const titleNode = el.spotlightTitle;
+    const bubble = el.spotlightBubble;
+    bubble.classList.remove('is-narrating', 'narr-done');
+    if (titleNode && titleNode.dataset.narrTitle) {
+      titleNode.textContent = titleNode.dataset.narrTitle;
+      delete titleNode.dataset.narrTitle;
+    }
+    st.active = false; st.done = true; st.answerShown = true; st.step = step ? step.id : null;
+    if (body && step && step.body) body.hidden = false;
+    if (!taste || !narrationEnabled()) return;
+
+    const key = `guide:${step.id}`;
+    if (ui.guideNarrKey === key) return;
+    ui.guideNarrKey = key;
+
+    st.active = true; st.done = false; st.answerShown = false;
+    bubble.classList.add('is-narrating');
+    if (body) body.hidden = true;
+    if (titleNode) {
+      titleNode.dataset.narrTitle = titleNode.textContent;
+      typeNarrationTitle(titleNode, NARRATION_TIMING.title);
+    }
+    const reveal = () => {
+      if (st.done) return;
+      clearNarrationTimers();
+      bubble.classList.remove('is-narrating');
+      bubble.classList.add('narr-done');
+      if (titleNode && titleNode.dataset.narrTitle) {
+        titleNode.textContent = titleNode.dataset.narrTitle;
+        delete titleNode.dataset.narrTitle;
+      }
+      if (body && step && step.body) {
+        body.hidden = false;
+        body.classList.add('is-arriving');
+        setTimeout(() => body.classList.remove('is-arriving'), 520);
+      }
+      st.active = false; st.done = true; st.answerShown = true;
+    };
+    ui.narrationReveal = reveal;
+    ui.narrationTimers.push(setTimeout(reveal, NARRATION_TIMING.reveal));
+    if (!bubble.dataset.narrBound) {
+      bubble.dataset.narrBound = '1';
+      bubble.addEventListener('click', (e) => {
+        if (!st.active) return;
+        if (e.target.closest('.spotlight-body') || e.target.closest('.spotlight-actions')) return;
+        if (typeof ui.narrationReveal === 'function') ui.narrationReveal();
+      });
+    }
+  }
+
   /** 가이드 한 단계를 그린다 — 그 단계가 설명하는 **탭으로 실제 이동**한 뒤 짚어 준다. */
   function renderGuide() {
     const g = guideState();
@@ -2048,6 +2245,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.spotlightBody.innerHTML = step.body ? guideBodyHTML(step.body) : '';
       el.spotlightBody.hidden = !step.body;
     }
+    applyGuideNarration(step);
     store.setGuideStep(g.step);
     if (step.target) {
       const node = document.querySelector(step.target);
@@ -4836,6 +5034,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderExploreToolbar() {
     renderExploreTypeSeg();
     renderRegionButton();
+    renderRegionChips();
     renderExploreSummary();
     const chips = activeFilterChips();
     if (el.exploreFilterCount) {
@@ -5144,23 +5343,39 @@ document.addEventListener('DOMContentLoaded', () => {
     return cut.length > 60 ? `${cut.slice(0, 60).trim()}…` : cut;
   }
 
+  /** 글의 만남 스타일 — meetStyleLabel → (옛 글) 취미 라벨 순으로 읽는다. */
+  function postStyleLabel(post) {
+    return (post && (post.meetStyleLabel || post.hobbyLabel)) || '동네 글';
+  }
+
+  /** 글의 동네 이름 — '서울 · 성수·성동·동작' 처럼 큰 분류까지. */
+  function postRegionLabel(post) {
+    const id = store.getExplorePostRegionId(post);
+    return id ? store.getRegionLabel(id) : '전체 지역';
+  }
+
   function explorePostCardHTML(item) {
     const p = item.post;
     const hasMedia = !!p.photoUrl;
     const caption = (p.caption || '').trim();
     const preview = hasMedia ? firstSentence(caption) : '';
+    const regionName = postRegionLabel(p);
+    const styleName = postStyleLabel(p);
+    const styleDef = p.meetStyle ? store.getMeetStyle(p.meetStyle) : null;
     return `
       <article class="masonry-card post-card ratio-${item.ratio} ${p.likedByMe ? 'is-liked' : ''} ${hasMedia ? 'has-media' : 'is-text-only'}"
                data-post-card="${p.id}" data-card-type="post" data-has-media="${hasMedia ? '1' : '0'}"
+               data-region-id="${escapeHtml(store.getExplorePostRegionId(p) || '')}"
                role="button" tabindex="0"
-               aria-label="${escapeHtml(p.authorName)}님의 ${escapeHtml(p.hobbyLabel)} 게시글 보기${hasMedia && caption ? ' · 첫 문장만 보이고 본문은 상세에서' : ''}">
+               aria-label="${escapeHtml(regionName)} · ${escapeHtml(p.authorName)}님의 ${escapeHtml(styleName)} 글 보기${hasMedia && caption ? ' · 첫 문장만 보이고 본문은 상세에서' : ''}">
         <header class="post-head">
           <span class="post-avatar" style="background:${p.authorGradient}">${escapeHtml(p.authorAvatarText || p.authorName.charAt(0))}</span>
           <div class="post-author-block">
             <span class="post-author">${escapeHtml(p.authorName)}${p.isMine ? ' <span class="me-badge">나</span>' : ''}</span>
             <span class="post-meta">
               ${p.tag ? `<span class="post-tag">#${escapeHtml(p.tag)}</span>` : ''}
-              <span>${p.hobbyIcon ? ic(p.hobbyIcon) : ''} ${escapeHtml(p.hobbyLabel)}</span>
+              <span class="post-region">${ic('pin')} ${escapeHtml(regionName)}</span>
+              <span class="post-style">${ic(styleDef ? styleDef.icon : 'sparkle')} ${escapeHtml(styleName)}</span>
               ${item.distanceKm != null ? `<span class="post-distance">${distLabel(item.distanceKm)}</span>` : ''}
             </span>
           </div>
@@ -5177,7 +5392,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${HEART_SVG(p.likedByMe)}<span>${fmtCount(p.likes)}</span>
           </button>
           <span class="post-stat">${COMMENT_SVG} ${p.comments.length}</span>
-          <span class="post-group">${escapeHtml(p.groupName || '공개 피드')}</span>
+          <span class="post-group">${escapeHtml(p.groupName || regionName)}</span>
           <span class="post-open-hint" aria-hidden="true">›</span>
         </div>
       </article>`;
@@ -5316,26 +5531,82 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 지역 선택 시트 — 지금 조건 안의 지역별 사람·모임·글 수를 함께 보여준다. */
+  /**
+   * Sprint 23 — 상단 지역 카테고리 칩 (이반시티 우리동네 방식).
+   *  [전체] [내 주변] [서울] [경기] [인천] … [제주] 를 가로로 넘기고,
+   *  서울을 고르면 바로 아래에 서울 7개 동네가 한 줄 더 열린다.
+   */
+  function renderRegionChips() {
+    if (!el.exploreRegionChips) return;
+    const selected = store.getRegion(ui.exploreRegion);
+    const selectedGroupId = selected ? (selected.group ? selected.id : selected.groupId) : null;
+    const chips = store.getExploreRegionChips(ui.exploreFilter, ui.exploreQuery, ui.exploreAge, ui.exploreRadius);
+    el.exploreRegionChips.innerHTML = chips.map((c) => {
+      const on = c.id === 'all'
+        ? ui.exploreRegion === 'all'
+        : (c.group ? selectedGroupId === c.id : ui.exploreRegion === c.id);
+      return `<button class="explore-region-chip ${on ? 'active' : ''}" data-region-chip="${escapeHtml(c.id)}"
+                      type="button" aria-pressed="${on}">
+                ${ic(c.icon || (c.id === 'all' ? 'grid' : 'pin'))}
+                <span>${escapeHtml(c.name)}</span>
+                <span class="explore-region-chip-count">${c.count}</span>
+              </button>`;
+    }).join('');
+    keepChipVisible(el.exploreRegionChips, '.explore-region-chip.active');
+
+    /* 서울처럼 안쪽 동네가 여럿인 지역만 한 줄 더 — '서울 전체' + 7개 동네 */
+    const subs = selectedGroupId ? store.getSubRegions(selectedGroupId) : [];
+    if (el.exploreRegionSub) {
+      if (subs.length > 1) {
+        el.exploreRegionSub.hidden = false;
+        el.exploreRegionSub.innerHTML = [
+          `<button class="explore-sub-chip ${ui.exploreRegion === selectedGroupId ? 'active' : ''}"
+                   data-region-sub="${escapeHtml(selectedGroupId)}" type="button"
+                   aria-pressed="${ui.exploreRegion === selectedGroupId}">전체</button>`,
+          ...subs.map((r) => `<button class="explore-sub-chip ${ui.exploreRegion === r.id ? 'active' : ''}"
+                   data-region-sub="${escapeHtml(r.id)}" type="button"
+                   aria-pressed="${ui.exploreRegion === r.id}">${escapeHtml(r.name)}</button>`)
+        ].join('');
+        keepChipVisible(el.exploreRegionSub, '.explore-sub-chip.active');
+      } else {
+        el.exploreRegionSub.hidden = true;
+        el.exploreRegionSub.innerHTML = '';
+      }
+    }
+  }
+
+  /** 지역 선택 시트 — 큰 분류 → 동네 순서로, 지금 조건 안의 사람·글 수와 함께 보여준다. */
   function renderRegionSheet() {
     if (!el.regionList) return;
     const stats = store.getExploreRegionStats(ui.exploreFilter, ui.exploreQuery, ui.exploreAge, ui.exploreRadius);
-    el.regionList.innerHTML = stats.map((r) => {
+    const byId = stats.reduce((map, s2) => { map[s2.id] = s2; return map; }, {});
+    const row = (r, sub) => {
       const on = ui.exploreRegion === r.id;
-      return `<button class="region-row ${on ? 'active' : ''}" data-region="${r.id}" type="button"
+      return `<button class="region-row ${sub ? 'is-sub' : ''} ${on ? 'active' : ''}" data-region="${r.id}" type="button"
                       aria-pressed="${on}">
         <span class="region-row-emoji" aria-hidden="true">${ic(r.icon)}</span>
         <span class="region-row-main">
           <span class="region-row-name">${escapeHtml(r.name)}${on ? ` <span class="region-row-check" aria-hidden="true">${ic('check')}</span>` : ''}</span>
           <span class="region-row-label">${escapeHtml(r.label)}</span>
         </span>
-        <span class="region-row-counts" aria-label="사람 ${r.people} · 모임 ${r.groups} · 글 ${r.posts}">
+        <span class="region-row-counts" aria-label="사람 ${r.people} · 글 ${r.posts}">
           <span class="region-count">사람 ${r.people}</span>
-          <span class="region-count">모임 ${r.groups}</span>
           <span class="region-count">글 ${r.posts}</span>
         </span>
       </button>`;
+    };
+    const all = byId.all || { people: 0, posts: 0 };
+    const near = byId.nearby;
+    const groupsHTML = store.getRegionGroups().map((g) => {
+      const groupStats = byId[g.id] || { ...g, people: 0, posts: 0 };
+      const subs = store.getSubRegions(g.id);
+      return row({ ...groupStats, label: g.label }, false)
+        + (subs.length > 1 ? subs.map((r) => row(byId[r.id] || { ...r, people: 0, posts: 0 }, true)).join('') : '');
     }).join('');
+    el.regionList.innerHTML = `
+      ${row({ id: 'all', name: '전체 지역', icon: 'map', label: '모든 지역', people: all.people, posts: all.posts }, false)}
+      ${near ? row({ ...near, name: `내 주변 (${store.formatDistance(5)} 안)`, label: '내 동네에서 가까운 순' }, false) : ''}
+      ${groupsHTML}`;
   }
 
   function openRegionSheet() {
@@ -5346,7 +5617,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 지역 선택 → 저장(기억) → 탐색 다시 그리기 */
   function selectRegion(regionId) {
-    const next = regionId && store.getRegion(regionId) ? regionId : 'all';
+    const known = regionId === 'all' || regionId === 'nearby' || store.getRegion(regionId);
+    const next = known ? regionId : 'all';
     ui.exploreRegion = next;
     ui.exploreBuffer = null;
     store.updateExplorePrefs({ region: next });
@@ -5355,7 +5627,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.main) el.main.scrollTop = 0;
     const region = store.getRegion(next);
     showToast(region
-      ? `${region.name}의 사람·모임·글만 모아 볼게요`
+      ? `${store.getRegionLabel(next)}의 사람과 글을 모아 볼게요`
       : '전체 지역으로 돌아왔어요 · 이 선택도 기억해 둘게요', 'info');
   }
 
@@ -5408,7 +5680,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.hotRail.innerHTML = list.map((it) => {
       const p = it.post;
       return `<button class="hot-card rank-${it.rank}" data-hot-post="${p.id}" type="button"
-                      aria-label="실시간 베스트 ${it.rank}위 · ${escapeHtml(p.authorName)}님의 ${escapeHtml(p.hobbyLabel || '')} 글 보기">
+                      aria-label="실시간 베스트 ${it.rank}위 · ${escapeHtml(p.authorName)}님의 ${escapeHtml(postStyleLabel(p))} 글 보기">
         <span class="hot-card-media">
           ${p.photoUrl ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">` : `<span class="hot-card-noimg" aria-hidden="true">${ic(p.hobbyIcon || 'note')}</span>`}
           <span class="hot-rank" aria-hidden="true">${it.rank}</span>
@@ -5416,7 +5688,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="hot-heat" aria-hidden="true"><span class="hot-heat-bar" style="width:${it.heat}%"></span></span>
         </span>
         <span class="hot-card-body">
-          <span class="hot-card-hobby">${escapeHtml(p.hobbyLabel || '취미')}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
+          <span class="hot-card-hobby">${escapeHtml(postStyleLabel(p))}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
           <span class="hot-card-caption">${escapeHtml(p.caption || '')}</span>
           <span class="hot-card-meta">${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}</span>
         </span>
@@ -5447,7 +5719,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="hot-row-rank" aria-hidden="true">${it.rank}</span>
         <span class="hot-row-thumb">${p.photoUrl ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">` : ''}</span>
         <span class="hot-row-main">
-          <span class="hot-row-hobby">${p.hobbyIcon ? ic(p.hobbyIcon) : ''} ${escapeHtml(p.hobbyLabel || '')}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
+          <span class="hot-row-hobby">${ic('pin')} ${escapeHtml(postStyleLabel(p))}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
           <span class="hot-row-caption">${escapeHtml(p.caption || '')}</span>
           <span class="hot-row-meta">${escapeHtml(p.authorName)} · ${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}${hotMoveHTML(it, true)}</span>
         </span>
@@ -5539,18 +5811,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const radiusOpt = store.getRadiusOption(ui.exploreRadius);
     const radiusOn = !!(radiusOpt && radiusOpt.km);
 
+    const regionLabel = region ? store.getRegionLabel(ui.exploreRegion) : '';
     if (el.exploreCount) {
       if (ui.exploreQuery) {
         el.exploreCount.textContent = `'${ui.exploreQuery}' 결과 · 사람 ${people} · 글 ${posts}`;
       } else if (ui.exploreFilter === 'people') {
-        el.exploreCount.textContent = `${people}명이 취미 친구를 기다려요`;
+        el.exploreCount.textContent = `${people}명이 이 동네에서 만날 사람을 찾고 있어요`;
       } else if (ui.exploreFilter === 'posts') {
-        el.exploreCount.textContent = `${posts}개의 취미 글이 올라와 있어요`;
+        el.exploreCount.textContent = `${posts}개의 동네 글이 올라와 있어요`;
       } else {
         el.exploreCount.textContent = `사람 ${people} · 글 ${posts}`;
       }
       if (region && !ui.exploreQuery) {
-        el.exploreCount.textContent += ` · ${region.name}`;
+        el.exploreCount.textContent += ` · ${regionLabel}`;
       }
       if (ageOn && ageFilter && !ui.exploreQuery) {
         el.exploreCount.textContent += ` · ${ageFilter.name}`;
@@ -5560,17 +5833,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     if (el.exploreTitle) {
-      if (ui.exploreQuery) el.exploreTitle.textContent = '검색 결과';
-      else if (radiusOn && (!activeFilter || activeFilter.id === 'all') && !region && !ageOn) {
-        el.exploreTitle.textContent = `내 동네 ${radiusOpt.name} 안의 사람과 글`;
+      const baseLabel = region
+        ? (ui.exploreRegion === 'nearby' ? '내 주변' : regionLabel)
+        : '';
+      if (ui.exploreQuery) {
+        el.exploreTitle.textContent = '검색 결과';
+      } else if (ageOn && ageFilter) {
+        el.exploreTitle.textContent = `${baseLabel ? `${baseLabel} · ` : ''}${ageFilter.name} 사람과 번개`;
+      } else if (baseLabel) {
+        el.exploreTitle.textContent = `${baseLabel} 사람과 번개`;
+      } else if (radiusOn) {
+        el.exploreTitle.textContent = `내 동네 ${radiusOpt.name} 안의 사람과 번개`;
+      } else if (activeFilter && activeFilter.kind === 'hobby') {
+        el.exploreTitle.textContent = `${activeFilter.name} 사람과 번개`;
+      } else if (activeFilter && activeFilter.id !== 'all') {
+        el.exploreTitle.textContent = `${activeFilter.name === 'people' ? '사람' : '글'}만 모아 보기`;
+      } else {
+        el.exploreTitle.textContent = '우리 동네 사람과 번개';
       }
-      else if (region) el.exploreTitle.textContent = `${region.name}의 사람과 글`;
-      else if (ageOn && ageFilter && (!activeFilter || activeFilter.id === 'all')) {
-        el.exploreTitle.textContent = `${ageFilter.name} 사람과 글`;
-      }
-      else if (!activeFilter || activeFilter.id === 'all') el.exploreTitle.textContent = '취미로 이어지는 사람과 글';
-      else if (activeFilter.kind === 'hobby') el.exploreTitle.textContent = activeFilter.name;
-      else el.exploreTitle.textContent = activeFilter.name;
     }
 
     if (!items.length) {
@@ -5581,9 +5861,9 @@ document.addEventListener('DOMContentLoaded', () => {
         el.exploreMasonry.innerHTML = `
           <div class="empty-state explore-empty is-field-empty">
             <p class="empty-title">아직 아무도 없어요</p>
-            <p class="empty-desc">첫 모임을 만들면 이 동네에 우리 모임이 생겨요.<br>내 프로필을 올리면 사람들이 나를 찾을 수 있어요.</p>
+            <p class="empty-desc">우리 동네에 첫 글을 남기면 여기서 만날 사람이 생겨요.<br>내 프로필을 올리면 사람들이 나를 먼저 찾을 수 있어요.</p>
             <div class="empty-actions">
-              <button class="btn-primary" data-explore-create="1" type="button">첫 모임 만들기</button>
+              <button class="btn-primary" data-explore-compose-here="1" type="button">우리 동네 첫 글 쓰기</button>
               <button class="btn-secondary" data-explore-profile-publish="1" type="button">내 프로필 올리기</button>
             </div>
           </div>`;
@@ -5592,20 +5872,21 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const nearest = store.nearestDistanceKm(ui.exploreFilter, ui.exploreQuery, ui.exploreAge, ui.exploreRegion);
       const reason = radiusOn
-        ? '반경을 넓히거나 다른 취미·지역을 골라보세요.'
+        ? '반경을 넓히거나 다른 동네를 골라보세요.'
         : (ageOn
-          ? `‘${escapeHtml((ageFilter || {}).name || '')}’ 조건을 풀거나 다른 취미를 골라보세요.`
-          : (region ? `‘${escapeHtml(region.name)}’에 아직 카드가 없어요. 다른 지역을 골라보세요.` : '다른 취미를 골라보거나 검색어를 짧게 바꿔보세요.'));
+          ? `‘${escapeHtml((ageFilter || {}).name || '')}’ 조건을 풀거나 다른 동네를 골라보세요.`
+          : (region ? `‘${escapeHtml(store.getRegionLabel(ui.exploreRegion))}’에는 아직 글이 없어요. 첫 글을 남기거나 다른 동네를 골라보세요.` : '검색어를 짧게 바꾸거나 다른 동네를 골라보세요.'));
       el.exploreMasonry.innerHTML = `
         <div class="empty-state explore-empty">
           ${emptyArt(radiusOn ? 'radius' : (ui.exploreQuery ? 'search' : 'explore'))}
           <p class="empty-title">${radiusOn
-            ? `내 동네 ${radiusOpt.name} 안에는 아직 모임이 없어요`
-            : '조건에 맞는 카드가 없어요'}</p>
+            ? `내 주변 ${radiusOpt.name} 안에는 아직 아무도 없어요`
+            : (region ? `${escapeHtml(store.getRegionLabel(ui.exploreRegion))}는 아직 조용해요` : '조건에 맞는 카드가 없어요')}</p>
           <p class="empty-desc">${reason}${radiusOn && nearest != null ? ` 가장 가까운 카드가 ${distLabel(nearest)} 거리에 있어요.` : ''}</p>
           <div class="empty-actions">
             ${radiusOn ? '<button class="btn-secondary" data-explore-radius-clear="1" type="button">반경 넓히기</button>' : ''}
             <button class="btn-primary" data-explore-create="1" type="button">이 동네에 모임 만들기</button>
+            <button class="btn-secondary" data-explore-compose-here="1" type="button">첫 글 쓰기</button>
             <button class="btn-secondary" data-explore-reset="1" type="button">필터 초기화</button>
           </div>
         </div>`;
@@ -5756,6 +6037,22 @@ document.addEventListener('DOMContentLoaded', () => {
     clearFilterCondition(chip.dataset.filterClear);
   });
 
+  /* Sprint 23 — 상단 지역 카테고리 칩 + 서울 안쪽 동네 줄 */
+  el.exploreRegionChips && el.exploreRegionChips.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-region-chip]');
+    if (!chip) return;
+    const id = chip.dataset.regionChip;
+    if (id === ui.exploreRegion) return;
+    selectRegion(id);
+  });
+  el.exploreRegionSub && el.exploreRegionSub.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-region-sub]');
+    if (!chip) return;
+    const id = chip.dataset.regionSub;
+    if (id === ui.exploreRegion) return;
+    selectRegion(id);
+  });
+
   /* Sprint 7 — 지역 드롭다운/시트 · 실시간 베스트 */
   el.btnExploreRegion && el.btnExploreRegion.addEventListener('click', openRegionSheet);
   el.regionList && el.regionList.addEventListener('click', (e) => {
@@ -5808,6 +6105,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (e.target.closest('[data-explore-create]')) {
       openGroupCreate();
+      return;
+    }
+    if (e.target.closest('[data-explore-compose-here]')) {
+      openExploreCompose();
       return;
     }
     if (e.target.closest('[data-explore-profile-publish]')) {
@@ -7638,7 +7939,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="post-detail-who">
           <div class="post-detail-name">${escapeHtml(post.authorName)}</div>
           <div class="post-detail-sub">
-            ${post.hobbyIcon ? ic(post.hobbyIcon) : ''} ${escapeHtml(post.hobbyLabel)} ·
+            ${ic('pin')} ${escapeHtml(postRegionLabel(post))} ·
+            <span class="post-detail-style">${escapeHtml(postStyleLabel(post))}</span> ·
             <span data-created="${post.createdAt}">${timeAgo(post.createdAt)}</span>
           </div>
         </div>
@@ -7659,6 +7961,10 @@ document.addEventListener('DOMContentLoaded', () => {
           ${HEART_SVG(post.likedByMe)} ${post.likedByMe ? '좋아요 취소' : '좋아요'}
         </button>
         ${group ? `<button class="post-detail-group" data-post-group="${group.id}" type="button">모임 보기</button>` : ''}
+        ${post.authorId !== store.currentUser.id
+          ? `<button class="post-detail-dm" data-post-dm="${escapeHtml(post.authorId)}" type="button">
+               ${ic('send')} ${escapeHtml(post.authorName)}님에게 쪽지
+             </button>` : ''}
       </div>
       <div class="post-comment-head">
         <h4 class="post-comment-title">댓글 <span class="section-count">${comments.length}</span></h4>
@@ -7729,6 +8035,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (groupBtn) {
       closeModal(el.postModal);
       openGroupDetail(groupBtn.dataset.postGroup);
+      return;
+    }
+    /* Sprint 23 — 동네 글에서 작성자에게 바로 1:1 쪽지 */
+    const dmBtn = e.target.closest('[data-post-dm]');
+    if (dmBtn) {
+      closeModal(el.postModal);
+      openDmComposer(dmBtn.dataset.postDm);
     }
   });
 
@@ -7753,13 +8066,25 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* --------------------------------------------------------- 공개 글 작성 */
+  /** Sprint 23 — 지역 게시판: **동네를 고르고** 내용이나 사진이 있으면 올릴 수 있다. 취미는 묻지 않는다. */
   function updateExplorePublishState() {
     if (!el.explorePublish) return;
     const caption = el.exploreComposeCaption ? el.exploreComposeCaption.value.trim() : '';
-    /* Sprint 16 — 취미를 고르지 않아도 '오픈 글'로 올릴 수 있다(내용이나 사진만 있으면). */
-    const ready = !!(caption || ui.exploreCompose.photoUrl);
+    const regionId = ui.exploreCompose.regionId;
+    const ready = !!(regionId && (caption || ui.exploreCompose.photoUrl));
     el.explorePublish.disabled = !ready;
     el.explorePublish.classList.toggle('ready', ready);
+    el.explorePublish.setAttribute('aria-label', ready ? '동네 글 게시' : '동네와 내용을 먼저 골라주세요');
+  }
+
+  /** 글쓰기 시트의 동네 select — 큰 분류(서울·경기 …)로 묶어 optgroup 으로 보여준다. */
+  function regionSelectHTML(selectedId) {
+    const selected = selectedId || '';
+    return `<option value="">동네 선택</option>` + store.getRegionGroups().map((g) => {
+      const leaves = store.getSubRegions(g.id);
+      return `<optgroup label="${escapeHtml(g.name)}">${leaves.map((r) =>
+        `<option value="${escapeHtml(r.id)}" ${selected === r.id ? 'selected' : ''}>${escapeHtml(r.name)}</option>`).join('')}</optgroup>`;
+    }).join('');
   }
 
 
@@ -7829,8 +8154,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function renderExploreCompose() {
-    if (el.exploreComposeHobbies) {
-      el.exploreComposeHobbies.innerHTML = hobbyPickerHTML('compose', ui.exploreCompose.hobbyId);
+    if (el.exploreComposeRegion) {
+      el.exploreComposeRegion.innerHTML = regionSelectHTML(ui.exploreCompose.regionId);
+      el.exploreComposeRegion.value = ui.exploreCompose.regionId || '';
+    }
+    if (el.exploreComposeStyles) {
+      const picked = ui.exploreCompose.meetStyle;
+      el.exploreComposeStyles.innerHTML = store.getMeetStyles().map((style) => `
+        <button class="tag-pick meet-style-pick ${picked === style.id ? 'active' : ''}"
+                data-meet-style="${style.id}" type="button" aria-pressed="${picked === style.id}">
+          ${ic(style.icon)} ${escapeHtml(style.name)}
+        </button>`).join('');
     }
     if (el.exploreCaptionCount && el.exploreComposeCaption) {
       el.exploreCaptionCount.textContent = String(el.exploreComposeCaption.value.length);
@@ -7839,17 +8173,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openExploreCompose() {
-    ui.exploreCompose = { hobbyId: null, photoUrl: null };
+    /* 내 동네를 기본값으로 채운다 — 대부분은 우리 동네에 글을 쓴다. */
+    ui.exploreCompose = {
+      hobbyId: null, photoUrl: null, meetStyle: null,
+      regionId: store.currentUser.regionId || 'seoul-seongsu'
+    };
     if (el.exploreComposeCaption) el.exploreComposeCaption.value = '';
     renderPhotoPreview('explore');
     renderExploreCompose();
     openModal(el.exploreComposeModal);
   }
 
-  el.exploreComposeHobbies && el.exploreComposeHobbies.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-hobby-pick]');
-    if (!chip || chip.dataset.hobbyScope !== 'compose') return;
-    ui.exploreCompose.hobbyId = chip.dataset.hobbyPick;
+  el.exploreComposeRegion && el.exploreComposeRegion.addEventListener('change', () => {
+    ui.exploreCompose.regionId = el.exploreComposeRegion.value || null;
+    updateExplorePublishState();
+  });
+
+  el.exploreComposeStyles && el.exploreComposeStyles.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-meet-style]');
+    if (!chip) return;
+    const id = chip.dataset.meetStyle;
+    ui.exploreCompose.meetStyle = ui.exploreCompose.meetStyle === id ? null : id;
     renderExploreCompose();
   });
 
@@ -7860,20 +8204,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.explorePublish && el.explorePublish.addEventListener('click', () => {
     const result = store.createExplorePost({
-      hobbyId: ui.exploreCompose.hobbyId,
+      regionId: ui.exploreCompose.regionId,
+      meetStyle: ui.exploreCompose.meetStyle,
       caption: el.exploreComposeCaption ? el.exploreComposeCaption.value : '',
-      photoUrl: ui.exploreCompose.photoUrl,
-      open: true
+      photoUrl: ui.exploreCompose.photoUrl
     });
     if (!result.ok) {
-      showToast('내용이나 사진을 넣어주세요', 'warning');
+      showToast(result.reason === 'region' ? '동네를 먼저 골라주세요' : '내용이나 사진을 넣어주세요', 'warning');
       return;
     }
     closeModal(el.exploreComposeModal);
+    /* 보던 동네를 그대로 둔다 — 다른 동네에 올렸으면 토스트로 어디에 올라갔는지 알려준다. */
     renderExplore();
     switchTab('tab-explore');
     scrollTop();
-    showToast('취미 게시글을 올렸어요 · 탐색 피드 맨 위에 있어요');
+    showToast(`${store.getRegionLabel(ui.exploreRegion)}에 글을 올렸어요 · 맨 위에 있어요`);
     if (navigator.vibrate) navigator.vibrate(10);
   });
 
@@ -10392,6 +10737,115 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   })();
 
+  /* ==========================================================================
+   * Sprint 23 — 하단 탭바 자동 숨김
+   * ------------------------------------------------------------------------
+   * 11/16 23:47 사용자: "화면에 움직임이 없으면 탭바가 아래로 사라지고,
+   * 스크롤·터치·포인터 이동이 있으면 즉시 다시 나타나게."
+   *
+   *  · 마지막 움직임에서 2.5초가 지나면 내려가고, 무엇이든 움직이면 즉시 올라온다.
+   *  · 스포트라이트 가이드 진행 중 · 모달 열림 · 탭바 안에 포커스가 있으면 멈춘다
+   *    (사용자가 길을 잃지 않게).
+   *  · 동작 줄이기 · 자동 테스트(webdriver)에서는 기본으로 끄고,
+   *    ?tabhide=1 · window.oog.setTabBarAutoHide(true) 로 켜서 확인할 수 있다.
+   * ======================================================================== */
+  const TAB_AUTOHIDE_MS = 2500;
+  const tabBar = { enabled: true, force: null, hidden: false, timer: null, bound: false };
+
+  function tabBarNodes() {
+    return [el.bottomNav, el.groupNav].filter(Boolean);
+  }
+
+  function tabBarAutoHideAllowed() {
+    if (!tabBar.enabled) return false;
+    if (tabBar.force !== true) {
+      if (prefersReducedMotion()) return false;
+      if (typeof navigator !== 'undefined' && navigator.webdriver) return false;
+    }
+    if (ui.guide && ui.guide.open) return false;
+    if (document.body.classList.contains('spotlight-open')) return false;
+    if (document.querySelector('.modal-overlay.active')) return false;
+    if (document.querySelector('.chat-room-view:not([hidden])')) return false;
+    const nodes = tabBarNodes();
+    const focused = document.activeElement;
+    if (focused && nodes.some((n) => n.contains(focused))) return false;
+    return true;
+  }
+
+  function setTabBarHidden(hidden) {
+    const nodes = tabBarNodes();
+    if (!nodes.length) return;
+    if (hidden && !tabBarAutoHideAllowed()) hidden = false;
+    tabBar.hidden = !!hidden;
+    nodes.forEach((node) => {
+      node.classList.toggle('is-autohidden', !!hidden);
+      if (hidden) {
+        node.setAttribute('aria-hidden', 'true');
+        node.setAttribute('inert', '');
+      } else {
+        node.removeAttribute('aria-hidden');
+        node.removeAttribute('inert');
+      }
+    });
+  }
+
+  function scheduleTabBarHide() {
+    clearTimeout(tabBar.timer);
+    if (tabBar.hidden) setTabBarHidden(false);
+    if (!tabBarAutoHideAllowed()) return;
+    tabBar.timer = setTimeout(() => {
+      if (tabBarAutoHideAllowed()) setTabBarHidden(true);
+    }, TAB_AUTOHIDE_MS);
+  }
+
+  /** 움직임이 있었다 — 즉시 올리고 다시 2.5초를 센다. */
+  function noteUserActivity() {
+    scheduleTabBarHide();
+  }
+
+  function initTabBarAutoHide() {
+    if (tabBar.bound) return;
+    tabBar.bound = true;
+    ['pointerdown', 'touchstart', 'keydown', 'wheel', 'mousemove'].forEach((type) => {
+      document.addEventListener(type, noteUserActivity, { passive: true, capture: true });
+    });
+    if (el.main) el.main.addEventListener('scroll', noteUserActivity, { passive: true });
+    document.addEventListener('focusin', () => {
+      /* 탭바로 포커스가 오면 멈추고, 아니면 다시 센다 */
+      if (tabBarAutoHideAllowed()) scheduleTabBarHide();
+      else { clearTimeout(tabBar.timer); setTabBarHidden(false); }
+    });
+    scheduleTabBarHide();
+  }
+
+  function setTabBarAutoHide(on) {
+    tabBar.enabled = on !== false;
+    tabBar.force = true;
+    if (!tabBar.enabled) { clearTimeout(tabBar.timer); setTabBarHidden(false); }
+    else scheduleTabBarHide();
+    return { enabled: tabBar.enabled, hidden: tabBar.hidden };
+  }
+
+  function getTabBarState() {
+    return {
+      enabled: tabBar.enabled, hidden: tabBar.hidden,
+      paused: !tabBarAutoHideAllowed(), delay: TAB_AUTOHIDE_MS
+    };
+  }
+
+  /* Sprint 23 — URL 플래그: ?narr=0|1 (스토리텔링 문구 연출) · ?tabhide=0|1 (탭바 자동 숨김) */
+  (function readInteractionFlags() {
+    try {
+      const q = new URLSearchParams(location.search || '');
+      if (q.has('narr')) narrationState().enabled = q.get('narr') !== '0';
+      if (q.get('narr') === '1') narrationState().force = true;
+      if (q.has('tabhide')) {
+        tabBar.enabled = q.get('tabhide') !== '0';
+        tabBar.force = q.get('tabhide') === '1' ? true : tabBar.force;
+      }
+    } catch (e) { /* URLSearchParams 없음 */ }
+  })();
+
   /* --- 초기 마운트 --- */
   const bootStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
   /* Sprint 11 — 펼쳐 둔 알림 묶음을 세션에서 복원 */
@@ -10413,6 +10867,7 @@ document.addEventListener('DOMContentLoaded', () => {
   syncExploreSearchClear();
   setupExploreObserver();
   moveNavIndicator({ instant: true });
+  initTabBarAutoHide();
   /* Sprint 4.5 — 알림: 브라우저 권한 미러링 → 설정 카드 · 권한 배너 · 알림함 */
   syncNotificationPermission();
   renderNotificationSettings();
@@ -10601,6 +11056,45 @@ document.addEventListener('DOMContentLoaded', () => {
     getSplashState: () => splash.getState(),
     setDmView: (v) => { ui.dmView = v === 'group' ? 'group' : 'recent'; renderChatRooms(); },
     setDmUnreadOnly: (on) => { ui.dmUnreadOnly = !!on; renderChatRooms(); },
-    getDmViewState: () => ({ view: ui.dmView, unreadOnly: ui.dmUnreadOnly, sent: ui.dmSent })
+    getDmViewState: () => ({ view: ui.dmView, unreadOnly: ui.dmUnreadOnly, sent: ui.dmSent }),
+    /* Sprint 23 — 지역 게시판 · 통합 모임 찾기 · 스토리텔링 문구 연출 · 탭바 자동 숨김 */
+    renderRegionChips, renderExploreCompose, postStyleLabel, postRegionLabel,
+    getRegionState: () => ({
+      region: ui.exploreRegion,
+      label: store.getRegionLabel(ui.exploreRegion),
+      sub: store.getRegion(ui.exploreRegion) ? (store.getRegion(ui.exploreRegion).groupId || null) : null,
+      chips: store.getExploreRegionChips(ui.exploreFilter, ui.exploreQuery, ui.exploreAge, ui.exploreRadius).map((c) => c.id)
+    }),
+    setExploreRegion: (id) => selectRegion(id),
+    getComposeState: () => ({ ...(ui.exploreCompose || {}) }),
+    setComposeRegion: (id) => { ui.exploreCompose.regionId = id; renderExploreCompose(); },
+    setComposeStyle: (id) => { ui.exploreCompose.meetStyle = id; renderExploreCompose(); },
+    getNarration: () => ({
+      enabled: narrationState().enabled, active: !!narrationState().active,
+      done: narrationState().done !== false, step: narrationState().step || null,
+      answerShown: narrationState().answerShown !== false,
+      guide: ui.guideNarrKey || null
+    }),
+    setNarration: (on) => {
+      narrationState().enabled = on !== false;
+      narrationState().force = true;
+      return { enabled: narrationState().enabled };
+    },
+    skipNarration: () => {
+      if (typeof ui.narrationReveal === 'function') ui.narrationReveal();
+      return { done: narrationState().done !== false };
+    },
+    setTabBarAutoHide, getTabBarState, noteUserActivity,
+    getHomeDiscoverState: () => {
+      const rail = $('#home-recommend-grid');
+      return {
+        merged: !!$('#home-discover'),
+        recommendHidden: !!($('#home-recommend') || {}).hidden,
+        cards: rail ? rail.querySelectorAll('.recommend-card').length : 0,
+        scrollSnap: rail ? getComputedStyle(rail).scrollSnapType : '',
+        overflowX: rail ? getComputedStyle(rail).overflowX : '',
+        browseCards: document.querySelectorAll('#home-browse-grid .group-tile').length
+      };
+    }
   };
 });
