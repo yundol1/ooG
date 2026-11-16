@@ -2880,7 +2880,29 @@ const SIGNUP_AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #EC4899 0%, #9D174D 100%)',
   'linear-gradient(135deg, #475569 0%, #0F172A 100%)'
 ];
-const SIGNUP_LIMITS = { nicknameMin: 2, nicknameMax: 12, passwordMin: 4, passwordMax: 64, ageMin: 14, ageMax: 99 };
+const SIGNUP_LIMITS = {
+  nicknameMin: 2, nicknameMax: 12, passwordMin: 4, passwordMax: 64, ageMin: 14, ageMax: 99,
+  emailMax: 120, codeLength: 6
+};
+
+/* Sprint 22 — 이메일 인증 경계.
+ *  · 메일 발송은 아직 없다(정적 SPA). 코드는 **이 기기 안에서만** 만들어지고,
+ *    화면의 '모의 메일함'이 같은 코드를 보여준다. 서버 인증으로 옮길 때
+ *    requestEmailCode 하나만 서버 발송 API 로 바꾸면 나머지 흐름은 그대로다. */
+const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;   // 인증번호 유효 10분
+const EMAIL_CODE_MAX_TRIES = 6;             // 확인 시도 6회
+
+/** 이메일 형식 검사(로컬 검증 — 서버에서도 같은 규칙을 다시 확인해야 한다). */
+function oogIsEmail(text) {
+  const v = String(text == null ? '' : text).trim();
+  if (!v || v.length > SIGNUP_LIMITS.emailMax) return false;
+  return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(v);
+}
+
+/** 6자리 인증번호 — 앞자리 0 이 나오지 않게 100000~999999. */
+function oogMakeEmailCode() {
+  return String(100000 + Math.floor(Math.random() * 900000));
+}
 
 /** 가입 전의 빈 내 계정 — 닉네임·사진·나이·지역·취미가 모두 비어 있다. */
 function blankCurrentUser() {
@@ -3528,18 +3550,20 @@ class Store {
    *    isProfileLiked()      이미 하트를 누른 사람인지 (카드 상태 표시)
    * ======================================================================== */
 
-  /** 탐색 필터 칩 — '전체' / 타입 3종 / 취미 8종. */
+  /** 탐색 필터 칩 — '전체' / 타입 2종 / 세부 취미 45종.
+   *  Sprint 22 — 모임(groups)은 홈의 '모임 둘러보기'로 옮겼다. 탐색 칩에도 두지 않는다. */
   getExploreFilters() {
     return [
       { id: 'all', name: '전체', kind: 'type' },
       { id: 'people', name: '취미친구', icon: 'person', kind: 'type' },
-      { id: 'groups', name: '소모임', icon: 'users', kind: 'type' },
       { id: 'posts', name: '게시글', icon: 'image', kind: 'type' },
       ...(this.state.exploreHobbyChips || []).map((h) => Object.assign({}, h, { kind: 'hobby' }))
     ];
   }
 
-  /** Sprint 9 — 종류 세그먼트(상단 1줄)에 쓰는 타입 4종만. */
+  /** Sprint 9~22 — 종류 세그먼트(상단 1줄)에 쓰는 타입 3종.
+   *  Sprint 22 — 모임은 홈 탭으로 옮겼다(11/16 지시: "탐색탭의 모임은 그냥 홈탭으로 보내줘").
+   *  그래서 탐색은 **전체(사람+글) · 사람 · 글** 세 칸만 쓴다. */
   getExploreTypeFilters() {
     return this.getExploreFilters().filter((f) => f.kind === 'type');
   }
@@ -3568,7 +3592,7 @@ class Store {
     const p = prefs || {};
     const hobbyIds = (s.exploreHobbyChips || []).map((h) => h.id)
       .concat((s.customHobbies || []).map((h) => h.id));
-    const typeIds = ['all', 'people', 'groups', 'posts', ...hobbyIds];
+    const typeIds = ['all', 'people', 'posts', ...hobbyIds];
     const ageIds = ['all', 'for_me', 'none', ...(s.ageLimitOptions || []).filter((o) => o.id !== 'all').map((o) => o.id)];
     const regionIds = ['all', ...(s.exploreRegions || EXPLORE_REGIONS).map((r) => r.id)];
     const radiusIds = (s.exploreRadiusOptions || EXPLORE_RADIUS_OPTIONS).map((r) => r.id);
@@ -3991,6 +4015,88 @@ class Store {
    *        Sprint 7 — 지역(생활권) id. getExploreRegions() 의 id.
    * @returns {Array|{items:Array, page:number, hasMore:boolean, total:number, round:number}}
    */
+  /**
+   * Sprint 22 — 홈의 '모임 둘러보기'.
+   * ------------------------------------------------------------------
+   * 11/16 사용자: "탐색탭의 모임은 그냥 홈탭으로 보내줘" — 모임 목록·검색·필터·
+   * 더 보기를 탐색에서 홈 안으로 옮겼다. 필터 규칙은 탐색과 같은 자를 쓴다
+   * (지역·나이 범위·반경·검색). 다만 **취미는 대분류로** 좁힌다 — 모임은 분야로 찾는 게 빠르다.
+   * @param {{query?:string, categoryId?:string, hobbyId?:string, region?:string,
+   *          age?:string, radius?:string, sort?:string, offset?:number, limit?:number}} options
+   * @returns {{items:Array, total:number, hasMore:boolean}}
+   */
+  getGroupBrowse(options = {}) {
+    const o = options || {};
+    const q = String(o.query || '').trim().toLowerCase();
+    const categoryId = o.categoryId && o.categoryId !== 'all' ? o.categoryId : 'all';
+    const hobbyId = o.hobbyId && o.hobbyId !== 'all' ? o.hobbyId : 'all';
+    const regionId = o.region === 'all' || !o.region || isKnownRegion(o.region) ? (o.region || 'all') : 'all';
+    const radiusId = isKnownRadius(o.radius) ? o.radius : 'all';
+    const age = this.getExploreAgeFilters().some((f) => f.id === o.age) ? o.age : 'all';
+    const inRegion = (id) => regionId === 'all' || id === regionId;
+    const mine = this.getTasteHobbyIds();
+    const myCats = mine.map((id) => this.getHobbyTone(id));
+    const joined = this.state.currentUser ? this.currentUser.joinedGroupIds || [] : [];
+
+    const list = (this.state.groups || []).filter((g) => {
+      const chip = this.getHobbyChip(g.hobbyId || g.category);
+      if (categoryId !== 'all' && (!chip || chip.categoryId !== categoryId)) return false;
+      if (hobbyId !== 'all' && g.hobbyId !== hobbyId) return false;
+      if (!this.ageFilterAllowsGroup(age, g)) return false;
+      if (!this.ageRangeAllowsGroup(g)) return false;
+      if (!inRegion(this.getGroupRegionId(g))) return false;
+      if (!this.radiusAllows(radiusId, this.getGroupDistanceKm(g))) return false;
+      if (!this.matchGroupQuery(g, q)) return false;
+      return true;
+    }).map((g) => {
+      const chip = this.getHobbyChip(g.hobbyId || g.category);
+      const sameHobby = mine.includes(g.hobbyId);
+      const sameTone = !!(chip && myCats.includes(chip.tone));
+      let score = sameHobby ? 3 : (sameTone ? 1 : 0);
+      score += Math.min(2, Math.floor((g.memberCount || 0) / 12));
+      return {
+        type: 'group', id: g.id, ratio: g.ratio || 'wide', group: g,
+        joined: joined.includes(g.id),
+        distanceKm: this.getGroupDistanceKm(g),
+        tone: this.getHobbyTone(g.hobbyId || g.category),
+        hobbyName: chip ? chip.name : (g.categoryName || '취미'),
+        score
+      };
+    });
+
+    const sort = ['recommend', 'near', 'members', 'name'].includes(o.sort) ? o.sort : 'recommend';
+    list.sort((a, b) => {
+      if (sort === 'near') return (a.distanceKm || 99) - (b.distanceKm || 99);
+      if (sort === 'members') return (b.group.memberCount || 0) - (a.group.memberCount || 0);
+      if (sort === 'name') return String(a.group.name).localeCompare(String(b.group.name), 'ko');
+      return (b.score - a.score)
+        || ((a.distanceKm || 99) - (b.distanceKm || 99))
+        || ((b.group.memberCount || 0) - (a.group.memberCount || 0));
+    });
+
+    const offset = Math.max(0, Number(o.offset) || 0);
+    const limit = o.limit == null ? list.length : Math.max(1, Number(o.limit));
+    const items = list.slice(offset, offset + limit);
+    return { items, total: list.length, hasMore: offset + items.length < list.length };
+  }
+
+  /** 홈 모임 둘러보기의 취미 대분류 칩 — [전체] + 큰틀 7개. */
+  getGroupBrowseCategories() {
+    return [{ id: 'all', name: '전체', icon: 'grid' }].concat(this.getHobbyCategories().map((c) => ({
+      id: c.id, name: c.name.split('·')[0], icon: c.icon
+    })));
+  }
+
+  /** 홈 모임 둘러보기 정렬 4종. */
+  getGroupBrowseSorts() {
+    return [
+      { id: 'recommend', label: '추천순' },
+      { id: 'near', label: '가까운순' },
+      { id: 'members', label: '인원순' },
+      { id: 'name', label: '이름순' }
+    ];
+  }
+
   getExploreFeed(filter = 'all', query = '', options = null, ageFilter = 'all', region = 'all', radius = 'all') {
     const kind = filter || 'all';
     const q = String(query || '').trim().toLowerCase();
@@ -4021,7 +4127,9 @@ class Store {
     }
 
     const groups = [];
-    if (kind === 'all' || kind === 'groups' || isHobby) {
+    /* Sprint 22 — 탐색에는 모임이 없다(홈의 '모임 둘러보기'가 맡는다).
+       홈이 모임 목록이 필요할 때만 kind === 'groups' 로 직접 부른다(getGroupBrowse). */
+    if (kind === 'groups') {
       (this.state.groups || []).forEach((g) => {
         if (isHobby && g.hobbyId !== kind) return;
         if (!this.ageFilterAllowsGroup(age, g)) return;
@@ -7766,11 +7874,136 @@ class Store {
       signedIn: this.isSignedIn(),
       hasAccount: !!acc,
       loginId: acc ? acc.loginId : '',
+      /* Sprint 22 — 이메일 계정. 옛 계정(v16)은 email 이 없을 수 있다(아이디 로그인 유지). */
+      email: acc ? (acc.email || '') : '',
+      emailVerified: !!(acc && acc.emailVerified),
+      hasEmail: !!(acc && acc.email),
+      quickStart: !!(acc && acc.quickStart),
       step: ob.step || 0,
       nickname: this.state.currentUser ? this.state.currentUser.nickname : '',
       avatarGradients: SIGNUP_AVATAR_GRADIENTS.slice(),
       limits: { ...SIGNUP_LIMITS }
     };
+  }
+
+  /**
+   * Sprint 22 — 인증 상태 한눈에(가입 완료 · 이메일 · 비밀번호 유무).
+   *  화면의 로그인/비밀번호 찾기 분기가 이 값을 보고 갈라진다.
+   */
+  getAuthState() {
+    const acc = this.state.account || null;
+    if (!acc) return { hasAccount: false, email: '', emailVerified: false, hasPassword: false, quickStart: false };
+    return {
+      hasAccount: true,
+      email: acc.email || '',
+      emailVerified: acc.emailVerified === true,
+      hasPassword: !!acc.passwordHash,
+      quickStart: acc.quickStart === true,
+      createdAt: acc.createdAt || null
+    };
+  }
+
+  /**
+   * 인증번호를 만든다 — 이메일을 확인하는 첫 단계(가입·비밀번호 재설정 공용).
+   * @param {{email:string, purpose?:'signup'|'reset'}} data
+   * @returns {{ok:boolean, reason?:string, code?:string, mock?:boolean, delivery?:string, expiresAt?:string}}
+   */
+  requestEmailCode(data) {
+    const d = data || {};
+    const email = String(d.email || '').trim().toLowerCase();
+    const purpose = d.purpose === 'reset' ? 'reset' : 'signup';
+    if (!oogIsEmail(email)) return { ok: false, reason: 'email_invalid' };
+    if (purpose === 'reset') {
+      const acc = this.state.account;
+      if (!acc || !acc.email) return { ok: false, reason: 'no_email_account' };
+      if (acc.email.toLowerCase() !== email) return { ok: false, reason: 'email_mismatch' };
+    }
+    const code = oogMakeEmailCode();
+    const sentAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + EMAIL_CODE_TTL_MS).toISOString();
+    this.state.emailVerification = {
+      email, purpose, code, sentAt, expiresAt,
+      tries: 0, verified: false, verifiedAt: null
+    };
+    this.saveState();
+    return {
+      ok: true, email, purpose, code, expiresAt, sentAt,
+      /* 실제 SMTP 발송이 아니다 — 화면은 이 사실을 숨기지 않고 '모의 메일함'으로 보여준다. */
+      mock: true, delivery: 'inapp'
+    };
+  }
+
+  /** 방금 만든 인증번호(화면의 모의 메일함이 보여줄 값) — 확인 전까지만 돌려준다. */
+  getPendingEmailCode() {
+    const ev = this.state.emailVerification || null;
+    if (!ev || !ev.code) return null;
+    return {
+      email: ev.email, purpose: ev.purpose, code: ev.code,
+      sentAt: ev.sentAt, expiresAt: ev.expiresAt,
+      verified: ev.verified === true, expired: new Date(ev.expiresAt).getTime() < Date.now()
+    };
+  }
+
+  /**
+   * 인증번호 확인 — 맞으면 verified 로 표시해 다음 단계(가입·비밀번호 변경)를 허용한다.
+   * @returns {{ok:boolean, reason?:string}}
+   */
+  verifyEmailCode(data) {
+    const d = data || {};
+    const ev = this.state.emailVerification;
+    const email = String(d.email || '').trim().toLowerCase();
+    const code = String(d.code || '').replace(/\s/g, '');
+    const purpose = d.purpose === 'reset' ? 'reset' : 'signup';
+    if (!ev || !ev.code) return { ok: false, reason: 'no_code' };
+    if (ev.email !== email || ev.purpose !== purpose) return { ok: false, reason: 'email_mismatch' };
+    if (new Date(ev.expiresAt).getTime() < Date.now()) return { ok: false, reason: 'code_expired' };
+    if ((ev.tries || 0) >= EMAIL_CODE_MAX_TRIES) return { ok: false, reason: 'too_many_tries' };
+    if (code !== ev.code) {
+      ev.tries = (ev.tries || 0) + 1;
+      this.saveState();
+      return { ok: false, reason: 'code_mismatch', triesLeft: Math.max(0, EMAIL_CODE_MAX_TRIES - ev.tries) };
+    }
+    ev.verified = true;
+    ev.verifiedAt = new Date().toISOString();
+    this.saveState();
+    return { ok: true, email, purpose, verifiedAt: ev.verifiedAt };
+  }
+
+  /** 가입 화면을 벗어날 때 인증 대기 상태를 지운다(다른 이메일로 다시 시작). */
+  clearEmailVerification() {
+    this.state.emailVerification = null;
+    this.saveState();
+    return { ok: true };
+  }
+
+  /**
+   * 비밀번호 찾기 1단계 — 가입한 이메일로 재설정 코드를 보낸다(같은 모의 발송).
+   */
+  requestPasswordReset(data) {
+    return this.requestEmailCode({ email: (data || {}).email, purpose: 'reset' });
+  }
+
+  /**
+   * 비밀번호 찾기 2단계 — 인증번호 확인 + 새 비밀번호 저장. 끝나면 바로 로그인할 수 있다.
+   */
+  resetPassword(data) {
+    const d = data || {};
+    const acc = this.state.account;
+    if (!acc || !acc.email) return { ok: false, reason: 'no_email_account' };
+    const email = String(d.email || '').trim().toLowerCase();
+    const check = this.verifyEmailCode({ email, code: d.code, purpose: 'reset' });
+    if (!check.ok) return check;
+    const password = String(d.password || '');
+    if (password.length < SIGNUP_LIMITS.passwordMin) return { ok: false, reason: 'password_short' };
+    if (password.length > SIGNUP_LIMITS.passwordMax) return { ok: false, reason: 'password_long' };
+    if (String(d.passwordConfirm == null ? password : d.passwordConfirm) !== password) {
+      return { ok: false, reason: 'password_mismatch' };
+    }
+    acc.passwordHash = oogHashPassword(password);
+    acc.passwordUpdatedAt = new Date().toISOString();
+    this.state.emailVerification = null;
+    this.saveState();
+    return { ok: true, email };
   }
 
   /**
@@ -7785,7 +8018,19 @@ class Store {
     if (nickname.length > SIGNUP_LIMITS.nicknameMax) return { ok: false, reason: 'nickname_long' };
 
     const quick = d.quickStart === true;
-    const loginId = String(d.loginId || '').trim().toLowerCase();
+    /* Sprint 22 — 이메일 가입: 이 기기에서 인증을 마친 이메일만 계정이 된다.
+       옛 아이디 가입(loginId)은 그대로 남겨 둔다(이미 저장된 계정·테스트 호환). */
+    const email = String(d.email || '').trim().toLowerCase();
+    let emailVerified = false;
+    if (email) {
+      if (!oogIsEmail(email)) return { ok: false, reason: 'email_invalid' };
+      const ev = this.state.emailVerification || {};
+      if (!(ev.verified === true && ev.email === email && ev.purpose === 'signup')) {
+        return { ok: false, reason: 'email_unverified' };
+      }
+      emailVerified = true;
+    }
+    const loginId = email || String(d.loginId || '').trim().toLowerCase();
     let passwordHash = null;
     if (!quick) {
       if (loginId.length < 3) return { ok: false, reason: 'login_id_short' };
@@ -7834,10 +8079,15 @@ class Store {
     this.state.currentUser = user;
     this.state.account = {
       loginId: quick ? `guest_${Date.now().toString(36)}` : loginId,
+      email: email || null,
+      emailVerified,
+      emailVerifiedAt: emailVerified ? new Date().toISOString() : null,
       passwordHash,
       quickStart: quick,
       createdAt: new Date().toISOString()
     };
+    /* 가입에 쓴 인증번호는 한 번 쓰고 지운다(재사용 금지). */
+    this.state.emailVerification = null;
     this.state.onboarding = { completed: true, completedAt: new Date().toISOString(), step: 3 };
     this.state.sessionActive = true;
     this.state.homePrefs = { groupId: null };
@@ -7850,8 +8100,10 @@ class Store {
     const d = data || {};
     const account = this.state.account;
     if (!account) return { ok: false, reason: 'no_account' };
-    const loginId = String(d.loginId || '').trim().toLowerCase();
-    if (loginId !== String(account.loginId || '').toLowerCase()) return { ok: false, reason: 'login_mismatch' };
+    /* 이메일 계정은 이메일로, 옛 계정은 아이디로 로그인한다. */
+    const identifier = String(d.email || d.loginId || '').trim().toLowerCase();
+    const owner = String(account.email || account.loginId || '').toLowerCase();
+    if (identifier !== owner) return { ok: false, reason: 'login_mismatch' };
     if (account.passwordHash) {
       if (oogHashPassword(String(d.password || '')) !== account.passwordHash) {
         return { ok: false, reason: 'password_mismatch' };

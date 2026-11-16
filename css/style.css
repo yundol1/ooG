@@ -11965,7 +11965,9 @@ body.group-mode #bottom-nav { display: none; }
     transition: none !important;
   }
 
-  .onboarding-body { animation: none !important; }
+  .onboarding-body,
+  .ob-step { animation: none !important; }
+  .ob-progress-fill { transition: none !important; }
 
   .masonry-card:hover,
   .group-tile:hover,
@@ -14891,3 +14893,397 @@ body.spotlight-open { overflow: hidden; }
 .oo-ic-clay .oo-clay-shade { opacity: 1; }
 .oo-ic-clay .oo-clay-lift { opacity: 1; }
 .oo-ic-clay .oo-clay-body { opacity: 1; }
+
+
+/* ==========================================================================
+ * Sprint 22 — 스토리텔링 가입 · 이메일 인증 · 홈 모임 둘러보기 · 탐색 상단 정리
+ * --------------------------------------------------------------------------
+ *  11/16 사용자 지시
+ *   ① 탐색 상단이 크림 배경 위에서 흰 카드처럼 잘려 보이던 문제
+ *   ② "탐색탭의 모임은 그냥 홈탭으로 보내줘"
+ *   ③ 회원가입은 한 화면에 하나씩 묻는 스토리텔링 + 이메일 인증 + 비밀번호 찾기
+ *   ④ 처음 취미 질문도 단계별 · 가이드는 그 탭으로 실제 이동해서 설명
+ * ========================================================================== */
+
+/* ---------------------------------------------- 22-1. 탐색 상단: 배경과 한 몸으로
+ *  · sticky 영역을 화면 끝까지 늘리고 배경을 앱 배경(--bg-app)과 같은 크림으로 맞춘다.
+ *  · 아래로는 같은 색의 짧은 페이드만 남겨 카드가 사라지는 경계를 부드럽게. */
+#tab-explore { padding: 0 14px 26px; }
+
+.explore-top {
+  margin: 0 -14px;
+  padding: 12px 14px 4px;
+  background: var(--bg-app);
+}
+
+.explore-top::after {
+  left: 0;
+  right: 0;
+  bottom: -14px;
+  height: 14px;
+  background: linear-gradient(var(--bg-app) 0%, rgba(249, 241, 225, 0) 100%);
+}
+
+.explore-head { padding: 16px 2px 10px; }
+
+/* 세 칸(전체·사람·글)이 된 세그먼트가 지역·필터와 한 줄에 여유 있게 앉는다 */
+.explore-type-seg { padding: 0 4px; }
+.explore-type-btn { padding: 0 9px; font-size: 12px; font-weight: 640; }
+
+/* ---------------------------------------------- 22-2. 스토리텔링 회원가입 */
+/* 질문 카드를 화면 위쪽에 붙여 진행 막대 → 질문 → 입력 → 버튼 순으로 읽히게 한다 */
+.onboarding-panel { justify-content: flex-start; gap: 14px; }
+.onboarding-body { margin: 4px 0 0; flex: 1 1 auto; display: flex; }
+.ob-step { display: flex; flex-direction: column; gap: 13px; flex: 1 1 auto; }
+.ob-actions { margin-top: auto; padding-top: 14px; }
+.ob-step > .ob-error:last-of-type { margin-top: 0; }
+
+.onboarding-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px 0;
+}
+.onboarding-progress[hidden] { display: none; }
+
+.ob-progress-track {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: rgba(15, 74, 55, 0.09);
+  box-shadow: inset 0 1px 2px rgba(20, 66, 50, 0.14);
+  overflow: hidden;
+}
+.ob-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: linear-gradient(90deg, #10B981 0%, #047857 100%);
+  transition: width 0.34s var(--spring-soft);
+}
+.ob-progress-text {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+}
+
+.ob-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ob-kicker-num {
+  padding: 3px 9px;
+  border-radius: var(--r-full);
+  background: var(--clay-mint);
+  box-shadow: var(--clay-light-soft);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.ob-kicker-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.ob-input-lg { height: 54px; font-size: 16px; font-weight: 620; }
+.ob-num-input { letter-spacing: 0.2em; font-weight: 720; }
+
+/* 단계 전환 — 앞으로는 오른쪽에서, 뒤로는 왼쪽에서 살짝 밀려 들어온다 */
+.ob-step { animation: obStepNext 0.3s var(--spring-soft) both; }
+.ob-step-prev .ob-step { animation-name: obStepPrev; }
+@keyframes obStepNext {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes obStepPrev {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* 모의 메일함 — 실제 SMTP 가 없어 코드를 화면에서 보여준다 */
+.ob-mailcard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px 13px;
+  border-radius: var(--r-md);
+  border: 1.5px dashed rgba(16, 185, 129, 0.36);
+  background: var(--clay-white);
+  box-shadow: var(--clay-soft), var(--clay-light-soft);
+}
+.ob-mailcard-top { display: flex; align-items: center; justify-content: space-between; }
+.ob-mailcard-title { font-size: 11.5px; font-weight: 700; color: var(--text-strong); }
+.ob-mailcard-tag {
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--clay-mint);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.ob-mailcard-row { font-size: 10.5px; font-weight: 620; color: var(--text-muted); }
+.ob-mailcard-row b { color: var(--text-sub); font-weight: 720; }
+.ob-mailcard-body {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: var(--r-sm);
+  background: var(--clay-cream-soft);
+  box-shadow: var(--clay-inset);
+}
+.ob-mailcard-label { font-size: 9.5px; font-weight: 700; color: var(--text-muted); }
+.ob-mailcard-code {
+  font-size: 19px;
+  font-weight: 740;
+  letter-spacing: 0.18em;
+  color: var(--green-deep, #065F46);
+}
+.ob-mailcard-exp { margin-left: auto; font-size: 9.5px; font-weight: 700; color: var(--green-dark); }
+.ob-mailcard-exp.is-expired { color: #B91C1C; }
+.ob-mailcard-note { font-size: 9.5px; font-weight: 600; line-height: 1.5; color: var(--text-muted); }
+
+.ob-name-row { display: flex; align-items: flex-end; gap: 12px; }
+.ob-name-avatar {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #FFFFFF;
+  font-size: 22px;
+  font-weight: 740;
+  box-shadow: var(--clay-soft), var(--clay-light-soft);
+}
+.ob-field-grow { flex: 1 1 auto; min-width: 0; }
+
+.ob-photo-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.ob-photo-preview-lg { width: 124px; height: 124px; font-size: 38px; }
+.ob-photo-btns { display: flex; gap: 8px; width: 100%; }
+.ob-photo-btns .ob-btn { flex: 1 1 0; height: 46px; font-size: 13px; }
+.ob-file-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------- 22-3. 홈 '모임 둘러보기' */
+.home-browse {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 16px 14px 18px;
+  border-radius: var(--r-lg);
+  background: var(--clay-white);
+  box-shadow: var(--clay-out), var(--clay-light);
+}
+.home-browse-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.home-browse-head-text { min-width: 0; }
+.home-browse-title { font-size: 15px; font-weight: 680; letter-spacing: -0.03em; color: var(--text-strong); }
+.home-browse-sub { margin-top: 3px; font-size: 11px; font-weight: 620; color: var(--text-muted); }
+.home-browse-new {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--clay-edge-soft);
+  background: var(--clay-white);
+  box-shadow: var(--clay-soft), var(--clay-light-soft);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.home-browse-new:active { transform: scale(0.95); box-shadow: var(--clay-inset); }
+
+.home-browse-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  background: var(--clay-cream-soft);
+  box-shadow: var(--clay-inset);
+  color: var(--text-muted);
+}
+.home-browse-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 620;
+  color: var(--text-strong);
+}
+.home-browse-search input::placeholder { color: var(--text-muted); font-weight: 620; }
+.home-browse-search-icon { display: inline-flex; }
+.home-browse-search-icon .oo-ic { width: 14px; height: 14px; }
+.home-browse-clear {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--border-strong);
+  color: #FFFFFF;
+  font-size: 13px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.home-browse-clear.hide { display: none; }
+
+.home-browse-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 1px 0 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.home-browse-chips::-webkit-scrollbar { display: none; }
+.home-browse-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 31px;
+  padding: 0 11px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--clay-edge-soft);
+  background: var(--clay-white);
+  box-shadow: var(--clay-soft), var(--clay-light-soft);
+  font-size: 11.5px;
+  font-weight: 640;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+.home-browse-chip .oo-ic { width: 13px; height: 13px; }
+.home-browse-chip.active {
+  background: var(--clay-mint);
+  border-color: rgba(16, 185, 129, 0.22);
+  color: var(--green-dark);
+  box-shadow: inset 0 2px 4px rgba(4, 120, 87, 0.12), inset 0 -1px 1px rgba(255, 255, 255, 0.9);
+}
+.home-browse-chip:active { transform: scale(0.95); }
+
+.home-browse-sorts { display: flex; gap: 14px; padding: 0 2px; }
+.home-browse-sort {
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.home-browse-sort.active { color: var(--green-dark); }
+.home-browse-sort.active::after {
+  content: '';
+  display: block;
+  height: 2px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: var(--green-dark);
+}
+
+.home-browse-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.home-browse-grid .masonry-card { width: 100%; }
+
+.home-browse-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 8px 14px;
+  text-align: center;
+}
+.home-browse-empty-title { font-size: 13px; font-weight: 680; color: var(--text-strong); }
+.home-browse-empty-desc { font-size: 11.5px; font-weight: 600; line-height: 1.55; color: var(--text-muted); }
+.home-browse-empty-actions { display: flex; gap: 7px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+
+.home-browse-more-wrap { display: flex; justify-content: center; padding-top: 2px; }
+.home-browse-more {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--clay-edge-soft);
+  background: var(--clay-white);
+  box-shadow: var(--clay-soft), var(--clay-light-soft);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--green-dark);
+}
+.home-browse-more[hidden] { display: none; }
+.home-browse-more:active { transform: scale(0.96); box-shadow: var(--clay-inset); }
+
+/* ---------------------------------------------- 22-4. 가이드 취향 1단계 — 분야 카드 */
+.guide-cats-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.guide-cat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 11px;
+  border-radius: 14px;
+  border: 1.5px solid transparent;
+  background: #FFFFFF;
+  box-shadow: var(--clay-soft), var(--clay-light-soft);
+  text-align: left;
+}
+.guide-cat-card.on {
+  background: var(--green-soft);
+  border-color: var(--green-soft-border, #A7F3D0);
+}
+.guide-cat-card .guide-cat-icon .oo-ic { width: 18px; height: 18px; color: var(--green-dark); }
+.guide-cat-card .guide-cat-name { font-size: 11.5px; font-weight: 700; color: var(--text-strong); }
+.guide-cat-card .guide-cat-count { font-size: 9.5px; font-weight: 620; color: var(--text-muted); }
+.guide-cat-card:active { transform: scale(0.96); }
+.guide-hint { margin-top: 9px; font-size: 10.5px; font-weight: 620; color: var(--text-muted); }
+
+/* 홈 둘러보기 카드 — 좁은 2열에서 표지가 너무 높거나 '내 모임' 배지가 줄바꿈되던 문제 */
+.home-browse-grid .group-tile-cover { aspect-ratio: 16 / 10; }
+.home-browse-grid .group-tile-crown {
+  width: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 8px;
+  white-space: nowrap;
+  border-radius: var(--r-full);
+}
+.home-browse-grid .group-tile-name { font-size: 12.5px; font-weight: 620; }
+.home-browse-grid .group-tile-meet { display: none; }
+
+/* 회원가입 지역 선택 — 기본 화살표를 지운 자리에 우그의 셰브론을 그린다 */
+select.ob-input {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23047857' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 15px;
+  padding-right: 40px;
+}

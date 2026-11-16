@@ -140,9 +140,16 @@ document.addEventListener('DOMContentLoaded', () => {
     guide: null,
 
     /* Sprint 17 — 회원가입 · 스토리 링/보관함 · 공지 읽음 · 표지 · 디엠 정렬 */
-    onboardingMode: 'signup',    // 'signup' | 'login'
-    onboardingStep: 0,           // 0 계정 → 1 프로필 → 2 취미·지역
+    /* Sprint 22 — 스토리텔링 회원가입: 한 화면에 질문 하나.
+       'signup' = 이메일 → 인증 → 비밀번호 → 닉네임 → 사진 → 나이 → 지역
+       'login'  = 이메일·비밀번호 한 화면 · 'reset' = 이메일 → 인증 → 새 비밀번호 */
+    onboardingMode: 'signup',    // 'signup' | 'login' | 'reset'
+    onboardingStep: 0,           // signup 0~6 · reset 0~2
     onboardingDraft: null,       // 입력 중인 가입서(메모리)
+    obDir: 'next',               // 단계 전환 방향(애니메이션)
+    obError: '',                 // 지금 단계의 안내 문구
+    obBusy: false,               // 인증번호 발송/확인 중
+    obCode: null,                // 화면의 모의 메일함이 보여줄 { code, email, expiresAt }
     storyRingId: null,           // 지금 보고 있는 스토리 링의 멤버 id
     storyArchiveView: false,     // 보관함에서 연 스토리인지
     boardNoticeExpanded: false,  // 지난 공지 펼침
@@ -205,6 +212,16 @@ document.addEventListener('DOMContentLoaded', () => {
     homeRecommendGrid: $('#home-recommend-grid'),
     btnHomeMoreGroups: $('#btn-home-more-groups'),
     btnHomeRecommendTaste: $('#btn-home-recommend-taste'),
+    /* Sprint 22 — 홈의 '모임 둘러보기'(탐색에서 옮겨온 모임 목록·검색·필터·정렬) */
+    homeBrowse: $('#home-browse'),
+    homeBrowseSub: $('#home-browse-sub'),
+    homeBrowseSearch: $('#home-browse-search'),
+    homeBrowseClear: $('#home-browse-clear'),
+    homeBrowseChips: $('#home-browse-chips'),
+    homeBrowseSorts: $('#home-browse-sorts'),
+    homeBrowseGrid: $('#home-browse-grid'),
+    btnHomeBrowseMore: $('#btn-home-browse-more'),
+    btnHomeBrowseNew: $('#btn-home-browse-new'),
     spotlight: $('#spotlight'),
     spotlightHole: $('#spotlight-hole'),
     spotlightBubble: $('#spotlight-bubble'),
@@ -469,7 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
     exploreLoader: $('#explore-loader'),
     exploreSentinel: $('#explore-sentinel'),
     exploreComposeBtn: $('#btn-explore-compose'),
-    exploreCreateGroupBtn: $('#btn-explore-create-group'),
+    exploreHead: $('#explore-head'),
     postModal: $('#explore-post-modal'),
     postBody: $('#explore-post-body'),
     exploreComposeModal: $('#explore-compose-modal'),
@@ -695,6 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function newOnboardingDraft() {
     return {
+      email: '', code: '', emailVerified: false,
       loginId: '', password: '', passwordConfirm: '', quickStart: false,
       nickname: '', photoUrl: null,
       avatarGradient: (store.getOnboardingState().avatarGradients || [SIGNUP_FALLBACK_GRADIENT])[0],
@@ -712,125 +730,313 @@ document.addEventListener('DOMContentLoaded', () => {
       password_mismatch: '비밀번호가 서로 달라요',
       age_range: '나이는 14~99세 사이로 입력해 주세요',
       no_account: '저장된 계정이 없어요 — 새로 가입해 주세요',
-      login_mismatch: '아이디를 확인해 주세요',
+      login_mismatch: '이메일을 확인해 주세요',
+      email_invalid: '이메일 주소를 다시 확인해 주세요',
+      email_unverified: '이메일 인증을 먼저 마쳐주세요',
+      email_mismatch: '인증번호를 받은 이메일과 달라요',
+      no_email_account: '이 계정에는 등록된 이메일이 없어요',
+      no_code: '인증번호가 없어요 — 다시 받아주세요',
+      code_mismatch: '인증번호가 맞지 않아요',
+      code_expired: '인증번호가 만료됐어요 — 다시 받아주세요',
+      too_many_tries: '시도 횟수를 넘었어요 — 인증번호를 다시 받아주세요'
     }[reason] || '가입 정보를 다시 확인해 주세요');
   }
 
-  function onboardingStepDots() {
-    const dots = $$('#onboarding-steps .onboarding-dot');
-    dots.forEach((dot, i) => dot.classList.toggle('on', i <= ui.onboardingStep));
+  /* Sprint 22 — 스토리텔링 회원가입의 질문 순서(한 화면에 하나씩). */
+  const SIGNUP_FLOW = ['email', 'code', 'password', 'nickname', 'photo', 'age', 'region'];
+  const RESET_FLOW = ['reset-email', 'reset-code', 'reset-password'];
+
+  function obFlow() { return ui.onboardingMode === 'reset' ? RESET_FLOW : SIGNUP_FLOW; }
+  function obStepId() {
+    const flow = obFlow();
+    return flow[Math.min(ui.onboardingStep, flow.length - 1)];
+  }
+
+  /** 진행 표시 — 지금 몇 번째 질문인지 막대와 숫자로 보여준다. */
+  function onboardingProgress() {
+    const node = $('#onboarding-steps');
+    if (!node) return;
+    const flow = obFlow();
+    const index = Math.min(ui.onboardingStep, flow.length - 1);
+    const pct = Math.round(((index + 1) / flow.length) * 100);
+    node.innerHTML = `
+      <span class="ob-progress-track" role="progressbar" aria-valuemin="1" aria-valuemax="${flow.length}"
+            aria-valuenow="${index + 1}" aria-label="가입 진행 ${index + 1} / ${flow.length}">
+        <span class="ob-progress-fill" style="width:${pct}%"></span>
+      </span>
+      <span class="ob-progress-text">${index + 1} / ${flow.length}</span>`;
+  }
+
+  /* ----------------------------------------------------------------
+   * Sprint 22 — 스토리텔링 회원가입
+   * ------------------------------------------------------------------
+   *  11/16 루키 님: "회원가입할때 스토리텔링식으로 하고싶어 모두 입력란이 바로 다 나오는게아니라
+   *   스토리텔링 즉 묻고 답하는식으로 … 한단계씩 … 프로필사진도 등록가능하게끔"
+   *   · 한 화면에 질문 하나 · 진행 막대 · 이전/다음 · 부드러운 전환.
+   *   · 이메일 인증(6자리) → 비밀번호 → 닉네임 → 사진 → 나이 → 지역.
+   * ---------------------------------------------------------------- */
+  const OB_KICKERS = {
+    email: '이메일', code: '인증', password: '비밀번호', nickname: '닉네임',
+    photo: '프로필 사진', age: '나이', region: '동네',
+    'reset-email': '비밀번호 찾기', 'reset-code': '인증', 'reset-password': '새 비밀번호'
+  };
+
+  /** 질문 위의 작은 표시 — "3 / 7 · 비밀번호". */
+  function obKicker(stepId) {
+    const flow = obFlow();
+    const i = Math.max(1, flow.indexOf(stepId) + 1);
+    return `<p class="ob-kicker"><span class="ob-kicker-num">${i} / ${flow.length}</span>
+      <span class="ob-kicker-label">${escapeHtml(OB_KICKERS[stepId] || '')}</span></p>`;
+  }
+
+  /** 모의 메일함 — 실제 SMTP 가 없으니 인증번호를 화면에서 보여줄다(숨기지 않는다). */
+  function obMailCard(stepId) {
+    const pending = store.getPendingEmailCode();
+    const fallback = ui.obCode && ui.obCode.code ? ui.obCode : null;
+    const email = (pending && pending.email) || (fallback && fallback.email) || (ui.onboardingDraft || {}).email || '';
+    const expired = pending ? pending.expired : true;
+    const code = pending && !pending.expired ? pending.code : (fallback && !expired ? fallback.code : '');
+    return `
+      <div class="ob-mailcard" data-ob-mailcard="${stepId}" aria-label="모의 메일함">
+        <div class="ob-mailcard-top">
+          <span class="ob-mailcard-title">모의 메일함</span>
+          <span class="ob-mailcard-tag">체험용</span>
+        </div>
+        <p class="ob-mailcard-row">받는 사람 <b>${escapeHtml(email)}</b></p>
+        <p class="ob-mailcard-row">제목 · 우그 인증번호 안내</p>
+        <div class="ob-mailcard-body">
+          <span class="ob-mailcard-label">인증번호</span>
+          <strong class="ob-mailcard-code">${code || '——'}</strong>
+          <span class="ob-mailcard-exp ${expired ? 'is-expired' : ''}">${expired ? '만료됨 · 다시 받기' : '10분 안에 입력'}</span>
+        </div>
+        <p class="ob-mailcard-note">실제 메일 서버는 아직 연결되지 않았어요. 이 화면에 코드를 보여드리고, 서버를 붙이면 같은 자리에서 진짜 메일이 갑니다.</p>
+      </div>`;
+  }
+
+  /** 진행 막대 — 로그인·재설정 화면에서는 숨긴다. */
+  function onboardingProgressVisible(show) {
+    const steps = $('#onboarding-steps');
+    if (steps) steps.hidden = !show;
+    if (!show) {
+      const node = $('#onboarding-steps');
+      if (node) node.innerHTML = '';
+    }
   }
 
   function renderOnboarding() {
     if (!el.onboardingBody) return;
     const ob = store.getOnboardingState();
-    const draft = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+    const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
     const loginMode = ui.onboardingMode === 'login' && ob.hasAccount;
-    onboardingStepDots();
+    const stepId = obStepId();
+    const errHTML = '<p class="ob-error" id="ob-error" hidden></p>';
+    let body = '';
+
     if (loginMode) {
-      el.onboardingBody.innerHTML = `
+      onboardingProgressVisible(false);
+      body = `
         <div class="ob-hero">
           <h1 class="ob-title">다시 만나요</h1>
-          <p class="ob-desc">${escapeHtml(ob.nickname || '내 계정')} 계정으로 이어서 시작해요.</p>
+          <p class="ob-desc">${escapeHtml((ob.email || ob.nickname) ? `${ob.email || ob.nickname} 계정으로 이어서 시작해요.` : '저장된 계정으로 이어서 시작해요.')}</p>
         </div>
         <div class="ob-field">
-          <label class="ob-label" for="ob-login-id">아이디</label>
-          <input class="ob-input" id="ob-login-id" type="text" autocomplete="username" value="${escapeHtml(ob.loginId)}">
+          <label class="ob-label" for="ob-email">${ob.hasEmail ? '이메일' : '아이디'}</label>
+          <input class="ob-input ob-input-lg" id="ob-email" type="text" autocomplete="username" value="${escapeHtml(ob.email || ob.loginId)}" placeholder="${ob.hasEmail ? 'me@example.com' : '아이디'}">
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-login-pw">비밀번호</label>
-          <input class="ob-input" id="ob-login-pw" type="password" autocomplete="current-password" placeholder="간편 시작 계정은 비워도 돼요">
+          <input class="ob-input ob-input-lg" id="ob-login-pw" type="password" autocomplete="current-password" placeholder="비밀번호">
         </div>
-        <p class="ob-error" id="ob-error" hidden></p>
+        ${errHTML}
         <div class="ob-actions">
           <button class="ob-btn primary" id="ob-login-submit" type="button">이어서 시작</button>
+          <button class="ob-btn ghost" id="ob-forgot" type="button">비밀번호를 잊으셨나요?</button>
           <button class="ob-btn ghost" id="ob-restart-signup" type="button">새 계정 만들기</button>
         </div>`;
-      return;
-    }
-    const steps = [
-      () => `
+    } else if (stepId === 'email' || stepId === 'reset-email') {
+      onboardingProgressVisible(true);
+      onboardingProgress();
+      const reset = stepId === 'reset-email';
+      body = `
+        ${obKicker(stepId)}
         <div class="ob-hero">
-          <h1 class="ob-title">ooG 시작하기</h1>
-          <p class="ob-desc">취미로 이어지는 사람과 모임. 회원가입하고 내 모임을 만들어 보세요.</p>
+          <h1 class="ob-title">${reset ? '비밀번호를<br>잊으셨나요?' : '어떤 이메일로<br>시작할까요?'}</h1>
+          <p class="ob-desc">${reset
+            ? '가입한 이메일을 알려주세요. 인증번호를 통해 새 비밀번호를 정할 수 있어요.'
+            : '인증번호를 보내 드릴게요. 계정을 찾거나 비밀번호를 잊었을 때도 이 주소를 씁니다.'}</p>
         </div>
         <div class="ob-field">
-          <label class="ob-label" for="ob-login-id">아이디 <span class="ob-hint">영문·숫자 3자 이상</span></label>
-          <input class="ob-input" id="ob-login-id" type="text" autocomplete="username" value="${escapeHtml(draft.loginId)}" placeholder="예: runningjun">
+          <label class="ob-label" for="ob-email">이메일</label>
+          <input class="ob-input ob-input-lg" id="ob-email" type="email" inputmode="email" autocomplete="email"
+                 value="${escapeHtml(d.email)}" placeholder="me@example.com">
+        </div>
+        ${errHTML}
+        <p class="ob-note">${reset
+          ? '인증번호는 가입한 이메일하고만 대조해요.'
+          : '이 기기에서 도는 체험판이라 실제 메일은 보내지 않아요 — 다음 화면의 모의 메일함에서 인증번호를 확인하세요.'}</p>
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-next" type="button">인증번호 받기</button>
+          ${reset
+            ? '<button class="ob-btn ghost" id="ob-to-login" type="button">로그인으로 돌아가기</button>'
+            : (ob.hasAccount ? '<button class="ob-btn ghost" id="ob-to-login" type="button">이미 계정이 있어요</button>' : '')}
+        </div>`;
+    } else if (stepId === 'code' || stepId === 'reset-code') {
+      onboardingProgressVisible(true);
+      onboardingProgress();
+      body = `
+        ${obKicker(stepId)}
+        <div class="ob-hero">
+          <h1 class="ob-title">메일로 온 6자리를<br>알려주세요</h1>
+          <p class="ob-desc"><b>${escapeHtml(d.email)}</b> 로 인증번호를 보냈어요.</p>
+        </div>
+        ${obMailCard(stepId)}
+        <div class="ob-field">
+          <label class="ob-label" for="ob-code">인증번호 <span class="ob-hint">6자리</span></label>
+          <input class="ob-input ob-input-lg ob-num-input" id="ob-code" type="text" inputmode="numeric"
+                 maxlength="6" autocomplete="one-time-code" placeholder="000000" value="">
+        </div>
+        ${errHTML}
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-verify" type="button">확인</button>
+          <button class="ob-btn ghost" id="ob-resend" type="button">인증번호 다시 받기</button>
+          <button class="ob-btn ghost" id="ob-back" type="button">이메일 바꾸기</button>
+        </div>`;
+    } else if (stepId === 'password' || stepId === 'reset-password') {
+      onboardingProgressVisible(true);
+      onboardingProgress();
+      const reset = stepId === 'reset-password';
+      body = `
+        ${obKicker(stepId)}
+        <div class="ob-hero">
+          <h1 class="ob-title">${reset ? '새 비밀번호를<br>정해주세요' : '비밀번호를<br>정해주세요'}</h1>
+          <p class="ob-desc">4자 이상이면 돼요. 비밀번호를 잊으면 이메일 인증으로 다시 찾을 수 있어요.</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-password">비밀번호</label>
-          <input class="ob-input" id="ob-password" type="password" autocomplete="new-password" placeholder="4자 이상">
+          <input class="ob-input ob-input-lg" id="ob-password" type="password" autocomplete="new-password" placeholder="4자 이상">
         </div>
+        ${reset ? `
         <div class="ob-field">
           <label class="ob-label" for="ob-password-confirm">비밀번호 확인</label>
-          <input class="ob-input" id="ob-password-confirm" type="password" autocomplete="new-password" placeholder="한 번 더 입력">
-        </div>
-        <p class="ob-note">아이디 없이 <button class="ob-link" id="ob-quick-start" type="button">간편 시작</button>으로도 바로 쓸 수 있어요.</p>
+          <input class="ob-input ob-input-lg" id="ob-password-confirm" type="password" autocomplete="new-password" placeholder="한 번 더 입력">
+        </div>` : ''}
+        ${errHTML}
         <div class="ob-actions">
-          <button class="ob-btn primary" id="ob-next" type="button">다음</button>
-          ${ob.hasAccount ? '<button class="ob-btn ghost" id="ob-to-login" type="button">이미 계정이 있어요</button>' : ''}
-        </div>`,
-      () => `
-        <div class="ob-hero">
-          <h1 class="ob-title">프로필 만들기</h1>
-          <p class="ob-desc">닉네임과 사진이 피드·스토리·디엠·탐색에 그대로 보여요.</p>
-        </div>
-        <div class="ob-photo-row">
-          <div class="ob-photo-preview ${draft.avatarGradient === SIGNUP_FALLBACK_GRADIENT ? 'brand' : ''}" id="ob-photo-preview" style="background:${draft.photoUrl ? 'transparent' : draft.avatarGradient}">
-            ${draft.photoUrl ? avatarImgHTML(draft.photoUrl, '프로필 사진 미리보기') : escapeHtml(draft.nickname.charAt(0) || 'ooG')}
-          </div>
-          <div class="ob-photo-actions">
-            <input class="ob-file" id="ob-photo-input" type="file" accept="image/*">
-            <label class="ob-label" for="ob-photo-input">프로필 사진 <span class="ob-hint">선택 · 256px로 줄여 저장</span></label>
-            <div class="ob-swatches" id="ob-swatches">
-              ${(store.getOnboardingState().avatarGradients || []).map((g, i) =>
-                `<button class="ob-swatch ${draft.avatarGradient === g ? 'on' : ''}" data-ob-gradient="${i}" type="button" style="background:${g}" aria-label="기본 아바타 ${i + 1}"></button>`).join('')}
-            </div>
-          </div>
-        </div>
-        <div class="ob-field">
-          <label class="ob-label" for="ob-nickname">닉네임 <span class="ob-hint">2~12자</span></label>
-          <input class="ob-input" id="ob-nickname" type="text" maxlength="12" autocomplete="nickname" value="${escapeHtml(draft.nickname)}" placeholder="예: 러닝준">
-        </div>
-        <p class="ob-error" id="ob-error" hidden></p>
-        <div class="ob-actions">
+          <button class="ob-btn primary" id="${reset ? 'ob-submit' : 'ob-next'}" type="button">${reset ? '비밀번호 바꾸고 로그인' : '다음'}</button>
           <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
-          <button class="ob-btn primary" id="ob-next" type="button">다음</button>
-        </div>`,
-      () => `
+        </div>`;
+    } else if (stepId === 'nickname') {
+      onboardingProgressVisible(true);
+      onboardingProgress();
+      body = `
+        ${obKicker('nickname')}
         <div class="ob-hero">
-          <h1 class="ob-title">나를 소개해요</h1>
-          <p class="ob-desc">나이와 지역만 알려주세요. 취미는 가입을 마친 뒤 가이드에서 여쭤볼게요.</p>
+          <h1 class="ob-title">뭐라고<br>부를까요?</h1>
+          <p class="ob-desc">당신의 이름(닉네임)은 무엇인가요? 다른 사람들이 어떻게 불렀으면 좋겠나요?<br>
+            피드·스토리·디엠·탐색 카드에 이 이름이 보여요.</p>
+        </div>
+        <div class="ob-name-row">
+          <span class="ob-name-avatar" id="ob-name-avatar" style="background:${d.photoUrl ? 'transparent' : d.avatarGradient}">
+            ${d.photoUrl ? avatarImgHTML(d.photoUrl, '내 사진') : escapeHtml((d.nickname || '').charAt(0) || '?')}
+          </span>
+          <div class="ob-field ob-field-grow">
+            <label class="ob-label" for="ob-nickname">닉네임 <span class="ob-hint">2~12자</span></label>
+            <input class="ob-input ob-input-lg" id="ob-nickname" type="text" maxlength="12" autocomplete="nickname"
+                   value="${escapeHtml(d.nickname)}" placeholder="예: 러닝준">
+          </div>
+        </div>
+        ${errHTML}
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-next" type="button">다음</button>
+          <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
+        </div>`;
+    } else if (stepId === 'photo') {
+      onboardingProgressVisible(true);
+      onboardingProgress();
+      body = `
+        ${obKicker('photo')}
+        <div class="ob-hero">
+          <h1 class="ob-title">프로필 사진을<br>올려볼까요?</h1>
+          <p class="ob-desc">얼굴이 아니어도 괜찮아요. 좋아하는 취미 사진이면 충분해요. 사진 없이 넘어가도 돼요.</p>
+        </div>
+        <div class="ob-photo-stage">
+          <div class="ob-photo-preview ob-photo-preview-lg ${d.avatarGradient === SIGNUP_FALLBACK_GRADIENT ? 'brand' : ''}" id="ob-photo-preview"
+               style="background:${d.photoUrl ? 'transparent' : d.avatarGradient}">
+            ${d.photoUrl ? avatarImgHTML(d.photoUrl, '프로필 사진 미리보기') : escapeHtml((d.nickname || '').charAt(0) || 'ooG')}
+          </div>
+          <div class="ob-photo-btns">
+            <button class="ob-btn ghost" id="ob-photo-album" type="button">앨범에서 고르기</button>
+            <button class="ob-btn ghost" id="ob-photo-camera-btn" type="button">사진 찍기</button>
+          </div>
+          <input class="ob-file-hidden" id="ob-photo-input" type="file" accept="image/*" aria-label="앨범에서 프로필 사진 고르기">
+          <input class="ob-file-hidden" id="ob-photo-camera" type="file" accept="image/*" capture="environment" aria-label="카메라로 프로필 사진 찍기">
+          <div class="ob-swatches" id="ob-swatches" role="group" aria-label="기본 아바타 색">
+            ${(ob.avatarGradients || []).map((g, i) =>
+              `<button class="ob-swatch ${d.avatarGradient === g ? 'on' : ''}" data-ob-gradient="${i}" type="button" style="background:${g}" aria-label="기본 아바타 ${i + 1}"></button>`).join('')}
+          </div>
+        </div>
+        ${errHTML}
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-next" type="button">${d.photoUrl ? '다음' : '사진 없이 다음'}</button>
+          <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
+        </div>`;
+    } else if (stepId === 'age') {
+      onboardingProgressVisible(true);
+      onboardingProgress();
+      body = `
+        ${obKicker('age')}
+        <div class="ob-hero">
+          <h1 class="ob-title">나이가<br>어떻게 되세요?</h1>
+          <p class="ob-desc">2030만·30대+ 처럼 나이 제한이 있는 모임을 가려내는 데만 써요. 나중에 내정보에서 바꿀 수 있어요.</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-age">나이 <span class="ob-hint">14~99세 · 선택</span></label>
-          <input class="ob-input" id="ob-age" type="number" min="14" max="99" inputmode="numeric" value="${draft.age === null ? '' : escapeHtml(String(draft.age))}" placeholder="예: 26">
+          <input class="ob-input ob-input-lg ob-num-input" id="ob-age" type="number" min="14" max="99" inputmode="numeric"
+                 value="${d.age === null ? '' : escapeHtml(String(d.age || ''))}" placeholder="예: 26">
+        </div>
+        ${errHTML}
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-next" type="button">${String(d.age || '').trim() ? '다음' : '건너뛰기'}</button>
+          <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
+        </div>`;
+    } else {
+      onboardingProgressVisible(true);
+      onboardingProgress();
+      body = `
+        ${obKicker('region')}
+        <div class="ob-hero">
+          <h1 class="ob-title">어디서 취미를<br>즐기세요?</h1>
+          <p class="ob-desc">동네를 알려주면 가까운 모임을 먼저 보여드려요. 나중에 언제든 바꿀 수 있어요.</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-region">활동 지역</label>
-          <select class="ob-input" id="ob-region">
+          <select class="ob-input ob-input-lg" id="ob-region">
             <option value="">지역 선택 안 함</option>
-            ${store.getExploreRegions().map((r) => `<option value="${escapeHtml(r.id)}" ${draft.regionId === r.id ? 'selected' : ''}>${escapeHtml(r.name)} · ${escapeHtml(r.short)}</option>`).join('')}
+            ${store.getExploreRegions().map((r) => `<option value="${escapeHtml(r.id)}" ${d.regionId === r.id ? 'selected' : ''}>${escapeHtml(r.name)} · ${escapeHtml(r.short)}</option>`).join('')}
           </select>
         </div>
-        <p class="ob-note">취미는 다음 화면에서 묻습니다 — 무엇을 좋아하는지 몰라도 괜찮아요.</p>
-        <p class="ob-error" id="ob-error" hidden></p>
+        ${errHTML}
+        <p class="ob-note">다음 화면에서 취미를 여쭤볼게요 — 무엇을 좋아하는지 몰라도 괜찮아요.</p>
         <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-submit" type="button">우그 시작하기</button>
           <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
-          <button class="ob-btn primary" id="ob-submit" type="button">ooG 시작하기</button>
-        </div>`
-    ];
-    el.onboardingBody.innerHTML = steps[Math.min(ui.onboardingStep, steps.length - 1)]();
+        </div>`;
+    }
+
+    el.onboardingBody.className = `onboarding-body ob-step-${ui.obDir}`;
+    el.onboardingBody.dataset.obMode = ui.onboardingMode;
+    el.onboardingBody.innerHTML = `<div class="ob-step" data-ob-step="${stepId}" data-ob-mode="${ui.onboardingMode}">${body}</div>`;
   }
 
-  /** 온보딩 입력은 단계마다 새로 그려지므로 id 로 찾는다(정적 점검 예외용 헬퍼). */
+  /** 온보딩 입력은 단계마다 새로 그려지므로 id 로 찾는 헬퍼. */
   const obField = (id) => document.querySelector(`[id="${id}"]`);
 
   function collectOnboardingInputs() {
     const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
     const val = (id) => { const n = obField(id); return n ? n.value : undefined; };
-    if (obField('ob-login-id')) d.loginId = val('ob-login-id');
+    if (obField('ob-email')) d.email = val('ob-email');
+    if (obField('ob-code')) d.code = val('ob-code');
+    if (obField('ob-login-pw')) d.password = d.password || '';
     if (obField('ob-password')) d.password = val('ob-password');
     if (obField('ob-password-confirm')) d.passwordConfirm = val('ob-password-confirm');
     if (obField('ob-nickname')) d.nickname = val('ob-nickname');
@@ -839,27 +1045,84 @@ document.addEventListener('DOMContentLoaded', () => {
     return d;
   }
 
-  function onboardingNext() {
-    const d = collectOnboardingInputs();
-    if (ui.onboardingStep === 0 && !d.quickStart) {
-      if (String(d.loginId || '').trim().length < 3) return showOnboardingError('아이디를 3자 이상 입력해 주세요');
-      if (String(d.password || '').length < 4) return showOnboardingError('비밀번호를 4자 이상 입력해 주세요');
-      if (d.password !== d.passwordConfirm) return showOnboardingError('비밀번호가 서로 달라요');
-    }
-    if (ui.onboardingStep === 1 && String(d.nickname || '').trim().length < 2) {
-      return showOnboardingError('닉네임을 2자 이상 입력해 주세요');
-    }
-    ui.onboardingStep = Math.min(2, ui.onboardingStep + 1);
+  /** 다음 단계로 — 방향을 기억해 두어 전환 애니메이션이 앞/뒤를 구분한다. */
+  function obGo(step) {
+    const flow = obFlow();
+    ui.onboardingStep = Math.max(0, Math.min(flow.length - 1, step));
+    ui.obDir = 'next';
+    ui.obError = '';
     renderOnboarding();
   }
 
+  /** 이메일 화면에서 → 인증번호 발송 → 인증 화면으로. */
+  function obSendCode() {
+    const d = collectOnboardingInputs();
+    const purpose = ui.onboardingMode === 'reset' ? 'reset' : 'signup';
+    const res = purpose === 'reset'
+      ? store.requestPasswordReset({ email: d.email })
+      : store.requestEmailCode({ email: d.email, purpose: 'signup' });
+    if (!res.ok) return showOnboardingError(onboardingError(res.reason));
+    d.email = res.email;
+    d.emailVerified = false;
+    ui.obCode = res;
+    showToast('인증번호를 만들었어요 · 아래 모의 메일함에서 확인하세요', 'info');
+    obGo(1);
+  }
+
+  /** 인증번호 확인 → 성공하면 다음 질문(가입=비밀번호 / 재설정=새 비밀번호)으로. */
+  function obVerifyCode() {
+    const d = collectOnboardingInputs();
+    const purpose = ui.onboardingMode === 'reset' ? 'reset' : 'signup';
+    const res = store.verifyEmailCode({ email: d.email, code: d.code, purpose });
+    if (!res.ok) {
+      const msg = res.reason === 'code_mismatch' && res.triesLeft != null
+        ? `인증번호가 맞지 않아요 · ${res.triesLeft}번 더 시도할 수 있어요`
+        : onboardingError(res.reason);
+      return showOnboardingError(msg);
+    }
+    d.emailVerified = true;
+    showToast('이메일 인증을 마쳤어요', 'success');
+    obGo(2);
+  }
+
+  function onboardingNext() {
+    const d = collectOnboardingInputs();
+    const stepId = obStepId();
+    if (stepId === 'email' || stepId === 'reset-email') return obSendCode();
+    if (stepId === 'code' || stepId === 'reset-code') return obVerifyCode();
+    if (stepId === 'password') {
+      if (String(d.password || '').length < 4) return showOnboardingError('비밀번호를 4자 이상 입력해 주세요');
+      return obGo(3);
+    }
+    if (stepId === 'nickname') {
+      const name = String(d.nickname || '').trim();
+      if (name.length < 2) return showOnboardingError('닉네임을 2자 이상 입력해 주세요');
+      if (name.length > 12) return showOnboardingError('닉네임은 12자까지 쓸 수 있어요');
+      d.nickname = name;
+      return obGo(4);
+    }
+    if (stepId === 'photo') return obGo(5);
+    if (stepId === 'age') {
+      if (String(d.age || '').trim() !== '') {
+        const n = Number(d.age);
+        if (!Number.isFinite(n) || n < 14 || n > 99) return showOnboardingError('나이는 14~99세 사이로 입력해 주세요');
+      }
+      return obGo(6);
+    }
+    if (stepId === 'region') return submitOnboarding();
+    return undefined;
+  }
+
   function showOnboardingError(text) {
+    ui.obError = String(text || '');
     const node = obField('ob-error');
     if (node) { node.hidden = false; node.textContent = text; }
     else showToast(text, 'warning');
   }
 
   function onboardingBack() {
+    ui.obDir = 'prev';
+    ui.obError = '';
     ui.onboardingStep = Math.max(0, ui.onboardingStep - 1);
     renderOnboarding();
   }
@@ -868,24 +1131,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const d = collectOnboardingInputs();
     const region = d.regionId ? store.getRegion(d.regionId) : null;
     const res = store.signUp({
-      loginId: d.loginId, password: d.password, passwordConfirm: d.passwordConfirm,
+      email: d.email, password: d.password, passwordConfirm: d.passwordConfirm || d.password,
       quickStart: d.quickStart === true,
       nickname: d.nickname, photoUrl: d.photoUrl, avatarGradient: d.avatarGradient,
-      age: d.age === '' ? null : Number(d.age),
+      age: String(d.age || '').trim() === '' ? null : Number(d.age),
       location: region ? `${region.name.split('·')[0]} ${region.short}` : '',
       hobbies: d.hobbies
     });
     if (!res.ok) return showOnboardingError(onboardingError(res.reason));
     ui.onboardingDraft = null;
-    finishSignup();
+    ui.obCode = null;
+    return finishSignup();
+  }
+
+  /** 비밀번호 재설정 완료 — 새 비밀번호로 바로 로그인해 앱으로 들어간다. */
+  function submitPasswordReset() {
+    const d = collectOnboardingInputs();
+    const res = store.resetPassword({
+      email: d.email, code: d.code, password: d.password, passwordConfirm: d.passwordConfirm
+    });
+    if (!res.ok) return showOnboardingError(onboardingError(res.reason));
+    const sign = store.signIn({ email: d.email, password: d.password });
+    if (!sign.ok) return showOnboardingError(onboardingError(sign.reason));
+    ui.onboardingMode = 'signup';
+    ui.onboardingStep = 0;
+    ui.onboardingDraft = null;
+    ui.obCode = null;
+    showToast('비밀번호를 바꿨어요 · 새 비밀번호로 로그인했어요', 'success');
+    return finishSignup();
   }
 
   function submitOnboardingLogin() {
-    const d = collectOnboardingInputs();
-    const pw = (obField('ob-login-pw') || {}).value || '';
-    const res = store.signIn({ loginId: obField('ob-login-id').value, password: pw });
+    const idNode = obField('ob-email');
+    const pwNode = obField('ob-login-pw');
+    const identifier = idNode ? idNode.value : '';
+    const pw = pwNode ? pwNode.value : '';
+    const res = store.signIn({ email: identifier, loginId: identifier, password: pw });
     if (!res.ok) return showOnboardingError(onboardingError(res.reason));
-    finishSignup();
+    ui.onboardingDraft = null;
+    return finishSignup();
   }
 
   /** 가입/로그인 완료 → 앱 화면으로. 정한 닉네임·사진을 전체에 반영한다. */
@@ -904,7 +1188,9 @@ document.addEventListener('DOMContentLoaded', () => {
     switchTab('tab-home');
     const u = store.currentUser;
     showToast(`${u.nickname}님, ooG에 오신 걸 환영해요`, 'success');
-    startGuide();
+    /* Sprint 22 — 가이드는 **처음 가입한 사람에게만** 자동으로 뜬다.
+       로그인·비밀번호 재설정으로 다시 들어온 사람에게 또 띄우면 방해가 된다. */
+    if (!store.isDemoAccount() && store.getGuideState().needed) startGuide();
   }
 
   /** 가입 전에는 앱을 가리고 회원가입만 보여준다. */
@@ -915,6 +1201,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!signedIn) {
       const ob = store.getOnboardingState();
       ui.onboardingMode = ob.hasAccount && !ob.completed ? 'login' : 'signup';
+      /* 로그인 화면은 질문 단계가 아니라 한 화면이므로 진행 위치를 처음으로 둔다 */
+      if (ui.onboardingMode === 'login') ui.onboardingStep = 0;
       if (ui.onboardingMode !== 'login' && !ui.onboardingDraft) ui.onboardingDraft = newOnboardingDraft();
       renderOnboarding();
     }
@@ -1290,6 +1578,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderGallery() {
     if (!el.galleryGrid) return;
     renderHomeRecommend();
+    renderHomeBrowse();
     const items = store.getGroupGallery();
     const stories = items.reduce((sum, it) => sum + it.storyCount, 0);
     if (el.gallerySub) {
@@ -1308,7 +1597,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <p class="empty-title">아직 내 모임이 없어요</p>
             <p class="empty-desc">취미가 맞는 모임에 가입하면 이곳이 우리 모임의 사진과 약속으로 채워져요.</p>
             <div class="empty-actions">
-              <button class="btn-primary" data-home-find="1" type="button">모임 찾아보기</button>
+              <button class="btn-primary" data-home-find="1" type="button">모임 둘러보기</button>
               <button class="btn-secondary" data-gallery-new="1" type="button">새 모임 만들기</button>
             </div>
           </div>`;
@@ -1428,40 +1717,203 @@ document.addEventListener('DOMContentLoaded', () => {
     el.homeRecommendGrid.innerHTML = items.map(recommendCardHTML).join('');
   }
 
+  /* ==========================================================================
+   * Sprint 22 — 홈의 '모임 둘러보기' (탐색에서 옮겨온 모임 목록)
+   * ------------------------------------------------------------------------
+   *  11/16 사용자: "탐색탭의 모임은 그냥 홈탭으로 보내줘"
+   *   · 홈에서 내 모임 → 추천 모임 → **모임 둘러보기** 순으로 내려가며 본다.
+   *   · 검색어·취미 대분류·정렬을 고르면 즉시 목록이 바뀌고, '모임 더 보기'로 이어 붙인다.
+   * ======================================================================== */
+  const HOME_BROWSE_PAGE = 6;
+
+  function homeBrowseState() {
+    if (!ui.homeBrowse) {
+      ui.homeBrowse = { categoryId: 'all', sort: 'recommend', query: '', limit: HOME_BROWSE_PAGE };
+    }
+    return ui.homeBrowse;
+  }
+
+  function renderHomeBrowse() {
+    if (!el.homeBrowseGrid) return;
+    const s = homeBrowseState();
+    if (el.homeBrowseChips) {
+      el.homeBrowseChips.innerHTML = store.getGroupBrowseCategories().map((c) => `
+        <button class="home-browse-chip ${s.categoryId === c.id ? 'active' : ''}" data-browse-cat="${escapeHtml(c.id)}"
+                type="button" aria-pressed="${s.categoryId === c.id}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`).join('');
+    }
+    if (el.homeBrowseSorts) {
+      el.homeBrowseSorts.innerHTML = store.getGroupBrowseSorts().map((o) => `
+        <button class="home-browse-sort ${s.sort === o.id ? 'active' : ''}" data-browse-sort="${escapeHtml(o.id)}"
+                type="button" aria-pressed="${s.sort === o.id}">${escapeHtml(o.label)}</button>`).join('');
+    }
+    if (el.homeBrowseClear) el.homeBrowseClear.classList.toggle('hide', !s.query);
+    const res = store.getGroupBrowse({
+      query: s.query, categoryId: s.categoryId, sort: s.sort, limit: s.limit
+    });
+    const cat = store.getGroupBrowseCategories().find((c) => c.id === s.categoryId);
+    if (el.homeBrowseSub) {
+      el.homeBrowseSub.textContent = res.total
+        ? `${s.query ? `'${s.query}' · ` : ''}${cat && cat.id !== 'all' ? `${cat.name} · ` : ''}모임 ${res.total}개`
+        : '아직 둘러볼 모임이 없어요';
+    }
+    if (!res.items.length) {
+      el.homeBrowseGrid.innerHTML = `
+        <div class="home-browse-empty">
+          <p class="home-browse-empty-title">${s.query || s.categoryId !== 'all' ? '조건에 맞는 모임이 없어요' : '아직 모임이 없어요'}</p>
+          <p class="home-browse-empty-desc">${s.query || s.categoryId !== 'all'
+            ? '검색어를 짧게 바꾸거나 다른 분야를 골라보세요.'
+            : '첫 모임을 만들면 이 자리에 보여요.'}</p>
+          <div class="home-browse-empty-actions">
+            <button class="btn-primary" data-browse-new="1" type="button">모임 만들기</button>
+            ${s.query || s.categoryId !== 'all' ? '<button class="btn-secondary" data-browse-reset="1" type="button">조건 초기화</button>' : ''}
+          </div>
+        </div>`;
+    } else {
+      el.homeBrowseGrid.innerHTML = res.items.map((item) => groupTileHTML(item)).join('');
+    }
+    if (el.btnHomeBrowseMore) {
+      el.btnHomeBrowseMore.hidden = !res.hasMore;
+      el.btnHomeBrowseMore.textContent = `모임 더 보기 (${Math.max(0, res.total - res.items.length)}개)`;
+    }
+  }
+
+  /** 홈의 '모임 둘러보기'로 시선을 옮긴다(탐색에 있던 모임 찾기의 새 자리). */
+  function focusHomeBrowse() {
+    if (ui.activeTab !== 'tab-home') switchTab('tab-home');
+    renderHomeBrowse();
+    if (el.homeBrowse) {
+      el.homeBrowse.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    }
+  }
+
+  /** 홈 모임 둘러보기의 검색·분야 칩·정렬·더 보기·카드 열기 */
+  function bindHomeBrowse() {
+    const s = homeBrowseState();
+    if (el.homeBrowseSearch) {
+      let timer = null;
+      el.homeBrowseSearch.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          s.query = el.homeBrowseSearch.value.trim();
+          s.limit = HOME_BROWSE_PAGE;
+          renderHomeBrowse();
+        }, 160);
+      });
+    }
+    if (el.homeBrowseClear) {
+      el.homeBrowseClear.addEventListener('click', () => {
+        s.query = '';
+        if (el.homeBrowseSearch) el.homeBrowseSearch.value = '';
+        s.limit = HOME_BROWSE_PAGE;
+        renderHomeBrowse();
+      });
+    }
+    if (el.homeBrowseChips) {
+      el.homeBrowseChips.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-browse-cat]');
+        if (!btn) return;
+        s.categoryId = btn.dataset.browseCat;
+        s.limit = HOME_BROWSE_PAGE;
+        renderHomeBrowse();
+      });
+    }
+    if (el.homeBrowseSorts) {
+      el.homeBrowseSorts.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-browse-sort]');
+        if (!btn) return;
+        s.sort = btn.dataset.browseSort;
+        renderHomeBrowse();
+      });
+    }
+    if (el.btnHomeBrowseMore) {
+      el.btnHomeBrowseMore.addEventListener('click', () => {
+        s.limit += HOME_BROWSE_PAGE;
+        renderHomeBrowse();
+      });
+    }
+    if (el.btnHomeBrowseNew) el.btnHomeBrowseNew.addEventListener('click', () => openGroupCreate());
+    if (el.homeBrowseGrid) {
+      el.homeBrowseGrid.addEventListener('click', (e) => {
+        if (e.target.closest('[data-browse-new]')) { openGroupCreate(); return; }
+        if (e.target.closest('[data-browse-reset]')) {
+          s.categoryId = 'all'; s.query = ''; s.limit = HOME_BROWSE_PAGE;
+          if (el.homeBrowseSearch) el.homeBrowseSearch.value = '';
+          renderHomeBrowse();
+          return;
+        }
+        const openBtn = e.target.closest('[data-group-open]');
+        if (openBtn) { openGroupDetail(openBtn.dataset.groupOpen); return; }
+        const card = e.target.closest('[data-group-id]');
+        if (card) openGroupDetail(card.dataset.groupId);
+      });
+      el.homeBrowseGrid.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target.closest('button')) return;
+        const card = e.target.closest('[data-group-id]');
+        if (!card) return;
+        e.preventDefault();
+        openGroupDetail(card.dataset.groupId);
+      });
+    }
+  }
+
   /* ---------------------------------------------------- 스포트라이트 가이드 */
 
+  /* ==========================================================================
+   * Sprint 21~22 — 가입 후 스포트라이트 가이드
+   * ------------------------------------------------------------------------
+   *  11/16 사용자: "처음 취미 묻는것도 그래 입력할게 많아 스토리텔링식으로 했으면좋겠어
+   *   그리고 탐색탭이랑 디엠탭 설명할때 해당 메뉴에 들어가서 알려줘야지"
+   *   · 취향은 **한 질문씩** — ① 분야 고르기 ② 세부 취미 ③ 해보고 싶은 것.
+   *   · 탐색·디엠을 설명할 때는 **그 탭으로 실제로 이동한 화면**을 짚어 준다(tab).
+   * ======================================================================== */
   const GUIDE_STEPS = [
     {
-      id: 'welcome', target: null,
+      id: 'welcome', target: null, tab: 'tab-home',
       title: '우그에 오신 걸 환영해요',
-      desc: '처음이라면 1분만 따라와 주세요. 화면을 짚어가며 어디에 무엇이 있는지 알려드릴게요.'
+      desc: '1분만 따라오세요. 화면을 짚어가며 어디서 무엇을 하는지 알려드릴게요.'
     },
     {
-      id: 'taste', target: null, body: 'taste',
-      title: '취향을 알려주세요',
-      desc: '고른 취미로 홈 하단의 추천 모임을 골라드려요. 우그에서 어떤 걸 해보고 싶은지도 함께 알려주세요.'
+      id: 'taste-category', target: null, tab: 'tab-home', body: 'taste-category',
+      title: '어떤 분야가 끌리나요?',
+      desc: '큰 분야 하나를 골라 주세요. 다음 화면에서 그 안의 취미를 하나씩 물어볼게요.'
     },
     {
-      id: 'gallery', target: '#group-gallery .gallery-head',
+      id: 'taste-hobby', target: null, tab: 'tab-home', body: 'taste-hobby',
+      title: '그중 무엇을 좋아하나요?',
+      desc: '당신의 취미는 무엇인가요? 최대 3개까지 고를 수 있고, 목록에 없으면 직접 써도 돼요.'
+    },
+    {
+      id: 'taste-goal', target: null, tab: 'tab-home', body: 'taste-goal',
+      title: '우그에서 어떤 걸 해보고 싶나요?',
+      desc: '함께 해보고 싶은 것을 고르면 홈의 추천 모임이 그 취미로 채워져요. 건너뛰어도 괜찮아요.'
+    },
+    {
+      id: 'gallery', target: '#group-gallery .gallery-head', tab: 'tab-home',
       title: '여기가 내 모임 자리예요',
       desc: '가입한 모임이 이 2열 카드로 쌓입니다. 카드를 누르면 그 모임만의 피드·게시판·디엠으로 들어가요.'
     },
     {
-      id: 'recommend', target: '#home-recommend',
+      id: 'recommend', target: '#home-recommend', tab: 'tab-home',
       title: '취향에 맞는 모임을 모아뒀어요',
-      desc: '홈을 조금 내리면 내 취미에 맞는 모임이 나오고, 맨 아래 버튼으로 더 많은 모임을 볼 수 있어요.'
+      desc: '홈을 조금 내리면 내 취미에 맞는 모임이 나오고, 그 아래 「모임 둘러보기」에서 전체 모임을 볼 수 있어요.'
     },
     {
-      id: 'explore', target: '#bottom-nav .nav-tab-item[data-tab="tab-explore"]',
-      title: '탐색에서 사람·모임·글을 한 번에',
-      desc: '취미·지역·나이로 골라 볼 수 있어요. 필터는 이 탭 위쪽 버튼 하나에 모여 있습니다.'
+      id: 'explore', target: '#explore-head', tab: 'tab-explore',
+      title: '탐색은 사람과 글을 보는 곳이에요',
+      desc: '지금 보고 계신 이 탭입니다. 동네·나이·취미로 사람과 글을 골라 보고, 마음에 들면 바로 쪽지를 보내요.'
     },
     {
-      id: 'dm', target: '#bottom-nav .nav-tab-item[data-tab="tab-chat"]',
-      title: '전체 디엠함',
-      desc: '모임 단체방과 1:1 대화가 모두 여기 모입니다. 새 소식은 탭 위 숫자로 알려드려요.'
+      id: 'dm', target: '#dm-head', tab: 'tab-chat',
+      title: '전체 디엠함이에요',
+      desc: '지금 보고 계신 이 탭에 모임 단체방과 1:1 대화가 모두 모입니다. 새 소식은 탭 위 숫자로 알려드려요.'
     }
   ];
+
+  /** 가이드 단계가 가리키는 탭 — 단계를 옮길 때 그 탭으로 실제로 이동한다. */
+  function guideStepTab(step) {
+    return (step && step.tab) || 'tab-home';
+  }
 
   function guideState() {
     if (!ui.guide) {
@@ -1473,7 +1925,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return ui.guide;
   }
 
-  /** 가이드를 연다. step 을 주면 그 단계부터(취미 다시 고르기 = 'taste'). */
+  /** 가이드를 연다. step 을 주면 그 단계부터(취미 다시 고르기 = 'taste-category'). */
   function startGuide(options = {}) {
     const g = guideState();
     const taste = store.getTaste();
@@ -1482,11 +1934,11 @@ document.addEventListener('DOMContentLoaded', () => {
     g.hobbyIds = taste.hobbyIds.slice(0, 3);
     g.goalIds = taste.goalIds.slice(0, 3);
     g.category = (store.getHobbyChip((g.hobbyIds[0] || g.goalIds[0])) || {}).categoryId || 'sports';
-    const stepIndex = options.step
-      ? Math.max(0, GUIDE_STEPS.findIndex((s) => s.id === options.step))
-      : Math.max(0, store.getGuideState().step || 0);
+    const wanted = options.step === 'taste' ? 'taste-category' : options.step;
+    const found = wanted ? GUIDE_STEPS.findIndex((s) => s.id === wanted) : -1;
+    const stepIndex = found >= 0 ? found : Math.max(0, store.getGuideState().step || 0);
     g.step = stepIndex;
-    store.startGuide(options.step === 'welcome');
+    store.startGuide(options.step === 'welcome' || stepIndex === 0);
     renderGuide();
   }
 
@@ -1500,7 +1952,10 @@ document.addEventListener('DOMContentLoaded', () => {
       el.spotlight.classList.remove('is-open');
     }
     document.body.classList.remove('spotlight-open');
-    if (ui.activeTab === 'tab-home') renderHomeRecommend();
+    if (ui.activeTab === 'tab-home') {
+      renderHomeRecommend();
+      renderHomeBrowse();
+    }
   }
 
   /** 취향 선택을 저장한다 — 프로필 취미(최대 3)와 추천 기준(goal) 둘 다. */
@@ -1508,6 +1963,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const g = guideState();
     const res = store.saveTaste({ hobbyIds: g.hobbyIds, goalIds: g.goalIds });
     renderHomeRecommend();
+    renderHomeBrowse();
     renderExploreToolbar();
     if (el.main) el.main.scrollTop = 0;
     return res;
@@ -1568,11 +2024,16 @@ document.addEventListener('DOMContentLoaded', () => {
     bubble.style.maxHeight = `${Math.round(vh * 0.62)}px`;
   }
 
-  /** 가이드 한 단계를 그린다. 타겟은 화면 가운데로 스크롤해 보여준다. */
+  /** 가이드 한 단계를 그린다 — 그 단계가 설명하는 **탭으로 실제 이동**한 뒤 짚어 준다. */
   function renderGuide() {
     const g = guideState();
     if (!el.spotlight) return;
     const step = GUIDE_STEPS[g.step] || GUIDE_STEPS[0];
+    const tab = guideStepTab(step);
+    if (ui.activeTab !== tab) {
+      switchTab(tab);
+      document.body.classList.add('spotlight-open');
+    }
     el.spotlight.hidden = false;
     el.spotlight.classList.add('is-open');
     document.body.classList.add('spotlight-open');
@@ -1581,12 +2042,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.spotlightDesc) el.spotlightDesc.textContent = step.desc;
     if (el.spotlightPrev) el.spotlightPrev.hidden = g.step === 0;
     if (el.spotlightNext) {
-      el.spotlightNext.textContent = g.step === GUIDE_STEPS.length - 1
-        ? '시작하기' : (step.body === 'taste' ? '다음' : '다음');
+      el.spotlightNext.textContent = g.step === GUIDE_STEPS.length - 1 ? '시작하기' : '다음';
     }
     if (el.spotlightBody) {
-      el.spotlightBody.innerHTML = step.body === 'taste' ? guideTasteHTML() : '';
-      el.spotlightBody.hidden = step.body !== 'taste';
+      el.spotlightBody.innerHTML = step.body ? guideBodyHTML(step.body) : '';
+      el.spotlightBody.hidden = !step.body;
     }
     store.setGuideStep(g.step);
     if (step.target) {
@@ -1603,18 +2063,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     requestAnimationFrame(placeSpotlight);
     setTimeout(placeSpotlight, 240);
+    /* 탭을 막 바꾼 경우엔 카드가 늦게 그려질 수 있어 한 번 더 맞춘다 */
+    setTimeout(placeSpotlight, 620);
     /* 키보드 사용자를 위해 말풍선으로 포커스를 옮긴다(포커스 링은 CSS 에서 지운다) */
     if (el.spotlightBubble) {
       try { el.spotlightBubble.focus({ preventScroll: true }); } catch (e) { /* 구형 브라우저 */ }
     }
   }
 
-  /** 취향 질문 두 개 — 대분류 탭 + 그 안의 세부 취미(최대 3개씩) + 직접 쓰기. */
-  function guideTasteHTML() {
+  /** 취향 단계의 본문 — 단계마다 질문 하나씩. */
+  function guideBodyHTML(kind) {
+    if (kind === 'taste-category') return guideCategoryHTML();
+    if (kind === 'taste-hobby') return guidePickHTML('hobby');
+    if (kind === 'taste-goal') return guidePickHTML('goal');
+    return '';
+  }
+
+  /** 1단계 — 관심 분야(대분류) 하나를 고른다. */
+  function guideCategoryHTML() {
+    const g = guideState();
+    const cats = store.getHobbyCategories();
+    return `
+      <div class="guide-cats guide-cats-cards" role="group" aria-label="취미 대분류">
+        ${cats.map((c) => `<button class="guide-cat-card ${c.id === g.category ? 'on' : ''}" data-guide-cat="${c.id}"
+            type="button" aria-pressed="${c.id === g.category}">
+            <span class="guide-cat-icon" aria-hidden="true">${ic(c.icon)}</span>
+            <span class="guide-cat-name">${escapeHtml(c.name)}</span>
+            <span class="guide-cat-count">${c.hobbies.length}가지</span>
+          </button>`).join('')}
+      </div>
+      <p class="guide-hint">나중에 다른 분야도 얼마든지 골라 더할 수 있어요.</p>`;
+  }
+
+  /** 2·3단계 — 고른 분야의 세부 취미(최대 3개) + 직접 쓰기. */
+  function guidePickHTML(kind) {
     const g = guideState();
     const cats = store.getHobbyCategories();
     const cat = cats.find((c) => c.id === g.category) || cats[0];
-    const pickHTML = (kind, selected) => cat.hobbies.map((h) => {
+    const selected = kind === 'goal' ? g.goalIds : g.hobbyIds;
+    const chips = cat.hobbies.map((h) => {
       const on = selected.includes(h.id);
       const full = !on && selected.length >= 3;
       return `<button class="guide-chip ${on ? 'on' : ''}" data-guide-pick="${kind}" data-guide-hobby="${h.id}"
@@ -1622,18 +2109,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${ic(h.icon)}<span>${escapeHtml(h.name)}</span>
               </button>`;
     }).join('');
+    const title = kind === 'goal' ? '우그에서 어떤 걸 해보고 싶나요?' : '당신의 취미는 무엇인가요?';
     return `
       <div class="guide-cats" role="group" aria-label="취미 대분류">
         ${cats.map((c) => `<button class="guide-cat ${c.id === cat.id ? 'on' : ''}" data-guide-cat="${c.id}"
             type="button" aria-pressed="${c.id === cat.id}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`).join('')}
       </div>
       <div class="guide-q">
-        <p class="guide-q-title">당신의 취미는 무엇인가요? <span class="guide-q-count">${g.hobbyIds.length}/3</span></p>
-        <div class="guide-chips" role="group" aria-label="내 취미">${pickHTML('hobby', g.hobbyIds)}</div>
-      </div>
-      <div class="guide-q">
-        <p class="guide-q-title">우그에서 어떤 걸 해보고 싶나요? <span class="guide-q-count">${g.goalIds.length}/3</span></p>
-        <div class="guide-chips" role="group" aria-label="해보고 싶은 취미">${pickHTML('goal', g.goalIds)}</div>
+        <p class="guide-q-title">${title} <span class="guide-q-count">${selected.length}/3</span></p>
+        <div class="guide-chips" role="group" aria-label="${kind === 'goal' ? '해보고 싶은 취미' : '내 취미'}">${chips}</div>
       </div>
       <div class="guide-custom">
         <input class="guide-custom-input" id="guide-custom-input" type="text" maxlength="12"
@@ -1676,9 +2160,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function guideNext() {
     const g = guideState();
     const step = GUIDE_STEPS[g.step];
-    if (step && step.body === 'taste') saveGuideTaste();
+    if (step && step.id === 'taste-goal') saveGuideTaste();
     if (g.step >= GUIDE_STEPS.length - 1) {
       closeGuide('done');
+      switchTab('tab-home');
       showToast('준비 끝! 내 취미에 맞는 모임부터 보여드릴게요', 'success');
       return;
     }
@@ -1693,6 +2178,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGuide();
   }
 
+  /** 직접 쓴 취미를 어느 질문에 더할지 — 지금 단계가 정한다. */
+  function guideCurrentPickKind() {
+    const step = GUIDE_STEPS[guideState().step] || {};
+    return step.body === 'taste-goal' ? 'goal' : 'hobby';
+  }
+
   function bindGuide() {
     el.spotlightNext && el.spotlightNext.addEventListener('click', guideNext);
     el.spotlightPrev && el.spotlightPrev.addEventListener('click', guidePrev);
@@ -1702,12 +2193,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     el.spotlightBody && el.spotlightBody.addEventListener('click', (e) => {
       const cat = e.target.closest('[data-guide-cat]');
-      if (cat) { guideState().category = cat.dataset.guideCat; renderGuide(); return; }
+      if (cat) {
+        const g = guideState();
+        g.category = cat.dataset.guideCat;
+        /* 분야를 고르면 그 분야의 세부 취미 질문으로 넘어간다(한 질문씩). */
+        if ((GUIDE_STEPS[g.step] || {}).id === 'taste-category') {
+          g.step += 1;
+          renderGuide();
+          return;
+        }
+        renderGuide();
+        return;
+      }
       const pick = e.target.closest('[data-guide-pick]');
       if (pick) { toggleGuidePick(pick.dataset.guidePick, pick.dataset.guideHobby); return; }
       if (e.target.closest('#btn-guide-custom-add')) {
-        const field = document.querySelector('[data-guide-pick="hobby"]');
-        addGuideCustomHobby('hobby');
+        addGuideCustomHobby(guideCurrentPickKind());
         e.stopPropagation();
       }
     });
@@ -1716,7 +2217,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const input = e.target.closest('#guide-custom-input');
       if (!input) return;
       e.preventDefault();
-      addGuideCustomHobby('hobby');
+      addGuideCustomHobby(guideCurrentPickKind());
     });
     /* 가이드가 열려 있는 동안 탭·모달이 뒤에서 움직이지 않게 앞에서 막는다 */
     el.spotlight && el.spotlight.addEventListener('click', (e) => {
@@ -3337,7 +3838,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const openFromCard = (node) => { if (node) enterGroupSpace(node.dataset.openGroup, 'tab-home'); };
     if (el.galleryGrid) {
       el.galleryGrid.addEventListener('click', (e) => {
-        if (e.target.closest('[data-home-find]')) { switchTab('tab-explore'); return; }
+        if (e.target.closest('[data-home-find]')) { focusHomeBrowse(); return; }
         if (e.target.closest('[data-gallery-new]')) { openGroupCreate(); return; }
         openFromCard(e.target.closest('[data-open-group]'));
       });
@@ -3351,7 +3852,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.galleryEmpty) {
       el.galleryEmpty.addEventListener('click', (e) => {
-        if (e.target.closest('[data-home-find]')) switchTab('tab-explore');
+        if (e.target.closest('[data-home-find]')) focusHomeBrowse();
         if (e.target.closest('[data-gallery-new]')) openGroupCreate();
       });
     }
@@ -3371,17 +3872,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.btnHomeMoreGroups) {
       el.btnHomeMoreGroups.addEventListener('click', () => {
-        /* '더 많은 모임 둘러보기' → 탐색의 '모임'으로 바로 */
-        ui.exploreFilter = 'groups';
-        ui.exploreBuffer = null;
-        store.updateExplorePrefs({ filter: 'groups' });
-        switchTab('tab-explore');
-        if (el.main) el.main.scrollTop = 0;
-        renderExploreWithSkeleton();
+        /* Sprint 22 — '더 많은 모임 둘러보기'는 탐색이 아니라 **바로 아래 홈의 모임 둘러보기**로. */
+        renderHomeBrowse();
+        if (el.homeBrowse) el.homeBrowse.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
       });
     }
+    bindHomeBrowse();
     if (el.btnHomeRecommendTaste) {
-      el.btnHomeRecommendTaste.addEventListener('click', () => startGuide({ mode: 'taste', step: 'taste' }));
+      el.btnHomeRecommendTaste.addEventListener('click', () => startGuide({ mode: 'taste', step: 'taste-category' }));
     }
     /* Sprint 17 — 갤러리 정렬 */
     if (el.gallerySort) {
@@ -3747,45 +4245,91 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   /* ==================================================================
-   * Sprint 17 — 회원가입 화면 이벤트(위임)
+   * Sprint 17/22 — 회원가입 화면 이벤트(위임) — 스토리텔링 단계 이동·인증·사진
    * ================================================================== */
   if (el.onboardingBody) {
     el.onboardingBody.addEventListener('click', (e) => {
-      const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
       const target = e.target.closest('button');
       if (!target) return;
-      if (target.id === 'ob-quick-start') {
-        d.quickStart = true;
-        ui.onboardingStep = 1;
-        renderOnboarding();
+      const id = target.id;
+      if (id === 'ob-to-login') {
+        ui.onboardingMode = 'login'; ui.onboardingStep = 0; ui.obError = '';
+        renderOnboarding(); return;
+      }
+      if (id === 'ob-restart-signup') {
+        store.clearEmailVerification();
+        ui.onboardingMode = 'signup'; ui.onboardingStep = 0;
+        ui.onboardingDraft = newOnboardingDraft(); ui.obError = ''; ui.obCode = null;
+        renderOnboarding(); return;
+      }
+      if (id === 'ob-forgot') {
+        ui.onboardingMode = 'reset'; ui.onboardingStep = 0;
+        ui.onboardingDraft = newOnboardingDraft(); ui.obError = ''; ui.obCode = null;
+        renderOnboarding(); return;
+      }
+      if (id === 'ob-next') { collectOnboardingInputs(); onboardingNext(); return; }
+      if (id === 'ob-verify') { collectOnboardingInputs(); obVerifyCode(); return; }
+      if (id === 'ob-resend') { collectOnboardingInputs(); obSendCode(); return; }
+      if (id === 'ob-back') { collectOnboardingInputs(); onboardingBack(); return; }
+      if (id === 'ob-submit') {
+        collectOnboardingInputs();
+        if (ui.onboardingMode === 'reset') submitPasswordReset(); else submitOnboarding();
         return;
       }
-      if (target.id === 'ob-to-login') { ui.onboardingMode = 'login'; renderOnboarding(); return; }
-      if (target.id === 'ob-restart-signup') { ui.onboardingMode = 'signup'; ui.onboardingStep = 0; renderOnboarding(); return; }
-      if (target.id === 'ob-next') { collectOnboardingInputs(); onboardingNext(); return; }
-      if (target.id === 'ob-back') { collectOnboardingInputs(); onboardingBack(); return; }
-      if (target.id === 'ob-submit') { collectOnboardingInputs(); submitOnboarding(); return; }
-      if (target.id === 'ob-login-submit') { submitOnboardingLogin(); return; }
+      if (id === 'ob-login-submit') { submitOnboardingLogin(); return; }
+      if (id === 'ob-photo-album') { const node = obField('ob-photo-input'); if (node) node.click(); return; }
+      if (id === 'ob-photo-camera-btn') { const node = obField('ob-photo-camera'); if (node) node.click(); return; }
       const swatch = target.closest('[data-ob-gradient]');
       if (swatch) {
         collectOnboardingInputs();
         const list = store.getOnboardingState().avatarGradients || [];
+        const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
         d.avatarGradient = list[Number(swatch.dataset.obGradient)] || d.avatarGradient;
+        d.photoUrl = null;
         renderOnboarding();
-        return;
       }
-      /* Sprint 21 — 회원가입에서는 취미를 묻지 않는다. 취향은 가입 후 가이드에서 묻는다. */
     });
     el.onboardingBody.addEventListener('change', (e) => {
-      const input = e.target.closest('#ob-photo-input');
+      const input = e.target.closest('#ob-photo-input, #ob-photo-camera');
       if (!input) return;
       const file = input.files && input.files[0];
+      input.value = '';
       if (!file) return;
       collectOnboardingInputs();
       readImageFile(file, (url) => {
-        ui.onboardingDraft.photoUrl = url;
+        const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+        d.photoUrl = url;
         renderOnboarding();
+        showToast('프로필 사진을 준비했어요', 'success');
       });
+    });
+    el.onboardingBody.addEventListener('input', (e) => {
+      const node = e.target;
+      if (node.id === 'ob-code') {
+        node.value = String(node.value || '').replace(/\D/g, '').slice(0, 6);
+      }
+      if (node.id === 'ob-nickname') {
+        const av = obField('ob-name-avatar');
+        if (av) av.textContent = String(node.value || '').charAt(0) || '?';
+      }
+      if (node.id === 'ob-age') {
+        const btn = obField('ob-next');
+        if (btn) btn.textContent = String(node.value || '').trim() ? '다음' : '건너뛰기';
+      }
+    });
+    el.onboardingBody.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const step = obStepId();
+      collectOnboardingInputs();
+      if (ui.onboardingMode === 'login') { submitOnboardingLogin(); return; }
+      if (step === 'code' || step === 'reset-code') { obVerifyCode(); return; }
+      if (ui.onboardingMode === 'reset') {
+        if (step === 'reset-password') submitPasswordReset(); else onboardingNext();
+        return;
+      }
+      if (step === 'region') { submitOnboarding(); return; }
+      onboardingNext();
     });
   }
 
@@ -3805,7 +4349,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (write) { openComposer(write.dataset.homeWrite); return; }
       const members = e.target.closest('[data-home-members]');
       if (members) { openGroupMembers(members.dataset.homeMembers); return; }
-      if (e.target.closest('[data-home-find]')) switchTab('tab-explore');
+      if (e.target.closest('[data-home-find]')) focusHomeBrowse();
     });
   }
 
@@ -4155,10 +4699,10 @@ document.addEventListener('DOMContentLoaded', () => {
    *     상태 기억(store.explorePrefs) · 빈 상태 안내.
    * ======================================================================== */
 
-  /** 상단 종류 세그먼트 — 전체 / 사람 / 모임 / 글 (취미를 고르면 어느 것도 켜지지 않는다) */
+  /** 상단 종류 세그먼트 — 전체 / 사람 / 글 (Sprint 22: 모임은 홈으로 옮겼다) */
   function renderExploreTypeSeg() {
     if (!el.exploreTypeSeg) return;
-    const names = { all: '전체', people: '사람', groups: '모임', posts: '글' };
+    const names = { all: '전체', people: '사람', posts: '글' };
     el.exploreTypeSeg.innerHTML = store.getExploreTypeFilters().map((f) => {
       const on = ui.exploreFilter === f.id;
       return `<button class="explore-type-btn ${on ? 'active' : ''}" data-explore-filter="${f.id}"
@@ -4997,15 +5541,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (el.exploreCount) {
       if (ui.exploreQuery) {
-        el.exploreCount.textContent = `'${ui.exploreQuery}' 결과 · 사람 ${people} · 모임 ${groups} · 글 ${posts}`;
+        el.exploreCount.textContent = `'${ui.exploreQuery}' 결과 · 사람 ${people} · 글 ${posts}`;
       } else if (ui.exploreFilter === 'people') {
         el.exploreCount.textContent = `${people}명이 취미 친구를 기다려요`;
-      } else if (ui.exploreFilter === 'groups') {
-        el.exploreCount.textContent = `${groups}개 모임이 함께할 사람을 찾아요`;
       } else if (ui.exploreFilter === 'posts') {
         el.exploreCount.textContent = `${posts}개의 취미 글이 올라와 있어요`;
       } else {
-        el.exploreCount.textContent = `사람 ${people} · 모임 ${groups} · 글 ${posts}`;
+        el.exploreCount.textContent = `사람 ${people} · 글 ${posts}`;
       }
       if (region && !ui.exploreQuery) {
         el.exploreCount.textContent += ` · ${region.name}`;
@@ -5020,13 +5562,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.exploreTitle) {
       if (ui.exploreQuery) el.exploreTitle.textContent = '검색 결과';
       else if (radiusOn && (!activeFilter || activeFilter.id === 'all') && !region && !ageOn) {
-        el.exploreTitle.textContent = `내 동네 ${radiusOpt.name} 안의 사람과 모임`;
+        el.exploreTitle.textContent = `내 동네 ${radiusOpt.name} 안의 사람과 글`;
       }
-      else if (region) el.exploreTitle.textContent = `${region.name}의 사람과 모임`;
+      else if (region) el.exploreTitle.textContent = `${region.name}의 사람과 글`;
       else if (ageOn && ageFilter && (!activeFilter || activeFilter.id === 'all')) {
-        el.exploreTitle.textContent = `${ageFilter.name} 모임과 그 나이대 친구`;
+        el.exploreTitle.textContent = `${ageFilter.name} 사람과 글`;
       }
-      else if (!activeFilter || activeFilter.id === 'all') el.exploreTitle.textContent = '취미로 이어지는 사람과 모임';
+      else if (!activeFilter || activeFilter.id === 'all') el.exploreTitle.textContent = '취미로 이어지는 사람과 글';
       else if (activeFilter.kind === 'hobby') el.exploreTitle.textContent = activeFilter.name;
       else el.exploreTitle.textContent = activeFilter.name;
     }
@@ -7547,7 +8089,14 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExplore();
     renderFeed();
     updateBadges();
-    switchTab('tab-explore');
+    /* Sprint 22 — 모임은 이제 홈의 '모임 둘러보기' 에 있다. 만든 모임을 바로 보여준다. */
+    homeBrowseState().categoryId = 'all';
+    homeBrowseState().query = result.group.name;
+    homeBrowseState().limit = Math.max(HOME_BROWSE_PAGE, 12);
+    if (el.homeBrowseSearch) el.homeBrowseSearch.value = result.group.name;
+    switchTab('tab-home');
+    renderGallery();
+    renderHomeBrowse();
     scrollTop();
     showToast(result.group.joinMode === 'approval'
       ? `'${result.group.name}' 승인제 모임을 만들었어요 · 신청서를 보고 직접 고를게요`
@@ -9696,7 +10245,6 @@ document.addEventListener('DOMContentLoaded', () => {
   exploreComposeCancel && exploreComposeCancel.addEventListener('click', () => closeModal(el.exploreComposeModal));
 
   el.exploreComposeBtn && el.exploreComposeBtn.addEventListener('click', openExploreCompose);
-  el.exploreCreateGroupBtn && el.exploreCreateGroupBtn.addEventListener('click', openGroupCreate);
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -10023,6 +10571,14 @@ document.addEventListener('DOMContentLoaded', () => {
     getDrawerState: () => ({ open: ui.drawerOpen }),
     /* Sprint 21 — 점토 아이콘 · 취미 분류 · 추천 모임 · 스포트라이트 가이드 */
     renderHomeRecommend,
+    /* Sprint 22 — 홈 '모임 둘러보기'(탐색에서 옮겨온 모임 목록). 테스트·미리보기가 한 번에 펼친다. */
+    renderHomeBrowse, focusHomeBrowse,
+    getHomeBrowseState: () => ({ ...homeBrowseState() }),
+    setHomeBrowse: (patch) => {
+      Object.assign(homeBrowseState(), patch || {});
+      renderHomeBrowse();
+      return { ...homeBrowseState() };
+    },
     getRecommend: () => store.getRecommendedGroups({ limit: 6 }).map((it) => ({ id: it.group.id, name: it.group.name, tone: it.tone, reason: it.reason })),
     startGuide, closeGuide, renderGuide, nextGuide: guideNext, prevGuide: guidePrev,
     saveGuideTaste, toggleGuidePick, addGuideCustomHobby,
