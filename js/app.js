@@ -23,6 +23,17 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   const store = window.appStore;
+  /* Sprint 20 — 이모지 대신 **우그가 직접 그린 아이콘**. 화면의 모든 아이콘은 이 두 함수로만 그린다. */
+  const ic = (name, opts) => window.OOGIcons.render(name, opts);
+  /* 정적 마크업(index.html)의 [data-oog-icon] 도 같은 아이콘으로 채운다 — HTML 에 이모지를 두지 않기 위함. */
+  function hydrateIcons(root) {
+    (root || document).querySelectorAll('[data-oog-icon]').forEach((node) => {
+      if (node.getAttribute('data-oog-ready') === '1') return;
+      node.innerHTML = ic(node.getAttribute('data-oog-icon'));
+      node.setAttribute('data-oog-ready', '1');
+    });
+  }
+  hydrateIcons();
   /* Sprint 17 — 테스트·미리보기 전용 #demo: 예전 데모 계정(내 모임·글·디엠)으로 시작한다.
      실사용 배포 주소(해시 없음)는 언제나 회원가입 화면부터 시작한다. */
   if (window.location.hash === '#demo' && !store.isDemoAccount()) store.seedDemoAccount();
@@ -1301,7 +1312,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function newGroupTileHTML() {
     return `
       <button class="gallery-new" data-gallery-new="1" type="button" aria-label="새 모임 만들기">
-        <span class="gallery-new-plus" aria-hidden="true">＋</span>
+        <span class="gallery-new-plus" aria-hidden="true">${ic('plus')}</span>
         <span class="gallery-new-title">새 모임 만들기</span>
         <span class="gallery-new-desc">취미가 맞는 사람들과 바로 시작</span>
       </button>`;
@@ -1314,12 +1325,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const cover = coverPhotos.length
       ? `<span class="gallery-cover-photos">${coverPhotos.map((url, i) =>
           `<span class="gallery-cover-photo"><img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async"></span>`).join('')}</span>`
-      : `<span class="gallery-cover-emoji" aria-hidden="true">${grp.emoji}</span>`;
+      : `<span class="gallery-cover-emoji" aria-hidden="true">${ic(grp.icon)}</span>`;
     const next = item.nextEvent;
     return `
       <article class="gallery-card" data-open-group="${grp.id}" role="button" tabindex="0"
                aria-label="${escapeHtml(grp.name)} 모임 열기">
-        <div class="gallery-cover" style="background:${grp.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}">
+        <div class="gallery-cover${coverPhotos.length ? '' : ' is-plain'}"${coverPhotos.length ? ` style="background:${grp.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}"` : ''}>
           ${cover}
           <span class="gallery-cover-veil" aria-hidden="true"></span>
           ${item.storyCount ? `<span class="gallery-story-badge">스토리 ${item.storyCount}</span>` : ''}
@@ -1365,13 +1376,13 @@ document.addEventListener('DOMContentLoaded', () => {
     el.storyBar.innerHTML = `
       <div class="story-rail" role="list">
         <button class="story-item story-add" data-story-new="1" type="button" aria-label="스토리 올리기">
-          <span class="story-ring add"><span class="story-add-icon" aria-hidden="true">＋</span></span>
+          <span class="story-ring add"><span class="story-add-icon" aria-hidden="true">${ic('plus')}</span></span>
           <span class="story-name">스토리 올리기</span>
         </button>
         ${rings.map(item).join('')}
         <button class="story-item story-archive-item" data-story-archive-open="1" type="button"
                 aria-label="내 스토리 보관함 열기">
-          <span class="story-ring archive"><span class="story-archive-icon" aria-hidden="true">▣</span></span>
+          <span class="story-ring archive"><span class="story-archive-icon" aria-hidden="true">${ic('grid')}</span></span>
           <span class="story-name">보관함</span>
           ${archive.count ? `<span class="story-count">${archive.count}</span>` : ''}
         </button>
@@ -1747,7 +1758,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!list.length) {
       el.boardPostList.innerHTML = ui.boardTag === '후기'
         ? '<p class="board-empty">아직 후기가 없어요. 다녀온 모임 후기를 #후기로 남겨보세요.</p>'
-        : '<p class="board-empty">아직 글이 없어요. [＋ 글쓰기]로 첫 글을 남겨보세요.</p>';
+        : '<p class="board-empty">아직 글이 없어요. [글쓰기]로 첫 글을 남겨보세요.</p>';
       return;
     }
     el.boardPostList.innerHTML = list.map((p) => `
@@ -1866,7 +1877,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ? options.map((url) => `
       <button class="media-option ${ui.exploreCardPhoto === url ? 'active' : ''}" data-explore-card-media="${escapeHtml(url)}" type="button">
         <span class="media-thumb"><img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async"></span>
-        <span class="media-option-check">✓</span>
+        <span class="media-option-check">${ic('check')}</span>
       </button>`).join('')
       : '<p class="media-empty">올린 사진이 아직 없어요 · 사진을 올리면 대표 사진으로 고를 수 있어요.</p>';
   }
@@ -1954,11 +1965,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const next = info.nextEvent;
     const chat = info.chat || { count: 0 };
     el.homeHero.innerHTML = `
-      <div class="home-hero-cover" style="background:${grp.coverGradient || 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)'}">
-        <span class="home-hero-emoji" aria-hidden="true">${grp.emoji}</span>
+      <div class="home-hero-cover${info.photoCount ? '' : ' is-plain'}"${info.photoCount ? ` style="background:${grp.coverGradient || 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)'}"` : ''}>
+        <span class="home-hero-emoji" aria-hidden="true">${ic(grp.icon)}</span>
         <span class="home-hero-shade" aria-hidden="true"></span>
         <div class="home-hero-text">
-          <span class="home-hero-kicker">${grp.emoji} ${escapeHtml(grp.categoryName)} · ${escapeHtml(grp.location)}</span>
+          <span class="home-hero-kicker">${ic(grp.icon)} ${escapeHtml(grp.categoryName)} · ${escapeHtml(grp.location)}</span>
           <h2 class="home-hero-name">${escapeHtml(grp.name)}</h2>
           <p class="home-hero-meta">멤버 ${grp.memberCount}명 · 사진 ${info.photoCount || 0}장 · 대화 ${chat.count}개</p>
           <p class="home-hero-next">${next
@@ -2017,10 +2028,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const myMeta = ev.myRsvp ? rsvps.find((r) => r.id === ev.myRsvp) : null;
     const myBadge = ev.myRsvp === 'maybe' && ev.myWaitOrder
       ? `대기 ${ev.myWaitOrder}순위`
-      : (myMeta ? `${myMeta.emoji} ${myMeta.label}` : '');
+      : (myMeta ? `${ic(myMeta.icon)} ${myMeta.label}` : '');
     const yesLabel = full && ev.myRsvp !== 'yes';
     const labelOf = (r) => (r.id === 'yes' && yesLabel ? '대기 신청' : r.label);
-    const emojiOf = (r) => (r.id === 'yes' && yesLabel ? '⏳' : '');
+    const iconOf = (r) => (r.id === 'yes' && yesLabel ? 'hourglass' : '');
     return `
       <article class="event-card tone-${kind.tone} ${ev.myRsvp ? 'is-joined' : ''} ${ev.past ? 'is-past' : ''} ${full ? 'is-full' : ''}"
                data-event-id="${ev.id}" aria-label="${escapeHtml(kind.label)} ${escapeHtml(ev.title)}">
@@ -2046,7 +2057,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="rsvp-btn rs-${r.id} ${ev.myRsvp === r.id ? 'active' : ''}"
                     data-rsvp-status="${r.id}" data-rsvp-event="${ev.id}"
                     aria-pressed="${ev.myRsvp === r.id}" type="button">
-              ${emojiOf(r) ? `<span aria-hidden="true">${emojiOf(r)}</span> ` : ''}${labelOf(r)}
+              ${iconOf(r) ? `<span class="rsvp-icon" aria-hidden="true">${ic(iconOf(r))}</span>` : ''}${labelOf(r)}
             </button>`).join('')}
         </div>`}
       </article>`;
@@ -2078,7 +2089,7 @@ document.addEventListener('DOMContentLoaded', () => {
       html += `
         <button class="event-past-toggle" data-past-events="1" type="button"
                 aria-expanded="${ui.pastEventsOpen}">
-          ${ui.pastEventsOpen ? '지난 일정 접기 ⌃' : `지난 일정 ${past.length}개 보기 ⌄`}
+          ${ui.pastEventsOpen ? '지난 일정 접기' : `지난 일정 ${past.length}개 보기`}
         </button>`;
     }
     el.homeEvents.innerHTML = html;
@@ -2095,7 +2106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="home-photo-veil" aria-hidden="true"></span>
         ${post.tag ? `<span class="home-photo-tag">#${escapeHtml(post.tag)}</span>` : ''}
         <span class="home-photo-foot">
-          <span class="home-photo-like"><span aria-hidden="true">❤</span> ${fmtCount(post.likes)}</span>
+          <span class="home-photo-like"><span aria-hidden="true">${ic('heart', { filled: true })}</span> ${fmtCount(post.likes)}</span>
           ${post.comments.length ? `<span class="home-photo-comment">댓글 ${post.comments.length}</span>` : ''}
         </span>
         ${post.authorId === store.currentUser.id ? '<span class="home-photo-mine">나</span>' : ''}
@@ -2132,7 +2143,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.homePhotoGrid.innerHTML = posts.length
         ? posts.map(homePhotoTileHTML).join('') + `
           <button class="home-photo home-photo-add" data-home-write="${grp.id}" type="button" aria-label="사진 올리기">
-            <span class="home-photo-add-icon" aria-hidden="true">＋</span>
+            <span class="home-photo-add-icon" aria-hidden="true">${ic('plus')}</span>
             <span class="home-photo-add-text">사진 올리기</span>
           </button>`
         : `<div class="home-photo-empty">
@@ -2161,7 +2172,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : '아직 대화가 없어요 · 첫 인사를 남겨보세요';
     el.homeChatPreview.innerHTML = `
       <button class="home-chat-open" data-home-chat="${grp.id}" type="button">
-        <span class="home-chat-icon" aria-hidden="true">${grp.emoji}</span>
+        <span class="home-chat-icon" aria-hidden="true">${ic(grp.icon)}</span>
         <span class="home-chat-body">
           <span class="home-chat-title">${escapeHtml(grp.name)} 단체방</span>
           <span class="home-chat-last">${escapeHtml(last)}</span>
@@ -2175,11 +2186,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* -------------------------------------------------- 모임 단체 채팅 (전체 화면) */
   const GROUP_CHAT_REPLIES = [
-    '좋아요! 저도 갈게요 🙌',
+    '좋아요! 저도 갈게요',
     'ㅋㅋㅋ 완전 좋아요',
     '저는 조금 늦어도 될까요?',
     '그때 봬요!',
-    '사진 올려주셔서 감사해요 👏',
+    '사진 올려주셔서 감사해요',
     '오늘 와드 진짜 빡셌는데 다들 수고하셨어요'
   ];
 
@@ -2192,7 +2203,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     ui.openGroupChatId = groupId;
-    el.groupChatAvatar.textContent = grp.emoji;
+    el.groupChatAvatar.innerHTML = ic(grp.icon);
     el.groupChatAvatar.style.background = grp.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)';
     el.groupChatName.textContent = grp.name;
     el.groupChatSub.textContent = `멤버 ${grp.memberCount}명 · 단체 채팅`;
@@ -2338,7 +2349,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="member-row-meta">${hobbyTags || `<span class="member-hobby">${escapeHtml(groupName)} 멤버</span>`}</span>
           </span>
           <span class="member-row-joined">${escapeHtml(member.joinedLabel)}</span>
-          <span class="member-row-caret" aria-hidden="true">${open ? '⌃' : '⌄'}</span>
+          <span class="member-row-caret" aria-hidden="true">${ic(open ? 'chevronUp' : 'chevronDown')}</span>
         </button>
         ${open ? `
         <div class="member-detail">
@@ -2460,7 +2471,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cover = store.getGroupCover(grp.id);
     const leader = roster.members.find((m) => m.isLeader) || roster.members[0];
 
-    if (el.groupDrawerAvatar) el.groupDrawerAvatar.textContent = grp.emoji || '·';
+    if (el.groupDrawerAvatar) el.groupDrawerAvatar.innerHTML = ic(grp.icon || 'dot');
     if (el.groupDrawerName) el.groupDrawerName.textContent = grp.name;
     if (el.groupDrawerMeta) {
       el.groupDrawerMeta.textContent = `멤버 ${roster.total}명 · ${isLeader ? '내가 그룹장' : `${leader ? leader.name : '그룹장'} 그룹장`}`;
@@ -2708,7 +2719,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const full = s.full;
     const grp = store.getGroup(ev.groupId);
     const labelOf = (r) => (r.id === 'yes' && full && s.myRsvp !== 'yes' ? '대기 신청' : r.label);
-    const emojiOf = (r) => (r.id === 'yes' && full && s.myRsvp !== 'yes' ? '⏳' : r.emoji);
+    const iconOf = (r) => (r.id === 'yes' && full && s.myRsvp !== 'yes' ? 'hourglass' : r.icon);
     const people = (list, cls) => list.length
       ? `<div class="event-people">${list.map((p) => `
           <span class="event-person ${cls}">
@@ -2723,7 +2734,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="event-when">${escapeHtml(s.whenLabel)}</span>
         </div>
         <h2 class="sheet-title">${escapeHtml(ev.title)}</h2>
-        ${grp ? `<p class="event-detail-group">${grp.emoji} ${escapeHtml(grp.name)}</p>` : ''}
+        ${grp ? `<p class="event-detail-group">${ic(grp.icon)} ${escapeHtml(grp.name)}</p>` : ''}
         ${ev.place ? `<p class="event-detail-place">${escapeHtml(ev.place)}</p>` : ''}
         ${ev.note ? `<p class="event-detail-note">${escapeHtml(ev.note)}</p>` : ''}
         <div class="event-detail-stats">
@@ -2739,7 +2750,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <button class="rsvp-btn rs-${r.id} ${s.myRsvp === r.id ? 'active' : ''}"
                       data-rsvp-status="${r.id}" data-rsvp-event="${ev.id}"
                       aria-pressed="${s.myRsvp === r.id}" type="button">
-                ${emojiOf(r) ? `<span aria-hidden="true">${emojiOf(r)}</span> ` : ''}${labelOf(r)}
+                ${iconOf(r) ? `<span class="rsvp-icon" aria-hidden="true">${ic(iconOf(r))}</span>` : ''}${labelOf(r)}
               </button>`).join('')}
           </div>
           <p class="event-detail-hint">${full
@@ -2754,7 +2765,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${people(s.waiters, 'is-maybe')}
       </section>
       <section class="event-detail-block">
-        <h4 class="event-detail-title">✖️ 불참 ${s.no}</h4>
+        <h4 class="event-detail-title">${ic('closeCircle')} 불참 ${s.no}</h4>
         ${people(s.noList, 'is-no')}
       </section>`;
   }
@@ -2783,7 +2794,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.eventKinds) return;
     el.eventKinds.innerHTML = store.getGroupEventKinds().map((k) => `
       <button class="tag-pick ${ui.eventDraft.kind === k.id ? 'active' : ''}" data-event-kind="${k.id}"
-              aria-pressed="${ui.eventDraft.kind === k.id}" type="button">${k.emoji} ${k.label}</button>`).join('');
+              aria-pressed="${ui.eventDraft.kind === k.id}" type="button">${ic(k.icon)} ${k.label}</button>`).join('');
     const quick = [
       { label: '오늘 저녁 7시', hours: 0, h: 19 },
       { label: '내일 저녁 7시', hours: 24, h: 19 },
@@ -2878,7 +2889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="post-detail-who">
           <div class="post-detail-name">${escapeHtml(post.authorName)}${post.authorId === store.currentUser.id ? ' <span class="me-badge">나</span>' : ''}</div>
           <div class="post-detail-sub">
-            ${grp ? `${grp.emoji} ${escapeHtml(grp.name)} · ` : ''}
+            ${grp ? `${ic(grp.icon)} ${escapeHtml(grp.name)} · ` : ''}
             <span data-created="${post.createdAt}">${timeAgo(post.createdAt)}</span>
           </div>
         </div>
@@ -2890,7 +2901,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ${post.mediaCaption ? `<p class="post-detail-media-caption">${escapeHtml(post.mediaCaption)}</p>` : ''}
       <p class="post-detail-caption">${escapeHtml(post.caption)}</p>
       <div class="post-detail-stats">
-        <span>❤️ 좋아요 ${fmtCount(post.likes)}</span>
+        <span>${ic('heart')} 좋아요 ${fmtCount(post.likes)}</span>
         <span>댓글 ${comments.length}</span>
         ${grp ? `<span class="post-detail-group-chip">${escapeHtml(grp.name)} 멤버 공개</span>` : ''}
       </div>
@@ -3712,7 +3723,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *    아래가 비지 않고 퍼즐처럼 맞물린다 (토스쇼핑 스타일).
    *  · 사람 카드: 미디어가 카드 전체를 채우고(3:4·4:5·1:1) 하단 그라디언트 위에
    *    닉네임·나이·거리·활동 시간대, 좌상단 취미 배지, 우하단 퀵 하트.
-   *  · 소모임 카드: 화이트 카드 + 커버 일러스트 + 에메랄드 '👥 소모임' 배지 + 참여 버튼.
+   *  · 소모임 카드: 화이트 카드 + 커버 일러스트 + 에메랄드 '소모임' 배지 + 참여 버튼.
    *  · 적합도 %, 매칭 이유 같은 수치·문구는 Sprint 3.5에서 전면 삭제했다.
    * ======================================================================== */
 
@@ -3732,7 +3743,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * 2-0. Sprint 9 — 탐색 필터 UI 대폭 단순화
    * ------------------------------------------------------------------------
    *  11/15 00:23 사용자 지시: "탐색에 카테고리 선택이 너무 많은데 복잡해".
-   *   · 상단에는 **핵심 1줄**만: 종류 세그먼트(전체/사람/모임/글) + 📍 지역 + 🎛️ 필터(N).
+   *   · 상단에는 **핵심 1줄**만: 종류 세그먼트(전체/사람/모임/글) + 지역 + 필터(N).
    *   · 취미·나이·반경 칩은 통합 필터 시트로 접었다. 시트에서 고른 값은 드래프트로 두고
    *     [적용하기]를 눌렀을 때만 탐색에 반영한다(여러 조건을 한 번에 바꿀 수 있게).
    *   · 적용된 세부 조건은 상단에 작은 칩 1줄로만 남기고, 칩을 누르면 그 조건만 해제된다.
@@ -3768,7 +3779,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const on = draft.filter === f.id;
       return `<button class="explore-chip hobby ${on ? 'active' : ''}"
                       data-explore-filter="${f.id}" aria-pressed="${on}" type="button">
-                ${f.emoji ? `<span class="chip-emoji" aria-hidden="true">${f.emoji}</span>` : ''}
+                ${f.icon ? `<span class="chip-emoji" aria-hidden="true">${ic(f.icon)}</span>` : ''}
                 <span>${escapeHtml(f.name)}</span>
               </button>`;
     }).join('');
@@ -3838,11 +3849,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function activeFilterChips() {
     const list = [];
     const hobby = store.getExploreFilters().find((f) => f.id === ui.exploreFilter && f.kind === 'hobby');
-    if (hobby) list.push({ key: 'filter', emoji: hobby.emoji || '', name: hobby.name });
+    if (hobby) list.push({ key: 'filter', icon: hobby.icon || '', name: hobby.name });
     const range = store.getExploreAgeRange();
-    if (range.active) list.push({ key: 'age', emoji: '', name: `${range.min}~${range.max}세` });
+    if (range.active) list.push({ key: 'age', icon: 'cake', name: `${range.min}~${range.max}세` });
     const radius = store.getRadiusOption(ui.exploreRadius);
-    if (radius && radius.km) list.push({ key: 'radius', emoji: '', name: `${radius.name} 이내` });
+    if (radius && radius.km) list.push({ key: 'radius', icon: 'pin', name: `${radius.name} 이내` });
     return list;
   }
 
@@ -3875,7 +3886,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.exploreActiveFilters.innerHTML = chips.map((c) => `
         <button class="active-filter-chip${flashKeys.includes(c.key) ? ' is-new' : ''}" type="button" data-filter-clear="${c.key}"
                 aria-label="${escapeHtml(c.name)} 조건 해제">
-          <span class="active-filter-chip-emoji" aria-hidden="true">${c.emoji}</span>
+          <span class="active-filter-chip-emoji" aria-hidden="true">${ic(c.icon)}</span>
           <span>${escapeHtml(c.name)}</span>
           <span class="active-filter-x" aria-hidden="true">×</span>
         </button>`).join('')
@@ -4019,7 +4030,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExploreWithSkeleton();
     const opt = store.getRadiusOption(next);
     showToast(opt && opt.km
-      ? `${opt.emoji} 내 동네 반경 ${opt.name} 안의 사람·모임·글만 볼게요`
+      ? `내 동네 반경 ${opt.name} 안의 사람·모임·글만 볼게요`
       : '반경 제한 없이 다시 볼게요 · 이 선택도 기억해 둘게요', 'info');
   }
 
@@ -4061,16 +4072,16 @@ document.addEventListener('DOMContentLoaded', () => {
           ${p.photoUrl
             ? `<img class="person-photo-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.nickname)} 프로필 사진" loading="lazy" decoding="async">`
             : `<span class="person-photo-empty" style="background:${p.avatarGradient || 'linear-gradient(135deg,#10B981,#047857)'}" aria-hidden="true">${escapeHtml(p.avatarText || String(p.nickname).charAt(0))}</span>`}
-          <span class="person-badge">${escapeHtml(p.badge || `${p.hobbyEmoji} ${p.hobbyLabel}`)}</span>
+          <span class="person-badge">${p.badge ? escapeHtml(p.badge) : `${ic(p.hobbyIcon)} ${escapeHtml(p.hobbyLabel)}`}</span>
           <span class="person-fade" aria-hidden="true"></span>
           <div class="person-info">
             <div class="person-name-row">
               <span class="person-name">${escapeHtml(p.nickname)}</span>
               <span class="person-age">${p.age}</span>
-              ${p.verified ? '<span class="person-verified" title="취미 인증 완료" aria-label="취미 인증 완료">✓</span>' : ''}
+              ${p.verified ? `<span class="person-verified" title="취미 인증 완료" aria-label="취미 인증 완료">${ic('check')}</span>` : ''}
             </div>
             <span class="person-meta">${escapeHtml(p.location)}${item.distanceKm != null ? ` · ${distLabel(item.distanceKm)}` : ''}</span>
-            <span class="person-meta person-cycle">${p.cycleEmoji} ${escapeHtml(p.cycle)}</span>
+            <span class="person-meta person-cycle">${ic(p.cycleIcon)} ${escapeHtml(p.cycle)}</span>
           </div>
           <button class="quick-like ${liked ? 'liked' : ''}" data-like-person="${p.id}"
                   aria-pressed="${liked}" type="button"
@@ -4094,8 +4105,8 @@ document.addEventListener('DOMContentLoaded', () => {
        11/14 03:01 피드백: '2030만' · '20대만' · '30대+' 표기를 그대로 유지/강조. */
     const ageBadge = store.getGroupAgeBadge(g.id);
     const ageEligible = store.isAgeEligible(g.id).ok;
-    const joinLabel = joinState === 'member' ? '✓ 가입중'
-      : joinState === 'pending' ? '⏳ 승인 대기'
+    const joinLabel = joinState === 'member' ? `${ic('check')} 가입중`
+      : joinState === 'pending' ? `${ic('hourglass')} 승인 대기`
         : (store.isGroupFull(g.id) ? '정원 마감'
           : (store.getGroupJoinMode(g) === 'approval' ? '가입 신청' : '참여하기'));
     return `
@@ -4106,7 +4117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="group-tile-cover" style="background:${g.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}">
           ${g.photoUrl
             ? `<img class="group-tile-photo" src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span class="group-tile-emoji" aria-hidden="true">${g.emoji || '·'}</span>`}
+            : `<span class="group-tile-emoji" aria-hidden="true">${ic(g.icon || 'dot')}</span>`}
           <span class="group-tile-badge">소모임</span>
           ${ageBadge
             ? `<span class="group-age-badge age-${escapeHtml(ageBadge.tone)} ${ageEligible ? '' : 'is-blocked'}"
@@ -4123,10 +4134,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="group-tile-meta group-tile-meet">${escapeHtml(g.meetLabel || g.categoryName)}</p>
           <div class="group-tile-policy">
             ${badges.map((b) => `<span class="group-tile-pill ${b.kind === 'age' ? 'age-pill' : ''}">${escapeHtml(b.label)}</span>`).join('')}
-            ${joinState === 'pending' ? '<span class="group-tile-pill pending-pill">⏳ 승인 대기</span>' : ''}
+            ${joinState === 'pending' ? `<span class="group-tile-pill pending-pill">${ic('hourglass')} 승인 대기</span>` : ''}
           </div>
           <div class="group-tile-foot">
-            <span class="group-tile-cat">${g.emoji} ${escapeHtml(g.categoryName)}</span>
+            <span class="group-tile-cat">${ic(g.icon)} ${escapeHtml(g.categoryName)}</span>
             <button class="group-tile-join ${joinState !== 'none' ? 'joined' : ''}" data-group-open="${g.id}" type="button">
               ${joinLabel}
             </button>
@@ -4167,7 +4178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="post-author">${escapeHtml(p.authorName)}${p.isMine ? ' <span class="me-badge">나</span>' : ''}</span>
             <span class="post-meta">
               ${p.tag ? `<span class="post-tag">#${escapeHtml(p.tag)}</span>` : ''}
-              <span>${p.hobbyEmoji || ''} ${escapeHtml(p.hobbyLabel)}</span>
+              <span>${p.hobbyIcon ? ic(p.hobbyIcon) : ''} ${escapeHtml(p.hobbyLabel)}</span>
               ${item.distanceKm != null ? `<span class="post-distance">${distLabel(item.distanceKm)}</span>` : ''}
             </span>
           </div>
@@ -4315,7 +4326,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderRegionButton() {
     const region = store.getRegion(ui.exploreRegion);
     if (el.exploreRegionLabel) el.exploreRegionLabel.textContent = region ? region.name : '전체 지역';
-    if (el.exploreRegionEmoji) el.exploreRegionEmoji.textContent = region ? region.emoji : '📍';
+    if (el.exploreRegionEmoji) el.exploreRegionEmoji.innerHTML = ic(region ? region.icon : 'pin');
     if (el.btnExploreRegion) {
       el.btnExploreRegion.classList.toggle('is-filtering', !!region);
       el.btnExploreRegion.setAttribute('aria-label',
@@ -4331,9 +4342,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const on = ui.exploreRegion === r.id;
       return `<button class="region-row ${on ? 'active' : ''}" data-region="${r.id}" type="button"
                       aria-pressed="${on}">
-        <span class="region-row-emoji" aria-hidden="true">${r.emoji}</span>
+        <span class="region-row-emoji" aria-hidden="true">${ic(r.icon)}</span>
         <span class="region-row-main">
-          <span class="region-row-name">${escapeHtml(r.name)}${on ? ' <span class="region-row-check" aria-hidden="true">✓</span>' : ''}</span>
+          <span class="region-row-name">${escapeHtml(r.name)}${on ? ` <span class="region-row-check" aria-hidden="true">${ic('check')}</span>` : ''}</span>
           <span class="region-row-label">${escapeHtml(r.label)}</span>
         </span>
         <span class="region-row-counts" aria-label="사람 ${r.people} · 모임 ${r.groups} · 글 ${r.posts}">
@@ -4362,11 +4373,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.main) el.main.scrollTop = 0;
     const region = store.getRegion(next);
     showToast(region
-      ? `${region.emoji} ${region.name}의 사람·모임·글만 모아 볼게요`
+      ? `${region.name}의 사람·모임·글만 모아 볼게요`
       : '전체 지역으로 돌아왔어요 · 이 선택도 기억해 둘게요', 'info');
   }
 
-  /** 순위 변동 배지 — ▲N / ▼N / NEW (그대로면 생략) */
+  /** 순위 변동 배지 — 위/아래 화살표 + 계단수, NEW (그대로면 생략) */
   function hotMoveHTML(it, compact) {
     const mv = it && it.movement;
     if (!mv || mv === 'same') return compact ? '' : '<span class="hot-move same" aria-hidden="true">–</span>';
@@ -4376,7 +4387,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const up = mv === 'up';
     const steps = Math.abs(it.delta || 0);
     return `<span class="hot-move ${up ? 'up' : 'down'}"
-                  aria-label="지난 집계보다 ${steps}계단 ${up ? '상승' : '하락'}">${up ? '▲' : '▼'}${steps}</span>`;
+                  aria-label="지난 집계보다 ${steps}계단 ${up ? '상승' : '하락'}">${up ? ic('chevronUp') : ic('chevronDown')}${steps}</span>`;
   }
 
   /** 내 글이 실베에 새로 들어왔으면 알림을 보낸다(실제 반응·시뮬레이션 공통 경로).
@@ -4394,7 +4405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderNotificationList();
     const first = res.entered[0];
     if (first) {
-      showToast(`🔥 내 글이 실베 Top 10에 들었어요 · ${(first.caption || '내 글').slice(0, 14)}`, 'success');
+      showToast(`내 글이 실베 Top 10에 들었어요 · ${(first.caption || '내 글').slice(0, 14)}`, 'success');
     }
   }
 
@@ -4405,7 +4416,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const region = store.getRegion(ui.exploreRegion);
     if (el.hotSub) {
       el.hotSub.textContent = region
-        ? `${region.emoji} ${region.name}에서 지금 반응이 뜨거운 글 · 직전 집계 대비 순위`
+        ? `${region.name}에서 지금 반응이 뜨거운 글 · 직전 집계 대비 순위`
         : '지금 반응이 뜨거운 취미 글 · 좋아요+댓글 순 · 직전 집계 대비 순위';
     }
     if (!list.length) {
@@ -4417,7 +4428,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return `<button class="hot-card rank-${it.rank}" data-hot-post="${p.id}" type="button"
                       aria-label="실시간 베스트 ${it.rank}위 · ${escapeHtml(p.authorName)}님의 ${escapeHtml(p.hobbyLabel || '')} 글 보기">
         <span class="hot-card-media">
-          ${p.photoUrl ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">` : '<span class="hot-card-noimg" aria-hidden="true">✏️</span>'}
+          ${p.photoUrl ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">` : `<span class="hot-card-noimg" aria-hidden="true">${ic(p.hobbyIcon || 'note')}</span>`}
           <span class="hot-rank" aria-hidden="true">${it.rank}</span>
           ${hotMoveHTML(it)}
           <span class="hot-heat" aria-hidden="true"><span class="hot-heat-bar" style="width:${it.heat}%"></span></span>
@@ -4425,7 +4436,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="hot-card-body">
           <span class="hot-card-hobby">${escapeHtml(p.hobbyLabel || '취미')}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
           <span class="hot-card-caption">${escapeHtml(p.caption || '')}</span>
-          <span class="hot-card-meta">❤️ ${fmtCount(it.likes)} · 💬 ${it.comments} · ${timeAgo(p.createdAt)}</span>
+          <span class="hot-card-meta">${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}</span>
         </span>
       </button>`;
     }).join('');
@@ -4440,8 +4451,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const region = store.getRegion(ui.exploreRegion);
     if (el.hotSheetSub) {
       el.hotSheetSub.textContent = region
-        ? `${region.emoji} ${region.name} · 좋아요·댓글과 최신성으로 계산한 순위 · ▲▼는 직전 집계 대비`
-        : '좋아요·댓글과 최신성으로 계산한 지금의 인기 순위 · ▲▼는 직전 집계 대비';
+        ? `${region.name} · 좋아요·댓글과 최신성으로 계산한 순위 · 화살표는 직전 집계 대비`
+        : '좋아요·댓글과 최신성으로 계산한 지금의 인기 순위 · 화살표는 직전 집계 대비';
     }
     if (!list.length) {
       el.hotList.innerHTML = `<div class="empty-state">${emptyArt('explore')}<p class="empty-title">아직 반응이 모인 글이 없어요</p><p class="empty-desc">좋아요와 댓글이 모이면 여기에 순위가 생깁니다.</p></div>`;
@@ -4454,9 +4465,9 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="hot-row-rank" aria-hidden="true">${it.rank}</span>
         <span class="hot-row-thumb">${p.photoUrl ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">` : ''}</span>
         <span class="hot-row-main">
-          <span class="hot-row-hobby">${p.hobbyEmoji || ''} ${escapeHtml(p.hobbyLabel || '')}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
+          <span class="hot-row-hobby">${p.hobbyIcon ? ic(p.hobbyIcon) : ''} ${escapeHtml(p.hobbyLabel || '')}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
           <span class="hot-row-caption">${escapeHtml(p.caption || '')}</span>
-          <span class="hot-row-meta">${escapeHtml(p.authorName)} · ❤️ ${fmtCount(it.likes)} · 💬 ${it.comments} · ${timeAgo(p.createdAt)}${hotMoveHTML(it, true)}</span>
+          <span class="hot-row-meta">${escapeHtml(p.authorName)} · ${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}${hotMoveHTML(it, true)}</span>
         </span>
         <span class="hot-row-heat" aria-hidden="true"><span style="width:${it.heat}%"></span></span>
       </button>`;
@@ -4472,7 +4483,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * 로딩 스켈레톤 — Sprint 11 정교화.
-   *  · 상단 1줄(종류 세그먼트 · 📍 지역 · 🎛️ 필터)은 그대로 두고 **카드 영역만** 골격으로 갈아끼운다.
+   *  · 상단 1줄(종류 세그먼트 · 지역 · 필터)은 그대로 두고 **카드 영역만** 골격으로 갈아끼운다.
    *    (필터·지역을 바꿀 때 화면 전체가 깜박이지 않도록.)
    *  · 골격은 실제 2열 메이슨리의 생김새를 따라간다 — 사람(미디어 큰 카드) · 모임(화이트 카드) ·
    *    글(작성자 줄+미디어). 그래서 로딩이 끝나도 카드 높이가 튀지 않는다.
@@ -4559,7 +4570,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.exploreCount.textContent = `사람 ${people} · 모임 ${groups} · 글 ${posts}`;
       }
       if (region && !ui.exploreQuery) {
-        el.exploreCount.textContent += ` · ${region.emoji} ${region.name}`;
+        el.exploreCount.textContent += ` · ${region.name}`;
       }
       if (ageOn && ageFilter && !ui.exploreQuery) {
         el.exploreCount.textContent += ` · ${ageFilter.name}`;
@@ -4878,7 +4889,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.classList.add('pop');
     const burst = document.createElement('span');
     burst.className = 'like-burst';
-    burst.textContent = '❤';
+    burst.innerHTML = ic('heart');
     btn.appendChild(burst);
     setTimeout(() => burst.remove(), 700);
   }
@@ -4961,7 +4972,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="detail-spec-grid">
         ${specChips.map((s) => `
           <div class="detail-spec-cell">
-            <span class="detail-spec-icon">${s.icon}</span>
+            <span class="detail-spec-icon" aria-hidden="true">${ic(s.icon)}</span>
             <span class="detail-spec-label">${escapeHtml(s.label)}</span>
             <strong class="detail-spec-value">${escapeHtml(s.value)}</strong>
           </div>`).join('')}
@@ -4978,7 +4989,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="detail-name-row">
           <h2 class="detail-name">${escapeHtml(p.nickname)}</h2>
           ${p.age ? `<span class="detail-age">${p.age}세</span>` : ''}
-          ${p.verified ? '<span class="detail-verified">✓ 취미 인증</span>' : ''}
+          ${p.verified ? `<span class="detail-verified">${ic('check')} 취미 인증</span>` : ''}
         </div>
         <p class="detail-style">${escapeHtml(p.hobbyStyle || p.hobbyLabel || '')}</p>
         ${metaBadges ? `<div class="detail-badges">${metaBadges}</div>` : ''}
@@ -5115,7 +5126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <ul class="schedule-list">
           ${rows.map((row) => `
             <li class="schedule-row tone-${escapeHtml(row.tone)}">
-              <span class="schedule-icon" aria-hidden="true">${row.icon}</span>
+              <span class="schedule-icon" aria-hidden="true">${ic(row.icon)}</span>
               <span class="schedule-label">${escapeHtml(row.label)}</span>
               <span class="schedule-value">${escapeHtml(row.value)}</span>
             </li>`).join('')}
@@ -5223,7 +5234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="admin-pending-count">신청 대기 ${pending.length}명</span>
       </div>` : ''}
       <div class="sheet-group-header">
-        <div class="sheet-emoji-badge">${grp.emoji}</div>
+        <div class="sheet-emoji-badge">${ic(grp.icon)}</div>
         <span class="group-category-tag">
           <span>${grp.categoryName}</span>
         </span>
@@ -5571,7 +5582,7 @@ document.addEventListener('DOMContentLoaded', () => {
     html += joined.map((g) => {
       const count = store.state.feedPosts.filter((p) => p.groupId === g.id).length;
       return `<button class="feed-chip ${ui.feedGroupId === g.id ? 'active' : ''}" data-feed-group="${g.id}">
-                <span class="chip-emoji">${g.emoji}</span> ${escapeHtml(g.categoryName)}
+                <span class="chip-emoji">${ic(g.icon)}</span> ${escapeHtml(g.categoryName)}
                 <span class="chip-count">${count}</span>
               </button>`;
     }).join('');
@@ -5596,7 +5607,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="comment-time" data-created="${c.createdAt}">${timeAgo(c.createdAt)}</span>
             <button class="comment-like ${c.likedByMe ? 'liked' : ''}" data-action="comment-like" data-comment-id="${c.id}"
                     aria-pressed="${!!c.likedByMe}" type="button"
-                    aria-label="${escapeHtml(c.authorName)}님 댓글 좋아요"><span aria-hidden="true">${c.likedByMe ? '❤' : '♡'}</span>${c.likes ? ` ${c.likes}` : ''}</button>
+                    aria-label="${escapeHtml(c.authorName)}님 댓글 좋아요"><span aria-hidden="true">${ic('heart', { filled: c.likedByMe })}</span>${c.likes ? ` ${c.likes}` : ''}</button>
             ${c.parentId ? '' : `<button class="comment-reply" data-action="reply" data-comment-id="${c.id}" data-comment-author="${escapeHtml(c.authorName)}" type="button">답글</button>`}
           </div>`).join('')}
         ${expanded && comments.length > 2
@@ -5628,7 +5639,7 @@ document.addEventListener('DOMContentLoaded', () => {
               ${post.authorId === store.currentUser.id ? '<span class="me-badge">나</span>' : ''}
             </div>
             <button class="feed-group-badge" data-open-group="${post.groupId}">
-              ${grp ? grp.emoji : '📁'} ${grp ? escapeHtml(grp.name) : '모임'}
+              ${grp ? ic(grp.icon) : ic('folder')} ${grp ? escapeHtml(grp.name) : '모임'}
             </button>
           </div>
           <div class="feed-header-right">
@@ -5933,7 +5944,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!media) return;
     const heart = document.createElement('span');
     heart.className = 'love-overlay';
-    heart.textContent = '❤';
+    heart.innerHTML = ic('heart');
     media.appendChild(heart);
     setTimeout(() => heart.remove(), 850);
   }
@@ -5959,7 +5970,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.liked) {
       const burst = document.createElement('span');
       burst.className = 'heart-burst';
-      burst.textContent = '❤';
+      burst.innerHTML = ic('heart');
       btn.appendChild(burst);
       setTimeout(() => burst.remove(), 700);
     }
@@ -6015,12 +6026,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const joined = store.getJoinedGroups();
     el.composerGroupList.innerHTML = joined.map((g) => `
       <button class="composer-group-chip ${ui.composer.groupId === g.id ? 'active' : ''}" data-pick-group="${g.id}">
-        <span class="chip-thumb">${g.emoji}</span>
+        <span class="chip-thumb">${ic(g.icon)}</span>
         <span class="chip-text">
           <strong>${escapeHtml(g.name)}</strong>
           <span>${escapeHtml(g.categoryName)} · 멤버 ${g.memberCount}명</span>
         </span>
-        <span class="chip-check">✓</span>
+        <span class="chip-check">${ic('check')}</span>
       </button>
     `).join('');
   }
@@ -6513,7 +6524,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.joinedBody.innerHTML = joined.map((g) => `
       <div class="joined-item" data-joined-id="${g.id}">
-        <span class="joined-emoji">${g.emoji}</span>
+        <span class="joined-emoji">${ic(g.icon)}</span>
         <div class="joined-info">
           <div class="joined-name">${escapeHtml(g.name)}</div>
           <div class="joined-meta">
@@ -6615,7 +6626,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="post-detail-who">
           <div class="post-detail-name">${escapeHtml(post.authorName)}</div>
           <div class="post-detail-sub">
-            ${post.hobbyEmoji || ''} ${escapeHtml(post.hobbyLabel)} ·
+            ${post.hobbyIcon ? ic(post.hobbyIcon) : ''} ${escapeHtml(post.hobbyLabel)} ·
             <span data-created="${post.createdAt}">${timeAgo(post.createdAt)}</span>
           </div>
         </div>
@@ -6626,9 +6637,9 @@ document.addEventListener('DOMContentLoaded', () => {
         : ''}
       <p class="post-detail-caption">${escapeHtml(post.caption)}</p>
       <div class="post-detail-stats">
-        <span>❤️ 좋아요 ${fmtCount(post.likes)}</span>
+        <span>${ic('heart')} 좋아요 ${fmtCount(post.likes)}</span>
         <span>댓글 ${comments.length}</span>
-        ${group ? `<span class="post-detail-group-chip">${group.emoji} ${escapeHtml(group.name)}</span>` : ''}
+        ${group ? `<span class="post-detail-group-chip">${ic(group.icon)} ${escapeHtml(group.name)}</span>` : ''}
       </div>
       <div class="post-detail-actions">
         <button class="post-detail-like ${post.likedByMe ? 'liked' : ''}" data-post-like="${post.id}"
@@ -6743,7 +6754,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.exploreComposeHobbies) {
       el.exploreComposeHobbies.innerHTML = store.state.exploreHobbyChips.map((h) => `
         <button class="tag-pick ${ui.exploreCompose.hobbyId === h.id ? 'active' : ''}"
-                data-compose-hobby="${h.id}" type="button">${h.emoji} ${escapeHtml(h.name)}</button>`).join('');
+                data-compose-hobby="${h.id}" type="button">${ic(h.icon)} ${escapeHtml(h.name)}</button>`).join('');
     }
     if (el.exploreCaptionCount && el.exploreComposeCaption) {
       el.exploreCaptionCount.textContent = String(el.exploreComposeCaption.value.length);
@@ -6802,10 +6813,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const chips = [`<span class="spec-chip">${escapeHtml(u.location || '동네 미설정')}</span>`];
       (u.hobbyIds || []).forEach((id) => {
         const chip = store.getHobbyChip(id);
-        if (chip) chips.push(`<span class="spec-chip">${chip.emoji} ${escapeHtml(chip.name)}</span>`);
+        if (chip) chips.push(`<span class="spec-chip">${ic(chip.icon)} ${escapeHtml(chip.name)}</span>`);
       });
       if (u.age) chips.push(`<span class="spec-chip">${u.age}세</span>`);
-      chips.push(`<span class="spec-chip">${u.activityEmoji || '🔁'} ${escapeHtml(u.activity || '상시')}</span>`);
+      chips.push(`<span class="spec-chip">${ic(u.activityIcon || 'repeat')} ${escapeHtml(u.activity || '상시')}</span>`);
       el.profileSpecs.innerHTML = chips.join('');
     }
     /* Sprint 18 — 내정보 상단 한 줄(설정은 사이드바로) */
@@ -6820,14 +6831,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.editHobbies) return;
     el.editHobbies.innerHTML = store.state.exploreHobbyChips.map((h) => `
       <button class="tag-pick ${ui.edit.hobbyIds.includes(h.id) ? 'active' : ''}"
-              data-edit-hobby="${h.id}" type="button">${h.emoji} ${escapeHtml(h.name)}</button>`).join('');
+              data-edit-hobby="${h.id}" type="button">${ic(h.icon)} ${escapeHtml(h.name)}</button>`).join('');
   }
 
   function renderEditActivity() {
     if (!el.editActivity) return;
     el.editActivity.innerHTML = store.state.activityOptions.map((o) => `
       <button class="tag-pick ${ui.edit.activity === o.label ? 'active' : ''}"
-              data-edit-activity="${escapeHtml(o.label)}" type="button">${o.emoji} ${escapeHtml(o.label)}</button>`).join('');
+              data-edit-activity="${escapeHtml(o.label)}" type="button">${ic(o.icon)} ${escapeHtml(o.label)}</button>`).join('');
   }
 
   function openProfileEdit() {
@@ -6900,11 +6911,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.createGroupHobbies) {
       el.createGroupHobbies.innerHTML = store.state.exploreHobbyChips.map((h) => `
         <button class="tag-pick ${ui.groupDraft.hobbyId === h.id ? 'active' : ''}"
-                data-create-hobby="${h.id}" type="button">${h.emoji} ${escapeHtml(h.name)}</button>`).join('');
+                data-create-hobby="${h.id}" type="button">${ic(h.icon)} ${escapeHtml(h.name)}</button>`).join('');
     }
     if (el.createGroupPrivacy) {
       const options = [
-        { id: 'open', label: '🌿 자유 가입', hint: '누구나 바로 참여' },
+        { id: 'open', label: '자유 가입', icon: 'leaf', hint: '누구나 바로 참여' },
         { id: 'approval_private', label: '승인제', hint: '소개서 심사' }
       ];
       el.createGroupPrivacy.innerHTML = options.map((o) => `
@@ -7015,13 +7026,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const supportsNotifications = () => typeof Notification !== 'undefined';
 
   function pushKindIcon(kind) {
-    if (kind === 'chat') return '💬';
-    if (kind === 'like') return '❤️';
-    if (kind === 'comment') return '🗨️';
-    if (kind === 'join_request' || kind === 'group') return '👥';
-    if (kind === 'join_result') return '✅';
-    if (kind === 'hot_entry') return '🔥';
-    return '🔔';
+    if (kind === 'chat') return 'chat';
+    if (kind === 'like') return 'heart';
+    if (kind === 'comment') return 'comment';
+    if (kind === 'join_request' || kind === 'group') return 'users';
+    if (kind === 'join_result') return 'checkCircle';
+    if (kind === 'hot_entry') return 'fire';
+    return 'bell';
   }
 
   /** 알림 종류 하나의 예시 미리보기 — 실제 알림과 같은 모양으로 그린다(Sprint 8). */
@@ -7032,12 +7043,12 @@ document.addEventListener('DOMContentLoaded', () => {
                  aria-label="${escapeHtml(p.label)} 예시 알림">
       <span class="notif-preview-tag">이런 알림이 와요</span>
       <div class="notif-preview-item tone-${escapeHtml(p.category)}">
-        <span class="notif-emoji" aria-hidden="true">${pushKindIcon(p.kind)}</span>
+        <span class="notif-emoji" aria-hidden="true">${ic(pushKindIcon(p.kind))}</span>
         <div class="notif-main">
           <span class="notif-title">${escapeHtml(p.title)}</span>
           <p class="notif-body">${escapeHtml(p.body)}</p>
           <span class="notif-time">방금 전 · 앱 알림
-            <span class="notif-cat-chip">${escapeHtml(p.emoji)} ${escapeHtml(p.label)}</span>
+            <span class="notif-cat-chip">${ic(p.icon)} ${escapeHtml(p.label)}</span>
           </span>
         </div>
       </div>
@@ -7046,10 +7057,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function categoryLabel(entry) {
     const cat = store.getNotificationCategories().find((c) => c.id === entry.category);
-    if (cat) return `${cat.emoji} ${cat.label}`;
+    if (cat) return cat.label;
     /* Sprint 6 — 옛 기록(v7 이하)의 reaction/membership 도 읽힐 수 있게 kind 로 되메운다 */
-    const legacy = { like: '❤️ 좋아요', comment: '🗨️ 댓글', chat: '💬 1:1 대화', join_request: '👥 모임 가입 신청', join_result: '✅ 모임 가입 결과', hot_entry: '🔥 실베 진입', group: '👥 모임' };
-    return legacy[entry.kind] || '🔔 알림';
+    const legacy = { like: '좋아요', comment: '댓글', chat: '1:1 대화', join_request: '모임 가입 신청', join_result: '모임 가입 결과', hot_entry: '실베 진입', group: '모임' };
+    return legacy[entry.kind] || '알림';
   }
 
   function channelLabel(entry) {
@@ -7126,16 +7137,16 @@ document.addEventListener('DOMContentLoaded', () => {
           : '브라우저에서 알림을 차단했어요. 주소창의 자물쇠 아이콘에서 허용으로 바꾸면 푸시로 받을 수 있어요.'}</p>`
         : ''}
       ${supported && s.permission !== 'granted'
-        ? '<button class="notif-permission-btn" data-notif-action="request-permission" type="button">🔓 브라우저 알림 권한 허용하기</button>'
+        ? `<button class="notif-permission-btn" data-notif-action="request-permission" type="button">${ic('unlock')} 브라우저 알림 권한 허용하기</button>`
         : ''}
       ${isIosBrowserTab()
-        ? '<p class="notif-ios-hint">🍎 아이폰 사파리는 <strong>홈 화면에 추가한 웹앱</strong>에서만 푸시를 받을 수 있어요. 아래 <strong>홈 화면에 추가</strong>를 먼저 해두면 앱을 꺼도 알림이 와요.</p>'
+        ? `<p class="notif-ios-hint">${ic('phone')} 아이폰 사파리는 <strong>홈 화면에 추가한 웹앱</strong>에서만 푸시를 받을 수 있어요. 아래 <strong>홈 화면에 추가</strong>를 먼저 해두면 앱을 꺼도 알림이 와요.</p>`
         : ''}
       <div class="notif-section-title">받을 알림 종류 <span class="notif-section-hint">6종 각각 켜고 끌 수 있어요</span></div>
       <div class="notif-cat-list" role="group" aria-label="알림 종류별 설정">
         ${categories.map((c) => `
           <div class="notif-cat-item tone-${escapeHtml(c.tone || 'chat')} ${c.enabled ? '' : 'off'}" data-cat-item="${c.id}">
-            <span class="notif-cat-emoji" aria-hidden="true">${c.emoji}</span>
+            <span class="notif-cat-emoji" aria-hidden="true">${ic(c.icon)}</span>
             <div class="notif-cat-main">
               <span class="notif-cat-label">${escapeHtml(c.label)}</span>
               <span class="notif-cat-desc">${escapeHtml(c.desc)}</span>
@@ -7171,11 +7182,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <input class="notif-time-input" id="dnd-end" data-dnd="end" type="time" value="${escapeHtml(s.dndEnd)}" aria-label="방해 금지 종료 시각">
       </div>
       ${dndOnNow
-        ? `<p class="notif-dnd-now">🌙 지금은 방해 금지 시간이에요 — 가입 결과를 뺀 알림은 조용히 모이고 있어요</p>`
+        ? `<p class="notif-dnd-now">${ic('moon')} 지금은 방해 금지 시간이에요 — 가입 결과를 뺀 알림은 조용히 모이고 있어요</p>`
         : ''}
       <div class="notif-row notif-exception-row">
         <div class="notif-row-main">
-          <span class="notif-row-label">✅ 모임 가입 결과는 밤에도 알림</span>
+          <span class="notif-row-label">${ic('checkCircle')} 모임 가입 결과는 밤에도 알림</span>
           <span class="notif-row-desc">방해 금지 시간이어도 수락·거절 소식은 바로 보내드려요</span>
         </div>
         <button class="notif-switch ${joinExempt ? 'on' : ''}" data-notif-action="toggle-dnd-exception"
@@ -7184,16 +7195,16 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="notif-switch-knob"></span>
         </button>
       </div>
-      <button class="notif-test-btn" data-notif-action="test" type="button">🔔 푸시 알림 테스트하기</button>
+      <button class="notif-test-btn" data-notif-action="test" type="button">${ic('bell')} 푸시 알림 테스트하기</button>
       <p class="notif-test-result" id="notif-test-result">${lastTest}</p>
-      <div class="notif-section-title">🧪 알림 종류 시험해 보기</div>
+      <div class="notif-section-title">${ic('flask')} 알림 종류 시험해 보기</div>
       <div class="notif-sim-row">
-        <button class="notif-sim-btn" data-notif-action="sim-chat" type="button">💬 1:1 대화</button>
-        <button class="notif-sim-btn" data-notif-action="sim-like" type="button">❤️ 좋아요</button>
-        <button class="notif-sim-btn" data-notif-action="sim-comment" type="button">🗨️ 댓글</button>
-        <button class="notif-sim-btn" data-notif-action="sim-join" type="button">👥 가입 신청</button>
-        <button class="notif-sim-btn" data-notif-action="sim-result" type="button">✅ 가입 결과</button>
-        <button class="notif-sim-btn" data-notif-action="sim-hot" type="button">🔥 실베 진입</button>
+        <button class="notif-sim-btn" data-notif-action="sim-chat" type="button">${ic('chat')} 1:1 대화</button>
+        <button class="notif-sim-btn" data-notif-action="sim-like" type="button">${ic('heart')} 좋아요</button>
+        <button class="notif-sim-btn" data-notif-action="sim-comment" type="button">${ic('comment')} 댓글</button>
+        <button class="notif-sim-btn" data-notif-action="sim-join" type="button">${ic('users')} 가입 신청</button>
+        <button class="notif-sim-btn" data-notif-action="sim-result" type="button">${ic('checkCircle')} 가입 결과</button>
+        <button class="notif-sim-btn" data-notif-action="sim-hot" type="button">${ic('fire')} 실베 진입</button>
       </div>
       <p class="notif-sim-note">실제 이벤트와 <strong>똑같은 경로</strong>로 알림을 보내 봅니다. 대화는 첫 1:1 방에, 좋아요·댓글은 내가 올린 취미 게시글에, 가입 신청은 내가 그룹장인 모임에, 실베 진입은 내 최신 글이 Top 10에 들면 도착해요.</p>`;
   }
@@ -7327,7 +7338,7 @@ document.addEventListener('DOMContentLoaded', () => {
     node.setAttribute('role', 'button');
     node.setAttribute('tabindex', '0');
     node.innerHTML = `
-      <span class="push-banner-icon" aria-hidden="true">${pushKindIcon(entry.kind)}</span>
+      <span class="push-banner-icon" aria-hidden="true">${ic(pushKindIcon(entry.kind))}</span>
       <div class="push-banner-main">
         <span class="push-banner-title">${escapeHtml(entry.title)}</span>
         <span class="push-banner-body">${escapeHtml(entry.body)}</span>
@@ -7435,15 +7446,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.notifFilters) {
       const stats = store.getNotificationStats();
       const cats = [
-        { id: 'all', label: '전체', emoji: '🔔' },
-        ...store.getNotificationCategories().map((c) => ({ id: c.id, label: c.label, emoji: c.emoji }))
+        { id: 'all', label: '전체', icon: 'bell' },
+        ...store.getNotificationCategories().map((c) => ({ id: c.id, label: c.label, icon: c.icon }))
       ];
       el.notifFilters.innerHTML = cats.map((c) => {
         const on = ui.notifFilter === c.id;
         const count = c.id === 'all' ? stats.total : (stats.byCategory[c.id] || 0);
         return `<button class="notif-filter ${on ? 'active' : ''}" data-notif-filter="${c.id}"
                         aria-pressed="${on}" type="button">
-          <span aria-hidden="true">${c.emoji}</span><span>${escapeHtml(c.label)}</span>
+          <span aria-hidden="true">${ic(c.icon)}</span><span>${escapeHtml(c.label)}</span>
           <span class="notif-filter-count">${count}</span>
         </button>`;
       }).join('');
@@ -7511,17 +7522,17 @@ document.addEventListener('DOMContentLoaded', () => {
       /* Sprint 11 — 접근성: 펼침 버튼과 펼쳐진 목록을 id·aria-controls 로 잇는다. */
       const itemsId = `notif-items-${String(g.key).replace(/[^A-Za-z0-9_-]/g, '-')}`;
       const mergeChips = merged
-        ? `${g.likeCount ? `<span class="notif-merge-chip">❤️ 좋아요 ${g.likeCount}</span>` : ''}`
-          + `${g.commentCount ? `<span class="notif-merge-chip">🗨️ 댓글 ${g.commentCount}</span>` : ''}`
+        ? `${g.likeCount ? `<span class="notif-merge-chip">${ic('heart')} 좋아요 ${g.likeCount}</span>` : ''}`
+          + `${g.commentCount ? `<span class="notif-merge-chip">${ic('comment')} 댓글 ${g.commentCount}</span>` : ''}`
         : '';
       return `
       <div class="notif-swipe" data-swipe-item="${g.key}">
-        <span class="notif-swipe-hint hint-right" aria-hidden="true">✓ 읽음</span>
-        <span class="notif-swipe-hint hint-left" aria-hidden="true">🗑 지우기</span>
+        <span class="notif-swipe-hint hint-right" aria-hidden="true">${ic('check')} 읽음</span>
+        <span class="notif-swipe-hint hint-left" aria-hidden="true">${ic('trash')} 지우기</span>
         <article class="notif-item ${isUnread ? 'unread' : ''} ${merged ? 'is-merged' : ''} ${routine ? 'is-routine' : ''}" data-notif-item="${g.key}"
                  role="button" tabindex="0"
                  aria-label="${escapeHtml(g.title)} 알림 열기${merged ? ` · ${g.count}건 모음` : ''}">
-          <span class="notif-emoji">${pushKindIcon(entry.kind)}${merged ? `<span class="notif-merge-count" aria-hidden="true">${g.count}</span>` : ''}</span>
+          <span class="notif-emoji">${ic(pushKindIcon(entry.kind))}${merged ? `<span class="notif-merge-count" aria-hidden="true">${g.count}</span>` : ''}</span>
           <div class="notif-main">
             <span class="notif-title">${escapeHtml(g.title)}${isUnread ? '<span class="notif-new-dot" aria-hidden="true"></span>' : ''}</span>
             <p class="notif-body">${escapeHtml(g.body)}</p>
@@ -7532,13 +7543,13 @@ document.addEventListener('DOMContentLoaded', () => {
           <button class="notif-expand ${expanded ? 'is-open' : ''}" type="button"
                   data-notif-expand="${g.key}" aria-expanded="${expanded}" aria-controls="${itemsId}"
                   aria-label="${escapeHtml(g.title)} ${g.count}건 ${expanded ? '접기' : '펼쳐보기'}">
-            <span class="notif-expand-caret" aria-hidden="true">▾</span>
+            <span class="notif-expand-caret" aria-hidden="true">${ic('chevronDown')}</span>
             ${expanded ? '접기' : (routine ? `펼쳐보기 · ${g.count}건` : `펼쳐보기 · 누가 남겼는지 ${g.count}`)}
           </button>
           <div class="notif-items" id="${itemsId}" role="group" aria-label="${escapeHtml(g.title)} 상세" ${expanded ? '' : 'hidden'}>
             ${g.items.map((it) => `
               <div class="notif-detail-row ${it.read ? '' : 'unread'}">
-                <span class="notif-detail-emoji" aria-hidden="true">${it.emoji}</span>
+                <span class="notif-detail-emoji" aria-hidden="true">${ic(it.icon)}</span>
                 <span class="notif-detail-actor">${escapeHtml(it.actorName || '취미친구')}</span>
                 <span class="notif-detail-text">${escapeHtml(routine ? (it.text || '').slice(0, 90) : notifDetailText(it))}</span>
                 <span class="notif-detail-time">${timeAgo(it.at)}</span>
@@ -7547,9 +7558,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>` : ''}
         <div class="notif-item-actions">
           <button class="notif-act" type="button" data-notif-mark="${g.key}"
-                  aria-label="${escapeHtml(g.title)} 알림을 읽음으로 표시">✓ 읽음</button>
+                  aria-label="${escapeHtml(g.title)} 알림을 읽음으로 표시">${ic('check')} 읽음</button>
           <button class="notif-act danger" type="button" data-notif-delete="${g.key}"
-                  aria-label="${escapeHtml(g.title)} 알림 지우기">🗑 지우기</button>
+                  aria-label="${escapeHtml(g.title)} 알림 지우기">${ic('trash')} 지우기</button>
         </div>
       </div>`;
     }).join('');
@@ -7594,7 +7605,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Sprint 8 — 알림함 2차: 스와이프로 읽음/지우기 · 접근성용 버튼
    * ------------------------------------------------------------------------
    *  · 오른쪽으로 밀면 읽음, 왼쪽으로 밀면 지우기(64px 이상).
-   *  · 키보드·스크린리더는 항목 아래의 '✓ 읽음 / 🗑 지우기' 버튼을 쓰면 된다.
+   *  · 키보드·스크린리더는 항목 아래의 '읽음 / 지우기' 버튼을 쓰면 된다.
    *  · 지운 알림은 토스트의 '되돌리기'로 원래 순서에 되살아난다.
    * ======================================================================== */
 
@@ -7790,7 +7801,7 @@ document.addEventListener('DOMContentLoaded', () => {
       deliverNotification(res.res);
       renderExplore({ preserve: true });
       updateBadges();
-      showToast(`'${res.application.groupName}' 가입이 수락되었어요 🎉${deliveryNote(res.res)}`);
+      showToast(`'${res.application.groupName}' 가입이 수락되었어요${deliveryNote(res.res)}`);
       return;
     }
     /* Sprint 8 — 종류별 예시 알림 미리보기 (펼치기/닫기) */
@@ -7816,7 +7827,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderExplore({ preserve: true });
       updateBadges();
       showToast(res.rank && res.rank <= 10
-        ? `🔥 내 글이 실베 ${res.rank}위에 올랐어요 (Top 10 진입 알림)${deliveryNote(res.res)}`
+        ? `내 글이 실베 ${res.rank}위에 올랐어요 (Top 10 진입 알림)${deliveryNote(res.res)}`
         : '반응이 몰렸지만 아직 10위 밖이에요 · 조금 더 반응이 필요해요', res.rank && res.rank <= 10 ? 'success' : 'info');
       return;
     }
@@ -7963,7 +7974,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const count = t.id === 'all' ? stats.total : (stats[t.id] || 0);
       return `<button class="activity-filter ${on ? 'active' : ''}" data-activity-type="${t.id}"
                       aria-pressed="${on}" type="button">
-                <span aria-hidden="true">${t.emoji}</span>
+                <span aria-hidden="true">${ic(t.icon)}</span>
                 <span>${escapeHtml(t.name)}</span>
                 <span class="activity-filter-count">${count}</span>
               </button>`;
@@ -7977,7 +7988,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = store.getActivityStats();
     const cells = (bucket) => `
       <div class="activity-stat-cells">
-        <div class="activity-stat-cell"><strong>${bucket.like}</strong><span>❤️ 하트</span></div>
+        <div class="activity-stat-cell"><strong>${bucket.like}</strong><span>${ic('heart')} 하트</span></div>
         <div class="activity-stat-cell"><strong>${bucket.post}</strong><span>글</span></div>
         <div class="activity-stat-cell"><strong>${bucket.comment}</strong><span>댓글</span></div>
         <div class="activity-stat-cell"><strong>${bucket.group}</strong><span>모임</span></div>
@@ -7999,7 +8010,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.activityRange.innerHTML = store.getActivityRangeOptions().map((r) => {
       const on = ui.activityRange === r.id;
       return `<button class="activity-range-chip ${on ? 'active' : ''}" data-activity-range="${r.id}"
-                      aria-pressed="${on}" type="button">${r.emoji} ${escapeHtml(r.name)}</button>`;
+                      aria-pressed="${on}" type="button">${ic(r.icon)} ${escapeHtml(r.name)}</button>`;
     }).join('');
   }
 
@@ -8007,13 +8018,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderActivityView() {
     if (!el.activityView) return;
     const modes = [
-      { id: 'timeline', name: '타임라인', emoji: '🕒' },
-      { id: 'group', name: '모임별', emoji: '👥' }
+      { id: 'timeline', name: '타임라인', icon: 'timeline' },
+      { id: 'group', name: '모임별', icon: 'users' }
     ];
     el.activityView.innerHTML = modes.map((m) => {
       const on = ui.activityView === m.id;
       return `<button class="activity-view-chip ${on ? 'active' : ''}" data-activity-view="${m.id}"
-                      aria-pressed="${on}" type="button">${m.emoji} ${m.name}</button>`;
+                      aria-pressed="${on}" type="button">${ic(m.icon)} ${m.name}</button>`;
     }).join('');
   }
 
@@ -8022,7 +8033,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return `<article class="activity-item tone-${escapeHtml(entry.tone || 'green')}"
                  data-activity-item="${escapeHtml(entry.id)}" role="button" tabindex="0"
                  aria-label="${escapeHtml(entry.title)} · ${escapeHtml(activityClock(entry.at))} 상세 보기">
-      <span class="activity-emoji" aria-hidden="true">${entry.emoji || '•'}</span>
+      <span class="activity-emoji" aria-hidden="true">${ic(entry.icon || 'dot')}</span>
       <div class="activity-main">
         <span class="activity-title">${escapeHtml(entry.title)}</span>
         ${entry.body ? `<p class="activity-body-text">${escapeHtml(entry.body)}</p>` : ''}
@@ -8070,7 +8081,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.activityBody.innerHTML = groups.map((g) => `
         <section class="activity-group" data-activity-group="${escapeHtml(g.groupId || g.groupName)}">
           <header class="activity-group-head">
-            <span class="activity-group-emoji" aria-hidden="true">${g.emoji || '👥'}</span>
+            <span class="activity-group-emoji" aria-hidden="true">${ic(g.icon || 'users')}</span>
             <span class="activity-group-name">${escapeHtml(g.groupName)}</span>
             <span class="activity-group-count">${g.count}건</span>
           </header>
@@ -8367,7 +8378,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (descEl) descEl.textContent = '아이폰은 사파리에서 홈 화면에 추가하면 앱처럼 열려요.';
       if (actions) actions.innerHTML = `
         <ol class="pwa-steps">
-          <li>사파리 <strong>공유 버튼</strong>(□↑)을 눌러요</li>
+          <li>사파리 <strong>공유 버튼</strong>(네모에 화살표)을 눌러요</li>
           <li><strong>‘홈 화면에 추가’</strong>를 고르고 <strong>추가</strong>를 누르면 끝!</li>
         </ol>`;
       return;
@@ -8391,7 +8402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try { await prompt.prompt(); } catch (e) { /* 사용자가 취소 */ }
     const choice = await (prompt.userChoice || Promise.resolve({ outcome: 'dismissed' }));
     renderPwaCard();
-    if (choice && choice.outcome === 'accepted') showToast('ooG를 홈 화면에 추가했어요 🎉');
+    if (choice && choice.outcome === 'accepted') showToast('ooG를 홈 화면에 추가했어요');
     return choice && choice.outcome;
   }
 
@@ -8448,7 +8459,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deferredInstallPrompt = null;
     store.updatePwa({ installed: true, installDismissed: true });
     renderPwaCard();
-    showToast('ooG를 홈 화면에 추가했어요 🎉 이제 앱을 꺼도 알림을 받을 수 있어요');
+    showToast('ooG를 홈 화면에 추가했어요 · 이제 앱을 꺼도 알림을 받을 수 있어요');
   });
 
   el.pwaCardActions && el.pwaCardActions.addEventListener('click', (e) => {
@@ -8495,7 +8506,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="policy-editor-row">
           <span class="policy-editor-label">가입 방식</span>
           <div class="policy-options">
-            <button class="policy-option ${mode === 'open' ? 'active' : ''}" data-policy-mode="open" type="button">🌿 자유 가입</button>
+            <button class="policy-option ${mode === 'open' ? 'active' : ''}" data-policy-mode="open" type="button">${ic('leaf')} 자유 가입</button>
             <button class="policy-option ${mode === 'approval' ? 'active' : ''}" data-policy-mode="approval" type="button">승인제</button>
           </div>
         </div>
@@ -8567,7 +8578,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   </div>`).join('')}
               </div>
               <div class="apply-actions">
-                <button class="apply-btn accept" data-approve-app="${a.id}" type="button">✓ 수락</button>
+                <button class="apply-btn accept" data-approve-app="${a.id}" type="button">${ic('check')} 수락</button>
                 <button class="apply-btn reject" data-reject-app="${a.id}" type="button">거절</button>
               </div>
             </article>`).join('')}
@@ -8586,19 +8597,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (joinState === 'pending') {
       const app = store.getApplicationForGroup(grp.id);
       return `<div class="join-state-wrap">
-        <button class="btn-join-pending" type="button" disabled>⌛ 승인 대기 중</button>
+        <button class="btn-join-pending" type="button" disabled>${ic('hourglass')} 승인 대기 중</button>
         ${app ? `<button class="btn-join-cancel" data-cancel-application="${app.id}" type="button">신청 취소</button>` : ''}
       </div>`;
     }
     if (!ageCheck.ok) {
       return `<div class="join-state-wrap">
-        <button class="btn-join-blocked" type="button" disabled>🔒 ${escapeHtml(ageCheck.message)}</button>
+        <button class="btn-join-blocked" type="button" disabled>${ic('lock')} ${escapeHtml(ageCheck.message)}</button>
         <p class="join-cta-hint">이 모임은 <strong>${escapeHtml(store.getGroupAgeLimit(grp.id).label)}</strong> 이용자를 위한 모임이에요. 나이 제한이 없는 모임을 찾아보세요.</p>
       </div>`;
     }
     if (store.isGroupFull(grp.id)) {
       return `<div class="join-state-wrap">
-        <button class="btn-join-blocked" type="button" disabled>🚪 정원이 가득 찼어요 (${grp.memberCount}/${grp.maxMembers})</button>
+        <button class="btn-join-blocked" type="button" disabled>${ic('door')} 정원이 가득 찼어요 (${grp.memberCount}/${grp.maxMembers})</button>
         <p class="join-cta-hint">자리가 나면 다시 도전해 보세요.</p>
       </div>`;
     }
@@ -8624,7 +8635,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.groupApplyBody.innerHTML = `
       <div class="apply-modal-head">
-        <span class="apply-modal-emoji">${grp.emoji}</span>
+        <span class="apply-modal-emoji">${ic(grp.icon)}</span>
         <h2 class="sheet-title">가입 신청서</h2>
         <p class="apply-modal-group">${escapeHtml(grp.name)}</p>
         <div class="join-policy-badges">${policyBadgesHTML(grp.id)}</div>
@@ -8706,7 +8717,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const note = el.groupApplyBody.querySelector('.apply-ready-note');
     if (note) {
-      note.textContent = ready ? '✅ 신청서가 준비됐어요' : 'ⓘ 모든 질문에 10자 이상 답해 주세요';
+      note.textContent = ready ? '신청서가 준비됐어요' : '모든 질문에 10자 이상 답해 주세요';
       note.classList.toggle('ok', ready);
     }
   });
@@ -8731,8 +8742,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const statusMap = {
-      pending: ['⌛ 승인 대기 중', 'pending'],
-      approved: ['✓ 승인됨', 'approved'],
+      pending: ['승인 대기 중', 'pending'],
+      approved: ['승인됨', 'approved'],
       rejected: ['거절됨', 'rejected'],
       canceled: ['취소됨', 'canceled']
     };
@@ -8741,7 +8752,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const decided = a.decidedAt ? ` · ${timeAgo(a.decidedAt)} 처리` : '';
       return `
       <div class="myapp-item" data-myapp="${a.id}">
-        <span class="myapp-emoji">${a.groupEmoji || '👥'}</span>
+        <span class="myapp-emoji">${ic(a.groupIcon || 'users')}</span>
         <div class="myapp-info">
           <div class="myapp-name">${escapeHtml(a.groupName)}</div>
           <div class="myapp-meta">${timeAgo(a.createdAt)} 신청 · 질문 ${(a.answers || []).length}개 응답${decided}</div>
@@ -8825,7 +8836,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="내 사진" loading="lazy" decoding="async">`
             : `<span class="profile-feed-text">${escapeHtml(String(p.caption || '').slice(0, 40) || '글')}</span>`}</span>
           <span class="profile-feed-meta">
-            <span class="profile-feed-like"><span aria-hidden="true">❤</span> ${fmtCount(p.likes || 0)}</span>
+            <span class="profile-feed-like"><span aria-hidden="true">${ic('heart', { filled: true })}</span> ${fmtCount(p.likes || 0)}</span>
           </span>
         </button>`).join('')
       : '<p class="profile-block-empty">아직 올린 피드가 없어요 · 피드 탭에서 첫 사진을 올려보세요.</p>';
@@ -8843,7 +8854,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 aria-label="${escapeHtml(g.name)} 모임 상세 보기">
           <span class="profile-group-cover" style="background:${g.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}">${g.photoUrl
             ? `<img src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span aria-hidden="true">${g.emoji || ''}</span>`}</span>
+            : `<span aria-hidden="true">${ic(g.icon || 'dot')}</span>`}</span>
           <span class="profile-group-text">
             <span class="profile-group-name">${escapeHtml(g.name)}</span>
             <span class="profile-group-sub">멤버 ${g.memberCount} · ${escapeHtml(g.meetLabel || g.categoryName)}</span>
@@ -8873,7 +8884,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.profileRecentList.innerHTML = recent.length
       ? recent.map((entry) => `
         <button class="profile-recent-item" data-profile-activity="${entry.id}" type="button">
-          <span class="profile-recent-emoji" aria-hidden="true">${entry.emoji}</span>
+          <span class="profile-recent-emoji" aria-hidden="true">${ic(entry.icon)}</span>
           <span class="profile-recent-body">
             <span class="profile-recent-title">${escapeHtml(entry.title)}</span>
             ${entry.body ? `<span class="profile-recent-sub">${escapeHtml(entry.body)}</span>` : ''}

@@ -651,7 +651,8 @@ img, svg { display: block; }
   padding: 52px 20px;
 }
 
-.empty-emoji { font-size: 34px; margin-bottom: 10px; }
+/* Sprint 20 — 빈 상태는 그림 없이 한 줄 안내 + 다음 행동 버튼만 (이모지 자리 제거) */
+.empty-hint { margin-bottom: 10px; }
 
 .empty-title {
   font-size: 14.5px;
@@ -3328,9 +3329,14 @@ img, svg { display: block; }
 }
 
 .photo-preview.failed .photo-preview-img::after {
-  content: '🖼️';
-  font-size: 20px;
-  opacity: 0.5;
+  /* Sprint 20 — 이모지 대신 우그 아이콘(사진)을 도형으로 그린다. */
+  content: '';
+  width: 20px;
+  height: 20px;
+  opacity: 0.45;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.8' y='4.8' width='16.4' height='14.4' rx='3.2'/%3E%3Ccircle cx='8.8' cy='9.6' r='1.6'/%3E%3Cpath d='M4.4 16.6 9.6 12l3.4 3.2 2.4-2.2 4.2 3.8'/%3E%3C/svg%3E") center / 20px no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.8' y='4.8' width='16.4' height='14.4' rx='3.2'/%3E%3Ccircle cx='8.8' cy='9.6' r='1.6'/%3E%3Cpath d='M4.4 16.6 9.6 12l3.4 3.2 2.4-2.2 4.2 3.8'/%3E%3C/svg%3E") center / 20px no-repeat;
 }
 
 .photo-preview-note {
@@ -5232,7 +5238,7 @@ img, svg { display: block; }
 
 /* ---------------------------------------------- 5-1. 모임 카드 나이 배지
  * 11/14 03:01 피드백: '2030만' · '20대만' · '30대+' 를 카드 겉면에서 바로 읽히게.
- * '👥 소모임' 배지 바로 아래에 붙여 시선이 먼저 닿는 자리에 둔다. */
+ * '소모임' 배지 바로 아래에 붙여 시선이 먼저 닿는 자리에 둔다. */
 .group-age-badge {
   position: absolute;
   top: 32px;
@@ -7208,7 +7214,7 @@ p.pwa-steps {
    --------------------------------------------------------------------------
    11/15 00:23 사용자 지시
      · "탐색에 카테고리 선택이 너무 많은데 복잡해" → 상단은 검색 + **핵심 1줄**
-       (종류 세그먼트 · 📍 지역 · 🎛️ 필터 N) + 적용 조건 요약 1줄만.
+       (종류 세그먼트 · 지역 · 필터 N) + 적용 조건 요약 1줄만.
        취미·나이·반경은 통합 필터 시트로 접었다.
      · "알림은 탑10에 들때 1회" → 실베 진입 알림 문구·기준은 스크립트에서, 여기서는
        알림함의 **같은 글 묶음**과 **이번 주 요약 카드** 디자인을 맡는다.
@@ -7217,7 +7223,7 @@ p.pwa-steps {
 
 /* ---------------------------------------------- 9-1. 상단 핵심 1줄 툴바
  * 검색창 바로 아래 한 줄. 종류 세그먼트가 왼쪽에서 늘어나고,
- * 📍 지역 · 🎛️ 필터 버튼이 오른쪽에 나란히 선다. (예전의 칩 3줄을 대체) */
+ * 지역 · 필터 버튼이 오른쪽에 나란히 선다. (예전의 칩 3줄을 대체) */
 .explore-toolbar {
   display: flex;
   align-items: center;
@@ -7267,7 +7273,7 @@ p.pwa-steps {
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.10), 0 0 0 1px rgba(16, 185, 129, 0.16);
 }
 
-/* 🎛️ 필터 버튼 + 적용 개수 배지 */
+/* 필터 버튼 + 적용 개수 배지 */
 .explore-filter-btn {
   flex: 0 0 auto;
   display: inline-flex;
@@ -14065,3 +14071,189 @@ body {
 
 .switch-toggle.on,
 .notif-switch.on .notif-switch-knob { box-shadow: var(--clay-green-in); }
+
+/* ============================================================================
+   Sprint 20 — 우그 커스텀 아이콘 (이모지 대신 직접 그린 선)
+   ----------------------------------------------------------------------------
+   · 24×24 격자 · 1.9px 선 · 둥근 끝 — 어떤 크기로 줄여도 형태가 유지된다.
+   · 크기는 1em: 글자 크기를 그대로 따라가므로 라벨·칩·버튼 안에서 정렬이 틀어지지 않는다.
+   · 색은 currentColor: 크림·화이트·민트·그린 버튼 어디에 놓아도 톤이 맞는다.
+   ========================================================================== */
+.oo-ic {
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+  display: inline-block;
+  vertical-align: -0.145em;
+  overflow: visible;
+}
+.oo-ic-slot,
+.rsvp-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 5px;
+  vertical-align: -0.18em;
+}
+.rsvp-icon { margin-right: 6px; }
+
+/* 아이콘 + 글자 한 줄 — 세로 정렬을 한 곳에서 맞춘다 */
+.notif-row-label .oo-ic,
+.notif-section-title .oo-ic,
+.notif-cat-chip .oo-ic,
+.notif-merge-chip .oo-ic,
+.activity-stat-cell span .oo-ic,
+.notif-swipe-hint .oo-ic,
+.myapp-emoji .oo-ic,
+.activity-group-emoji .oo-ic { margin-right: 4px; }
+
+/* 작은 메타 줄에서는 살짝 키워 읽히게 (9~10px 글자에 1em 이면 너무 작다) */
+.group-tile-cat .oo-ic,
+.hot-row-hobby .oo-ic,
+.hot-card-hobby .oo-ic,
+.hot-card-meta .oo-ic,
+.hot-row-meta .oo-ic,
+.person-meta .oo-ic,
+.post-detail-sub .oo-ic,
+.notif-cat-chip .oo-ic,
+.activity-group-emoji .oo-ic,
+.active-filter-chip-emoji .oo-ic { width: 11px; height: 11px; }
+
+/* 배지·타일 안에서는 상자 크기에 맞춰 조금 크게 */
+.chip-emoji .oo-ic { width: 12.5px; height: 12.5px; }
+.gallery-cover-emoji .oo-ic { width: 30px; height: 30px; }
+.home-hero-emoji .oo-ic { width: 66px; height: 66px; }
+.home-chat-icon .oo-ic { width: 18px; height: 18px; }
+.group-tile-emoji .oo-ic { width: 34px; height: 34px; }
+.sheet-emoji-badge .oo-ic { width: 24px; height: 24px; }
+.joined-emoji .oo-ic { width: 20px; height: 20px; }
+.chip-thumb .oo-ic { width: 13px; height: 13px; }
+.notif-emoji .oo-ic { width: 15px; height: 15px; }
+.notif-cat-emoji .oo-ic { width: 16px; height: 16px; }
+.activity-emoji .oo-ic { width: 15px; height: 15px; }
+.region-row-emoji .oo-ic { width: 16px; height: 16px; }
+.myapp-emoji .oo-ic { width: 16px; height: 16px; }
+.profile-recent-emoji .oo-ic { width: 14px; height: 14px; }
+.apply-modal-emoji .oo-ic { width: 26px; height: 26px; }
+.hot-card-noimg .oo-ic { width: 20px; height: 20px; }
+.chip-check .oo-ic { width: 9px; height: 9px; stroke-width: 2.6; }
+.region-row-check .oo-ic { width: 11px; height: 11px; stroke-width: 2.4; }
+.media-option-check .oo-ic { width: 9px; height: 9px; stroke-width: 2.8; }
+.person-verified .oo-ic { width: 9px; height: 9px; stroke-width: 2.8; }
+.match-avatars-heart .oo-ic { width: 26px; height: 26px; color: var(--green-dark); }
+.story-add-icon .oo-ic { width: 20px; height: 20px; stroke-width: 2.4; }
+.story-archive-icon .oo-ic { width: 15px; height: 15px; }
+.gallery-new-plus .oo-ic { width: 20px; height: 20px; stroke-width: 2.4; }
+.home-photo-add-icon .oo-ic { width: 17px; height: 17px; stroke-width: 2.4; }
+.region-btn-emoji { display: inline-flex; align-items: center; color: var(--green-dark); }
+.region-btn-emoji .oo-ic { width: 14px; height: 14px; }
+.filter-btn-icon .oo-ic { width: 14px; height: 14px; }
+.activity-export-btn .oo-ic { width: 12px; height: 12px; margin-right: 3px; }
+.notif-cat-chip { display: inline-flex; align-items: center; gap: 2px; }
+
+/* 클레이 배지 — 아이콘 하나를 점토 타일 위에 올린 모양 */
+.oo-icbadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6em;
+  height: 2.6em;
+  border-radius: 30%;
+  background: var(--clay-mint);
+  color: var(--green-dark);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -3px 6px -3px rgba(20, 66, 50, 0.16);
+}
+.oo-ictone-mint { background: var(--clay-mint); color: var(--green-dark); }
+.oo-ictone-cream { background: var(--clay-cream-soft); color: var(--green-deep); }
+.oo-ictone-green { background: var(--green-dark); color: #FFFFFF; }
+.oo-iclabel { margin-left: 4px; }
+
+/* 캐럿·순위 화살표도 같은 아이콘 세트로 (글자 기호 대신) */
+.region-btn-caret .oo-ic,
+.notif-expand-caret .oo-ic { width: 10px; height: 10px; stroke-width: 2.4; }
+.hot-move .oo-ic { width: 9px; height: 9px; stroke-width: 2.8; vertical-align: -0.08em; margin-right: 1px; }
+
+/* Sprint 20 — 표지·히어로 위의 아이콘 톤: 크림 위에서 진한 초록 워터마크로 통일 */
+.gallery-cover-emoji { color: var(--green-deep); opacity: 0.62; }
+.group-tile-emoji { color: var(--green-deep); opacity: 0.5; }
+.home-hero-emoji { color: var(--green-deep); opacity: 0.16; }
+
+/* Sprint 20 — 온보딩 카드 안쪽 여백: 글자가 카드 테두리에 붙어 잘린 것처럼 보이던 문제 */
+.onboarding-body {
+  padding: 22px 20px 24px;
+}
+.onboarding-body .ob-hero { margin-top: 0; }
+
+/* Sprint 20 — 온보딩 카드를 화면 세로 가운데로: 폼 아래 거대한 흰 여백이 남던 문제 */
+.onboarding-body {
+  flex: 0 0 auto;
+  margin: auto 0;
+  width: 100%;
+}
+/* 스플래시 워드마크를 타일 크기에 맞춰 조금 또렷하게 */
+.oog-splash-word { font-size: 14px; letter-spacing: 0.22em; text-indent: 0.22em; }
+.oog-splash-dots { gap: 8px; }
+.oog-splash-dots span { width: 9px; height: 9px; }
+
+/* Sprint 20 — 사이드바 섹션 카드 안쪽 여백: 제목·행이 카드 테두리에 붙어 잘린 것처럼 보이던 문제 */
+.drawer-section {
+  padding: 14px 12px 12px;
+}
+.drawer-section + .drawer-section {
+  border-top: 0;
+  margin-top: 12px;
+}
+.drawer-section-title { padding-left: 2px; }
+
+/* Sprint 20 — 카드가 된 블록은 안쪽 여백을 가진다 (제목·타일이 테두리에 붙지 않게) */
+.profile-block { padding: 14px 13px 13px; }
+.home-block { padding: 13px 12px 12px; }
+.board-block { padding: 13px 12px 12px; }
+.profile-block-head, .home-block-head, .board-block-head { margin-top: 0; }
+
+/* hidden 이미지가 CSS display 로 되살아나 이니셜 위에 겹치던 문제 */
+.avatar-img[hidden],
+.media-img[hidden],
+img[hidden] { display: none !important; }
+
+/* Sprint 20 — 활동 로그: 기간 칩과 보기 칩이 한 줄에서 겹쳐 보이던 문제 → 두 줄로 */
+.activity-controls {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.activity-range, .activity-view { gap: 5px; }
+
+/* Sprint 20 — 하단 탭 아이콘도 같은 선 두께(1.9)의 우그 아이콘으로 */
+.tab-icon .oo-ic { width: 22px; height: 22px; }
+
+/* Sprint 20 — 사진이 없는 표지는 회색 그라디언트 대신 크림→민트 점토 톤으로 통일 */
+.gallery-cover.is-plain {
+  background: linear-gradient(152deg, #FFFDF7 0%, #F0FAF4 46%, #D8F1E5 100%);
+}
+.home-hero-cover.is-plain {
+  background: linear-gradient(150deg, #FFFDF7 0%, #EBF9F2 56%, #D2EFE0 100%);
+}
+
+/* 사진이 없는 표지에는 사진 위 글자를 위한 어두운 베일이 필요 없다 — 민트 톤이 그대로 보이게 */
+.gallery-cover.is-plain .gallery-cover-veil { display: none; }
+.home-hero-cover.is-plain .home-hero-shade { display: none; }
+
+/* 사진 없는 표지의 아이콘은 점토 타일 위에 올려 브랜드 마크처럼 (빈 표지가 허전하지 않게) */
+.gallery-cover-emoji {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 24px;
+  background: rgba(255, 253, 247, 0.82);
+  box-shadow: var(--clay-soft), var(--clay-light);
+  color: var(--green-deep);
+  opacity: 1;
+}
+.gallery-cover-emoji .oo-ic { width: 32px; height: 32px; }
+.group-tile-emoji .oo-ic { width: 40px; height: 40px; }

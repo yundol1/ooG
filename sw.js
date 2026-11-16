@@ -11,15 +11,15 @@
  *  · index.html 을 직접 열었다면(file://) Service Worker 는 등록되지 않는다 — 그때도 앱은 그대로 동작한다.
  * ========================================================================== */
 
-const CACHE_VERSION = 'oog-shell-v19-1';
+const CACHE_VERSION = 'oog-shell-v20-1';
 const SHELL_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
   './css/fonts/PretendardVariable.woff2',
+  './js/icons.js',
   './js/store.js',
-  './js/media.js',
   './js/app.js',
   './icons/icon-180.png',
   './icons/icon-192.png',

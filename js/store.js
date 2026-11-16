@@ -5,14 +5,14 @@
  * "Unified State Tree for Seamless A-C-D Modular Integration"
  *
  *   A (프로필)  ──┐
- *   B (그룹)    ──┼──▶  feedPosts / customTags  ──▶  D (1:1 매칭) ──▶ E (채팅)
+ *   B (그룹)    ──┼──·  feedPosts / customTags  ──·  D (1:1 매칭) ──· E (채팅)
  *   C (피드)    ──┘
  *
  * 모든 화면(탭)은 이 저장소 하나만 바라보고, 저장소가 바뀌면 구독자(화면)가
  * 자동으로 다시 그려집니다. 새 기능(매칭·채팅·결제·알림)을 붙일 때도
  * 화면 코드를 고치지 않고 여기에 상태 + 액션만 추가하면 됩니다.
  *
- * ▶ 사용법
+ * · 사용법
  *   const store = window.appStore;
  *   store.subscribe(state => { ... });            // 상태 변경 구독
  *   store.getPosts('my');                         // 필터별 피드 조회
@@ -30,7 +30,7 @@
  *   store.updateProfile({nickname, bio, ...});     // 마이프로필 수정
  *   store.createGroup({name, hobbyId, ...});       // 새 소모임 개설
  *
- * ▶ Sprint 4.5 — 알림 · 가입 심사
+ * · Sprint 4.5 — 알림 · 가입 심사
  *   store.dispatchNotification({kind, title, body, roomId, context});
  *                                                 // 푸시 채널 결정(system/inapp/suppressed)
  *   store.isDndActive();                          // 지금이 야간 방해 금지 시간인가
@@ -42,7 +42,7 @@
  *   store.getMyApplications();                    // 내가 낸 신청 + 취소
  *   store.updateGroupJoinPolicy(groupId, {...});  // 가입 방식·나이 제한·가입 질문 변경
  *
- * ▶ Sprint 5 — 알림 범위 확장 · 알림 종류별 토글 · PWA
+ * · Sprint 5 — 알림 범위 확장 · 알림 종류별 토글 · PWA
  *   store.getNotificationCategories();            // 알림 종류 3종(chat/reaction/membership) 메타
  *   store.updateNotificationSettings({channels:{reaction:false}});   // 종류별 ON/OFF
  *   store.notifyPostReaction({source, postId, kind});  // 내 글의 좋아요·댓글 알림
@@ -52,7 +52,7 @@
  *   store.simulateJoinRequest(groupId);          // 시뮬레이션: 새 신청서 도착
  *   store.getGroupAgeBadge(groupId);             // 카드 겉면 나이 배지('2030만' …)
  *
- * ▶ Sprint 6 — 탐색 나이 필터 · 알림 5종 세분화 · 활동 로그
+ * · Sprint 6 — 탐색 나이 필터 · 알림 5종 세분화 · 활동 로그
  *   store.getExploreAgeFilters();                 // 탐색 나이 필터 메타
  *   store.getExploreFeed('all', '', {page, limit}, '2030');  // 나이 조건까지 걸러 보기
  *   store.getNotificationCategories();            // 알림 종류 5종(chat/like/comment/join_request/join_result)
@@ -60,7 +60,7 @@
  *   store.getActivityStats();                     // 활동 요약(종류별 건수 · 이번 주/이번 달)
  *   store.simulateChatReply();                    // 시뮬레이션: 새 1:1 메시지 도착
  *
- * ▶ Sprint 7 — 내 나이 맞춤 · 지역 탐색 · 실시간 베스트 · 필터 기억 · 알림함 강화
+ * · Sprint 7 — 내 나이 맞춤 · 지역 탐색 · 실시간 베스트 · 필터 기억 · 알림함 강화
  *   store.getExploreAgeFilters();                 // + 'for_me'(내 나이에 맞는 모임만)
  *   store.getForMeAgeProfile();                   // 내 나이 기준 가입 가능 나이대
  *   store.getExploreRegions();                    // 지역(생활권) 9종 메타
@@ -72,7 +72,7 @@
  *   store.getNotifications({category, unreadOnly}); // 알림함 종류 필터 · 안 읽은 것만
  *   store.updateNotificationSettings({dndExceptions:{join_result:true}}); // 야간 예외
  *
- * ▶ Sprint 9 — 알림 묶음·주간 요약 · 활동 로그 내보내기 · Top 10 진입 알림
+ * · Sprint 9 — 알림 묶음·주간 요약 · 활동 로그 내보내기 · Top 10 진입 알림
  *   store.getExploreTypeFilters();                // 상단 1줄 종류 세그먼트(전체/사람/모임/글)
  *   store.getExploreHobbyFilters();              // 통합 필터 시트의 취미 8종
  *   store.checkHotEntryNotifications();           // 내 글 실베 **Top 10** 진입 시 1회 알림
@@ -81,17 +81,17 @@
  *   store.deleteNotificationsByIds([...]);       // 묶음 단위 지우기(되돌리기 지원)
  *   store.exportActivityLog({range:'7d', format:'csv'});  // 활동 로그 텍스트/CSV 내보내기
  *
- * ▶ Sprint 10 — 첫 실행은 조용히 · 알림 묶음 펼치기
+ * · Sprint 10 — 첫 실행은 조용히 · 알림 묶음 펼치기
  *   store.primeHotEntryBaseline();                // 첫 실행 기준선: 이미 Top 10 안인 내 글은 조용히 기록만
  *   store.checkHotEntryNotifications();           // **새로** Top 10에 든 내 글만 알림(기준선 제외)
  *   store.getHotEntryBaseline();                  // 기준선 기록(언제·몇 건을 조용히 넘겼는지)
  *   store.getGroupedNotifications({category});   // + items[](누가·무슨 반응·언제) — 펼쳐보기용
  *
- * ▶ Sprint 11 — 알림함 4차 (11/15 "리포트는 아예 없애" · "주간 알림도 필요없어" 반영)
+ * · Sprint 11 — 알림함 4차 (11/15 "리포트는 아예 없애" · "주간 알림도 필요없어" 반영)
  *   store.getGroupedNotifications({mergeRoutine:true});  // 실베 진입·시스템을 종류별 한 칸으로
  *   주간 알림 요약·활동 월간 리포트는 **사용자 지시로 제거**했다(다시 만들지 않는다).
  *
- * ▶ Sprint 15 — 인스타그램형 4탭 (피드 · 탐색 · 디엠 · 내정보)
+ * · Sprint 15 — 인스타그램형 4탭 (피드 · 탐색 · 디엠 · 내정보)
  *   store.getGroupNotices(groupId);               // 모임 공지(고정 우선) — 작성·고정은 그룹장+부방장
  *   store.getGroupNoticePermission(groupId);      // { role:'leader'|'deputy'|'member', canManage }
  *   store.createGroupNotice(groupId, '공지 문구');  // 그룹장·부방장만
@@ -102,7 +102,7 @@
  *   store.getMyFeedPosts();                       // 내정보 탭 '내 피드'(내가 올린 글)
  *   store.setGroupEventRsvp(id, 'yes');           // 정원이 차면 자동으로 '대기'로 들어간다
  *
- * ▶ Sprint 14 — 홈 = 내 모임 허브 (11/15 14:55 "홈이 우리 그룹의 사진 피드·단체 채팅·술모임")
+ * · Sprint 14 — 홈 = 내 모임 허브 (11/15 14:55 "홈이 우리 그룹의 사진 피드·단체 채팅·술모임")
  *   store.getHomeGroupId();                       // 홈에서 보고 있는 모임(마지막으로 열었던 모임)
  *   store.setHomeGroupId(groupId);                // 홈 모임 전환(가입한 모임만)
  *   store.getHomeGroups();                        // 내 모임 + 다음 일정·단체 채팅·사진 수
@@ -144,17 +144,17 @@ const atClock = (daysFromToday, hour, minute = 0) => {
 /* Sprint 14 — 홈(내 모임 허브)의 오프라인 모임·술모임 종류.
    네이버 밴드·당근모임처럼 '모임 안의 약속'을 카드로 올리고 참석을 누른다. */
 const GROUP_EVENT_KINDS = [
-  { id: 'drink', label: '술모임', emoji: '🍻', tone: 'drink' },
-  { id: 'workout', label: '운동·번개', emoji: '🏃', tone: 'workout' },
-  { id: 'meal', label: '밥모임', emoji: '🍚', tone: 'meal' },
-  { id: 'etc', label: '기타', emoji: '📌', tone: 'etc' }
+  { id: 'drink', label: '술모임', icon: 'beer', tone: 'drink' },
+  { id: 'workout', label: '운동·번개', icon: 'run', tone: 'workout' },
+  { id: 'meal', label: '밥모임', icon: 'meal', tone: 'meal' },
+  { id: 'etc', label: '기타', icon: 'pushpin', tone: 'etc' }
 ];
 
 /* 참석 상태 — 홈의 일정 카드에서 누르는 세 가지. */
 const GROUP_EVENT_RSVPS = [
-  { id: 'yes', label: '참석', emoji: '✅', tone: 'yes' },
-  { id: 'maybe', label: '대기', emoji: '🤔', tone: 'maybe' },
-  { id: 'no', label: '불참', emoji: '✖️', tone: 'no' }
+  { id: 'yes', label: '참석', icon: 'checkCircle', tone: 'yes' },
+  { id: 'maybe', label: '대기', icon: 'maybe', tone: 'maybe' },
+  { id: 'no', label: '불참', icon: 'closeCircle', tone: 'no' }
 ];
 
 /* Sprint 15 — 모임 공지(고정) · 부방장 · 그룹 내 1:1 대화 정책.
@@ -166,7 +166,7 @@ const GROUP_NOTICE_SEED = [
   {
     id: 'ntc_cf_1',
     groupId: 'grp_crossfit_1',
-    text: '이번 주 금요일 와드 끝나고 단체 사진 찍어요 📸 운동복 맞춰 입고 와주세요!',
+    text: '이번 주 금요일 와드 끝나고 단체 사진 찍어요 운동복 맞춰 입고 와주세요!',
     pinned: true,
     authorId: 'user_rookie',
     authorName: '루키',
@@ -300,11 +300,11 @@ const GROUP_DM_SEED = { grp_climbing_1: false };
 
 /* 멤버 아바타의 기본 색조 — 이름을 지어내지 않고, 실제 멤버의 이니셜 원에만 쓴다. */
 const GROUP_ROSTER_HOBBIES = [
-  { name: '크로스핏', emoji: '🏋️' }, { name: '러닝', emoji: '🏃' },
-  { name: '클라이밍', emoji: '🧗' }, { name: '헬스', emoji: '💪' },
-  { name: '수영', emoji: '🏊' }, { name: '보드게임', emoji: '🎲' },
-  { name: '영화', emoji: '🎬' }, { name: '카페', emoji: '☕' },
-  { name: '게임', emoji: '🎮' }, { name: '등산', emoji: '⛰️' }
+  { name: '크로스핏', icon: 'dumbbell' }, { name: '러닝', icon: 'run' },
+  { name: '클라이밍', icon: 'climb' }, { name: '헬스', icon: 'barbell' },
+  { name: '수영', icon: 'swim' }, { name: '보드게임', icon: 'dice' },
+  { name: '영화', icon: 'movie' }, { name: '카페', icon: 'cup' },
+  { name: '게임', icon: 'gamepad' }, { name: '등산', icon: 'mountain' }
 ];
 const GROUP_ROSTER_GRADIENTS = [
   'linear-gradient(135deg, #10B981 0%, #047857 100%)',
@@ -340,7 +340,7 @@ const NOTIFICATION_CATEGORIES = [
   {
     id: 'chat',
     label: '1:1 대화',
-    emoji: '💬',
+    icon: 'chat',
     desc: '대화방에 새 메시지가 도착하면 알려드려요',
     kinds: ['chat'],
     tone: 'chat'
@@ -348,7 +348,7 @@ const NOTIFICATION_CATEGORIES = [
   {
     id: 'like',
     label: '좋아요',
-    emoji: '❤️',
+    icon: 'heart',
     desc: '내 게시글에 하트가 달리면 알려드려요',
     kinds: ['like'],
     tone: 'like'
@@ -356,7 +356,7 @@ const NOTIFICATION_CATEGORIES = [
   {
     id: 'comment',
     label: '댓글',
-    emoji: '🗨️',
+    icon: 'comment',
     desc: '내 게시글에 댓글이 달리면 알려드려요',
     kinds: ['comment'],
     tone: 'comment'
@@ -364,7 +364,7 @@ const NOTIFICATION_CATEGORIES = [
   {
     id: 'join_request',
     label: '모임 가입 신청',
-    emoji: '👥',
+    icon: 'users',
     desc: '내 모임에 새 가입 신청서가 도착하면 알려드려요',
     kinds: ['join_request'],
     tone: 'join_request'
@@ -372,7 +372,7 @@ const NOTIFICATION_CATEGORIES = [
   {
     id: 'join_result',
     label: '모임 가입 결과',
-    emoji: '✅',
+    icon: 'checkCircle',
     desc: '내가 낸 가입 신청이 수락·거절되면 알려드려요',
     kinds: ['join_result'],
     tone: 'join_result'
@@ -380,7 +380,7 @@ const NOTIFICATION_CATEGORIES = [
   {
     id: 'hot',
     label: '실베 진입',
-    emoji: '🔥',
+    icon: 'fire',
     desc: '내 글이 실베 Top 10에 **새로** 들어오면 한 번 알려드려요 (첫 실행은 조용히 넘어가요)',
     kinds: ['hot_entry'],
     tone: 'hot'
@@ -457,47 +457,47 @@ function resolveNotificationActor(entry) {
  * ------------------------------------------------------------------------- */
 const EXPLORE_REGIONS = [
   {
-    id: 'gwanak', name: '동대문·중랑', short: '동대문', emoji: '🌳',
+    id: 'gwanak', name: '동대문·중랑', short: '동대문', icon: 'tree',
     label: '장안 · 전농 · 답십리 · 청량리 · 회기',
     keywords: ['동대문', '장안', '전농', '답십리', '청량리', '회기', '중랑', '면목']
   },
   {
-    id: 'gangnam', name: '강남·서초', short: '강남', emoji: '🏙️',
+    id: 'gangnam', name: '강남·서초', short: '강남', icon: 'building',
     label: '강남 · 대치 · 선릉 · 신논현 · 서초 · 양재',
     keywords: ['강남', '대치', '선릉', '신논현', '서초', '양재', '삼성동', '청담']
   },
   {
-    id: 'mapo', name: '마포·홍대', short: '마포', emoji: '🎨',
+    id: 'mapo', name: '마포·홍대', short: '마포', icon: 'palette',
     label: '홍대 · 합정 · 연남 · 상수 · 공덕',
     keywords: ['마포', '홍대', '합정', '연남', '상수', '공덕', '서교']
   },
   {
-    id: 'yongsan', name: '용산·이태원', short: '용산', emoji: '🌉',
+    id: 'yongsan', name: '용산·이태원', short: '용산', icon: 'bridge',
     label: '용산 · 이태원 · 한남 · 경리단',
     keywords: ['용산', '이태원', '한남', '경리단', '이촌', '남영']
   },
   {
-    id: 'jongno', name: '종로·중구', short: '종로', emoji: '🏯',
+    id: 'jongno', name: '종로·중구', short: '종로', icon: 'temple',
     label: '종로 · 을지로 · 광화문 · 명동 · 충무로',
     keywords: ['종로', '중구', '을지로', '광화문', '명동', '충무로', '시청']
   },
   {
-    id: 'seongdong', name: '성동·건대', short: '성동', emoji: '🌿',
+    id: 'seongdong', name: '성동·건대', short: '성동', icon: 'leaf',
     label: '성수 · 왕십리 · 건대 · 광진 · 자양',
     keywords: ['성동', '성수', '왕십리', '건대', '광진', '자양', '뚝섬', '화양']
   },
   {
-    id: 'yeongdeungpo', name: '영등포·여의도', short: '영등포', emoji: '🏞️',
+    id: 'yeongdeungpo', name: '영등포·여의도', short: '영등포', icon: 'riverside',
     label: '여의도 · 영등포 · 당산 · 신도림',
     keywords: ['영등포', '여의도', '당산', '신도림', '문래', '샛강']
   },
   {
-    id: 'gyeonggi', name: '경기·수도권', short: '경기', emoji: '🚇',
+    id: 'gyeonggi', name: '경기·수도권', short: '경기', icon: 'train',
     label: '판교 · 분당 · 수원 · 인천 · 일산',
     keywords: ['경기', '판교', '분당', '수원', '인천', '일산', '안양', '부천', '성남', '고양', '광교']
   },
   {
-    id: 'online', name: '전국·온라인', short: '온라인', emoji: '🌐',
+    id: 'online', name: '전국·온라인', short: '온라인', icon: 'globe',
     label: '디스코드 · 전국 어디서나',
     keywords: ['전국', '디스코드', '온라인']
   }
@@ -520,11 +520,11 @@ const REGION_DISTANCE_KM = {
 };
 
 const EXPLORE_RADIUS_OPTIONS = [
-  { id: 'all', name: '전체', km: null, emoji: '🧭', desc: '거리 제한 없이' },
-  { id: '1', name: '1km', km: 1, emoji: '🚶', desc: '걸어서 10분' },
-  { id: '3', name: '3km', km: 3, emoji: '🚲', desc: '자전거 10분' },
-  { id: '5', name: '5km', km: 5, emoji: '🚌', desc: '버스 20분' },
-  { id: '10', name: '10km', km: 10, emoji: '🚇', desc: '지하철 30분' }
+  { id: 'all', name: '전체', km: null, icon: 'compass', desc: '거리 제한 없이' },
+  { id: '1', name: '1km', km: 1, icon: 'walk', desc: '걸어서 10분' },
+  { id: '3', name: '3km', km: 3, icon: 'bike', desc: '자전거 10분' },
+  { id: '5', name: '5km', km: 5, icon: 'bus', desc: '버스 20분' },
+  { id: '10', name: '10km', km: 10, icon: 'train', desc: '지하철 30분' }
 ];
 
 /** 반경 옵션 id 가 실제 정의된 값인가. */
@@ -646,7 +646,7 @@ const SIMULATED_PERSONAS = [
  * currentUser : { id, nickname, handle, role, membership, avatarGradient,
  *                 location, coords, hobbies, workoutSpec, bio,
  *                 joinedGroupIds[] }
- * group       : { id, name, category, categoryName, hobbyId, emoji,
+ * group       : { id, name, category, categoryName, hobbyId, icon,
  *                 location, distanceKm, memberCount, maxMembers, meetLabel,
  *                 privacyType, privacyLabel, description, tags[], rules,
  *                 leaderId, leaderName, customTags[], ratio, members[] }
@@ -660,10 +660,10 @@ const SIMULATED_PERSONAS = [
  *                 createdAt }               ← createdAt 은 ISO 문자열
  * comment     : { id, authorId, authorName, text, createdAt }
  * matchProfile: { id, nickname, age, distanceKm, location,
- *                 hobbyIds[], hobbyLabel, hobbyEmoji,   ← 탐색 취미 필터의 기준
- *                 badge,                                ← 카드 좌상단 감각 배지 ("🎮 롤 다이아몬드")
+ *                 hobbyIds[], hobbyLabel, hobbyIcon,   ← 탐색 취미 필터의 기준
+ *                 badge,                                ← 카드 좌상단 감각 배지 (아이콘 + '롤 다이아몬드')
  *                 hobbyStyle,                           ← A: 취미 스타일·구력 ("롤 다이아 · 원딜")
- *                 cycle, cycleEmoji,                    ← 선호 활동 주기·시간대
+ *                 cycle, cycleIcon,                    ← 선호 활동 주기·시간대
  *                 hobbies[], specChips[{icon,label,value}], bio,
  *                 photoUrl, avatarText, avatarGradient, ratio,
  *                 likesMe, verified }
@@ -723,7 +723,7 @@ const defaultInitialState = {
     hobbies: ['크로스핏', '클라이밍'],
     hobbyIds: ['fitness', 'climb'],
     activity: '평일 저녁',
-    activityEmoji: '🌆',
+    activityIcon: '',
     workoutSpec: '크로스핏 6개월차 · 푸시업 정자세 훈련 중',
     bio: '성수동 거주. 퇴근 후 레벨업 크로스핏 박스에서 땀 흘립니다. 잡생각 없애는 덴 운동이 최고!',
     /* 루키이 '그룹장'인 모임 + 단순 가입 모임을 함께 둔다 (권한 분기 검증용) */
@@ -737,14 +737,14 @@ const defaultInitialState = {
    * 같은 취미로 묶인다(예: 크로스핏 모임과 헬스 모임이 모두 'fitness').
    * ------------------------------------------------------------------------- */
   exploreHobbyChips: [
-    { id: 'game', name: '게임', emoji: '🎮' },
-    { id: 'run', name: '러닝', emoji: '🏃' },
-    { id: 'cafe', name: '카페/맛집', emoji: '☕' },
-    { id: 'movie', name: '영화/전시', emoji: '🎬' },
-    { id: 'boardgame', name: '보드게임', emoji: '🎲' },
-    { id: 'fitness', name: '크로스핏', emoji: '🏋️' },
-    { id: 'swim', name: '수영', emoji: '🏊' },
-    { id: 'climb', name: '클라이밍', emoji: '🧗' }
+    { id: 'game', name: '게임', icon: 'gamepad' },
+    { id: 'run', name: '러닝', icon: 'run' },
+    { id: 'cafe', name: '카페/맛집', icon: 'cup' },
+    { id: 'movie', name: '영화/전시', icon: 'movie' },
+    { id: 'boardgame', name: '보드게임', icon: 'dice' },
+    { id: 'fitness', name: '크로스핏', icon: 'dumbbell' },
+    { id: 'swim', name: '수영', icon: 'swim' },
+    { id: 'climb', name: '클라이밍', icon: 'climb' }
   ],
 
   /* ---------------- 탐색 지역(생활권) — Sprint 7 ----------------
@@ -799,10 +799,10 @@ const defaultInitialState = {
    * tone      : 배지 색조 키 (CSS .age-badge.age-2030 …)
    * ------------------------------------------------------------------------- */
   ageLimitOptions: [
-    { id: 'all', label: '제한 없음 (전 연령)', short: '전 연령', badge: '👥 전 연령', cardBadge: '전 연령', tone: 'all', min: 0, max: 200 },
-    { id: '20s', label: '20대만 (20~29세)', short: '20대', badge: '🎂 20대만', cardBadge: '20대만', tone: '20s', min: 20, max: 29 },
-    { id: '2030', label: '2030 (20~39세)', short: '2030', badge: '🎂 2030만', cardBadge: '2030만', tone: '2030', min: 20, max: 39 },
-    { id: '30plus', label: '30대 이상 (30세~)', short: '30대 이상', badge: '🎂 30대+', cardBadge: '30대+', tone: '30plus', min: 30, max: 200 }
+    { id: 'all', label: '제한 없음 (전 연령)', short: '전 연령', badge: '전 연령', cardBadge: '전 연령', tone: 'all', min: 0, max: 200 },
+    { id: '20s', label: '20대만 (20~29세)', short: '20대', badge: '20대만', cardBadge: '20대만', tone: '20s', min: 20, max: 29 },
+    { id: '2030', label: '2030 (20~39세)', short: '2030', badge: '2030만', cardBadge: '2030만', tone: '2030', min: 20, max: 39 },
+    { id: '30plus', label: '30대 이상 (30세~)', short: '30대 이상', badge: '30대+', cardBadge: '30대+', tone: '30plus', min: 30, max: 200 }
   ],
 
   /* ---------------- 가입 질문 프리셋 (Sprint 4.5) ----------------
@@ -825,7 +825,7 @@ const defaultInitialState = {
       hobbyId: 'fitness',
       meetLabel: '월·수·금 19:10',
       ratio: 'wide',
-      emoji: '🏋️',
+      icon: 'dumbbell',
       coverGradient: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
       location: '성동구 성수동',
       distanceKm: 0.2,
@@ -851,7 +851,7 @@ const defaultInitialState = {
       hobbyId: 'fitness',
       meetLabel: '주말 원정 · 상시',
       ratio: 'square',
-      emoji: '💪',
+      icon: 'barbell',
       coverGradient: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
       location: '성동구 서울숲/한양대',
       distanceKm: 1.8,
@@ -875,7 +875,7 @@ const defaultInitialState = {
       hobbyId: 'climb',
       meetLabel: '평일 저녁 · 주말 낮',
       ratio: 'wide',
-      emoji: '🧗',
+      icon: 'climb',
       coverGradient: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
       location: '성동구 성수역',
       distanceKm: 0.5,
@@ -899,7 +899,7 @@ const defaultInitialState = {
       hobbyId: 'run',
       meetLabel: '화·목 20:00',
       ratio: 'square',
-      emoji: '🏃',
+      icon: 'run',
       coverGradient: 'linear-gradient(135deg, #F1F5F9 0%, #E0F2FE 100%)',
       location: '여의도 한강공원',
       distanceKm: 6.4,
@@ -923,7 +923,7 @@ const defaultInitialState = {
       hobbyId: 'swim',
       meetLabel: '월·수·금 06:00',
       ratio: 'wide',
-      emoji: '🏊',
+      icon: 'swim',
       coverGradient: 'linear-gradient(135deg, #ECFEFF 0%, #CFFAFE 100%)',
       location: '성동구 뚝섬',
       distanceKm: 3.2,
@@ -947,7 +947,7 @@ const defaultInitialState = {
       hobbyId: 'game',
       meetLabel: '상시 · 디스코드',
       ratio: 'square',
-      emoji: '🎮',
+      icon: 'gamepad',
       coverGradient: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
       location: '전국 / 디스코드',
       distanceKm: 0,
@@ -971,7 +971,7 @@ const defaultInitialState = {
       hobbyId: 'hike',
       meetLabel: '토 08:00 출발',
       ratio: 'wide',
-      emoji: '⛰️',
+      icon: 'mountain',
       coverGradient: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
       location: '서울 아차산/왕십리',
       distanceKm: 2.1,
@@ -995,7 +995,7 @@ const defaultInitialState = {
       hobbyId: 'boardgame',
       meetLabel: '토·일 14:00',
       ratio: 'square',
-      emoji: '🎲',
+      icon: 'dice',
       coverGradient: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
       location: '서초구 왕십리/강남',
       distanceKm: 4.5,
@@ -1019,7 +1019,7 @@ const defaultInitialState = {
       hobbyId: 'movie',
       meetLabel: '금·토 심야',
       ratio: 'wide',
-      emoji: '🎬',
+      icon: 'movie',
       coverGradient: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
       location: '영등포/용산',
       distanceKm: 5.1,
@@ -1043,7 +1043,7 @@ const defaultInitialState = {
       hobbyId: 'cafe',
       meetLabel: '주말 11:00~15:00',
       ratio: 'square',
-      emoji: '☕',
+      icon: 'cup',
       coverGradient: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
       location: '성동구 성수·서울숲',
       distanceKm: 1.1,
@@ -1068,7 +1068,7 @@ const defaultInitialState = {
       hobbyId: 'movie',
       meetLabel: '금·토 심야',
       ratio: 'wide',
-      emoji: '🎬',
+      icon: 'movie',
       coverGradient: 'linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%)',
       location: '마포구 홍대/합정',
       regionId: 'mapo',
@@ -1094,7 +1094,7 @@ const defaultInitialState = {
       hobbyId: 'run',
       meetLabel: '화·목 06:30',
       ratio: 'square',
-      emoji: '🏃',
+      icon: 'run',
       coverGradient: 'linear-gradient(135deg, #F1F5F9 0%, #E0F2FE 100%)',
       location: '성동구 성수/뚝섬',
       regionId: 'seongdong',
@@ -1120,7 +1120,7 @@ const defaultInitialState = {
       hobbyId: 'boardgame',
       meetLabel: '일 15:00',
       ratio: 'square',
-      emoji: '🎲',
+      icon: 'dice',
       coverGradient: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
       location: '종로구 을지로/광화문',
       regionId: 'jongno',
@@ -1146,7 +1146,7 @@ const defaultInitialState = {
       hobbyId: 'climb',
       meetLabel: '평일 20:00',
       ratio: 'wide',
-      emoji: '🧗',
+      icon: 'climb',
       coverGradient: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
       location: '용산구 이태원/한남',
       regionId: 'yongsan',
@@ -1172,7 +1172,7 @@ const defaultInitialState = {
       hobbyId: 'run',
       meetLabel: '월·수 20:00',
       ratio: 'square',
-      emoji: '🏃',
+      icon: 'run',
       coverGradient: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)',
       location: '경기 성남 판교/분당',
       regionId: 'gyeonggi',
@@ -1202,13 +1202,13 @@ const defaultInitialState = {
       authorAvatarText: '루',
       authorGradient: 'linear-gradient(135deg, #10B981, #047857)',
       tag: 'WOD기록',
-      caption: '오늘 19:10 WOD 완주! 물구나무 푸시업은 아직 무리지만 정자세 푸시업 50개는 다 채웠습니다 🔥 샤워하고 나오니 잡생각이 싹 사라지네요.',
+      caption: '오늘 19:10 WOD 완주! 물구나무 푸시업은 아직 무리지만 정자세 푸시업 50개는 다 채웠습니다 샤워하고 나오니 잡생각이 싹 사라지네요.',
       mediaCaption: '20.11 WOD · 22분 캡',
       likes: 14,
       likedByMe: false,
       bookmarkedByMe: false,
       comments: [
-        { id: 'c_cf_01_1', authorId: 'leader_jun', authorName: '코치준', text: '오늘 푸시업 자세 진짜 좋아졌어요. 내일 스쿼트 클린 가봅시다 👏', createdAt: ago(12 * MINUTE) },
+        { id: 'c_cf_01_1', authorId: 'leader_jun', authorName: '코치준', text: '오늘 푸시업 자세 진짜 좋아졌어요. 내일 스쿼트 클린 가봅시다', createdAt: ago(12 * MINUTE) },
         { id: 'c_cf_01_2', authorId: 'user_kettle', authorName: '케틀벨러버', text: '50개 채우셨다고요? 저는 30개에서 뻗었는데 ㅋㅋㅋ', createdAt: ago(8 * MINUTE) },
         { id: 'c_cf_01_3', authorId: 'user_toe', authorName: '오늘의토우', text: '내일 같이 가요! 저 19시 반에 도착합니다', createdAt: ago(3 * MINUTE) }
       ],
@@ -1222,7 +1222,7 @@ const defaultInitialState = {
       authorAvatarText: '준',
       authorGradient: 'linear-gradient(135deg, #0F172A, #334155)',
       tag: '오운완',
-      caption: '데드리프트 140kg 3회 성공. 무게보다 등 각도가 먼저라는 말, 이제 좀 알 것 같습니다. 다들 부상 없이 갑시다 💪',
+      caption: '데드리프트 140kg 3회 성공. 무게보다 등 각도가 먼저라는 말, 이제 좀 알 것 같습니다. 다들 부상 없이 갑시다',
       mediaCaption: '3RM 갱신',
       likes: 32,
       likedByMe: true,
@@ -1275,7 +1275,7 @@ const defaultInitialState = {
       authorAvatarText: '아',
       authorGradient: 'linear-gradient(135deg, #334155, #0F172A)',
       tag: '3대측정',
-      caption: '3대 500 도전 8주차. 스쿼트 170 / 벤치 115 / 데드 175 = 460kg. 다음 달에 500 찍고 인증샷 올립니다 🔥',
+      caption: '3대 500 도전 8주차. 스쿼트 170 / 벤치 115 / 데드 175 = 460kg. 다음 달에 500 찍고 인증샷 올립니다',
       mediaCaption: '8주차 · 460kg',
       likes: 41,
       likedByMe: false,
@@ -1343,7 +1343,7 @@ const defaultInitialState = {
   ],
 
   /* ---------------- 공개 취미 게시글 (Sprint 4 — 탐색 피드의 세 번째 카드) ----------------
-   * ⚠️ 프라이버시 원칙: feedPosts 는 '가입한 모임원에게만' 보이는 사진·글이고,
+   * 주의 — 프라이버시 원칙: feedPosts 는 '가입한 모임원에게만' 보이는 사진·글이고,
    *    explorePosts 는 모임 밖에서도 보이는 **공개 커뮤니티 글**이다. 두 컬렉션을 분리해
    *    모임 사진이 탐색 피드로 새어 나가지 않는다.
    * 작성자 중 일부(match_junho, match_minwoo …)는 탐색 피드의 '사람 카드'와 같은 사람이라
@@ -1352,7 +1352,7 @@ const defaultInitialState = {
   explorePosts: [
     /* Sprint 8 — 내가 쓴 공개 글 2건.
      * 11/14 22:59 "내 글 실베 진입 알림"을 바로 확인할 수 있도록 루키의 글이 실베 근처(6위)에 둔다.
-     * 알림 설정의 '🔥 실베 진입' 시뮬레이션을 누르면 반응이 몰려 10위 안으로 들어온다. */
+     * 알림 설정의 '실베 진입' 시뮬레이션을 누르면 반응이 몰려 10위 안으로 들어온다. */
     {
       id: 'pub_mine_wod',
       authorId: 'user_rookie',
@@ -1434,7 +1434,7 @@ const defaultInitialState = {
       likedByMe: true,
       comments: [
         { id: 'pc_r1', authorName: '야간비행', text: '샛강 코스도 한번 와보세요 밤에 시원합니다', createdAt: ago(3 * HOUR) },
-        { id: 'pc_r2', authorId: 'user_rookie', authorName: '루키', text: '토요일 아침에 같이 뛰어요! 페이스 맞춰서 갈게요 🏃', createdAt: ago(2 * HOUR + 10 * MINUTE) }
+        { id: 'pc_r2', authorId: 'user_rookie', authorName: '루키', text: '토요일 아침에 같이 뛰어요! 페이스 맞춰서 갈게요', createdAt: ago(2 * HOUR + 10 * MINUTE) }
       ],
       createdAt: ago(3 * HOUR)
     },
@@ -1766,20 +1766,20 @@ const defaultInitialState = {
       location: '성수동',
       hobbyIds: ['fitness'],
       hobbyLabel: '크로스핏',
-      hobbyEmoji: '🏋️',
+      hobbyIcon: '',
       hobbyStyle: '레벨업 박스 성수점 코치 · 8년차',
       cycle: '평일 19시',
-      cycleEmoji: '🔁',
+      cycleIcon: '',
       hobbies: ['크로스핏', '역도', '자세교정'],
       specChips: [
-        { icon: '🏋️', label: '경력', value: '코치 8년차' },
-        { icon: '⏰', label: '수업', value: '평일 19:10반' },
-        { icon: '🎯', label: '전문', value: '클린 · 스내치' }
+        { icon: 'dumbbell', label: '경력', value: '코치 8년차' },
+        { icon: 'clock', label: '수업', value: '평일 19:10반' },
+        { icon: 'target', label: '전문', value: '클린 · 스내치' }
       ],
       bio: '성수박스에서 19:10반을 맡고 있습니다. 무게보다 자세 먼저, 부상 없이 오래 가는 게 목표예요.',
       avatarText: '준',
       avatarGradient: 'linear-gradient(135deg, #0F172A 0%, #334155 100%)',
-      badge: '🏋️ 박스 코치 8년차',
+      badge: '박스 코치 8년차',
       ratio: 'tall',
       likesMe: false,
       verified: true,
@@ -1793,20 +1793,20 @@ const defaultInitialState = {
       location: '전국 / 디스코드',
       hobbyIds: ['game'],
       hobbyLabel: '게임',
-      hobbyEmoji: '🎮',
+      hobbyIcon: '',
       hobbyStyle: '롤 골드 · 미드 · 칼바람 전문',
       cycle: '평일 심야',
-      cycleEmoji: '🌙',
+      cycleIcon: '',
       hobbies: ['롤', '칼바람', '내전'],
       specChips: [
-        { icon: '🎮', label: '티어', value: '골드 Ⅱ · 미드' },
-        { icon: '🌙', label: '주 활동', value: '평일 밤 11시~' },
-        { icon: '🎧', label: '성향', value: '즐겜 · 디스코드' }
+        { icon: 'gamepad', label: '티어', value: '골드 Ⅱ · 미드' },
+        { icon: 'moon', label: '주 활동', value: '평일 밤 11시~' },
+        { icon: 'headphones', label: '성향', value: '즐겜 · 디스코드' }
       ],
       bio: '퇴근하면 디스코드부터 켭니다. 랭겜은 진지하게, 칼바람은 웃으면서 해요.',
       avatarText: '미',
       avatarGradient: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)',
-      badge: '🎮 골드 미드 · 칼바람',
+      badge: '골드 미드 · 칼바람',
       ratio: 'mid',
       likesMe: false,
       verified: false,
@@ -1815,7 +1815,7 @@ const defaultInitialState = {
   ],
 
   /* ---------------- 실시간 베스트(실베) 순위 기억 — Sprint 8 ----------------
-   * 11/14 22:59 사용자 지시: "아니 그냥 알림만 보내도록" · 순위 변동(▲▼/NEW) 표시.
+   * 11/14 22:59 사용자 지시: "아니 그냥 알림만 보내도록" · 순위 변동(위·아래 화살표/NEW) 표시.
    * hotRankSnapshots : { '지역|취미': { at, ranks: {postId: 순위} } } — 직전 집계.
    *                    저장된 스냅샷이 없으면 '3시간 전' 집계를 기준선으로 계산한다(아래 getHotPosts).
    * hotEntryState    : { postId: { inside, rank, notifiedAt, baseline } } — 내 글의 실베 진입 알림 중복 방지.
@@ -1844,20 +1844,20 @@ const defaultInitialState = {
       location: '성수동',
       hobbyIds: ['game'],
       hobbyLabel: '게임',
-      hobbyEmoji: '🎮',
+      hobbyIcon: '',
       hobbyStyle: '롤 다이아몬드 · 원딜',
       cycle: '평일 심야',
-      cycleEmoji: '🌙',
+      cycleIcon: '',
       hobbies: ['롤', '칼바람', '디스코드'],
       specChips: [
-        { icon: '🎮', label: '롤 티어', value: '다이아 Ⅳ · 원딜' },
-        { icon: '🌙', label: '플레이 시간', value: '평일 밤 11시~' },
-        { icon: '🎧', label: '성향', value: '승패보다 분위기' }
+        { icon: 'gamepad', label: '롤 티어', value: '다이아 Ⅳ · 원딜' },
+        { icon: 'night', label: '플레이 시간', value: '평일 밤 11시~' },
+        { icon: 'headphones', label: '성향', value: '승패보다 분위기' }
       ],
       bio: '퇴근하고 디스코드 켜서 칼바람 몇 판 하실 분? 랭겜은 진지하게, 칼바람은 웃으면서 해요.',
       avatarText: '준',
       avatarGradient: 'linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)',
-      badge: '🎮 롤 다이아 원딜',
+      badge: '롤 다이아 원딜',
       ratio: 'tall',
       likesMe: true,
       verified: true
@@ -1870,20 +1870,20 @@ const defaultInitialState = {
       location: '뚝섬한강',
       hobbyIds: ['run'],
       hobbyLabel: '러닝',
-      hobbyEmoji: '🏃',
+      hobbyIcon: '',
       hobbyStyle: '한강 나이트런 · 10K 5분 20초',
       cycle: '화·목 저녁',
-      cycleEmoji: '🌆',
+      cycleIcon: '',
       hobbies: ['나이트런', '10K', '러닝크루'],
       specChips: [
-        { icon: '🏃', label: '페이스', value: '10K 52분 (5:20/km)' },
-        { icon: '🌆', label: '러닝 시간', value: '화·목 20:00' },
-        { icon: '🗺️', label: '주 코스', value: '뚝섬한강 · 샛강' }
+        { icon: 'run', label: '페이스', value: '10K 52분 (5:20/km)' },
+        { icon: 'sunset', label: '러닝 시간', value: '화·목 20:00' },
+        { icon: 'map', label: '주 코스', value: '뚝섬한강 · 샛강' }
       ],
       bio: '뚝섬한강공원에서 화·목 저녁에 달려요. 같이 뛰면서 대화가 되는 속도로만 갑니다.',
       avatarText: '민',
       avatarGradient: 'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)',
-      badge: '🏃 10K 52분 러너',
+      badge: '10K 52분 러너',
       ratio: 'mid',
       likesMe: false,
       verified: true
@@ -1896,20 +1896,20 @@ const defaultInitialState = {
       location: '한양대',
       hobbyIds: ['cafe'],
       hobbyLabel: '카페/맛집',
-      hobbyEmoji: '☕',
+      hobbyIcon: '',
       hobbyStyle: '성수·연남 카페투어 · 핸드드립',
       cycle: '주말 낮',
-      cycleEmoji: '☀️',
+      cycleIcon: '',
       hobbies: ['카페투어', '핸드드립', '베이커리'],
       specChips: [
-        { icon: '☕', label: '취미 깊이', value: '핸드드립 3년차' },
-        { icon: '📷', label: '부수기술', value: '인생샷 잘 찍어줌' },
-        { icon: '☀️', label: '탐방 시간', value: '주말 11시~17시' }
+        { icon: 'cup', label: '취미 깊이', value: '핸드드립 3년차' },
+        { icon: 'camera', label: '부수기술', value: '인생샷 잘 찍어줌' },
+        { icon: 'sun', label: '탐방 시간', value: '주말 11시~17시' }
       ],
       bio: '주말마다 카페 두세 곳 돌면서 원두 이야기 하는 게 낙이에요. 사진은 제가 찍어드릴게요.',
       avatarText: '도',
       avatarGradient: 'linear-gradient(135deg, #F59E0B 0%, #92400E 100%)',
-      badge: '☕ 핸드드립 3년차',
+      badge: '핸드드립 3년차',
       ratio: 'square',
       likesMe: true,
       verified: true
@@ -1922,20 +1922,20 @@ const defaultInitialState = {
       location: '대치동',
       hobbyIds: ['movie'],
       hobbyLabel: '영화·전시',
-      hobbyEmoji: '🎬',
+      hobbyIcon: '',
       hobbyStyle: '독립영화관 · 국립현대미술관',
       cycle: '금요 심야',
-      cycleEmoji: '🌃',
+      cycleIcon: '',
       hobbies: ['독립영화', '전시', '필름카메라'],
       specChips: [
-        { icon: '🎬', label: '관람 기록', value: '올해 84편' },
-        { icon: '🖼️', label: '전시', value: '월 1~2회' },
-        { icon: '🌃', label: '관람 시간', value: '금요 심야 ~ 21시' }
+        { icon: 'film', label: '관람 기록', value: '올해 84편' },
+        { icon: 'image', label: '전시', value: '월 1~2회' },
+        { icon: 'night', label: '관람 시간', value: '금요 심야 ~ 21시' }
       ],
       bio: '금요일 밤 심야 영화 보고 근처 포차에서 30분만 이야기하는 코스 좋아해요. 스포는 안 합니다.',
       avatarText: '서',
       avatarGradient: 'linear-gradient(135deg, #334155 0%, #0F172A 100%)',
-      badge: '🎬 올해 84편 관람',
+      badge: '올해 84편 관람',
       ratio: 'tall',
       likesMe: false,
       verified: false
@@ -1948,20 +1948,20 @@ const defaultInitialState = {
       location: '왕십리동',
       hobbyIds: ['boardgame'],
       hobbyLabel: '보드게임',
-      hobbyEmoji: '🎲',
+      hobbyIcon: '',
       hobbyStyle: '아그리콜라 · 테라포밍마스',
       cycle: '주말 오후',
-      cycleEmoji: '🕑',
+      cycleIcon: '',
       hobbies: ['전략게임', '2인게임', '룰 설명'],
       specChips: [
-        { icon: '🧠', label: '선호 장르', value: '전략 · 일꾼 놓기' },
-        { icon: '👥', label: '인원', value: '2~4인' },
-        { icon: '🕑', label: '모임 시간', value: '주말 14시~' }
+        { icon: 'idea', label: '선호 장르', value: '전략 · 일꾼 놓기' },
+        { icon: 'users', label: '인원', value: '2~4인' },
+        { icon: 'clock', label: '모임 시간', value: '주말 14시~' }
       ],
       bio: '설명은 제가 친절하게 해드려요. 2인 전략게임 진지하게 꼬박 3시간 앉아 있을 수 있는 분 환영.',
       avatarText: '현',
       avatarGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
-      badge: '🎲 아그리콜라 러버',
+      badge: '아그리콜라 러버',
       ratio: 'square',
       likesMe: false,
       verified: true
@@ -1974,20 +1974,20 @@ const defaultInitialState = {
       location: '성수동',
       hobbyIds: ['fitness', 'run'],
       hobbyLabel: '헬스/크로스핏',
-      hobbyEmoji: '🏋️',
+      hobbyIcon: '',
       hobbyStyle: '성수박스 6개월차 · 19시반',
       cycle: '평일 19시',
-      cycleEmoji: '🔁',
+      cycleIcon: '',
       hobbies: ['크로스핏', '하이록스', '오운완'],
       specChips: [
-        { icon: '🏋️', label: '경력', value: '크로스핏 6개월차' },
-        { icon: '⏰', label: '수업', value: '평일 19:10' },
-        { icon: '💪', label: '목표', value: '푸시업 50개 · 클린 60kg' }
+        { icon: 'dumbbell', label: '경력', value: '크로스핏 6개월차' },
+        { icon: 'clock', label: '수업', value: '평일 19:10' },
+        { icon: 'target', label: '목표', value: '푸시업 50개 · 클린 60kg' }
       ],
       bio: '레벨업 박스 19:10반 레귤러예요. 운동 끝나고 단백질 한 잔 같이 하실 분, 어색해도 먼저 말 걸게요.',
       avatarText: '지',
       avatarGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
-      badge: '🏋️ 크로스핏 6개월차',
+      badge: '크로스핏 6개월차',
       ratio: 'tall',
       likesMe: false,
       verified: true
@@ -2000,20 +2000,20 @@ const defaultInitialState = {
       location: '뚝섬',
       hobbyIds: ['swim'],
       hobbyLabel: '수영',
-      hobbyEmoji: '🏊',
+      hobbyIcon: '',
       hobbyStyle: '성동구민센터 상급반 · 자유형 1,500m',
       cycle: '평일 06시',
-      cycleEmoji: '🌅',
+      cycleIcon: '',
       hobbies: ['자유형', '새벽수영', '오픈워터'],
       specChips: [
-        { icon: '🏊', label: '최고 기록', value: '1,500m 29분' },
-        { icon: '🌅', label: '수영 시간', value: '월·수·금 06:00' },
-        { icon: '🥽', label: '레벨', value: '상급반' }
+        { icon: 'swim', label: '최고 기록', value: '1,500m 29분' },
+        { icon: 'sunrise', label: '수영 시간', value: '월·수·금 06:00' },
+        { icon: 'swim', label: '레벨', value: '상급반' }
       ],
       bio: '새벽 6시에 물에 들어가면 하루가 달라집니다. 같이 출근 전에 수영하실 분.',
       avatarText: '태',
       avatarGradient: 'linear-gradient(135deg, #22D3EE 0%, #0E7490 100%)',
-      badge: '🏊 자유형 1,500m',
+      badge: '자유형 1,500m',
       ratio: 'mid',
       likesMe: false,
       verified: true
@@ -2026,20 +2026,20 @@ const defaultInitialState = {
       location: '신논현',
       hobbyIds: ['climb'],
       hobbyLabel: '클라이밍',
-      hobbyEmoji: '🧗',
+      hobbyIcon: '',
       hobbyStyle: '블록스 V4 · 주 3회',
       cycle: '주 3회 저녁',
-      cycleEmoji: '🧗',
+      cycleIcon: '',
       hobbies: ['볼더링', '리드', '루트읽기'],
       specChips: [
-        { icon: '🧗', label: '난이도', value: 'V4 (빨강)' },
-        { icon: '📅', label: '번도', value: '주 3회' },
-        { icon: '📍', label: '주 지점', value: '신사 · 성수' }
+        { icon: 'climb', label: '난이도', value: 'V4 (빨강)' },
+        { icon: 'calendar', label: '번도', value: '주 3회' },
+        { icon: 'pin', label: '주 지점', value: '신사 · 성수' }
       ],
       bio: '발쓰기만 제대로 해도 반은 먹고 들어가요. 성수 블록스 갈 때 같이 가실 분, 루트 읽어드립니다.',
       avatarText: '성',
       avatarGradient: 'linear-gradient(135deg, #64748B 0%, #1E293B 100%)',
-      badge: '🧗 V4 볼더러',
+      badge: 'V4 볼더러',
       ratio: 'tall',
       likesMe: false,
       verified: true
@@ -2052,20 +2052,20 @@ const defaultInitialState = {
       location: '성수동',
       hobbyIds: ['cafe', 'boardgame'],
       hobbyLabel: '카페/맛집',
-      hobbyEmoji: '☕',
+      hobbyIcon: '',
       hobbyStyle: '동네 맛집 탐방 · 보드게임 카페',
       cycle: '주말 오후',
-      cycleEmoji: '🍰',
+      cycleIcon: '',
       hobbies: ['맛집탐방', '보드게임카페', '소설'],
       specChips: [
-        { icon: '🍰', label: '탐방 범위', value: '성수 · 서울숲 · 왕십리' },
-        { icon: '🎲', label: '같이 할 게임', value: '가벼운 파티게임' },
-        { icon: '🕑', label: '모임 시간', value: '주말 15시~' }
+        { icon: 'cup', label: '탐방 범위', value: '성수 · 서울숲 · 왕십리' },
+        { icon: 'dice', label: '같이 할 게임', value: '가벼운 파티게임' },
+        { icon: 'clock', label: '모임 시간', value: '주말 15시~' }
       ],
       bio: '성수에서 태어나서 성수만 아는 사람입니다. 순대국부터 보드게임까지 코스 찍어드릴게요.',
       avatarText: '하',
       avatarGradient: 'linear-gradient(135deg, #F97316 0%, #9A3412 100%)',
-      badge: '✨ 성수 맛집 지도',
+      badge: '성수 맛집 지도',
       ratio: 'square',
       likesMe: false,
       verified: false
@@ -2078,20 +2078,20 @@ const defaultInitialState = {
       location: '강남역',
       hobbyIds: ['fitness', 'hike'],
       hobbyLabel: '헬스/크로스핏',
-      hobbyEmoji: '💪',
+      hobbyIcon: '',
       hobbyStyle: '3대 420 · 주말 아차산',
       cycle: '주말 오전',
-      cycleEmoji: '⛰️',
+      cycleIcon: '',
       hobbies: ['웨이트', '등산', '새벽운동'],
       specChips: [
-        { icon: '💪', label: '3대 합계', value: '420kg' },
-        { icon: '⛰️', label: '산행', value: '아차산 · 청계산' },
-        { icon: '⏰', label: '운동 시간', value: '주말 07:00' }
+        { icon: 'barbell', label: '3대 합계', value: '420kg' },
+        { icon: 'mountain', label: '산행', value: '아차산 · 청계산' },
+        { icon: 'clock', label: '운동 시간', value: '주말 07:00' }
       ],
       bio: '주말 아침에 산 오르고 내려와서 국밥 먹는 게 최고예요. 강남에서 출발해도 괜찮아요.',
       avatarText: '우',
       avatarGradient: 'linear-gradient(135deg, #0F766E 0%, #064E3B 100%)',
-      badge: '💪 3대 420 · 아차산',
+      badge: '3대 420 · 아차산',
       ratio: 'mid',
       likesMe: false,
       verified: true
@@ -2106,20 +2106,20 @@ const defaultInitialState = {
       regionId: 'mapo',
       hobbyIds: ['movie'],
       hobbyLabel: '영화·전시',
-      hobbyEmoji: '🎬',
+      hobbyIcon: '',
       hobbyStyle: '합정 아트하우스 · 홍대 전시',
       cycle: '금요 심야',
-      cycleEmoji: '🌃',
+      cycleIcon: '',
       hobbies: ['독립영화', '전시', '필름카메라'],
       specChips: [
-        { icon: '🎬', label: '관람 기록', value: '올해 96편' },
-        { icon: '🖼️', label: '전시', value: '월 2회' },
-        { icon: '🌃', label: '관람 시간', value: '금·토 심야' }
+        { icon: 'film', label: '관람 기록', value: '올해 96편' },
+        { icon: 'image', label: '전시', value: '월 2회' },
+        { icon: 'night', label: '관람 시간', value: '금·토 심야' }
       ],
       bio: '합정에서 심야 상영 보고 걸어서 집에 오는 코스가 좋아요. 보고 나서 30분은 이야기하고 싶습니다.',
       avatarText: '지',
       avatarGradient: 'linear-gradient(135deg, #4338CA 0%, #1E1B4B 100%)',
-      badge: '🎬 올해 96편',
+      badge: '올해 96편',
       ratio: 'mid',
       likesMe: false,
       verified: true
@@ -2133,20 +2133,20 @@ const defaultInitialState = {
       regionId: 'seongdong',
       hobbyIds: ['cafe'],
       hobbyLabel: '카페/맛집',
-      hobbyEmoji: '☕',
+      hobbyIcon: '',
       hobbyStyle: '성수 카페 도장깨기 · 핸드드립 5년',
       cycle: '주말 낮',
-      cycleEmoji: '☀️',
+      cycleIcon: '',
       hobbies: ['핸드드립', '베이커리', '사진'],
       specChips: [
-        { icon: '☕', label: '취미 깊이', value: '핸드드립 5년차' },
-        { icon: '📍', label: '주 무대', value: '성수 · 서울숲' },
-        { icon: '☀️', label: '탐방 시간', value: '주말 12~18시' }
+        { icon: 'cup', label: '취미 깊이', value: '핸드드립 5년차' },
+        { icon: 'pin', label: '주 무대', value: '성수 · 서울숲' },
+        { icon: 'sun', label: '탐방 시간', value: '주말 12~18시' }
       ],
       bio: '성수에서 5년 살았습니다. 줄 서는 집보다 조용한 집을 알아요. 같이 도장깨기 하실 분.',
       avatarText: '성',
       avatarGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
-      badge: '☕ 핸드드립 5년차',
+      badge: '핸드드립 5년차',
       ratio: 'tall',
       likesMe: false,
       verified: true
@@ -2160,20 +2160,20 @@ const defaultInitialState = {
       regionId: 'mapo',
       hobbyIds: ['boardgame', 'game'],
       hobbyLabel: '보드게임',
-      hobbyEmoji: '🎲',
+      hobbyIcon: '',
       hobbyStyle: '홍대 보드게임카페 · 전략게임',
       cycle: '주말 오후',
-      cycleEmoji: '🕑',
+      cycleIcon: '',
       hobbies: ['전략게임', '파티게임', '보드게임카페'],
       specChips: [
-        { icon: '🧠', label: '선호 장르', value: '전략 · 협력' },
-        { icon: '👥', label: '인원', value: '2~5인' },
-        { icon: '🕑', label: '모임 시간', value: '주말 15시~' }
+        { icon: 'idea', label: '선호 장르', value: '전략 · 협력' },
+        { icon: 'users', label: '인원', value: '2~5인' },
+        { icon: 'clock', label: '모임 시간', value: '주말 15시~' }
       ],
       bio: '홍대 보드게임카페 단골입니다. 뉴비한테 설명하는 거 좋아해요. 무거운 게임도 천천히 같이 가요.',
       avatarText: '동',
       avatarGradient: 'linear-gradient(135deg, #0E7490 0%, #164E63 100%)',
-      badge: '🎲 홍대 보겜 단골',
+      badge: '홍대 보겜 단골',
       ratio: 'square',
       likesMe: false,
       verified: false
@@ -2187,20 +2187,20 @@ const defaultInitialState = {
       regionId: 'seongdong',
       hobbyIds: ['run'],
       hobbyLabel: '러닝',
-      hobbyEmoji: '🏃',
+      hobbyIcon: '',
       hobbyStyle: '건대 러닝크루 · 10K 5분 40초',
       cycle: '화·목 아침',
-      cycleEmoji: '🌅',
+      cycleIcon: '',
       hobbies: ['아침러닝', '한강', '기록'],
       specChips: [
-        { icon: '🏃', label: '페이스', value: '10K 57분 (5:40/km)' },
-        { icon: '🌅', label: '러닝 시간', value: '화·목 06:30' },
-        { icon: '🗺️', label: '주 코스', value: '뚝섬 · 건대' }
+        { icon: 'run', label: '페이스', value: '10K 57분 (5:40/km)' },
+        { icon: 'sunset', label: '러닝 시간', value: '화·목 06:30' },
+        { icon: 'map', label: '주 코스', value: '뚝섬 · 건대' }
       ],
       bio: '아침에 5K만 뛰고 하루를 시작합니다. 속도보다 같이 나오는 게 어려운 거더라고요.',
       avatarText: '겨',
       avatarGradient: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)',
-      badge: '🏃 아침 5K 습관',
+      badge: '아침 5K 습관',
       ratio: 'mid',
       likesMe: false,
       verified: true
@@ -2214,20 +2214,20 @@ const defaultInitialState = {
       regionId: 'jongno',
       hobbyIds: ['boardgame', 'movie'],
       hobbyLabel: '보드게임',
-      hobbyEmoji: '🎲',
+      hobbyIcon: '',
       hobbyStyle: '을지로 전략게임 · 고전명작',
       cycle: '일요 오후',
-      cycleEmoji: '🕑',
+      cycleIcon: '',
       hobbies: ['전략게임', '고전영화', '독서'],
       specChips: [
-        { icon: '🧠', label: '선호 장르', value: '헤비 전략' },
-        { icon: '📚', label: '요즘 읽는 것', value: 'SF 단편' },
-        { icon: '🕑', label: '모임 시간', value: '일 15시~' }
+        { icon: 'idea', label: '선호 장르', value: '헤비 전략' },
+        { icon: 'book', label: '요즘 읽는 것', value: 'SF 단편' },
+        { icon: 'clock', label: '모임 시간', value: '일 15시~' }
       ],
       bio: '말 없이 한 판 두 시간 앉아 있는 걸 좋아합니다. 끝나고 한 잔 하면서 복기하는 것도요.',
       avatarText: '태',
       avatarGradient: 'linear-gradient(135deg, #78350F 0%, #451A03 100%)',
-      badge: '🎲 헤비 전략파',
+      badge: '헤비 전략파',
       ratio: 'square',
       likesMe: false,
       verified: false
@@ -2241,20 +2241,20 @@ const defaultInitialState = {
       regionId: 'yongsan',
       hobbyIds: ['climb'],
       hobbyLabel: '클라이밍',
-      hobbyEmoji: '🧗',
+      hobbyIcon: '',
       hobbyStyle: '이태원 클라이밍 · V3',
       cycle: '평일 저녁',
-      cycleEmoji: '🧗',
+      cycleIcon: '',
       hobbies: ['볼더링', '요가', '루트읽기'],
       specChips: [
-        { icon: '🧗', label: '난이도', value: 'V3 (파랑)' },
-        { icon: '📅', label: '빈도', value: '주 2회' },
-        { icon: '📍', label: '주 지점', value: '이태원 · 한남' }
+        { icon: 'climb', label: '난이도', value: 'V3 (파랑)' },
+        { icon: 'calendar', label: '빈도', value: '주 2회' },
+        { icon: 'pin', label: '주 지점', value: '이태원 · 한남' }
       ],
       bio: '이태원에서 클라이밍 1년차예요. 잘하는 사람보다 꾸준한 사람이랑 같이 하고 싶습니다.',
       avatarText: '이',
       avatarGradient: 'linear-gradient(135deg, #0F766E 0%, #134E4A 100%)',
-      badge: '🧗 V3 1년차',
+      badge: 'V3 1년차',
       ratio: 'tall',
       likesMe: false,
       verified: true
@@ -2268,20 +2268,20 @@ const defaultInitialState = {
       regionId: 'gyeonggi',
       hobbyIds: ['fitness', 'run'],
       hobbyLabel: '헬스/크로스핏',
-      hobbyEmoji: '🏋️',
+      hobbyIcon: '',
       hobbyStyle: '판교 헬스 · 3대 380',
       cycle: '평일 20시',
-      cycleEmoji: '🔁',
+      cycleIcon: '',
       hobbies: ['웨이트', '탄천러닝', '오운완'],
       specChips: [
-        { icon: '💪', label: '3대 합계', value: '380kg' },
-        { icon: '⏰', label: '운동 시간', value: '평일 20시' },
-        { icon: '🗺️', label: '주 코스', value: '탄천 · 판교' }
+        { icon: 'barbell', label: '3대 합계', value: '380kg' },
+        { icon: 'clock', label: '운동 시간', value: '평일 20시' },
+        { icon: 'map', label: '주 코스', value: '탄천 · 판교' }
       ],
       bio: '판교에서 일합니다. 퇴근하고 6K 뛰고 집에 가는 게 하루 마무리예요. 주말엔 서울 나갑니다.',
       avatarText: '준',
       avatarGradient: 'linear-gradient(135deg, #475569 0%, #1E293B 100%)',
-      badge: '🏋️ 3대 380 · 퇴근런',
+      badge: '3대 380 · 퇴근런',
       ratio: 'mid',
       likesMe: false,
       verified: true
@@ -2295,20 +2295,20 @@ const defaultInitialState = {
       regionId: 'yeongdeungpo',
       hobbyIds: ['swim'],
       hobbyLabel: '수영',
-      hobbyEmoji: '🏊',
+      hobbyIcon: '',
       hobbyStyle: '여의도 수영장 · 자유형 1,000m',
       cycle: '평일 저녁',
-      cycleEmoji: '🌆',
+      cycleIcon: '',
       hobbies: ['자유형', '평영', '한강산책'],
       specChips: [
-        { icon: '🏊', label: '최고 기록', value: '1,000m 24분' },
-        { icon: '🌆', label: '수영 시간', value: '평일 20:00' },
-        { icon: '🥽', label: '레벨', value: '중급반' }
+        { icon: 'swim', label: '최고 기록', value: '1,000m 24분' },
+        { icon: 'sunrise', label: '수영 시간', value: '평일 20:00' },
+        { icon: 'swim', label: '레벨', value: '중급반' }
       ],
       bio: '여의도에서 일하고 수영장 들렀다 집에 갑니다. 같이 레인 쓰실 분, 페이스 맞춰요.',
       avatarText: '보',
       avatarGradient: 'linear-gradient(135deg, #0891B2 0%, #155E75 100%)',
-      badge: '🏊 자유형 1,000m',
+      badge: '자유형 1,000m',
       ratio: 'square',
       likesMe: false,
       verified: false
@@ -2334,7 +2334,7 @@ const defaultInitialState = {
       unreadCount: 1,
       isNewMatch: false,
       messages: [
-        { id: 'm_jun_1', from: 'them', text: '루키님 어제 19:10반 푸시업 자세 많이 좋아졌어요 👏', at: ago(26 * HOUR) },
+        { id: 'm_jun_1', from: 'them', text: '루키님 어제 19:10반 푸시업 자세 많이 좋아졌어요', at: ago(26 * HOUR) },
         { id: 'm_jun_2', from: 'me', text: '감사합니다! 물구나무는 아직 무서워서요 ㅋㅋ', at: ago(25 * HOUR + 40 * MINUTE) },
         { id: 'm_jun_3', from: 'them', text: '내일 스쿼트 클린 가요! 무게 조절해서 콜해드릴게요', at: ago(2 * HOUR + 20 * MINUTE) }
       ]
@@ -2364,43 +2364,43 @@ const defaultInitialState = {
    * ------------------------------------------------------------------------- */
   chatReplyPools: [
     { key: 'fitness', match: ['크로스핏', '헬스', '와드', '박스'], replies: [
-      '반가워요! 이번 주 19:10반 같이 들어요 💪',
+      '반가워요! 이번 주 19:10반 같이 들어요',
       '오늘 WOD 봤어요? 스쿼트 클린 있어서 무게 조절했어요',
       '운동 끝나고 단백질 한 잔 하실래요? 박스 앞에 편한 데 알아요',
       '푸시업 50개 목표시면 제가 자세 봐드릴게요. 부상 없이 갑시다!'
     ] },
     { key: 'run', match: ['러닝', '런', '10K', '페이스'], replies: [
-      '반가워요! 이번 주말에 운동 같이 하실래요? 🏃',
+      '반가워요! 이번 주말에 운동 같이 하실래요?',
       '뚝섬한강공원 코스 좋아해요. 5분 30초 페이스로 가볍게 돌아요',
       '저는 화·목 저녁에 달려요. 시간 맞으면 같이 뛰어요!'
     ] },
     { key: 'game', match: ['게임', '롤', '소환사', '칼바람', '디스코드'], replies: [
-      '반가워요! 오늘 밤에 칼바람 몇 판 하실래요? 🎮',
+      '반가워요! 오늘 밤에 칼바람 몇 판 하실래요?',
       '디스코드 켜두고 있어요. 퇴근하면 한 판 콜해주세요 ㅋㅋ',
       '랭겜보다 칼바람이 편하더라고요. 같이 가요!'
     ] },
     { key: 'cafe', match: ['카페', '맛집', '핸드드립', '디저트'], replies: [
-      '반가워요! 이번 주말에 카페 한 곳 같이 가실래요? ☕',
+      '반가워요! 이번 주말에 카페 한 곳 같이 가실래요?',
       '성수에 새로 생긴 데 가보고 싶었어요. 시간 맞춰볼까요?',
       '저는 핸드드립 좋아해요. 원두 추천해드릴게요!'
     ] },
     { key: 'movie', match: ['영화', '전시', '시네마'], replies: [
-      '반가워요! 금요일 심야 영화 어떠세요? 🎬',
+      '반가워요! 금요일 심야 영화 어떠세요?',
       '지금 상영 중인 독립영화 같이 보실래요? 스포는 안 합니다 ㅋㅋ',
       '근처 전시도 보고 커피 한 잔 하면 좋을 것 같아요'
     ] },
     { key: 'boardgame', match: ['보드게임', '아그리콜라'], replies: [
-      '반가워요! 주말에 보드게임 한 판 어때요? 🎲',
+      '반가워요! 주말에 보드게임 한 판 어때요?',
       '설명은 제가 친절하게 해드려요. 2인 전략게임 좋아하세요?',
       '왕십리 쪽에 자리 좋은 데 알아요. 토요일 14시 어떠세요?'
     ] },
     { key: 'swim', match: ['수영', '레인', '자유형'], replies: [
-      '반가워요! 새벽 6시 레인 같이 들어가실래요? 🏊',
+      '반가워요! 새벽 6시 레인 같이 들어가실래요?',
       '월·수·금 중급레인에서 봬요. 출근 전에 한 시간이면 충분해요',
       '저는 자유형 위주로 갑니다. 페이스 맞춰볼까요?'
     ] },
     { key: 'climb', match: ['클라이밍', '볼더링', 'V4', '루트'], replies: [
-      '반가워요! 이번 주말에 블록스 같이 가실래요? 🧗',
+      '반가워요! 이번 주말에 블록스 같이 가실래요?',
       '파랑 레벨부터 같이 보면 좋을 것 같아요. 루트 읽어드릴게요',
       '발쓰기만 잡히면 금방 늘어요. 편한 시간 알려주세요!'
     ] }
@@ -2409,7 +2409,7 @@ const defaultInitialState = {
   /* ---------------- 모임 가입 신청서 (Sprint 4.5) ----------------
    * 승인제 모임에 들어온 신청 한 건. 그룹장이 수락/거절하고, 신청자는 취소할 수 있다.
    *
-   * groupApplication : { id, groupId, groupName, groupEmoji,
+   * groupApplication : { id, groupId, groupName, groupIcon,
    *                      applicantId, applicantName, applicantAge, applicantHobby,
    *                      applicantAvatarText, applicantGradient,
    *                      answers[{question, answer}],
@@ -2424,7 +2424,7 @@ const defaultInitialState = {
       id: 'app_seed_kettle',
       groupId: 'grp_crossfit_1',
       groupName: '성수 레벨업 퇴근 와드팟',
-      groupEmoji: '🏋️',
+      groupIcon: '',
       applicantId: 'user_kettle',
       applicantName: '케틀벨러버',
       applicantAge: 28,
@@ -2444,7 +2444,7 @@ const defaultInitialState = {
       id: 'app_seed_toe',
       groupId: 'grp_crossfit_1',
       groupName: '성수 레벨업 퇴근 와드팟',
-      groupEmoji: '🏋️',
+      groupIcon: '',
       applicantId: 'user_toe',
       applicantName: '오늘의토우',
       applicantAge: 31,
@@ -2527,12 +2527,12 @@ const defaultInitialState = {
 
   /* ---------------- 프로필 수정 폼의 선택지 (Sprint 4) ---------------- */
   activityOptions: [
-    { emoji: '🌅', label: '새벽' },
-    { emoji: '☀️', label: '주말 오전' },
-    { emoji: '🌆', label: '평일 저녁' },
-    { emoji: '🌙', label: '평일 심야' },
-    { emoji: '🕑', label: '주말 오후' },
-    { emoji: '🔁', label: '상시' }
+    { icon: 'sunrise', label: '새벽' },
+    { icon: 'sun', label: '주말 오전' },
+    { icon: 'sunset', label: '평일 저녁' },
+    { icon: 'moon', label: '평일 심야' },
+    { icon: 'clock', label: '주말 오후' },
+    { icon: 'repeat', label: '상시' }
   ],
 
   /* =======================================================================
@@ -2551,9 +2551,9 @@ const defaultInitialState = {
     {
       groupId: 'grp_crossfit_1',
       messages: [
-        { id: 'gcm_cf_1', from: 'member', authorId: 'leader_jun', authorName: '코치준', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #0F172A, #334155)', text: '오늘 19:10 정규반 그대로 갑니다. 와드 화이트보드 사진 먼저 올려둘게요 💪', at: ago(96 * MINUTE) },
+        { id: 'gcm_cf_1', from: 'member', authorId: 'leader_jun', authorName: '코치준', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #0F172A, #334155)', text: '오늘 19:10 정규반 그대로 갑니다. 와드 화이트보드 사진 먼저 올려둘게요', at: ago(96 * MINUTE) },
         { id: 'gcm_cf_2', from: 'member', authorId: 'user_kettle', authorName: '케틀벨러버', authorAvatarText: '케', authorGradient: 'linear-gradient(135deg, #059669, #10B981)', text: '저 오늘 10분 늦어요ㅠㅠ 스트레칭 먼저 하고 계세요', at: ago(78 * MINUTE) },
-        { id: 'gcm_cf_3', from: 'member', authorId: 'user_toe', authorName: '오늘의토우', authorAvatarText: '오', authorGradient: 'linear-gradient(135deg, #0EA5E9, #1E3A8A)', text: '끝나고 다들 술 한잔 어때요? 수요일이니까 🍻', at: ago(41 * MINUTE) },
+        { id: 'gcm_cf_3', from: 'member', authorId: 'user_toe', authorName: '오늘의토우', authorAvatarText: '오', authorGradient: 'linear-gradient(135deg, #0EA5E9, #1E3A8A)', text: '끝나고 다들 술 한잔 어때요? 수요일이니까', at: ago(41 * MINUTE) },
         { id: 'gcm_cf_4', from: 'member', authorId: 'leader_jun', authorName: '코치준', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #0F172A, #334155)', text: '좋아요. 아래 일정 카드에 [참석] 눌러주면 인원 맞춰서 자리 잡을게요', at: ago(36 * MINUTE) }
       ]
     },
@@ -2615,7 +2615,7 @@ const defaultInitialState = {
       title: '토요일 아침 한강 러닝 번개',
       when: atClock(6, 8, 0),
       place: '여의나루 한강공원 3번 출구',
-      note: '5K 가볍게 뜁니다. 페이스 상관없이 끝나고 커피 ☕',
+      note: '5K 가볍게 뜁니다. 페이스 상관없이 끝나고 커피',
       capacity: 20,
       createdBy: 'user_rookie',
       createdByName: '루키',
@@ -2774,7 +2774,7 @@ function blankCurrentUser() {
     hobbies: [],
     hobbyIds: [],
     activity: '',
-    activityEmoji: '',
+    activityIcon: '',
     workoutSpec: '',
     bio: '',
     joinedGroupIds: [],
@@ -3083,14 +3083,14 @@ class Store {
     if (!group) return [];
     const rows = [];
     if (group.meetLabel) {
-      rows.push({ icon: '🗓', label: '정기 모임', value: group.meetLabel, tone: 'regular' });
+      rows.push({ icon: 'calendar', label: '정기 모임', value: group.meetLabel, tone: 'regular' });
     }
     const core = String(group.meetLabel || '').replace(/\s+/g, '');
     (group.joinPolicy || []).forEach((line, i) => {
       if (!line || line === group.meetLabel) return;
       /* 정기 모임 줄과 같은 요일·시각을 다시 적은 줄은 중복이니 건너뛴다. */
       if (core && String(line).replace(/\s+/g, '').includes(core)) return;
-      rows.push({ icon: i === 0 ? '⏱' : '➕', label: i === 0 ? '모임 일정' : '함께 하는 날',
+      rows.push({ icon: i === 0 ? 'clock' : 'plus', label: i === 0 ? '모임 일정' : '함께 하는 날',
         value: line, tone: 'extra' });
     });
     return rows;
@@ -3382,9 +3382,9 @@ class Store {
   getExploreFilters() {
     return [
       { id: 'all', name: '전체', kind: 'type' },
-      { id: 'people', name: '취미친구', emoji: '🙋', kind: 'type' },
-      { id: 'groups', name: '소모임', emoji: '👥', kind: 'type' },
-      { id: 'posts', name: '게시글', emoji: '📸', kind: 'type' },
+      { id: 'people', name: '취미친구', icon: 'person', kind: 'type' },
+      { id: 'groups', name: '소모임', icon: 'users', kind: 'type' },
+      { id: 'posts', name: '게시글', icon: 'image', kind: 'type' },
       ...(this.state.exploreHobbyChips || []).map((h) => Object.assign({}, h, { kind: 'hobby' }))
     ];
   }
@@ -3632,7 +3632,7 @@ class Store {
 
   /**
    * 반경별 카드 수 — 지금 고른 조건(종류·취미·검색·나이·지역) 안에서 센다.
-   * @returns {Array<{id,name,km,emoji,desc,count,people,groups,posts}>}
+   * @returns {Array<{id,name,km,icon,desc,count,people,groups,posts}>}
    */
   getExploreRadiusStats(filter = 'all', query = '', ageFilter = 'all', region = 'all') {
     const items = this.getExploreFeed(filter, query, null, ageFilter, region, 'all');
@@ -3662,14 +3662,14 @@ class Store {
    * @param {string} query 검색어
    * @param {string} ageFilter 나이 필터 id
    * @param {string} radius 반경 필터 id ('all'|'1'|'3'|'5'|'10')
-   * @returns {Array<{id,name,short,emoji,label,people,groups,posts,total,active}>}
+   * @returns {Array<{id,name,short,icon,label,people,groups,posts,total,active}>}
    *          첫 항목은 항상 '전체 지역'(id: 'all')
    */
   getExploreRegionStats(filter = 'all', query = '', ageFilter = 'all', radius = 'all') {
     const items = this.getExploreFeed(filter, query, null, ageFilter, 'all', radius);
     const regions = this.getExploreRegions();
     const seed = regions.reduce((map, r) => {
-      map[r.id] = { id: r.id, name: r.name, short: r.short, emoji: r.emoji, label: r.label,
+      map[r.id] = { id: r.id, name: r.name, short: r.short, icon: r.icon, label: r.label,
         people: 0, groups: 0, posts: 0, total: 0 };
       return map;
     }, {});
@@ -3691,7 +3691,7 @@ class Store {
       return b;
     });
     return [{
-      id: 'all', name: '전체 지역', short: '전체', emoji: '🗺️', label: '모든 생활권',
+      id: 'all', name: '전체 지역', short: '전체', icon: 'map', label: '모든 생활권',
       ...total, total: total.people + total.groups + total.posts
     }, ...list];
   }
@@ -3712,22 +3712,22 @@ class Store {
     const limits = this.getAgeLimitOptions();
     const me = this.getForMeAgeProfile();
     return [
-      { id: 'all', name: '전체', emoji: '🎂', tone: 'all', desc: '나이 조건 없이 모든 카드' },
+      { id: 'all', name: '전체', icon: 'cake', tone: 'all', desc: '나이 조건 없이 모든 카드' },
       /* Sprint 7 — "내 나이(26)에 맞는 모임만" — 내가 가입할 수 있는 나이 제한의 모임과
          그 나이대 사람·글만 모아 본다. 나이가 바뀌면 기준도 같이 움직인다. */
       {
         id: 'for_me',
         name: '내 나이 맞춤',
-        emoji: '🙋',
+        icon: 'person',
         tone: 'me',
         myAge: me.myAge,
         desc: `${me.myAge}세인 내가 가입할 수 있는 모임 + ${me.minAge}~${me.maxAge}세 친구`
       },
-      { id: 'none', name: '제한없음', emoji: '🔓', tone: 'none', desc: '나이 제한을 두지 않은 모임' },
+      { id: 'none', name: '제한없음', icon: 'unlock', tone: 'none', desc: '나이 제한을 두지 않은 모임' },
       ...limits.filter((o) => o.id !== 'all').map((o) => ({
         id: o.id,
         name: o.cardBadge,
-        emoji: '🔒',
+        icon: 'lock',
         tone: o.tone,
         desc: `${o.label} 모임`
       }))
@@ -4007,7 +4007,7 @@ class Store {
    *
    *  · 점수 = (좋아요 + 댓글×3) ÷ (경과시간+2)^0.6 — 반응이 큰 글도 오래되면 자연히 내려간다
    *    ("실시간"의 뜻) → 같은 날 다시 열어도 순위가 지금 반응을 반영한다.
-   *  · ⚠️ 프라이버시: 모임 프라이빗 피드(feedPosts)는 **절대 넣지 않는다**. 실베는 공개
+   *  · 주의 — 프라이버시: 모임 프라이빗 피드(feedPosts)는 **절대 넣지 않는다**. 실베는 공개
    *    영역이므로 공개 취미 글(explorePosts)만 후보가 된다.
    *  · 화면은 이 결과로 순위 배지(1~5위 스트립)·더보기 시트(1~10위)를 그리고, 카드를 누르면 게시글 상세로
    *    딥링크한다.
@@ -4032,7 +4032,7 @@ class Store {
   /**
    * 실시간 베스트 목록 — 반응 점수 내림차순 + 순위 · **직전 집계 대비 순위 변동** · 열기%.
    * 11/14 22:59 사용자 지시: "아니 그냥 알림만 보내도록" — 점수 산식(좋아요+댓글×3+최신성)은 그대로,
-   * 여기에 ▲N / ▼N / NEW 표시만 더한다(북마크·가입 전환 같은 가중치는 넣지 않는다).
+   * 여기에 위·아래 화살표와 NEW 표시만 더한다(북마크·가입 전환 같은 가중치는 넣지 않는다).
    * @param {{limit?:number, regionId?:string, hobbyId?:string, now?:Date|number,
    *          persist?:boolean}} [options] persist=false → 직전 집계를 저장하지 않는다(테스트용)
    * @returns {Array<{rank, prevRank, delta, movement, prevAt, baseline, post, score,
@@ -4053,7 +4053,7 @@ class Store {
     ranked.slice(0, HOT_SNAPSHOT_DEPTH).forEach((it, i) => { currentRanks[it.post.id] = i + 1; });
 
     /* 직전 집계 — 저장된 스냅샷이 없으면 '3시간 전' 집계를 기준선으로 쓴다.
-       3시간 전에 없던 글은 NEW, 그때보다 올랐으면 ▲, 내렸으면 ▼. */
+       3시간 전에 없던 글은 NEW, 그때보다 올랐으면 위 화살표, 내렸으면 아래 화살표. */
     if (!this.state.hotRankSnapshots || typeof this.state.hotRankSnapshots !== 'object') {
       this.state.hotRankSnapshots = {};
     }
@@ -4085,7 +4085,7 @@ class Store {
     });
 
     if (persist) {
-      /* 직전 집계는 10분간 고정한다 — 스트립/시트를 다시 그린다고 방금 본 ▲▼ 가 사라지면 안 된다. */
+      /* 직전 집계는 10분간 고정한다 — 스트립/시트를 다시 그린다고 방금 본 화살표가 사라지면 안 된다. */
       const snapshotAge = hasSnapshot ? now - new Date(snapshot.at).getTime() : Infinity;
       if (!hasSnapshot || snapshotAge > HOT_SNAPSHOT_TTL) {
         this.state.hotRankSnapshots[scope] = {
@@ -4257,8 +4257,8 @@ class Store {
       const res = this.dispatchNotification({
         kind: 'hot_entry',
         category: 'hot',
-        title: '🔥 실시간 베스트 진입',
-        body: `내 글이 실베 ${it.rank}위에 올랐어요 · ❤️ ${it.likes} · 💬 ${it.comments}`,
+        title: '실시간 베스트 진입',
+        body: `내 글이 실베 ${it.rank}위에 올랐어요 · 좋아요 ${it.likes} · 댓글 ${it.comments}`,
         postId: p.id,
         source: 'explore',
         action: 'hot_entry',
@@ -4299,7 +4299,7 @@ class Store {
         id: `pc_hot_${Date.now()}_${i}`,
         authorId: persona.id,
         authorName: persona.name,
-        text: i === 0 ? '이거 보고 저도 해보고 싶어졌어요 🔥' : '형 진짜 꾸준하다… 존경합니다',
+        text: i === 0 ? '이거 보고 저도 해보고 싶어졌어요' : '형 진짜 꾸준하다… 존경합니다',
         createdAt: new Date().toISOString()
       });
     });
@@ -4376,7 +4376,7 @@ class Store {
       authorPhotoUrl: user.photoUrl || null,
       hobbyId: chip ? chip.id : null,
       hobbyLabel: chip ? chip.name : '자유게시판',
-      hobbyEmoji: chip ? chip.emoji : '',
+      hobbyIcon: chip ? chip.icon : '',
       /* Sprint 16 — 그룹과 무관하게 올리는 '오픈 글' */
       scope: chip ? 'hobby' : 'open',
       tag: String(d.tag || '').trim().slice(0, 8) || null,
@@ -4440,7 +4440,7 @@ class Store {
     const replies = best && bestHit > 0
       ? best.replies
       : [
-        '반가워요! 편하게 말 걸어주세요 😊',
+        '반가워요! 편하게 말 걸어주세요',
         '좋아요! 시간 맞춰보면 좋을 것 같아요',
         '그 취미 저도 좋아해요. 자세히 들려주세요!'
       ];
@@ -4511,10 +4511,10 @@ class Store {
       location: '',
       hobbyIds: [],
       hobbyLabel: (room.partnerHobby || '').replace(/^[^\s]+\s*/, ''),
-      hobbyEmoji: (room.partnerHobby || '').trim().charAt(0) || '🙋',
+      hobbyIcon: (room.partnerHobby || '').trim().charAt(0) || '',
       hobbyStyle: room.partnerHobby || '취미 메이트',
       cycle: '',
-      cycleEmoji: '',
+      cycleIcon: '',
       hobbies: [],
       specChips: [],
       bio: '대화로 취미를 알아가는 중이에요.',
@@ -4550,7 +4550,7 @@ class Store {
     if (!location) return { ok: false, reason: 'location' };
 
     const activityOption = (this.state.activityOptions || [])
-      .find((o) => o.label === d.activity) || { label: user.activity || '평일 저녁', emoji: user.activityEmoji || '🔁' };
+      .find((o) => o.label === d.activity) || { label: user.activity || '평일 저녁', icon: user.activityIcon || '' };
 
     user.nickname = nickname;
     user.avatarText = nickname.charAt(0);
@@ -4561,7 +4561,7 @@ class Store {
     user.regionId = deriveRegionId(location) || user.regionId || 'gwanak';
     user.bio = String(d.bio == null ? user.bio : d.bio).trim().slice(0, 120);
     user.activity = activityOption.label;
-    user.activityEmoji = activityOption.emoji;
+    user.activityIcon = activityOption.icon;
 
     /* 이미 쓴 글의 작성자 표시도 새 닉네임으로 맞춘다 */
     this.state.feedPosts.forEach((p) => {
@@ -4615,7 +4615,7 @@ class Store {
       hobbyId: chip.id,
       meetLabel,
       ratio: this.state.groups.length % 2 === 0 ? 'wide' : 'square',
-      emoji: chip.emoji,
+      icon: chip.icon,
       coverGradient: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
       location,
       /* Sprint 7 — 모임 지역도 문장에서 해석해 저장한다(지역 탐색·필터의 기준). */
@@ -4745,10 +4745,10 @@ class Store {
       id: `chat_${profileId}_${Date.now()}`,
       partnerId: profileId,
       partnerName: profile ? profile.nickname : '새 메이트',
-      partnerHobby: profile ? `${profile.hobbyEmoji || ''} ${profile.hobbyLabel || ''}`.trim() : '취미 메이트',
+      partnerHobby: profile ? `${profile.hobbyIcon || ''} ${profile.hobbyLabel || ''}`.trim() : '취미 메이트',
       partnerAvatarText: profile ? profile.avatarText || profile.nickname.charAt(0) : '?',
       partnerGradient: profile ? profile.avatarGradient : 'linear-gradient(135deg, #10B981, #047857)',
-      lastMessage: '🎉 서로 LIKE! 먼저 인사해 보세요',
+      lastMessage: '서로 LIKE! 먼저 인사해 보세요',
       lastTime: '방금',
       unreadCount: 1,
       isNewMatch: true,
@@ -5093,7 +5093,7 @@ class Store {
     const name = app.groupName || (group ? group.name : '모임');
     return this.dispatchNotification({
       kind: 'join_result',
-      title: approved ? '가입이 수락되었어요 🎉' : '가입 신청 결과',
+      title: approved ? '가입이 수락되었어요' : '가입 신청 결과',
       body: approved
         ? `"${name}" 가입이 승인되었어요. 지금 바로 모임 피드에 인사해 보세요!`
         : `"${name}" 가입 신청이 이번에는 받아들여지지 않았어요. ${app.decisionNote || ''}`.trim(),
@@ -5106,7 +5106,7 @@ class Store {
   /* ---------------- 시뮬레이션 트리거 (실제 이벤트와 같은 경로를 쓴다) ----------------
    * 이 앱은 서버 없이 한 사람이 쓰는 시제품이라 "남이 내 글에 반응하는 순간"이 스스로
    * 일어나지 않는다. 그래서 실제 이벤트가 들어왔을 때와 **똑같은 상태 변경 + 알림**을
-   * 일으키는 트리거를 둔다. (프로필 › 알림 설정의 🧪 버튼과 게시 직후 자동 반응이 사용)
+   * 일으키는 트리거를 둔다. (프로필 › 알림 설정의 시험 버튼과 게시 직후 자동 반응이 사용)
    * ------------------------------------------------------------------------- */
   simulateIncomingReaction(kind = 'like', options = {}) {
     const mine = this.getMyExplorePosts();
@@ -5123,7 +5123,7 @@ class Store {
         id: `pc_sim_${Date.now()}`,
         authorId: persona.id,
         authorName: persona.name,
-        text: options.text || `글 잘 봤어요! 저도 ${post.hobbyLabel || '이 취미'} 좋아합니다 🙌`,
+        text: options.text || `글 잘 봤어요! 저도 ${post.hobbyLabel || '이 취미'} 좋아합니다`,
         createdAt: new Date().toISOString()
       });
     } else {
@@ -5154,7 +5154,7 @@ class Store {
       id: `app_sim_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       groupId: group.id,
       groupName: group.name,
-      groupEmoji: group.emoji,
+      groupIcon: group.icon,
       applicantId: persona.id,
       applicantName: persona.name,
       applicantAge: persona.age,
@@ -5341,7 +5341,7 @@ class Store {
   /**
    * 알림 종류별 예시 — 알림 설정에서 '이런 알림이 와요'를 실제 알림 모양으로 보여준다.
    * @param {string} categoryId chat | like | comment | join_request | join_result | hot
-   * @returns {{category,emoji,label,kind,at,title,body,sample}|null}
+   * @returns {{category,icon,label,kind,at,title,body,sample}|null}
    */
   getNotificationPreview(categoryId) {
     const cat = NOTIFICATION_CATEGORIES.find((c) => c.id === categoryId);
@@ -5352,12 +5352,12 @@ class Store {
       comment: { kind: 'comment', title: '내 글에 댓글', body: '도현: 이번 주말에 같이 가요! 저도 궁금했어요' },
       join_request: { kind: 'join_request', title: '가입 신청', body: '케틀벨러버님이 "성수 레벨업 퇴근 와드팟" 가입을 신청했어요' },
       join_result: { kind: 'join_result', title: '가입 결과', body: '"한강 나이트 러닝 크루" 가입이 수락되었어요' },
-      hot: { kind: 'hot_entry', title: '🔥 실시간 베스트 진입', body: '내 글이 실베 3위에 올랐어요 · ❤️ 26 · 💬 4' }
+      hot: { kind: 'hot_entry', title: '실시간 베스트 진입', body: '내 글이 실베 3위에 올랐어요 · 26 · 4' }
     };
     const s = samples[categoryId] || {};
     return {
       category: cat.id,
-      emoji: cat.emoji,
+      icon: cat.icon,
       label: cat.label,
       kind: s.kind || cat.id,
       title: s.title || cat.label,
@@ -5388,11 +5388,11 @@ class Store {
   static notificationItem(entry) {
     const cat = resolveNotificationCategory(entry);
     const meta = NOTIFICATION_CATEGORIES.find((c) => c.id === cat);
-    const emoji = cat === 'like' ? '❤️' : cat === 'comment' ? '🗨️' : (meta ? meta.emoji : '🔔');
+    const icon = cat === 'like' ? 'heart' : cat === 'comment' ? 'comment' : (meta ? meta.icon : 'bell');
     return {
       id: entry.id,
       category: cat,
-      emoji,
+      icon,
       actorName: resolveNotificationActor(entry),
       text: String(entry.body || '').slice(0, 160),
       at: entry.at || null,
@@ -5449,9 +5449,9 @@ class Store {
       if (g.type !== 'reaction') return g;
       const head = g.entries[0];
       const pieces = [];
-      if (g.likeCount) pieces.push(`❤️ 좋아요 ${g.likeCount}`);
-      if (g.commentCount) pieces.push(`🗨️ 댓글 ${g.commentCount}`);
-      /* 최근 두 건의 본문만 — 건수는 제목('반응 3개')과 종류 칩(❤️2 · 🗨️1)이 이미 말한다. */
+      if (g.likeCount) pieces.push(`좋아요 ${g.likeCount}`);
+      if (g.commentCount) pieces.push(`댓글 ${g.commentCount}`);
+      /* 최근 두 건의 본문만 — 건수는 제목('반응 3개')과 종류 칩(좋아요2 · 댓글1)이 이미 말한다. */
       const lastBody = (g.entries.slice(0, 2).map((e) => e.body).filter(Boolean).join(' · '));
       return {
         ...g,
@@ -5509,7 +5509,7 @@ class Store {
     return out.filter(Boolean).map((g) => {
       if (g.type !== 'routine') return g;
       const meta = NOTIFICATION_CATEGORIES.find((c) => c.id === g.category);
-      const emoji = meta ? meta.emoji : '🔔';
+      const icon = meta ? meta.icon : '';
       const label = g.category === 'system' ? '시스템 알림' : (meta ? meta.label : '알림');
       const head = g.entries[0] || g.entry;
       const single = g.count === 1;
@@ -5518,7 +5518,7 @@ class Store {
         entry: head,
         postId: head.postId || g.postId || null,
         at: head.at || g.at,
-        title: single ? (head.title || `${emoji} ${label}`) : `${emoji} ${label} ${g.count}건`,
+        title: single ? (head.title || `${icon} ${label}`) : `${icon} ${label} ${g.count}건`,
         body: single
           ? (head.body || '')
           : String(head.body || head.title || '').slice(0, 160),
@@ -5823,7 +5823,7 @@ class Store {
       id: `app_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       groupId,
       groupName: group.name,
-      groupEmoji: group.emoji,
+      groupIcon: group.icon,
       applicantId: user.id,
       applicantName: user.nickname,
       applicantAge: user.age,
@@ -5956,16 +5956,16 @@ class Store {
     const badges = [{
       id: mode,
       kind: 'mode',
-      label: mode === 'open' ? '🌿 자유 가입' : '📝 승인제',
+      label: mode === 'open' ? '자유 가입' : '승인제',
       labelText: mode === 'open' ? '자유 가입' : '승인제'
     }];
     if (age && age.id !== 'all') {
-      badges.push({ id: age.id, kind: 'age', label: age.badge || `🎂 ${age.short}`, labelText: age.cardBadge || age.short });
+      badges.push({ id: age.id, kind: 'age', label: age.badge || age.short, labelText: age.cardBadge || age.short });
     }
     /* 그룹장에게는 처리할 신청 수를 카드에서 바로 보여준다 */
     const pending = this.isGroupLeader(groupId) ? this.getPendingApplications(groupId).length : 0;
     if (pending > 0) {
-      badges.push({ id: 'pending', kind: 'pending', label: `👑 대기 ${pending}`, labelText: `대기 ${pending}` });
+      badges.push({ id: 'pending', kind: 'pending', label: `대기 ${pending}`, labelText: `대기 ${pending}` });
     }
     return badges;
   }
@@ -6002,11 +6002,11 @@ class Store {
    * ======================================================================== */
   getActivityTypes() {
     return [
-      { id: 'all', name: '전체', emoji: '🧾' },
-      { id: 'like', name: '하트', emoji: '❤️' },
-      { id: 'post', name: '게시글', emoji: '📝' },
-      { id: 'comment', name: '댓글', emoji: '🗨️' },
-      { id: 'group', name: '모임', emoji: '👥' }
+      { id: 'all', name: '전체', icon: 'layers' },
+      { id: 'like', name: '하트', icon: 'heart' },
+      { id: 'post', name: '게시글', icon: 'note' },
+      { id: 'comment', name: '댓글', icon: 'comment' },
+      { id: 'group', name: '모임', icon: 'users' }
     ];
   }
 
@@ -6014,7 +6014,7 @@ class Store {
    * 내 활동 로그 — 최신순.
    * @param {{type?:'all'|'like'|'post'|'comment'|'group', range?:'all'|'7d'|'30d',
    *          limit?:number, now?:Date|number}} options
-   * @returns {Array<{id, type, kind, emoji, tone, title, body, at, targetType, targetId,
+   * @returns {Array<{id, type, kind, icon, tone, title, body, at, targetType, targetId,
    *                  personId, postId, groupId, groupName, roomId}>}
    */
   getActivityLogs(options) {
@@ -6030,17 +6030,17 @@ class Store {
       const p = this.getMatchProfile(s.profileId);
       const room = this.findChatRoomByPartner(s.profileId);
       const meta = p
-        ? [[p.hobbyEmoji, p.hobbyLabel].filter(Boolean).join(' '), p.location,
+        ? [[p.hobbyIcon, p.hobbyLabel].filter(Boolean).join(' '), p.location,
           p.distanceKm != null ? `${p.distanceKm}km` : ''].filter(Boolean).join(' · ')
         : '';
       push({
         id: `act_like_${s.profileId}_${s.at}`,
         type: 'like',
         kind: room ? 'match' : 'like',
-        emoji: '❤️',
+        icon: 'heart',
         tone: 'pink',
         title: p ? `${p.nickname}님에게 하트를 보냈어요` : '취미친구에게 하트를 보냈어요',
-        body: room ? `💚 매칭되어 1:1 대화방이 열렸어요${meta ? ` · ${meta}` : ''}` : meta,
+        body: room ? `매칭되어 1:1 대화방이 열렸어요${meta ? ` · ${meta}` : ''}` : meta,
         at: s.at,
         targetType: room ? 'chat' : 'person',
         targetId: room ? room.id : s.profileId,
@@ -6059,10 +6059,10 @@ class Store {
         id: `act_post_${p.id}`,
         type: 'post',
         kind: 'explore_post',
-        emoji: '📝',
+        icon: 'note',
         tone: 'green',
         title: '취미 게시글을 올렸어요',
-        body: `${p.hobbyEmoji || ''} ${preview || '사진을 공유했어요'}`.trim().slice(0, 70),
+        body: `${p.hobbyIcon || ''} ${preview || '사진을 공유했어요'}`.trim().slice(0, 70),
         at: p.createdAt,
         targetType: 'explore_post',
         targetId: p.id,
@@ -6079,7 +6079,7 @@ class Store {
         id: `act_feed_${p.id}`,
         type: 'post',
         kind: 'feed_post',
-        emoji: '🎞️',
+        icon: 'film',
         tone: 'green',
         title: `'${group ? group.name : '모임'}' 피드에 글을 남겼어요`,
         body: (p.tag ? `#${p.tag} ` : '') + preview.slice(0, 60),
@@ -6100,7 +6100,7 @@ class Store {
           id: `act_cmt_${c.id}`,
           type: 'comment',
           kind: 'comment',
-          emoji: '🗨️',
+          icon: 'comment',
           tone: 'blue',
           title: `${p.authorName || '취미친구'}님의 글에 댓글을 남겼어요`,
           body: `“${String(c.text || '').replace(/\s+/g, ' ').slice(0, 60)}”`,
@@ -6120,7 +6120,7 @@ class Store {
           id: `act_fcmt_${c.id}`,
           type: 'comment',
           kind: 'feed_comment',
-          emoji: '🗨️',
+          icon: 'comment',
           tone: 'blue',
           title: `'${group ? group.name : '모임'}' 피드 글에 댓글을 남겼어요`,
           body: `“${String(c.text || '').replace(/\s+/g, ' ').slice(0, 60)}”`,
@@ -6140,10 +6140,10 @@ class Store {
         id: `act_gnew_${g.id}`,
         type: 'group',
         kind: 'group_created',
-        emoji: '👥',
+        icon: 'users',
         tone: 'green',
         title: `'${g.name}' 모임을 만들었어요`,
-        body: [g.emoji, g.categoryName, g.location].filter(Boolean).join(' · '),
+        body: [g.icon, g.categoryName, g.location].filter(Boolean).join(' · '),
         at: g.createdAt,
         targetType: 'group',
         targetId: g.id,
@@ -6156,10 +6156,10 @@ class Store {
         id: `act_join_${a.id}`,
         type: 'group',
         kind: 'join_request',
-        emoji: '📨',
+        icon: 'mail',
         tone: 'amber',
         title: `'${a.groupName}' 가입을 신청했어요`,
-        body: a.status === 'pending' ? '⏳ 그룹장 승인을 기다리는 중'
+        body: a.status === 'pending' ? '그룹장 승인을 기다리는 중'
           : a.status === 'canceled' ? '신청을 취소했어요' : '신청서를 냈어요',
         at: a.createdAt,
         targetType: 'group',
@@ -6175,7 +6175,7 @@ class Store {
         id: `act_jres_${a.id}`,
         type: 'group',
         kind: approved ? 'join_approved' : 'join_rejected',
-        emoji: approved ? '✅' : '💬',
+        icon: approved ? '' : '',
         tone: approved ? 'green' : 'rose',
         title: approved ? `'${a.groupName}' 가입이 수락되었어요` : `'${a.groupName}' 가입이 이번에는 어려웠어요`,
         body: a.decisionNote ? String(a.decisionNote).slice(0, 70) : (approved ? '이제 모임 피드에서 인사해 보세요' : '다음 모임에서 다시 만나요'),
@@ -6208,9 +6208,9 @@ class Store {
 
   getActivityRangeOptions() {
     return [
-      { id: 'all', name: '전체', emoji: '🗂️', days: null },
-      { id: '7d', name: '최근 7일', emoji: '7️⃣', days: 7 },
-      { id: '30d', name: '최근 30일', emoji: '🗓️', days: 30 }
+      { id: 'all', name: '전체', icon: 'layers', days: null },
+      { id: '7d', name: '최근 7일', icon: 'calendarWeek', days: 7 },
+      { id: '30d', name: '최근 30일', icon: 'calendar', days: 30 }
     ];
   }
 
@@ -6236,7 +6236,7 @@ class Store {
         buckets.set(key, {
           groupId: group ? group.id : (e.groupId || null),
           groupName: group ? group.name : (name || '개인 활동'),
-          emoji: group ? (group.emoji || '👥') : (name ? '👥' : '🙋'),
+          icon: group ? (group.icon || '') : (name ? '' : ''),
           count: 0,
           latestAt: e.at,
           logs: []
@@ -6698,7 +6698,7 @@ class Store {
       return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')} 가입`;
     };
     const hobbyList = (hobbyNames) => (hobbyNames || []).slice(0, 2)
-      .map((name) => ({ name, emoji: '·' }));
+      .map((name) => ({ name, icon: 'dot' }));
 
     /* 1) 그룹장 */
     const leaderIsMe = group.leaderId === me.id;
@@ -7004,7 +7004,7 @@ class Store {
         return {
           ...p,
           groupName: g ? g.name : '',
-          groupEmoji: g ? g.emoji : '📁',
+          groupIcon: g ? g.icon : '',
           commentCount: (p.comments || []).length,
           photo: !!p.photoUrl
         };
@@ -7064,7 +7064,7 @@ class Store {
         id: group.id,
         group,
         name: group.name,
-        emoji: group.emoji,
+        icon: group.icon,
         categoryName: group.categoryName,
         location: group.location,
         coverGradient: group.coverGradient,
