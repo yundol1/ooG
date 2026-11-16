@@ -134,9 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dmTargetId: null,            // 쪽지 보내는 상대(id)
     ageMin: 0,                   // Sprint 16 — 나이 슬라이더 왼쪽
     ageMax: 99,                  //                나이 슬라이더 오른쪽
-    /* Sprint 21 — 필터 시트의 취미 대분류 탭 · 가입 후 스포트라이트 가이드 */
-    hobbyCategory: 'sports',
-    hobbyCategoryTouched: false,
+    /* 가입 후 스포트라이트 가이드 */
     guide: null,
 
     /* Sprint 17 — 회원가입 · 스토리 링/보관함 · 공지 읽음 · 표지 · 디엠 정렬 */
@@ -234,10 +232,6 @@ document.addEventListener('DOMContentLoaded', () => {
     spotlightNext: $('#btn-spotlight-next'),
     spotlightPrev: $('#btn-spotlight-prev'),
     spotlightSkip: $('#btn-spotlight-skip'),
-    hobbyCats: $('#hobby-cats'),
-    hobbyCustomInput: $('#hobby-custom-input'),
-    hobbyCustomAdd: $('#btn-hobby-custom-add'),
-    hobbyCustomNote: $('#hobby-custom-note'),
     gallerySort: $('#gallery-sort'),
     btnNoticeMore: $('#btn-notice-more'),
     btnBoardPhoto: $('#btn-board-photo'),
@@ -377,10 +371,8 @@ document.addEventListener('DOMContentLoaded', () => {
     exploreInput: $('#explore-search-input'),
     exploreClear: $('#explore-search-clear'),
     exploreTypeSeg: $('#explore-type-seg'),
-    exploreChips: $('#explore-chips'),
+    /* Sprint 25 — 탐색에서 취미·반경 칩을 없앴다(지역 가로 칩 + 나이 슬라이더만) */
     exploreAgeChips: null,   // Sprint 16 — 고정 칩 제거(0~99 슬라이더로 대체)
-    exploreRadiusChips: $('#explore-radius-chips'),
-    exploreRadiusBar: $('#explore-radius-bar'),
     exploreActiveFilters: $('#explore-active-filters'),
     exploreFilterBtn: $('#btn-explore-filter'),
     exploreFilterCount: $('#explore-filter-count'),
@@ -395,12 +387,11 @@ document.addEventListener('DOMContentLoaded', () => {
     activityExportText: $('#btn-activity-export-text'),
     activityExportCsv: $('#btn-activity-export-csv'),
     activityExportDownload: $('#btn-activity-export-download'),
-    /* Sprint 7 — 지역 드롭다운 · 실시간 베스트 */
-    btnExploreRegion: $('#btn-explore-region'),
-    exploreRegionLabel: $('#explore-region-label'),
-    exploreRegionEmoji: $('#explore-region-emoji'),
-    regionModal: $('#region-modal'),
-    regionList: $('#region-list'),
+    /* Sprint 25 — 지역은 상단/시트의 가로 칩 두 줄이 전부다(드롭다운·지역 시트 없음) */
+    filterRegionChips: $('#filter-region-chips'),
+    filterRegionSub: $('#filter-region-sub'),
+    filterNearbyChip: $('#filter-nearby-chip'),
+    /* 실시간 베스트 */
     hotStrip: $('#hot-strip'),
     hotRail: $('#hot-rail'),
     hotSub: $('#hot-sub'),
@@ -1163,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <label class="ob-label" for="ob-region">활동 지역</label>
           <select class="ob-input ob-input-lg" id="ob-region">
             <option value="">지역 선택 안 함</option>
-            ${store.getExploreRegions().map((r) => `<option value="${escapeHtml(r.id)}" ${d.regionId === r.id ? 'selected' : ''}>${escapeHtml(r.name)} · ${escapeHtml(r.short)}</option>`).join('')}
+            ${regionSelectHTML(d.regionId || '').replace('<option value="">동네 선택</option>', '')}
           </select>
         </div>
         ${errHTML}
@@ -1455,8 +1446,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const alive = (n) => !!n && typeof n.focus === 'function' && n.isConnected !== false
       && !(n.closest && n.closest('[hidden]'));
     if (alive(opener)) { opener.focus({ preventScroll: true }); return true; }
-    const fallback = node.id === 'filter-modal' ? el.exploreFilterBtn
-      : node.id === 'region-modal' ? el.btnExploreRegion : null;
+    const fallback = node.id === 'filter-modal' ? el.exploreFilterBtn : null;
     if (alive(fallback)) { fallback.focus({ preventScroll: true }); return true; }
     if (el.main) { el.main.setAttribute('tabindex', '-1'); el.main.focus({ preventScroll: true }); }
     return false;
@@ -2067,7 +2057,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       id: 'explore', target: '#explore-head', tab: 'tab-explore',
       title: '탐색은 사람과 글을 보는 곳이에요',
-      desc: '지금 보고 계신 이 탭입니다. 동네·나이·취미로 사람과 글을 골라 보고, 마음에 들면 바로 쪽지를 보내요.'
+      desc: '지금 보고 계신 이 탭입니다. 우리 동네를 골라 사람과 글을 보고, 마음에 들면 바로 쪽지를 보내요.'
     },
     {
       id: 'dm', target: '#dm-head', tab: 'tab-chat',
@@ -4944,48 +4934,52 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function draftOrApplied() {
     if (ui.filterSheetOpen && ui.filterDraft) return ui.filterDraft;
-    return { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius };
+    return { filter: ui.exploreFilter, age: ui.exploreAge, region: ui.exploreRegion };
   }
 
   /**
-   * Sprint 21 — 시트 안 취미: 대분류 탭 → 그 안의 세부 취미 칩.
-   *  · 하나만 고를 수 있고, 같은 칩을 다시 누르면 해제된다.
-   *  · 지금 고른 취미가 다른 대분류에 있으면 그 대분류를 먼저 연다.
+   * Sprint 25 — 지역 가로 칩 줄(상단·필터 시트 공용).
+   *  이반시티 '우리동네'처럼 [전체][서울][경기]…[베어] 를 왼쪽에서 오른쪽으로 넘겨 고르고,
+   *  큰 분류를 고르면 바로 아래 줄에 그 하위 권역이 같은 방식으로 펼쳐진다.
+   * @param {HTMLElement} chipsEl 큰 분류 칩을 그릴 곳
+   * @param {HTMLElement} subEl 하위 권역 칩을 그릴 곳
+   * @param {string} region 지금 고른 지역 id
+   * @param {(id:string)=>string} dataAttr 칩의 data 속성 이름
    */
-  function renderHobbyCats() {
-    if (!el.hobbyCats) return;
-    const draft = draftOrApplied();
-    const chip = store.getHobbyChip(draft.filter);
-    if (chip && ui.hobbyCategory !== chip.categoryId && ui.hobbyCategoryTouched !== true) {
-      ui.hobbyCategory = chip.categoryId;
-    }
-    const activeId = ui.hobbyCategory || 'sports';
-    el.hobbyCats.innerHTML = store.getHobbyCategories().map((c) => {
-      const on = c.id === activeId;
-      return `<button class="hobby-cat ${on ? 'on' : ''}" data-hobby-cat="${c.id}" type="button"
-                      aria-pressed="${on}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`;
-    }).join('');
-  }
-
-  function renderExploreChips() {
-    if (!el.exploreChips) return;
-    const draft = draftOrApplied();
-    const cats = store.getHobbyCategories();
-    const activeId = ui.hobbyCategory || 'sports';
-    const cat = cats.find((c) => c.id === activeId) || cats[0];
-    const chips = cat.hobbies.slice();
-    /* 지금 고른 취미가 이 대분류에 없으면 맨 앞에 붙여 함께 보여준다(해제할 수 있게) */
-    const picked = store.getHobbyChip(draft.filter);
-    if (picked && !chips.some((h) => h.id === picked.id)) chips.unshift(picked);
-    el.exploreChips.innerHTML = chips.map((h) => {
-      const on = draft.filter === h.id;
-      return `<button class="explore-chip hobby ${on ? 'active' : ''}"
-                      data-explore-filter="${h.id}" aria-pressed="${on}" type="button">
-                <span class="chip-emoji" aria-hidden="true">${ic(h.icon || 'sparkle')}</span>
-                <span>${escapeHtml(h.name)}</span>
-                ${h.custom ? '<span class="chip-custom-tag">직접 쓴</span>' : ''}
+  function paintRegionChips(chipsEl, subEl, region) {
+    if (!chipsEl) return;
+    const selected = store.getRegion(region);
+    const selectedGroupId = selected ? (selected.group ? selected.id : selected.groupId) : null;
+    const chips = store.getExploreRegionChips(ui.exploreFilter, ui.exploreQuery, ui.exploreAge);
+    chipsEl.innerHTML = chips.map((c) => {
+      const on = c.id === 'all' ? region === 'all' : (c.group ? selectedGroupId === c.id : region === c.id);
+      return `<button class="explore-region-chip ${on ? 'active' : ''}" data-region-chip="${escapeHtml(c.id)}"
+                      type="button" aria-pressed="${on}">
+                ${ic(c.icon || (c.id === 'all' ? 'grid' : 'pin'))}
+                <span>${escapeHtml(c.name)}</span>
+                <span class="explore-region-chip-count">${c.count}</span>
               </button>`;
     }).join('');
+    keepChipVisible(chipsEl, '.explore-region-chip.active');
+
+    /* 하위 권역이 둘 이상인 큰 분류만 둘째 줄 — [전체] + 권역들 (제주·해외·베어는 없음) */
+    if (!subEl) return;
+    const subs = selectedGroupId ? store.getSubRegions(selectedGroupId) : [];
+    if (subs.length > 1) {
+      subEl.hidden = false;
+      subEl.innerHTML = [
+        `<button class="explore-sub-chip ${region === selectedGroupId ? 'active' : ''}"
+                 data-region-sub="${escapeHtml(selectedGroupId)}" type="button"
+                 aria-pressed="${region === selectedGroupId}">전체</button>`,
+        ...subs.map((r) => `<button class="explore-sub-chip ${region === r.id ? 'active' : ''}"
+                 data-region-sub="${escapeHtml(r.id)}" type="button"
+                 aria-pressed="${region === r.id}">${escapeHtml(r.name)}</button>`)
+      ].join('');
+      keepChipVisible(subEl, '.explore-sub-chip.active');
+    } else {
+      subEl.hidden = true;
+      subEl.innerHTML = '';
+    }
   }
 
   /** Sprint 16 — 0~99세 듀얼 레인지 슬라이더의 바늘·폭·문구를 맞춘다. */
@@ -5029,42 +5023,23 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(range.active ? `나이 ${range.min}~${range.max}세로 볼게요` : '나이 조건 없이 전체를 볼게요', 'info');
   }
 
-  /**
-   * Sprint 8 — 내 동네 반경 칩 (전체 · 1km · 3km · 5km · 10km + 건수) — 드래프트 기준.
-   * 건수는 시트에서 고른 취미·나이·지역 안에서 센다(store.getExploreRadiusStats).
-   */
-  function renderRadiusChips() {
-    if (!el.exploreRadiusChips) return;
-    const draft = draftOrApplied();
-    const stats = store.getExploreRadiusStats(draft.filter, ui.exploreQuery, draft.age, ui.exploreRegion);
-    el.exploreRadiusChips.innerHTML = stats.map((r) => {
-      const on = draft.radius === r.id;
-      return `<button class="radius-chip ${on ? 'active' : ''}" data-explore-radius="${r.id}"
-                      aria-pressed="${on}" type="button" title="${escapeHtml(r.desc || '')}">
-                <span>${escapeHtml(r.name)}</span>
-                <span class="radius-chip-count">${r.count}</span>
-              </button>`;
-    }).join('');
-    if (el.exploreRadiusBar) el.exploreRadiusBar.classList.toggle('is-filtering', draft.radius !== 'all');
-  }
-
-  /** 지금 적용된 세부 조건(취미·나이·반경) — 상단 요약 칩과 필터 배지가 함께 쓴다. */
+  /** 지금 적용된 세부 조건(나이·내 주변) — 상단 요약 칩과 필터 배지가 함께 쓴다.
+   *  Sprint 25 — 지역은 바로 위 가로 칩에, 나이는 시트에 있다. 같은 말을 두 번 하지 않는다. */
   function activeFilterChips() {
     const list = [];
-    const hobby = store.getExploreFilters().find((f) => f.id === ui.exploreFilter && f.kind === 'hobby');
-    if (hobby) list.push({ key: 'filter', icon: hobby.icon || '', name: hobby.name });
     const range = store.getExploreAgeRange();
     if (range.active) list.push({ key: 'age', icon: 'cake', name: `${range.min}~${range.max}세` });
-    const radius = store.getRadiusOption(ui.exploreRadius);
-    if (radius && radius.km) list.push({ key: 'radius', icon: 'pin', name: `${radius.name} 이내` });
+    if (ui.exploreRegion !== 'all') {
+      list.push({ key: 'region', icon: ui.exploreRegion === 'nearby' ? 'walk' : 'pin',
+        name: store.getRegionLabel(ui.exploreRegion) });
+    }
     return list;
   }
 
-  /** 상단 1줄(종류 세그먼트·지역·필터 버튼) + 적용 조건 요약 1줄을 다시 그린다. */
+  /** 상단 1줄(종류 세그먼트·필터 버튼) + 지역 가로 칩 + 적용 조건 1줄을 다시 그린다. */
   function renderExploreToolbar() {
     renderExploreTypeSeg();
-    renderRegionButton();
-    renderRegionChips();
+    paintRegionChips(el.exploreRegionChips, el.exploreRegionSub, ui.exploreRegion);
     renderExploreSummary();
     const chips = activeFilterChips();
     if (el.exploreFilterCount) {
@@ -5105,10 +5080,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /** 시트를 지금 적용 상태로 되돌려 놓고 연다. */
   function openFilterSheet() {
     if (!el.filterModal) return;
-    ui.filterDraft = { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius };
-    ui.hobbyCategoryTouched = false;
-    const pickedChip = store.getHobbyChip(ui.exploreFilter);
-    ui.hobbyCategory = pickedChip ? pickedChip.categoryId : (ui.hobbyCategory || 'sports');
+    ui.filterDraft = { filter: ui.exploreFilter, age: ui.exploreAge, region: ui.exploreRegion };
     ui.filterSheetOpen = true;
     renderFilterSheet();
     if (el.exploreFilterBtn) el.exploreFilterBtn.setAttribute('aria-expanded', 'true');
@@ -5122,17 +5094,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderFilterSheet() {
-    renderHobbyCats();
-    renderExploreChips();
+    const draft = draftOrApplied();
+    paintRegionChips(el.filterRegionChips, el.filterRegionSub, draft.region);
+    if (el.filterNearbyChip) {
+      const on = draft.region === 'nearby';
+      el.filterNearbyChip.classList.toggle('active', on);
+      el.filterNearbyChip.setAttribute('aria-pressed', on);
+    }
     renderAgeRange();
-    renderRadiusChips();
     updateFilterPreview();
   }
 
   /** 적용 전에 "이 조건이면 카드 N장"을 미리 보여준다. */
   function updateFilterPreview() {
-    const draft = ui.filterDraft || { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius };
-    const items = store.getExploreFeed(draft.filter, ui.exploreQuery, null, draft.age, ui.exploreRegion, draft.radius) || [];
+    const draft = draftOrApplied();
+    const items = store.getExploreFeed(draft.filter, ui.exploreQuery, null, draft.age, draft.region) || [];
     if (el.filterResult) {
       el.filterResult.textContent = items.length
         ? `이 조건이면 카드 ${items.length}장`
@@ -5141,8 +5117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.filterApply) el.filterApply.textContent = items.length ? `적용하기 · ${items.length}장` : '적용하기';
     /* Sprint 10 — 시트에서 무언가 바뀌었으면 [적용하기]가 눈에 띄게(dirty). */
-    const applied = { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius };
-    const dirty = draft.filter !== applied.filter || draft.age !== applied.age || draft.radius !== applied.radius;
+    const dirty = draft.age !== ui.exploreAge || draft.region !== ui.exploreRegion;
     if (el.filterApply) {
       el.filterApply.classList.toggle('is-dirty', dirty);
       el.filterApply.dataset.dirty = dirty ? 'true' : 'false';
@@ -5157,32 +5132,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 시트 안 칩 하나를 드래프트에서 켜고/끈다(같은 칩을 다시 누르면 전체로). */
   function toggleFilterDraft(key, value) {
-    const draft = ui.filterDraft || { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius };
+    const draft = draftOrApplied();
     const current = draft[key];
     const next = current === value && value !== 'all' ? 'all' : value;
     ui.filterDraft = { ...draft, [key]: next };
     renderFilterSheet();
   }
 
-  /** [적용하기] — 시트에서 고른 조건을 한 번에 반영하고 저장(기억)한다. */
+  /** [적용하기] — 시트에서 고른 조건(지역·나이)을 한 번에 반영하고 저장(기억)한다. */
   function applyFilterDraft() {
-    const draft = ui.filterDraft || { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius };
-    if (draft.filter !== ui.exploreFilter || draft.age !== ui.exploreAge || draft.radius !== ui.exploreRadius) {
+    const draft = draftOrApplied();
+    if (draft.age !== ui.exploreAge || draft.region !== ui.exploreRegion) {
       /* Sprint 10 — 적용 전/후 조건을 비교해 '새로 붙은 칩'만 반짝이게 표시해 둔다. */
       const beforeKeys = activeFilterChips().map((c) => c.key);
-      ui.exploreFilter = draft.filter;
       ui.exploreAge = draft.age;
-      ui.exploreRadius = draft.radius;
+      ui.exploreRegion = draft.region;
       ui.exploreBuffer = null;
       const newKeys = activeFilterChips().map((c) => c.key).filter((k) => !beforeKeys.includes(k));
       ui.filterChipFlash = newKeys.length ? { keys: newKeys, until: Date.now() + 900 } : null;
-      store.updateExplorePrefs({ filter: draft.filter, age: draft.age, radius: draft.radius });
+      store.updateExplorePrefs({ age: draft.age, region: draft.region });
       closeFilterSheet();
       if (el.main) el.main.scrollTop = 0;
       renderExploreWithSkeleton();
       const chips = activeFilterChips();
+      const regionLabel = store.getRegionLabel(ui.exploreRegion);
       showToast(chips.length
-        ? `필터 ${chips.length}개 적용 · ${chips.map((c) => c.name).join(' · ')}`
+        ? `${regionLabel} · ${chips.map((c) => c.name).join(' · ')}`
         : '모든 조건을 풀고 전체 탐색으로 돌아왔어요', 'info');
       return;
     }
@@ -5192,7 +5167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** [초기화] — 시트 안의 드래프트만 비운다(적용은 [적용하기]에서). */
   function resetFilterDraft() {
-    ui.filterDraft = { filter: 'all', age: 'all', radius: 'all' };
+    ui.filterDraft = { filter: 'all', age: 'all', region: 'all' };
     renderFilterSheet();
   }
 
@@ -5201,9 +5176,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (key === 'all') {
       ui.exploreFilter = 'all';
       ui.exploreAge = 'all';
-      ui.exploreRadius = 'all';
+      ui.exploreRegion = 'all';
       ui.exploreBuffer = null;
-      store.updateExplorePrefs({ filter: 'all', age: 'all', radius: 'all' });
+      store.updateExplorePrefs({ filter: 'all', age: 'all', region: 'all' });
       /* Sprint 16 — 나이 범위도 함께 0~99 로 되돌린다 */
       store.setExploreAgeRange(0, 99);
       renderAgeRange();
@@ -5213,33 +5188,19 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('세부 조건을 모두 해제했어요', 'info');
       return;
     }
-    if (key === 'filter') ui.exploreFilter = 'all';
-    else if (key === 'age') ui.exploreAge = 'all';
-    else if (key === 'radius') ui.exploreRadius = 'all';
-    ui.exploreBuffer = null;
     if (key === 'age') {
+      ui.exploreAge = 'all';
       /* Sprint 16 — 나이 조건 해제는 0~99 로 되돌린다 */
       store.setExploreAgeRange(0, 99);
       renderAgeRange();
-    } else {
-      store.updateExplorePrefs({ [key]: 'all' });
+      store.updateExplorePrefs({ age: 'all' });
+    } else if (key === 'region') {
+      ui.exploreRegion = 'all';
+      store.updateExplorePrefs({ region: 'all' });
     }
-    if (el.main) el.main.scrollTop = 0;
-    renderExploreWithSkeleton();
-  }
-
-  /** 반경 선택 → 저장(기억) → 스켈레톤과 함께 다시 그리기 (빈 상태 CTA·외부 호출 공용) */
-  function selectRadius(radiusId) {
-    const next = radiusId && store.getRadiusOption(radiusId) ? radiusId : 'all';
-    ui.exploreRadius = next;
     ui.exploreBuffer = null;
-    store.updateExplorePrefs({ radius: next });
     if (el.main) el.main.scrollTop = 0;
     renderExploreWithSkeleton();
-    const opt = store.getRadiusOption(next);
-    showToast(opt && opt.km
-      ? `내 동네 반경 ${opt.name} 안의 사람·모임·글만 볼게요`
-      : '반경 제한 없이 다시 볼게요 · 이 선택도 기억해 둘게요', 'info');
   }
 
   /** 거리 표기(1km 미만은 m) — 사람·모임·글 카드가 같은 자를 쓴다. */
@@ -5572,101 +5533,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const HOT_SHEET_LIMIT = 10;
 
   /** 지역 드롭다운 버튼의 현재 값 표시 */
-  function renderRegionButton() {
-    const region = store.getRegion(ui.exploreRegion);
-    if (el.exploreRegionLabel) el.exploreRegionLabel.textContent = region ? region.name : '전체 지역';
-    if (el.exploreRegionEmoji) el.exploreRegionEmoji.innerHTML = ic(region ? region.icon : 'pin');
-    if (el.btnExploreRegion) {
-      el.btnExploreRegion.classList.toggle('is-filtering', !!region);
-      el.btnExploreRegion.setAttribute('aria-label',
-        region ? `지역 ${region.name} · 다른 지역 고르기` : '지역 선택');
-    }
-  }
-
-  /**
-   * Sprint 23 — 상단 지역 카테고리 칩 (이반시티 우리동네 방식).
-   *  [전체] [내 주변] [서울] [경기] [인천] … [제주] 를 가로로 넘기고,
-   *  서울을 고르면 바로 아래에 서울 7개 동네가 한 줄 더 열린다.
-   */
-  function renderRegionChips() {
-    if (!el.exploreRegionChips) return;
-    const selected = store.getRegion(ui.exploreRegion);
-    const selectedGroupId = selected ? (selected.group ? selected.id : selected.groupId) : null;
-    const chips = store.getExploreRegionChips(ui.exploreFilter, ui.exploreQuery, ui.exploreAge, ui.exploreRadius);
-    el.exploreRegionChips.innerHTML = chips.map((c) => {
-      const on = c.id === 'all'
-        ? ui.exploreRegion === 'all'
-        : (c.group ? selectedGroupId === c.id : ui.exploreRegion === c.id);
-      return `<button class="explore-region-chip ${on ? 'active' : ''}" data-region-chip="${escapeHtml(c.id)}"
-                      type="button" aria-pressed="${on}">
-                ${ic(c.icon || (c.id === 'all' ? 'grid' : 'pin'))}
-                <span>${escapeHtml(c.name)}</span>
-                <span class="explore-region-chip-count">${c.count}</span>
-              </button>`;
-    }).join('');
-    keepChipVisible(el.exploreRegionChips, '.explore-region-chip.active');
-
-    /* 서울처럼 안쪽 동네가 여럿인 지역만 한 줄 더 — '서울 전체' + 7개 동네 */
-    const subs = selectedGroupId ? store.getSubRegions(selectedGroupId) : [];
-    if (el.exploreRegionSub) {
-      if (subs.length > 1) {
-        el.exploreRegionSub.hidden = false;
-        el.exploreRegionSub.innerHTML = [
-          `<button class="explore-sub-chip ${ui.exploreRegion === selectedGroupId ? 'active' : ''}"
-                   data-region-sub="${escapeHtml(selectedGroupId)}" type="button"
-                   aria-pressed="${ui.exploreRegion === selectedGroupId}">전체</button>`,
-          ...subs.map((r) => `<button class="explore-sub-chip ${ui.exploreRegion === r.id ? 'active' : ''}"
-                   data-region-sub="${escapeHtml(r.id)}" type="button"
-                   aria-pressed="${ui.exploreRegion === r.id}">${escapeHtml(r.name)}</button>`)
-        ].join('');
-        keepChipVisible(el.exploreRegionSub, '.explore-sub-chip.active');
-      } else {
-        el.exploreRegionSub.hidden = true;
-        el.exploreRegionSub.innerHTML = '';
-      }
-    }
-  }
-
-  /** 지역 선택 시트 — 큰 분류 → 동네 순서로, 지금 조건 안의 사람·글 수와 함께 보여준다. */
-  function renderRegionSheet() {
-    if (!el.regionList) return;
-    const stats = store.getExploreRegionStats(ui.exploreFilter, ui.exploreQuery, ui.exploreAge, ui.exploreRadius);
-    const byId = stats.reduce((map, s2) => { map[s2.id] = s2; return map; }, {});
-    const row = (r, sub) => {
-      const on = ui.exploreRegion === r.id;
-      return `<button class="region-row ${sub ? 'is-sub' : ''} ${on ? 'active' : ''}" data-region="${r.id}" type="button"
-                      aria-pressed="${on}">
-        <span class="region-row-emoji" aria-hidden="true">${ic(r.icon)}</span>
-        <span class="region-row-main">
-          <span class="region-row-name">${escapeHtml(r.name)}${on ? ` <span class="region-row-check" aria-hidden="true">${ic('check')}</span>` : ''}</span>
-          <span class="region-row-label">${escapeHtml(r.label)}</span>
-        </span>
-        <span class="region-row-counts" aria-label="사람 ${r.people} · 글 ${r.posts}">
-          <span class="region-count">사람 ${r.people}</span>
-          <span class="region-count">글 ${r.posts}</span>
-        </span>
-      </button>`;
-    };
-    const all = byId.all || { people: 0, posts: 0 };
-    const near = byId.nearby;
-    const groupsHTML = store.getRegionGroups().map((g) => {
-      const groupStats = byId[g.id] || { ...g, people: 0, posts: 0 };
-      const subs = store.getSubRegions(g.id);
-      return row({ ...groupStats, label: g.label }, false)
-        + (subs.length > 1 ? subs.map((r) => row(byId[r.id] || { ...r, people: 0, posts: 0 }, true)).join('') : '');
-    }).join('');
-    el.regionList.innerHTML = `
-      ${row({ id: 'all', name: '전체 지역', icon: 'map', label: '모든 지역', people: all.people, posts: all.posts }, false)}
-      ${near ? row({ ...near, name: `내 주변 (${store.formatDistance(5)} 안)`, label: '내 동네에서 가까운 순' }, false) : ''}
-      ${groupsHTML}`;
-  }
-
-  function openRegionSheet() {
-    if (!el.regionModal) return;
-    renderRegionSheet();
-    openModal(el.regionModal);
-  }
-
+  /** 지역 선택 → 저장(기억) → 탐색 다시 그리기
+   *  Sprint 25 — 지역 고르는 곳은 **가로 칩 두 줄**(상단·필터 시트)뿐이다. */
   /** 지역 선택 → 저장(기억) → 탐색 다시 그리기 */
   function selectRegion(regionId) {
     const known = regionId === 'all' || regionId === 'nearby' || store.getRegion(regionId);
@@ -5675,11 +5543,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.exploreBuffer = null;
     store.updateExplorePrefs({ region: next });
     renderExplore();
-    if (el.regionModal && el.regionModal.classList.contains('active')) closeModal(el.regionModal);
     if (el.main) el.main.scrollTop = 0;
     const region = store.getRegion(next);
-    showToast(region
-      ? `${store.getRegionLabel(next)}의 사람과 글을 모아 볼게요`
+    if (next === 'nearby') showToast('내 주변 5km 안의 사람과 글을 모아 볼게요', 'info');
+    else showToast(region
+      ? `${store.getRegionLabel(next)} 사람과 글을 모아 볼게요`
       : '전체 지역으로 돌아왔어요 · 이 선택도 기억해 둘게요', 'info');
   }
 
@@ -5832,9 +5700,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExploreToolbar();
     renderExploreProfileToggle();
     /* 닫힌 시트의 칩도 적용 상태를 그대로 반영해 둔다(다시 열면 그 상태에서 시작). */
-    renderExploreChips();
     renderAgeRange();
-    renderRadiusChips();
     /* 첫 렌더 경량화 — 실베 스트립은 카드가 먼저 그려진 다음 프레임에 그린다. */
     if (ui.hotRendered) {
       renderHotStrip();
@@ -5853,8 +5719,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ageOn = ageRange.active;
     const ageFilter = ageOn ? { id: 'range', name: `${ageRange.min}~${ageRange.max}세` } : null;
     const region = store.getRegion(ui.exploreRegion);
-    const radiusOpt = store.getRadiusOption(ui.exploreRadius);
-    const radiusOn = !!(radiusOpt && radiusOpt.km);
+    const radiusOn = false;   // Sprint 25 — 반경 칩은 탐색에서 뺐다(지역이 그 역할을 한다)
 
     const regionLabel = region ? store.getRegionLabel(ui.exploreRegion) : '';
     if (el.exploreCount) {
@@ -5873,9 +5738,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ageOn && ageFilter && !ui.exploreQuery) {
         el.exploreCount.textContent += ` · ${ageFilter.name}`;
       }
-      if (radiusOn && !ui.exploreQuery) {
-        el.exploreCount.textContent += ` · ${radiusOpt.name} 이내`;
-      }
     }
     if (el.exploreTitle) {
       const baseLabel = region
@@ -5887,10 +5749,6 @@ document.addEventListener('DOMContentLoaded', () => {
         el.exploreTitle.textContent = `${baseLabel ? `${baseLabel} · ` : ''}${ageFilter.name} 사람과 번개`;
       } else if (baseLabel) {
         el.exploreTitle.textContent = `${baseLabel} 사람과 번개`;
-      } else if (radiusOn) {
-        el.exploreTitle.textContent = `내 동네 ${radiusOpt.name} 안의 사람과 번개`;
-      } else if (activeFilter && activeFilter.kind === 'hobby') {
-        el.exploreTitle.textContent = `${activeFilter.name} 사람과 번개`;
       } else if (activeFilter && activeFilter.id !== 'all') {
         el.exploreTitle.textContent = `${activeFilter.name === 'people' ? '사람' : '글'}만 모아 보기`;
       } else {
@@ -5916,20 +5774,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       const nearest = store.nearestDistanceKm(ui.exploreFilter, ui.exploreQuery, ui.exploreAge, ui.exploreRegion);
-      const reason = radiusOn
-        ? '반경을 넓히거나 다른 동네를 골라보세요.'
+      const reason = ui.exploreRegion === 'nearby'
+        ? (nearest != null
+          ? `가장 가까운 카드가 ${distLabel(nearest)} 거리에 있어요. 다른 동네를 골라보세요.`
+          : '다른 동네를 골라보세요.')
         : (ageOn
           ? `‘${escapeHtml((ageFilter || {}).name || '')}’ 조건을 풀거나 다른 동네를 골라보세요.`
           : (region ? `‘${escapeHtml(store.getRegionLabel(ui.exploreRegion))}’에는 아직 글이 없어요. 첫 글을 남기거나 다른 동네를 골라보세요.` : '검색어를 짧게 바꾸거나 다른 동네를 골라보세요.'));
       el.exploreMasonry.innerHTML = `
         <div class="empty-state explore-empty">
-          ${emptyArt(radiusOn ? 'radius' : (ui.exploreQuery ? 'search' : 'explore'))}
-          <p class="empty-title">${radiusOn
-            ? `내 주변 ${radiusOpt.name} 안에는 아직 아무도 없어요`
-            : (region ? `${escapeHtml(store.getRegionLabel(ui.exploreRegion))}는 아직 조용해요` : '조건에 맞는 카드가 없어요')}</p>
-          <p class="empty-desc">${reason}${radiusOn && nearest != null ? ` 가장 가까운 카드가 ${distLabel(nearest)} 거리에 있어요.` : ''}</p>
+          ${emptyArt(ui.exploreQuery ? 'search' : 'explore')}
+          <p class="empty-title">${region
+            ? `${escapeHtml(store.getRegionLabel(ui.exploreRegion))}는 아직 조용해요`
+            : '조건에 맞는 카드가 없어요'}</p>
+          <p class="empty-desc">${reason}</p>
           <div class="empty-actions">
-            ${radiusOn ? '<button class="btn-secondary" data-explore-radius-clear="1" type="button">반경 넓히기</button>' : ''}
             <button class="btn-primary" data-explore-create="1" type="button">이 동네에 모임 만들기</button>
             <button class="btn-secondary" data-explore-compose-here="1" type="button">첫 글 쓰기</button>
             <button class="btn-secondary" data-explore-reset="1" type="button">필터 초기화</button>
@@ -5996,45 +5855,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExploreWithSkeleton();
   });
 
-  /* Sprint 21 — 시트 안 대분류 탭: 그 안의 세부 취미 칩을 바꿔 보여준다 */
-  el.hobbyCats && el.hobbyCats.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-hobby-cat]');
-    if (!btn) return;
-    ui.hobbyCategory = btn.dataset.hobbyCat;
-    ui.hobbyCategoryTouched = true;
-    renderHobbyCats();
-    renderExploreChips();
-  });
-
-  /* Sprint 21 — 목록에 없는 취미를 직접 써서 필터에 바로 건다 */
-  function addHobbyFromSheet() {
-    const value = el.hobbyCustomInput ? el.hobbyCustomInput.value : '';
-    const res = store.addCustomHobby(value, ui.hobbyCategory || 'sports');
-    if (!res.ok) {
-      showToast(res.reason === 'duplicate' ? '이미 있는 취미예요' : '취미 이름을 1~12자로 적어주세요', 'warning');
-      return;
-    }
-    if (el.hobbyCustomInput) el.hobbyCustomInput.value = '';
-    ui.hobbyCategory = res.hobby.categoryId;
-    ui.hobbyCategoryTouched = true;
-    ui.filterDraft = { ...(ui.filterDraft || {}), filter: res.hobby.id };
-    renderFilterSheet();
-    showToast(`'${res.hobby.name}' 취미를 더했어요 · 이 취미로 볼게요`, 'success');
-  }
-  el.hobbyCustomAdd && el.hobbyCustomAdd.addEventListener('click', addHobbyFromSheet);
-  el.hobbyCustomInput && el.hobbyCustomInput.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    addHobbyFromSheet();
-  });
-
-  /* 시트 안 취미 칩 — 하나만 · 같은 칩을 다시 누르면 해제 */
-  el.exploreChips && el.exploreChips.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-explore-filter]');
-    if (!chip) return;
-    toggleFilterDraft('filter', chip.dataset.exploreFilter);
-  });
-
   /* Sprint 16 — 나이 슬라이더 (0~99세 듀얼 레인지). 끌면 바로 저장하고 다시 그린다. */
   let ageCommitTimer = null;
   function scheduleAgeCommit() {
@@ -6059,13 +5879,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   el.btnAgeClear && el.btnAgeClear.addEventListener('click', () => {
     applyAgeRange(0, 99);
-  });
-
-  /* 시트 안 반경 칩 — 같은 칩을 다시 누르면 '전체'로 */
-  el.exploreRadiusChips && el.exploreRadiusChips.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-explore-radius]');
-    if (!chip) return;
-    toggleFilterDraft('radius', chip.dataset.exploreRadius);
   });
 
   /* 필터 시트 열기 · 적용 · 초기화 · 닫기 */
@@ -6097,17 +5910,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (id === ui.exploreRegion) return;
     selectRegion(id);
   });
-
-  /* Sprint 7 — 지역 드롭다운/시트 · 실시간 베스트 */
-  el.btnExploreRegion && el.btnExploreRegion.addEventListener('click', openRegionSheet);
-  el.regionList && el.regionList.addEventListener('click', (e) => {
-    const row = e.target.closest('[data-region]');
-    if (!row) return;
-    selectRegion(row.dataset.region);
+  /* Sprint 25 — 필터 시트 안 지역 가로 칩(큰 분류·하위 권역) + 내 주변.
+     시트 안에서는 드래프트만 바꾸고 [적용하기]에서 한 번에 반영한다. */
+  el.filterModal && el.filterModal.addEventListener('click', (e) => {
+    const sub = e.target.closest('[data-region-sub]');
+    if (sub && el.filterRegionSub && el.filterRegionSub.contains(sub)) {
+      toggleFilterDraft('region', sub.dataset.regionSub); return;
+    }
+    const chip = e.target.closest('[data-region-chip]');
+    if (chip && el.filterRegionChips && el.filterRegionChips.contains(chip)) {
+      toggleFilterDraft('region', chip.dataset.regionChip); return;
+    }
+    const near = e.target.closest('#filter-nearby-chip');
+    if (near) toggleFilterDraft('region', 'nearby');
   });
+
+  /* 실시간 베스트 */
   el.btnHotMore && el.btnHotMore.addEventListener('click', openHotSheet);
-  const btnCloseRegion = $('#btn-close-region');
-  btnCloseRegion && btnCloseRegion.addEventListener('click', () => closeModal(el.regionModal));
   const btnCloseHot = $('#btn-close-hot');
   btnCloseHot && btnCloseHot.addEventListener('click', () => closeModal(el.hotModal));
 
@@ -6144,10 +5963,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     /* Sprint 8 — 빈 반경/지역에서 '반경 넓히기' · '이 동네에 모임 만들기' */
-    if (e.target.closest('[data-explore-radius-clear]')) {
-      selectRadius('all');
-      return;
-    }
     if (e.target.closest('[data-explore-create]')) {
       openGroupCreate();
       return;
@@ -8123,10 +7938,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** 글쓰기 시트의 동네 select — 큰 분류(서울·경기 …)로 묶어 optgroup 으로 보여준다. */
+  /**
+   * Sprint 25 — 지역 고르기(글쓰기·가입)는 이반시티 우리동네와 같은 2단 체계.
+   *  · 하위 권역이 여럿인 큰 분류: <optgroup label="서울"> + 권역들
+   *  · 하위 권역이 없는 곳(제주·해외·베어): optgroup 없이 큰 분류 이름 그대로
+   */
   function regionSelectHTML(selectedId) {
     const selected = selectedId || '';
     return `<option value="">동네 선택</option>` + store.getRegionGroups().map((g) => {
       const leaves = store.getSubRegions(g.id);
+      if (leaves.length <= 1) {
+        const r = leaves[0];
+        const id = r ? r.id : g.id;
+        return `<option value="${escapeHtml(id)}" ${selected === id ? 'selected' : ''}>${escapeHtml(g.name)}</option>`;
+      }
       return `<optgroup label="${escapeHtml(g.name)}">${leaves.map((r) =>
         `<option value="${escapeHtml(r.id)}" ${selected === r.id ? 'selected' : ''}>${escapeHtml(r.name)}</option>`).join('')}</optgroup>`;
     }).join('');
@@ -8221,7 +8046,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* 내 동네를 기본값으로 채운다 — 대부분은 우리 동네에 글을 쓴다. */
     ui.exploreCompose = {
       hobbyId: null, photoUrl: null, meetStyle: null,
-      regionId: store.currentUser.regionId || 'seoul-seongsu'
+      regionId: store.currentUser.regionId || 'seoul-dongjak-gwanak'
     };
     if (el.exploreComposeCaption) el.exploreComposeCaption.value = '';
     renderPhotoPreview('explore');
@@ -10455,7 +10280,7 @@ document.addEventListener('DOMContentLoaded', () => {
   [el.groupModal, el.composerModal, el.joinedModal, el.personDetailModal,
    el.postModal, el.exploreComposeModal, el.profileEditModal, el.groupCreateModal,
    el.groupApplyModal, el.myApplicationsModal, el.notifModal, el.activityModal,
-   el.regionModal, el.hotModal, el.filterModal].forEach((overlay) => {
+   el.hotModal, el.filterModal].forEach((overlay) => {
     overlay && overlay.addEventListener('click', (e) => {
       if (e.target === overlay) closeModal(overlay);
     });
@@ -11232,7 +11057,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openActivityLog, renderActivityLog, openActivityTarget,
     simulateChatReply: () => store.simulateChatReply(),
     /* Sprint 7 — 내 나이 맞춤 · 지역 탐색 · 실시간 베스트 · 필터 기억 */
-    openRegionSheet, selectRegion, renderRegionSheet,
+    selectRegion,
     openHotSheet, renderHotSheet, renderHotStrip,
     setExploreRegion: (id) => selectRegion(id),
     getNotifState: () => ({
@@ -11240,7 +11065,6 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionUnread: (ui.notifSessionUnread || []).slice()
     }),
     /* Sprint 8 — 내 동네 반경 · 실베 2차 · 알림함/활동 로그 2차 · 성능 */
-    renderRadiusChips, selectRadius, setExploreRadius: (id) => selectRadius(id),
     syncHotEntryNotifications, hotMoveHTML,
     simulateHotEntry: (opts) => store.simulateHotEntry(opts),
     markNotifRead, removeNotif,
@@ -11252,7 +11076,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 9 — 통합 필터 시트 · 알림 묶음 · 활동 로그 내보내기 */
     openFilterSheet, closeFilterSheet, applyFilterDraft, resetFilterDraft, clearFilterCondition,
     toggleFilterDraft, renderFilterSheet, renderExploreToolbar, updateFilterPreview,
-    getFilterState: () => ({ applied: { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius, range: store.getExploreAgeRange() }, draft: { ...(ui.filterDraft || {}) }, open: !!ui.filterSheetOpen }),
+    getFilterState: () => ({ applied: { filter: ui.exploreFilter, age: ui.exploreAge, region: ui.exploreRegion, range: store.getExploreAgeRange() }, draft: { ...(ui.filterDraft || {}) }, open: !!ui.filterSheetOpen }),
     getNotifGroups: () => (ui.notifGroupMap || {}),
     resolveNotifGroup, markNotifGroupRead: (key) => markNotifRead(key), removeNotifGroup: (key) => removeNotif(key),
     exportActivity, downloadActivityCsv,
@@ -11368,7 +11192,6 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     },
     addCustomHobby: (name, categoryId) => store.addCustomHobby(name, categoryId),
-    renderHobbyCats,
     /* Sprint 19 — '우그' 클레이 로고 스플래시 · 클레이 모션 */
     splash,
     getSplashState: () => splash.getState(),
@@ -11376,7 +11199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setDmUnreadOnly: (on) => { ui.dmUnreadOnly = !!on; renderChatRooms(); },
     getDmViewState: () => ({ view: ui.dmView, unreadOnly: ui.dmUnreadOnly, sent: ui.dmSent }),
     /* Sprint 23 — 지역 게시판 · 통합 모임 찾기 · 스토리텔링 문구 연출 · 탭바 자동 숨김 */
-    renderRegionChips, renderExploreCompose, postStyleLabel, postRegionLabel,
+    renderExploreCompose, postStyleLabel, postRegionLabel,
     getRegionState: () => ({
       region: ui.exploreRegion,
       label: store.getRegionLabel(ui.exploreRegion),

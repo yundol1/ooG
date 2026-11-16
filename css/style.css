@@ -11903,10 +11903,16 @@ body.group-mode #bottom-nav { display: none; }
   display: flex;
   gap: 7px;
   overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
   padding: 2px 14px 2px 0;
 }
+.explore-region-chip,
+.explore-sub-chip { scroll-snap-align: center; }
 .explore-region-chips::-webkit-scrollbar,
 .explore-region-sub::-webkit-scrollbar { display: none; }
 .explore-region-chips { margin-top: 8px; padding-bottom: 2px; }
@@ -11971,6 +11977,39 @@ body.group-mode #bottom-nav { display: none; }
   box-shadow: inset 0 0 0 1px rgba(4, 120, 87, 0.28);
 }
 .explore-sub-chip:active { transform: scale(0.95); }
+
+/* ==========================================================================
+ * 25-1. Sprint 25 — 필터 시트의 지역 가로 칩 (취미 자리를 대신한다)
+ * ------------------------------------------------------------------------
+ * 11/17 01:05 사용자: "탐색탭의 필터안에 취미는 없애고 이반시티 우리동네 지역으로…
+ * 물론 선택 하는것또한 똑같으 왼쪽에서 오른쪽으로 터치하도록".
+ *  · 시트 안에서도 세로 목록이 아니라 **가로로 넘기는 칩 두 줄**이다.
+ *  · 큰 분류 줄 → 하위 권역 줄. 제주·해외·베어는 하위 권역이 없어 한 줄만.
+ * ========================================================================== */
+.filter-region {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0;
+}
+.filter-region .explore-region-chips { margin-top: 2px; padding-right: 6px; }
+.filter-region .explore-region-sub { margin-top: 6px; padding-right: 6px; }
+.filter-region .explore-region-chip { padding: 8px 12px; font-size: 12px; font-weight: var(--fw-label); }
+.filter-nearby-chip {
+  align-self: flex-start;
+  margin-top: 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.filter-nearby-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+}
 
 /* 탐색 상단은 검색 + 세그먼트 + 지역 칩 3줄이지만 슬림하게 유지한다 */
 .explore-top .explore-search { margin-bottom: 2px; }

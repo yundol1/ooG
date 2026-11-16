@@ -63,7 +63,7 @@
  * · Sprint 7 — 내 나이 맞춤 · 지역 탐색 · 실시간 베스트 · 필터 기억 · 알림함 강화
  *   store.getExploreAgeFilters();                 // + 'for_me'(내 나이에 맞는 모임만)
  *   store.getForMeAgeProfile();                   // 내 나이 기준 가입 가능 나이대
- *   store.getExploreRegions();                    // 지역(생활권) 9종 메타
+ *   store.getExploreRegions();                    // 지역(권역) 메타 — 이반시티 우리동네와 같은 2단 체계
  *   store.getExploreRegionStats(filter, q, age);  // 지역별 사람·모임·글 수
  *   store.getExploreFeed(f, q, opts, age, region); // 지역까지 걸러 보기
  *   store.getHotPosts({limit:5});                 // 실시간 베스트(반응 점수 순위)
@@ -120,7 +120,7 @@
  */
 
 const STORAGE_KEY = 'oog_app_state_v16';
-const STORAGE_SCHEMA_VERSION = 16;
+const STORAGE_SCHEMA_VERSION = 17;
 /* Sprint 17 — v14 이하 저장 상태는 '내 활동'이 남아 있다. v15 는 클린 스타트(회원가입부터)라
    옛 키를 읽어도 개인 데이터를 물려받지 않고 새 상태로 시작한다(아래 loadState 참고). */
 const LEGACY_KEYS = ['oog_app_state_v15', 'oog_app_state_v14', 'oog_app_state_v13', 'oog_app_state_v12', 'oog_app_state_v11', 'oog_app_state_v10', 'oog_app_state_v9', 'oog_app_state_v8', 'oog_app_state_v7', 'oog_app_state_v6', 'oog_app_state_v5', 'oog_app_state_v4'];   // 이전 저장 상태 마이그레이션용
@@ -455,100 +455,301 @@ function resolveNotificationActor(entry) {
  * · 지역은 '실제 생활권' 기준이다 — 행정구 하나가 아니라 사람들이 발로 묶는 동네
  *   (성동·동작의 성수/왕십리, 성동·건대의 성수/건대 …).
  * ------------------------------------------------------------------------- */
-/* Sprint 23 — 지역 카테고리(2단) — 이반시티 '우리동네/사람찾기' 구조
+/* Sprint 25 — 지역 카테고리(2단) — 이반시티 '우리동네'와 **똑같은** 체계
  * ---------------------------------------------------------------------------
- * 11/16 23:47 사용자 지시: "탐색 탭을 지역별 사람 구하기 게시판으로 바꿔.
- *  서울(성수·성동·동작 / 강남·서초 / 홍대·마포·신촌 / 종로·이태원·중구 / 강동·송파·잠실 /
- *  영등포·강서·구로 / 노원·강북·성북), 경기, 인천, 부산, 대구, 대전, 광주, 울산·세종,
- *  강원, 충청, 전라, 경상, 제주."
+ * 11/17 01:05 사용자 지시: "탐색탭의 필터안에 취미는 없애고 이반시티 우리동네
+ * 지역으로 넣으면 될거같아. 베어도 포함해서" · "선택 하는것또한 똑같으
+ * 왼쪽에서 오른쪽으로 터치하도록".
  *
- *  · 큰 분류(EXPLORE_REGION_GROUPS) → 동네(EXPLORE_REGIONS). 서울만 7개 동네로 나뉜다.
- *  · 사람·모임·글은 **동네 id** 하나를 갖는다(regionId). 큰 분류는 그 동네의 groupId 다.
+ *  · 큰 분류(EXPLORE_REGION_GROUPS) 9개: 서울 · 경기 · 강원 · 충청 · 전라 ·
+ *    경상 · 제주 · 해외 · 베어  (이반시티 우리동네와 같은 순서)
+ *  · 서울 12권역 · 경기 14권역 · 강원 5 · 충청 6 · 전라 4 · 경상 5 로 나뉘고,
+ *    제주·해외·베어는 하위 권역 없이 큰 분류 하나가 곧 동네다.
+ *  · 사람·모임·글은 **권역 id** 하나를 갖는다(regionId). 큰 분류는 그 권역의 groupId 다.
  *  · '전체'와 '내 주변'은 화면 전용 조건이다 — 데이터에는 저장하지 않는다.
- *  · 옛 생활권 id(gwanak·gangnam·mapo·yongsan·jongno·seongdong·yeongdeungpo)는
- *    REGION_ALIASES 로 지금 동네에 이어 붙인다(저장 상태 마이그레이션 안전).
+ *  · 옛 생활권 id(gwanak·gangnam·mapo …)와 Sprint 23 의 서울 7동네 id 는
+ *    REGION_ALIASES 로 지금 권역에 이어 붙인다(저장 상태 마이그레이션 안전).
  * ------------------------------------------------------------------------- */
 const EXPLORE_REGION_GROUPS = [
-  { id: 'seoul', name: '서울', short: '서울', icon: 'building', label: '성수·강남·홍대·종로·강동·영등포·노원' },
-  { id: 'gyeonggi', name: '경기', short: '경기', icon: 'train', label: '수원 · 성남 · 고양 · 부천 · 안양' },
-  { id: 'incheon', name: '인천', short: '인천', icon: 'bridge', label: '송도 · 부평 · 구월 · 남동' },
-  { id: 'busan', name: '부산', short: '부산', icon: 'riverside', label: '서면 · 해운대 · 광안리 · 부산대' },
-  { id: 'daegu', name: '대구', short: '대구', icon: 'building', label: '동성로 · 수성 · 범어 · 성서' },
-  { id: 'daejeon', name: '대전', short: '대전', icon: 'tree', label: '둔산 · 은행동 · 유성 · 대전역' },
-  { id: 'gwangju', name: '광주', short: '광주', icon: 'palette', label: '충장로 · 상무지구 · 첨단' },
-  { id: 'ulsan-sejong', name: '울산·세종', short: '울산·세종', icon: 'compass', label: '울산 삼산 · 세종 나성' },
-  { id: 'gangwon', name: '강원', short: '강원', icon: 'tent', label: '춘천 · 원주 · 강릉 · 속초' },
-  { id: 'chungcheong', name: '충청', short: '충청', icon: 'leaf', label: '천안 · 청주 · 충주 · 아산' },
-  { id: 'jeolla', name: '전라', short: '전라', icon: 'tree', label: '전주 · 익산 · 순천 · 목포' },
-  { id: 'gyeongsang', name: '경상', short: '경상', icon: 'train', label: '창원 · 포항 · 구미 · 진주' },
-  { id: 'jeju', name: '제주', short: '제주', icon: 'palette', label: '제주시 · 서귀포' }
+  { id: 'seoul', name: '서울', short: '서울', icon: 'building', label: '종로·중구 · 마포·용산 · 서초·강남 …' },
+  { id: 'gyeonggi', name: '경기', short: '경기', icon: 'train', label: '수원·용인 · 성남·광주 · 고양·파주 …' },
+  { id: 'gangwon', name: '강원', short: '강원', icon: 'tent', label: '춘천 · 원주 · 속초 · 강릉' },
+  { id: 'chungcheong', name: '충청', short: '충청', icon: 'leaf', label: '대전 · 세종 · 천안·아산 · 청주' },
+  { id: 'jeolla', name: '전라', short: '전라', icon: 'tree', label: '광주 · 전주 · 전남 · 전북' },
+  { id: 'gyeongsang', name: '경상', short: '경상', icon: 'compass', label: '부산 · 대구 · 울산 · 경남 · 경북' },
+  { id: 'jeju', name: '제주', short: '제주', icon: 'palette', label: '제주시 · 서귀포' },
+  { id: 'overseas', name: '해외', short: '해외', icon: 'globe', label: '일본 · 미국 · 유럽 · 유학' },
+  { id: 'bear', name: '베어', short: '베어', icon: 'paw', label: '베어 커뮤니티' }
 ];
 
 const EXPLORE_REGIONS = [
-  /* ---- 서울 7개 동네 ---- */
+  /* ------------------------------------------------ 서울 12권역 */
   {
-    id: 'seoul-seongsu', groupId: 'seoul', name: '성수·성동·동작', short: '성수', icon: 'tree',
-    label: '성수 · 서울숲 · 뚝섬 · 한양대 · 왕십리 · 뚝섬한강',
-    keywords: ['성동', '성수', '서울숲', '뚝섬', '한양대', '왕십리', '뚝섬한강', '동작', '옥수', '신대방']
+    id: 'seoul-jongno-junggu', groupId: 'seoul', name: '종로.중구', short: '종로', icon: 'temple',
+    label: '종로 · 을지로 · 광화문 · 명동 · 충무로 · 시청',
+    keywords: ['종로', '중구', '을지로', '광화문', '명동', '충무로', '시청', '청계', '남대문', '회현', '서울역']
   },
   {
-    id: 'seoul-gangnam', groupId: 'seoul', name: '강남·서초', short: '강남', icon: 'building',
-    label: '강남 · 대치 · 선릉 · 신논현 · 서초 · 양재 · 청담',
-    keywords: ['강남', '대치', '선릉', '신논현', '서초', '양재', '삼성동', '청담', '논현', '교대']
+    id: 'seoul-dongdaemun-seongbuk', groupId: 'seoul', name: '동대문.성북', short: '동대문', icon: 'building',
+    label: '동대문 · 성북 · 장안 · 길음 · 정릉 · 안암',
+    keywords: ['동대문', '성북', '장안', '전농', '답십리', '휘경', '이문', '석관', '안암', '종암', '길음', '정릉', '월곡', '돈암']
   },
   {
-    id: 'seoul-hongdae', groupId: 'seoul', name: '홍대·마포·신촌', short: '홍대', icon: 'palette',
-    label: '홍대 · 합정 · 연남 · 상수 · 공덕 · 신촌 · 망원',
-    keywords: ['마포', '홍대', '합정', '연남', '상수', '공덕', '서교', '신촌', '망원', '이대']
+    id: 'seoul-mapo-yongsan', groupId: 'seoul', name: '마포.용산', short: '마포', icon: 'palette',
+    label: '마포 · 용산 · 홍대 · 합정 · 이태원 · 한남',
+    keywords: ['마포', '용산', '홍대', '합정', '연남', '상수', '공덕', '서교', '망원', '신촌', '이대', '이태원', '한남', '경리단', '이촌', '삼각지', '남영', '노고산']
   },
   {
-    id: 'seoul-jongno', groupId: 'seoul', name: '종로·이태원·중구', short: '종로', icon: 'temple',
-    label: '종로 · 을지로 · 광화문 · 명동 · 충무로 · 이태원 · 한남',
-    keywords: ['종로', '중구', '을지로', '광화문', '명동', '충무로', '시청', '이태원', '한남', '경리단', '용산', '남영']
+    id: 'seoul-seodaemun-eunpyeong', groupId: 'seoul', name: '서대문.은평', short: '서대문', icon: 'home',
+    label: '서대문 · 은평 · 연희 · 홍제 · 불광 · 연신내',
+    keywords: ['서대문', '은평', '연희', '홍제', '홍은', '북가좌', '남가좌', '응암', '불광', '연신내', '갈현', '녹번', '무악']
   },
   {
-    id: 'seoul-gangdong', groupId: 'seoul', name: '강동·송파·잠실', short: '강동', icon: 'leaf',
-    label: '강동 · 천호 · 송파 · 잠실 · 문정 · 성수 · 건대',
-    keywords: ['강동', '천호', '송파', '잠실', '가락', '문정', '성동', '성수', '뚝섬', '왕십리', '건대', '광진', '자양']
+    id: 'seoul-seongdong-gwangjin', groupId: 'seoul', name: '성동.광진', short: '성동', icon: 'leaf',
+    label: '성수 · 뚝섬 · 왕십리 · 건대 · 자양 · 구의',
+    keywords: ['성동', '광진', '성수', '뚝섬', '왕십리', '건대', '자양', '구의', '화양', '응봉', '금호', '옥수', '서울숲']
   },
   {
-    id: 'seoul-yeongdeungpo', groupId: 'seoul', name: '영등포·강서·구로', short: '영등포', icon: 'riverside',
-    label: '영등포 · 여의도 · 당산 · 신도림 · 강서 · 구로 · 마곡',
-    keywords: ['영등포', '여의도', '당산', '신도림', '문래', '샛강', '강서', '구로', '마곡', '화곡', '목동']
+    id: 'seoul-gangbuk-dobong', groupId: 'seoul', name: '강북.도봉', short: '강북', icon: 'tree',
+    label: '수유 · 미아 · 번동 · 쌍문 · 방학 · 창동',
+    keywords: ['강북', '도봉', '수유', '미아', '번동', '쌍문', '방학', '창동', '우이']
   },
   {
-    id: 'seoul-nowon', groupId: 'seoul', name: '노원·강북·성북', short: '노원', icon: 'home',
-    label: '노원 · 상계 · 창동 · 수유 · 미아 · 성북 · 길음',
-    keywords: ['노원', '상계', '창동', '도봉', '강북', '수유', '미아', '성북', '길음', '성신']
+    id: 'seoul-nowon-jungnang', groupId: 'seoul', name: '노원.중랑', short: '노원', icon: 'home',
+    label: '노원 · 상계 · 중랑 · 면목 · 공릉 · 신내',
+    keywords: ['노원', '중랑', '상계', '중계', '하계', '공릉', '월계', '면목', '상봉', '묵동', '신내', '먹골']
   },
-  /* ---- 그 밖의 지역(큰 분류 하나 = 동네 하나) ---- */
-  { id: 'gyeonggi', groupId: 'gyeonggi', name: '경기', short: '경기', icon: 'train', label: '수원 · 성남 · 고양 · 부천 · 안양 · 용인', keywords: ['경기', '수원', '성남', '분당', '판교', '고양', '일산', '부천', '안양', '용인', '광교', '의정부'] },
-  { id: 'incheon', groupId: 'incheon', name: '인천', short: '인천', icon: 'bridge', label: '송도 · 부평 · 구월 · 남동 · 검단', keywords: ['인천', '송도', '부평', '구월', '남동', '검단'] },
-  { id: 'busan', groupId: 'busan', name: '부산', short: '부산', icon: 'riverside', label: '서면 · 해운대 · 광안리 · 부산대', keywords: ['부산', '서면', '해운대', '광안리', '부산대'] },
-  { id: 'daegu', groupId: 'daegu', name: '대구', short: '대구', icon: 'building', label: '동성로 · 수성 · 범어 · 성서', keywords: ['대구', '동성로', '수성', '범어', '성서'] },
-  { id: 'daejeon', groupId: 'daejeon', name: '대전', short: '대전', icon: 'tree', label: '둔산 · 은행동 · 유성 · 대전역', keywords: ['대전', '둔산', '은행동', '유성'] },
-  { id: 'gwangju', groupId: 'gwangju', name: '광주', short: '광주', icon: 'palette', label: '충장로 · 상무지구 · 첨단', keywords: ['광주', '충장로', '상무지구', '첨단'] },
-  { id: 'ulsan-sejong', groupId: 'ulsan-sejong', name: '울산·세종', short: '울산·세종', icon: 'compass', label: '울산 삼산 · 세종 나성', keywords: ['울산', '세종', '삼산', '나성'] },
-  { id: 'gangwon', groupId: 'gangwon', name: '강원', short: '강원', icon: 'tent', label: '춘천 · 원주 · 강릉 · 속초', keywords: ['강원', '춘천', '원주', '강릉', '속초'] },
-  { id: 'chungcheong', groupId: 'chungcheong', name: '충청', short: '충청', icon: 'leaf', label: '천안 · 청주 · 충주 · 아산', keywords: ['충청', '천안', '청주', '충주', '아산'] },
-  { id: 'jeolla', groupId: 'jeolla', name: '전라', short: '전라', icon: 'tree', label: '전주 · 익산 · 순천 · 목포', keywords: ['전라', '전주', '익산', '순천', '목포'] },
-  { id: 'gyeongsang', groupId: 'gyeongsang', name: '경상', short: '경상', icon: 'train', label: '창원 · 포항 · 구미 · 진주', keywords: ['경상', '창원', '포항', '구미', '진주'] },
-  { id: 'jeju', groupId: 'jeju', name: '제주', short: '제주', icon: 'palette', label: '제주시 · 서귀포', keywords: ['제주', '서귀포'] },
-  /* 옛 데이터(전국·온라인)는 칩에 세우지 않고 '전체'에서만 만난다. */
-  { id: 'online', groupId: 'online', hidden: true, name: '전국·온라인', short: '온라인', icon: 'globe', label: '디스코드 · 전국 어디서나', keywords: ['전국', '디스코드', '온라인'] }
+  {
+    id: 'seoul-seocho-gangnam', groupId: 'seoul', name: '서초.강남', short: '강남', icon: 'building',
+    label: '강남 · 역삼 · 서초 · 신논현 · 청담 · 양재',
+    keywords: ['서초', '강남', '역삼', '선릉', '신논현', '양재', '청담', '논현', '교대', '삼성', '반포', '방배', '압구정', '신사', '도곡', '대치', '학동']
+  },
+  {
+    id: 'seoul-gangdong-songpa', groupId: 'seoul', name: '강동.송파', short: '강동', icon: 'riverside',
+    label: '강동 · 천호 · 송파 · 잠실 · 문정 · 가락',
+    keywords: ['강동', '송파', '천호', '잠실', '가락', '문정', '석촌', '방이', '강일', '둔촌', '성내', '풍납']
+  },
+  {
+    id: 'seoul-gangseo-yangcheon', groupId: 'seoul', name: '강서.양천', short: '강서', icon: 'riverside',
+    label: '강서 · 양천 · 마곡 · 화곡 · 목동 · 신월',
+    keywords: ['강서', '양천', '마곡', '화곡', '등촌', '발산', '가양', '목동', '신월', '신정', '염창']
+  },
+  {
+    id: 'seoul-dongjak-gwanak', groupId: 'seoul', name: '동작.관악', short: '동작', icon: 'tree',
+    label: '신림 · 봉천 · 낙성대 · 사당 · 노량진 · 흑석',
+    keywords: ['동작', '관악', '신림', '봉천', '낙성대', '서울대입구', '사당', '보라매', '흑석', '신대방', '상도', '노량진', '대방', '남성', '이수']
+  },
+  {
+    id: 'seoul-yeongdeungpo-guro-geumcheon', groupId: 'seoul', name: '영등포.구로.금천', short: '영등포', icon: 'building',
+    label: '영등포 · 여의도 · 구로 · 금천 · 신도림 · 가산',
+    keywords: ['영등포', '구로', '금천', '여의도', '당산', '신도림', '문래', '가산', '독산', '대림', '화곡동', '구디']
+  },
+  /* ------------------------------------------------ 경기 14권역 (인천 포함) */
+  {
+    id: 'gyeonggi-incheon-bucheon-gimpo', groupId: 'gyeonggi', name: '인천.부천.김포', short: '인천', icon: 'bridge',
+    label: '인천 · 송도 · 부평 · 부천 · 김포',
+    keywords: ['인천', '부천', '김포', '송도', '부평', '구월', '남동', '검단', '계양', '원미', '상동', '장기동']
+  },
+  {
+    id: 'gyeonggi-suwon-yongin-uiwang', groupId: 'gyeonggi', name: '수원.용인.의왕', short: '수원', icon: 'train',
+    label: '수원 · 영통 · 광교 · 용인 · 수지 · 의왕',
+    keywords: ['수원', '용인', '의왕', '영통', '광교', '팔달', '권선', '기흥', '수지', '처인']
+  },
+  {
+    id: 'gyeonggi-goyang-paju', groupId: 'gyeonggi', name: '고양.파주', short: '고양', icon: 'tree',
+    label: '일산 · 고양 · 파주 · 운정 · 킨텍스',
+    keywords: ['고양', '파주', '일산', '킨텍스', '운정', '금촌', '화정', '백석', '주엽', '탄현']
+  },
+  {
+    id: 'gyeonggi-ansan-siheung-gwangmyeong', groupId: 'gyeonggi', name: '안산.시흥.광명', short: '안산', icon: 'building',
+    label: '안산 · 시흥 · 광명 · 배곧 · 정왕 · 철산',
+    keywords: ['안산', '시흥', '광명', '단원', '상록', '배곧', '정왕', '철산', '하안', '오이도']
+  },
+  {
+    id: 'gyeonggi-seongnam-gwangju', groupId: 'gyeonggi', name: '성남.광주', short: '성남', icon: 'building',
+    label: '분당 · 판교 · 성남 · 광주 · 위례 · 모란',
+    keywords: ['성남', '광주', '분당', '판교', '정자', '서현', '위례', '모란', '야탑', '경안', '곤지암', '오포']
+  },
+  {
+    id: 'gyeonggi-anyang-gunpo-gwacheon', groupId: 'gyeonggi', name: '안양.군포.과천', short: '안양', icon: 'train',
+    label: '안양 · 범계 · 평촌 · 군포 · 과천',
+    keywords: ['안양', '군포', '과천', '범계', '평촌', '산본', '인덕원', '동안', '만안']
+  },
+  {
+    id: 'gyeonggi-hwaseong-osan', groupId: 'gyeonggi', name: '화성.오산', short: '화성', icon: 'tree',
+    label: '동탄 · 병점 · 화성 · 오산 · 향남',
+    keywords: ['화성', '오산', '동탄', '병점', '향남', '봉담', '세교']
+  },
+  {
+    id: 'gyeonggi-pyeongtaek-anseong', groupId: 'gyeonggi', name: '평택.안성', short: '평택', icon: 'train',
+    label: '평택 · 송탄 · 안성 · 공도',
+    keywords: ['평택', '안성', '송탄', '고덕', '공도', '비전']
+  },
+  {
+    id: 'gyeonggi-guri-hanam-namyangju', groupId: 'gyeonggi', name: '구리.하남.남양주', short: '남양주', icon: 'riverside',
+    label: '구리 · 하남 · 미사 · 남양주 · 다산 · 별내',
+    keywords: ['구리', '하남', '남양주', '미사', '다산', '별내', '교산', '덕소', '와부', '진접', '오남', '호평']
+  },
+  {
+    id: 'gyeonggi-uijeongbu-yangju-dongducheon', groupId: 'gyeonggi', name: '의정부.양주.동두천', short: '의정부', icon: 'tree',
+    label: '의정부 · 양주 · 동두천 · 회룡 · 덕정',
+    keywords: ['의정부', '양주', '동두천', '회룡', '호원', '덕정', '보산', '소요']
+  },
+  {
+    id: 'gyeonggi-yeoju-icheon', groupId: 'gyeonggi', name: '여주.이천', short: '이천', icon: 'leaf',
+    label: '여주 · 이천 · 부발 · 장호원',
+    keywords: ['여주', '이천', '부발', '장호원']
+  },
+  {
+    id: 'gyeonggi-pocheon-yeoncheon', groupId: 'gyeonggi', name: '포천.연천', short: '포천', icon: 'mountain',
+    label: '포천 · 연천 · 소흘 · 송우',
+    keywords: ['포천', '연천', '소흘', '송우']
+  },
+  {
+    id: 'gyeonggi-yangpyeong-gapyeong', groupId: 'gyeonggi', name: '양평.가평', short: '가평', icon: 'tent',
+    label: '양평 · 가평 · 청평 · 남이섬',
+    keywords: ['양평', '가평', '청평', '남이섬', '용문', '양서']
+  },
+  {
+    id: 'gyeonggi-etc', groupId: 'gyeonggi', name: '기타', short: '경기', icon: 'map',
+    label: '그 밖의 경기',
+    keywords: ['경기']
+  },
+  /* ------------------------------------------------ 강원 5권역 */
+  {
+    id: 'gangwon-chuncheon', groupId: 'gangwon', name: '춘천', short: '춘천', icon: 'tree',
+    label: '춘천 · 강촌', keywords: ['춘천', '강촌']
+  },
+  {
+    id: 'gangwon-wonju', groupId: 'gangwon', name: '원주', short: '원주', icon: 'building',
+    label: '원주 · 혁신도시 · 무실', keywords: ['원주', '혁신도시', '무실']
+  },
+  {
+    id: 'gangwon-sokcho', groupId: 'gangwon', name: '속초', short: '속초', icon: 'riverside',
+    label: '속초 · 설악 · 청호', keywords: ['속초', '설악', '청호']
+  },
+  {
+    id: 'gangwon-gangneung', groupId: 'gangwon', name: '강릉', short: '강릉', icon: 'sunrise',
+    label: '강릉 · 경포 · 안목', keywords: ['강릉', '경포', '안목']
+  },
+  {
+    id: 'gangwon-etc', groupId: 'gangwon', name: '강원', short: '강원', icon: 'mountain',
+    label: '그 밖의 강원', keywords: ['강원']
+  },
+  /* ------------------------------------------------ 충청 6권역 */
+  {
+    id: 'chungcheong-daejeon', groupId: 'chungcheong', name: '대전', short: '대전', icon: 'building',
+    label: '대전 · 둔산 · 유성 · 대전역', keywords: ['대전', '둔산', '유성', '은행동']
+  },
+  {
+    id: 'chungcheong-sejong', groupId: 'chungcheong', name: '세종', short: '세종', icon: 'building',
+    label: '세종 · 나성 · 조치원', keywords: ['세종', '나성', '조치원']
+  },
+  {
+    id: 'chungcheong-cheonan-asan', groupId: 'chungcheong', name: '천안.아산', short: '천안', icon: 'train',
+    label: '천안 · 아산 · 불당 · 배방 · 신창',
+    keywords: ['천안', '아산', '불당', '배방', '신창', '쌍용']
+  },
+  {
+    id: 'chungcheong-cheongju', groupId: 'chungcheong', name: '청주', short: '청주', icon: 'building',
+    label: '청주 · 사창 · 성안길 · 오창', keywords: ['청주', '사창', '성안길', '오창']
+  },
+  {
+    id: 'chungcheong-chungbuk', groupId: 'chungcheong', name: '충북', short: '충북', icon: 'leaf',
+    label: '충주 · 제천 · 음성', keywords: ['충북', '충주', '제천', '음성']
+  },
+  {
+    id: 'chungcheong-chungnam', groupId: 'chungcheong', name: '충남', short: '충남', icon: 'leaf',
+    label: '공주 · 보령 · 서산 · 논산', keywords: ['충남', '공주', '보령', '서산', '논산', '당진']
+  },
+  /* ------------------------------------------------ 전라 4권역 */
+  {
+    id: 'jeolla-gwangju', groupId: 'jeolla', name: '광주', short: '광주', icon: 'palette',
+    label: '광주 · 충장로 · 상무지구 · 첨단', keywords: ['광주', '충장로', '상무지구', '첨단']
+  },
+  {
+    id: 'jeolla-jeonju', groupId: 'jeolla', name: '전주', short: '전주', icon: 'home',
+    label: '전주 · 한옥마을 · 객사', keywords: ['전주', '한옥마을', '객사', '덕진']
+  },
+  {
+    id: 'jeolla-jeonnam', groupId: 'jeolla', name: '전남', short: '전남', icon: 'riverside',
+    label: '순천 · 목포 · 여수', keywords: ['전남', '순천', '목포', '여수']
+  },
+  {
+    id: 'jeolla-jeonbuk', groupId: 'jeolla', name: '전북', short: '전북', icon: 'leaf',
+    label: '익산 · 군산 · 정읍', keywords: ['전북', '익산', '군산', '정읍']
+  },
+  /* ------------------------------------------------ 경상 5권역 */
+  {
+    id: 'gyeongsang-busan', groupId: 'gyeongsang', name: '부산', short: '부산', icon: 'riverside',
+    label: '서면 · 해운대 · 광안리 · 부산대', keywords: ['부산', '서면', '해운대', '광안리', '부산대']
+  },
+  {
+    id: 'gyeongsang-daegu', groupId: 'gyeongsang', name: '대구', short: '대구', icon: 'building',
+    label: '동성로 · 수성 · 범어 · 성서', keywords: ['대구', '동성로', '수성', '범어', '성서']
+  },
+  {
+    id: 'gyeongsang-ulsan', groupId: 'gyeongsang', name: '울산', short: '울산', icon: 'building',
+    label: '울산 · 삼산 · 성남동', keywords: ['울산', '삼산', '성남동']
+  },
+  {
+    id: 'gyeongsang-gyeongnam', groupId: 'gyeongsang', name: '경남', short: '경남', icon: 'train',
+    label: '창원 · 김해 · 진주', keywords: ['경남', '창원', '김해', '진주', '양산']
+  },
+  {
+    id: 'gyeongsang-gyeongbuk', groupId: 'gyeongsang', name: '경북', short: '경북', icon: 'tree',
+    label: '포항 · 구미 · 경주', keywords: ['경북', '포항', '구미', '경주', '안동']
+  },
+  /* ------------------------------------------------ 한 곳뿐인 지역 (하위 권역 없음) */
+  {
+    id: 'jeju', groupId: 'jeju', name: '제주', short: '제주', icon: 'palette',
+    label: '제주시 · 서귀포 · 애월 · 성산', keywords: ['제주', '서귀포', '애월', '성산', '한림']
+  },
+  {
+    id: 'overseas', groupId: 'overseas', name: '해외', short: '해외', icon: 'globe',
+    label: '일본 · 미국 · 유럽 · 유학',
+    keywords: ['해외', '일본', '도쿄', '오사카', '미국', '뉴욕', 'LA', '유럽', '호주', '중국', '태국', '베트남', '대만', '유학', '밴쿠버', '전국', '디스코드', '온라인']
+  },
+  {
+    id: 'bear', groupId: 'bear', name: '베어', short: '베어', icon: 'paw',
+    label: '베어 커뮤니티 · 곰', keywords: ['베어', '곰돌', '곰']
+  }
 ];
 
-/** 옛 생활권 id → 지금 동네 id (저장 상태를 버리지 않고 이어 붙인다). */
+/**
+ * 옛 지역 id → 지금 권역 id (저장 상태를 버리지 않고 이어 붙인다).
+ *  · 9생활권(gwanak·gangnam·mapo·yongsan·jongno·seongdong·yeongdeungpo)
+ *  · Sprint 23 의 2단 분류(서울 7동네 + 지역 12)
+ *  · 옛 '전국·온라인'은 해외로 모은다.
+ */
 const REGION_ALIASES = {
-  gwanak: 'seoul-seongsu',
-  gangnam: 'seoul-gangnam',
-  mapo: 'seoul-hongdae',
-  yongsan: 'seoul-jongno',
-  jongno: 'seoul-jongno',
-  seongdong: 'seoul-gangdong',
-  yeongdeungpo: 'seoul-yeongdeungpo',
-  'gyeonggi': 'gyeonggi',
-  online: 'online'
+  /* 9생활권 */
+  gwanak: 'seoul-dongjak-gwanak',
+  gangnam: 'seoul-seocho-gangnam',
+  mapo: 'seoul-mapo-yongsan',
+  yongsan: 'seoul-mapo-yongsan',
+  jongno: 'seoul-jongno-junggu',
+  seongdong: 'seoul-seongdong-gwangjin',
+  yeongdeungpo: 'seoul-yeongdeungpo-guro-geumcheon',
+  /* Sprint 23 — 서울 7동네 */
+  'seoul-seongsu': 'seoul-dongjak-gwanak',
+  'seoul-gangnam': 'seoul-seocho-gangnam',
+  'seoul-hongdae': 'seoul-mapo-yongsan',
+  'seoul-jongno': 'seoul-jongno-junggu',
+  'seoul-gangdong': 'seoul-gangdong-songpa',
+  'seoul-yeongdeungpo': 'seoul-yeongdeungpo-guro-geumcheon',
+  'seoul-nowon': 'seoul-nowon-jungnang',
+  /* Sprint 23 — 지역 12 (지금은 큰 분류 안의 권역으로) */
+  incheon: 'gyeonggi-incheon-bucheon-gimpo',
+  busan: 'gyeongsang-busan',
+  daegu: 'gyeongsang-daegu',
+  daejeon: 'chungcheong-daejeon',
+  gwangju: 'jeolla-gwangju',
+  'ulsan-sejong': 'gyeongsang-ulsan',
+  chungcheong: 'chungcheong-chungnam',
+  jeolla: 'jeolla-jeonnam',
+  gyeongsang: 'gyeongsang-gyeongnam',
+  online: 'overseas'
 };
 
 /** 내 주변 — 기본 5km 안. (반경 필터를 직접 고르면 그 값이 우선한다) */
@@ -594,11 +795,31 @@ function meetStyleDef(styleId) {
  * · RADIUS 옵션은 저장 상태(exploreRadiusOptions)에 두어 마이그레이션·검증에서 함께 쓴다.
  * ------------------------------------------------------------------------- */
 const REGION_DISTANCE_KM = {
-  'seoul-seongsu': 0.6, 'seoul-gangnam': 7.2, 'seoul-hongdae': 9.6, 'seoul-jongno': 10.4,
-  'seoul-gangdong': 13.4, 'seoul-yeongdeungpo': 8.4, 'seoul-nowon': 15.8,
-  gyeonggi: 24, incheon: 31, busan: 325, daegu: 238, daejeon: 162, gwangju: 268,
-  'ulsan-sejong': 307, gangwon: 96, chungcheong: 118, jeolla: 214, gyeongsang: 231,
-  jeju: 452, online: null
+  /* 서울 12권역 — 내 동네(동작.성동) 중심 */
+  'seoul-dongjak-gwanak': 0.6, 'seoul-seocho-gangnam': 7.4, 'seoul-yeongdeungpo-guro-geumcheon': 8.4,
+  'seoul-mapo-yongsan': 9.6, 'seoul-jongno-junggu': 10.4, 'seoul-seodaemun-eunpyeong': 11.4,
+  'seoul-dongdaemun-seongbuk': 12.6, 'seoul-seongdong-gwangjin': 13.2, 'seoul-gangseo-yangcheon': 13.2,
+  'seoul-gangdong-songpa': 14.6, 'seoul-gangbuk-dobong': 15.4, 'seoul-nowon-jungnang': 16.8,
+  /* 경기 14권역 */
+  'gyeonggi-anyang-gunpo-gwacheon': 22, 'gyeonggi-guri-hanam-namyangju': 24,
+  'gyeonggi-seongnam-gwangju': 26, 'gyeonggi-ansan-siheung-gwangmyeong': 26,
+  'gyeonggi-incheon-bucheon-gimpo': 28, 'gyeonggi-goyang-paju': 30,
+  'gyeonggi-uijeongbu-yangju-dongducheon': 32, 'gyeonggi-suwon-yongin-uiwang': 34,
+  'gyeonggi-hwaseong-osan': 42, 'gyeonggi-yangpyeong-gapyeong': 48, 'gyeonggi-pocheon-yeoncheon': 55,
+  'gyeonggi-pyeongtaek-anseong': 62, 'gyeonggi-yeoju-icheon': 70, 'gyeonggi-etc': 45,
+  /* 강원 5권역 */
+  'gangwon-chuncheon': 78, 'gangwon-wonju': 96, 'gangwon-etc': 120,
+  'gangwon-sokcho': 158, 'gangwon-gangneung': 165,
+  /* 충청 6권역 */
+  'chungcheong-cheonan-asan': 92, 'chungcheong-sejong': 130, 'chungcheong-cheongju': 120,
+  'chungcheong-chungbuk': 140, 'chungcheong-chungnam': 140, 'chungcheong-daejeon': 162,
+  /* 전라 4권역 */
+  'jeolla-jeonju': 214, 'jeolla-jeonbuk': 220, 'jeolla-gwangju': 268, 'jeolla-jeonnam': 300,
+  /* 경상 5권역 */
+  'gyeongsang-daegu': 238, 'gyeongsang-gyeongbuk': 260, 'gyeongsang-ulsan': 307,
+  'gyeongsang-gyeongnam': 320, 'gyeongsang-busan': 325,
+  /* 한 곳뿐인 지역 */
+  jeju: 452, overseas: null, bear: null
 };
 
 const EXPLORE_RADIUS_OPTIONS = [
@@ -681,8 +902,17 @@ function regionFilterMatches(filterId, itemRegionId) {
 function deriveRegionId(text) {
   const hay = String(text || '');
   if (!hay.trim()) return null;
-  const hit = EXPLORE_REGIONS.find((r) => (r.keywords || []).some((k) => hay.includes(k)));
-  return hit ? hit.id : null;
+  /* 가장 **긴** 키워드가 이긴다 — '인천 중구'처럼 짧은 동네 이름이 겹치는 문장에서
+     '중구'(서울) 보다 '인천'(경기 권역)을 고르게 하려면 긴 쪽을 먼저 봐야 한다. */
+  let best = null;
+  let bestLen = 0;
+  EXPLORE_REGIONS.forEach((r) => {
+    (r.keywords || []).forEach((k) => {
+      if (!k || k.length <= bestLen) return;
+      if (hay.includes(k)) { best = r.id; bestLen = k.length; }
+    });
+  });
+  return best;
 }
 
 /**
@@ -695,7 +925,7 @@ function deriveRegionId(text) {
  */
 function applyRegionIds(state) {
   if (!state) return state;
-  const fallback = 'seoul-seongsu';
+  const fallback = 'seoul-dongjak-gwanak';
   const pick = (explicit, ...texts) => {
     const known = normalizeRegionId(explicit);
     if (known) return known;
@@ -912,6 +1142,279 @@ const HOBBY_FLAT = HOBBY_TAXONOMY.reduce((list, cat) => list.concat(
     categoryName: cat.name, tone: cat.tone, core: h.core === true
   }))
 ), []);
+
+/* ============================================================================
+ * Sprint 25 — 지역 시드 (데모 계정 · 테스트 · #demo 미리보기 전용)
+ * ----------------------------------------------------------------------------
+ * 11/17 01:05 사용자 지시로 탐색 지역을 이반시티 '우리동네'와 같은 2단 체계로
+ * 바꾸면서, **모든 권역에 최소 한 건씩** 공개 글과 사람을 두었다.
+ *  · 어느 지역 칩을 눌러도 빈 화면이 아니라 그 동네의 글이 보인다.
+ *  · 실제 방문자(새 계정)는 여전히 빈 앱에서 시작한다 — buildCleanState 가 지운다.
+ *  · 표: [권역 id, 취미 id, 만남 스타일, 글 한 줄]
+ * ========================================================================== */
+const REGION_SEED_POSTS = [
+  ['seoul-jongno-junggu', 'wine', 'drink', '을지로 노포에서 퇴근 한잔 하실 분. 금요일 8시, 조용한 데로 골라둘게요.'],
+  ['seoul-dongdaemun-seongbuk', 'movie', 'comfortable', '성북예술창작센터 근처에서 같이 영화 볼 분. 이번 주 토요일 낮이에요.'],
+  ['seoul-mapo-yongsan', 'cafe', 'comfortable', '연남동 카페 한 바퀴 같이 도실 분. 커피 이야기 좋아해요.'],
+  ['seoul-seodaemun-eunpyeong', 'hike', 'now', '안산 자락길 지금 가볍게 걷고 오실 분. 한 시간 반이면 충분해요.'],
+  ['seoul-seongdong-gwangjin', 'climb', 'now', '뚝섬 볼더링 지금 가시는 분? 저는 V3 정도 풀어요.'],
+  ['seoul-gangbuk-dobong', 'run', 'comfortable', '수유천 따라 저녁 러닝 하실 분. 5K, 대화 되는 속도로요.'],
+  ['seoul-nowon-jungnang', 'boardgame', 'comfortable', '노원 보드게임카페에서 주말 오후 가볍게 한 판 하실 분.'],
+  ['seoul-seocho-gangnam', 'fitness', 'drink', '대치 21시 헬스 끝나고 단백질 한 잔 하실 분.'],
+  ['seoul-gangdong-songpa', 'swim', 'comfortable', '잠실 실내수영장 평일 아침 같이 다니실 분 찾아요.'],
+  ['seoul-gangseo-yangcheon', 'bike', 'now', '마곡 발산천 자전거 지금 한 시간만 타실 분.'],
+  ['seoul-dongjak-gwanak', 'drink', 'drink', '성수역 근처 지금 가볍게 한잔하실 분. 저는 21시쯤 시간 돼요.'],
+  ['seoul-yeongdeungpo-guro-geumcheon', 'cafe', 'comfortable', '여의도 점심시간에 짧게 커피 하실 분. 12시 반이요.'],
+  ['gyeonggi-incheon-bucheon-gimpo', 'boardgame', 'comfortable', '부평 보드게임카페 주말 오후에 4인 모집해요.'],
+  ['gyeonggi-suwon-yongin-uiwang', 'climb', 'comfortable', '광교 볼더링 같이 가실 분. 평일 저녁도 좋아요.'],
+  ['gyeonggi-goyang-paju', 'movie', 'comfortable', '일산 웨스턴돔에서 영화 보고 간단히 한잔 하실 분.'],
+  ['gyeonggi-ansan-siheung-gwangmyeong', 'run', 'now', '배곧 해안길 저녁 러닝 5K 같이 뛰실 분.'],
+  ['gyeonggi-seongnam-gwangju', 'cafe', 'comfortable', '분당 정자동 카페에서 주말 낮에 수다 떨 분.'],
+  ['gyeonggi-anyang-gunpo-gwacheon', 'fitness', 'comfortable', '평촌 20시 헬스 같이 다니실 분 찾아요.'],
+  ['gyeonggi-hwaseong-osan', 'soccer', 'comfortable', '동탄 풋살 정기 모임에 한 자리 있어요. 수요일 밤이요.'],
+  ['gyeonggi-pyeongtaek-anseong', 'hike', 'comfortable', '평택 진위천 둘레길 가볍게 걷실 분.'],
+  ['gyeonggi-guri-hanam-namyangju', 'bike', 'comfortable', '미사 한강 자전거길 주말 오전 같이 타실 분.'],
+  ['gyeonggi-uijeongbu-yangju-dongducheon', 'bowling', 'now', '의정부 볼링장 평일 저녁에 가볍게 한 게임 하실 분.'],
+  ['gyeonggi-yeoju-icheon', 'camping', 'comfortable', '이천 캠핑장 주말 자리가 남아서 같이 가실 분.'],
+  ['gyeonggi-pocheon-yeoncheon', 'hike', 'comfortable', '포천 산정호수 둘레길 주말에 걷실 분.'],
+  ['gyeonggi-yangpyeong-gapyeong', 'drive', 'comfortable', '가평 드라이브 코스 같이 돌 분. 커피 한 잔 들고요.'],
+  ['gyeonggi-etc', 'cafe', 'comfortable', '경기 어디든 퇴근 후 만나서 수다 떨 분.'],
+  ['gangwon-chuncheon', 'hike', 'now', '춘천 봉의산 아침 산책 같이 하실 분.'],
+  ['gangwon-wonju', 'cafe', 'comfortable', '원주 혁신도시 근처 카페에서 저녁에 이야기 나눌 분.'],
+  ['gangwon-sokcho', 'swim', 'comfortable', '속초 바다 수영 주말 아침 같이 하실 분.'],
+  ['gangwon-gangneung', 'camping', 'comfortable', '강릉 경포 캠핑장 이번 주말 같이 가실 분.'],
+  ['gangwon-etc', 'hike', 'comfortable', '강원 어디든 설악 쪽 등산 같이 가실 분.'],
+  ['chungcheong-daejeon', 'boardgame', 'comfortable', '둔산동 보드게임카페 주말 오후에 한 판 하실 분.'],
+  ['chungcheong-sejong', 'run', 'comfortable', '세종 호수공원 저녁 러닝 같이 뛰실 분.'],
+  ['chungcheong-cheonan-asan', 'swim', 'comfortable', '천안 불당 수영장 평일 아침 같이 다니실 분.'],
+  ['chungcheong-cheongju', 'cafe', 'comfortable', '청주 사창에서 커피 하실 분. 주말 낮 좋아요.'],
+  ['chungcheong-chungbuk', 'hike', 'comfortable', '충주 계명산 가볍게 오르실 분.'],
+  ['chungcheong-chungnam', 'fishing', 'comfortable', '서산 해미 쪽 낚시 같이 가실 분.'],
+  ['jeolla-gwangju', 'wine', 'drink', '광주 상무지구 금요일 한잔 하실 분.'],
+  ['jeolla-jeonju', 'cafe', 'comfortable', '전주 한옥마을 카페 한 바퀴 같이 도실 분.'],
+  ['jeolla-jeonnam', 'fishing', 'comfortable', '순천만 근처 낚시 주말에 같이 하실 분.'],
+  ['jeolla-jeonbuk', 'movie', 'comfortable', '익산 영화관 주말 낮에 같이 보실 분.'],
+  ['gyeongsang-busan', 'soccer', 'comfortable', '서면 풋살 수요일 밤에 한 자리 있어요.'],
+  ['gyeongsang-daegu', 'cafe', 'comfortable', '동성로에서 커피 하실 분. 저는 주말 오후에 시간 돼요.'],
+  ['gyeongsang-ulsan', 'run', 'comfortable', '울산 태화강 저녁 러닝 같이 하실 분.'],
+  ['gyeongsang-gyeongnam', 'hike', 'comfortable', '창원 장복산 주말 아침 가볍게 오르실 분.'],
+  ['gyeongsang-gyeongbuk', 'bike', 'comfortable', '포항 환호공원 자전거 같이 타실 분.'],
+  ['jeju', 'drive', 'comfortable', '제주 한 바퀴 같이 돌 분. 주말 하루 비워두세요.'],
+  ['overseas', 'travel', 'comfortable', '다음 달 도쿄 가는데 같이 다닐 분 있나요.'],
+  ['bear', 'wine', 'drink', '베어 모임 사람들끼리 와인 한잔 어때요. 이번 주 토요일 저녁이요.'],
+];
+
+/** 지역 시드 인물 — 큰 분류마다 한 명씩(서울은 셋). */
+const REGION_SEED_PEOPLE = [
+  {
+    id: 'match_area_taeo', nickname: '태오', age: 29, regionId: 'seoul-dongjak-gwanak',
+    hobbyId: 'fitness', hobbyStyle: '크로스핏 3년 · 평일 저녁 20시', location: '성수동', cycle: '평일 저녁',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '크로스핏 3년' },
+        { icon: 'clock', label: '활동 시간', value: '클린 70kg' },
+        { icon: 'pin', label: '주 활동지', value: '퇴근 후 20시' }
+    ],
+    bio: '성수에서 크로스핏 3년 했어요. 운동 끝나고 단백질 한 잔 하면서 이야기하는 걸 좋아합니다.'
+  },
+  {
+    id: 'match_area_sion', nickname: '시온', age: 27, regionId: 'seoul-seongdong-gwangjin',
+    hobbyId: 'cafe', hobbyStyle: '성수 카페투어 · 핸드드립', location: '성수동', cycle: '주말 낮',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '핸드드립 4년차' },
+        { icon: 'clock', label: '활동 시간', value: '카페 30곳' },
+        { icon: 'pin', label: '주 활동지', value: '주말 12시~' }
+    ],
+    bio: '성수동 산책하면서 카페 한두 곳 들르는 게 요즘 낙이에요.'
+  },
+  {
+    id: 'match_area_gyumin', nickname: '규민', age: 32, regionId: 'seoul-seocho-gangnam',
+    hobbyId: 'run', hobbyStyle: '한강 나이트런 · 10K 5분 10초', location: '대치동', cycle: '평일 밤',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '10K 51분' },
+        { icon: 'clock', label: '활동 시간', value: '평일 22시' },
+        { icon: 'pin', label: '주 활동지', value: '한강 코스' }
+    ],
+    bio: '대치에서 일하고 밤에 한강 달립니다. 같이 뛸 페이스 맞는 분 찾아요.'
+  },
+  {
+    id: 'match_area_doyeong', nickname: '도영', age: 30, regionId: 'gyeonggi-suwon-yongin-uiwang',
+    hobbyId: 'climb', hobbyStyle: '광교 볼더링 · V4', location: '수원 영통', cycle: '주말 오전',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '볼더링 2년' },
+        { icon: 'clock', label: '활동 시간', value: 'V4' },
+        { icon: 'pin', label: '주 활동지', value: '광교 클라이밍장' }
+    ],
+    bio: '광교 쪽 볼더링장 다녀요. 주말 오전에 같이 가실 분 환영입니다.'
+  },
+  {
+    id: 'match_area_jaeha', nickname: '재하', age: 26, regionId: 'gyeonggi-incheon-bucheon-gimpo',
+    hobbyId: 'boardgame', hobbyStyle: '부평 보드게임 · 전략게임', location: '부평', cycle: '주말 오후',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '아그리콜라' },
+        { icon: 'clock', label: '활동 시간', value: '브라스' },
+        { icon: 'pin', label: '주 활동지', value: '4인 모임' }
+    ],
+    bio: '부평에서 보드게임 모임 해요. 무거운 전략게임 좋아합니다.'
+  },
+  {
+    id: 'match_area_hangyeol', nickname: '한결', age: 31, regionId: 'gangwon-chuncheon',
+    hobbyId: 'hike', hobbyStyle: '강촌·춘천 등산', location: '춘천', cycle: '주말',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '주말 등산' },
+        { icon: 'clock', label: '활동 시간', value: '춘천 봉의산' },
+        { icon: 'pin', label: '주 활동지', value: '커피' }
+    ],
+    bio: '춘천 살아요. 주말마다 가볍게 산 걷고 커피 마시는 루틴입니다.'
+  },
+  {
+    id: 'match_area_minseo', nickname: '민서', age: 28, regionId: 'chungcheong-cheonan-asan',
+    hobbyId: 'swim', hobbyStyle: '천안 불당 수영 · 평영', location: '천안 불당', cycle: '평일 아침',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '평영 1km' },
+        { icon: 'clock', label: '활동 시간', value: '평일 07시' },
+        { icon: 'pin', label: '주 활동지', value: '불당 수영장' }
+    ],
+    bio: '천안 불당에서 평일 아침 수영해요. 같이 다니실 분 있으면 좋겠어요.'
+  },
+  {
+    id: 'match_area_ideun', nickname: '이든', age: 33, regionId: 'jeolla-jeonju',
+    hobbyId: 'cafe', hobbyStyle: '전주 카페 · 한옥마을', location: '전주', cycle: '주말 낮',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '카페 투어' },
+        { icon: 'clock', label: '활동 시간', value: '한옥마을' },
+        { icon: 'pin', label: '주 활동지', value: '사진' }
+    ],
+    bio: '전주에서 카페 도는 걸 좋아해요. 한옥마을 코스 추천해 드릴게요.'
+  },
+  {
+    id: 'match_area_sihyeon', nickname: '시현', age: 29, regionId: 'gyeongsang-busan',
+    hobbyId: 'soccer', hobbyStyle: '서면 풋살 · 수요일', location: '부산 서면', cycle: '수요일 밤',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '풋살 5년' },
+        { icon: 'clock', label: '활동 시간', value: '수요일 21시' },
+        { icon: 'pin', label: '주 활동지', value: '서면 구장' }
+    ],
+    bio: '서면에서 수요일 밤 풋살 정기 모임 해요. 한두 자리 늘 비워둡니다.'
+  },
+  {
+    id: 'match_area_woojin', nickname: '우진', age: 34, regionId: 'jeju',
+    hobbyId: 'drive', hobbyStyle: '제주 드라이브 · 사진', location: '제주 제주시', cycle: '주말',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '제주 5년' },
+        { icon: 'clock', label: '활동 시간', value: '드라이브' },
+        { icon: 'pin', label: '주 활동지', value: '사진' }
+    ],
+    bio: '제주에 산 지 5년이에요. 주말에 같이 돌아다닐 분 좋아요.'
+  },
+  {
+    id: 'match_area_haram', nickname: '하람', age: 27, regionId: 'overseas',
+    hobbyId: 'travel', hobbyStyle: '도쿄 유학 중 · 여행', location: '일본 도쿄', cycle: '주말',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '도쿄 2년' },
+        { icon: 'clock', label: '활동 시간', value: '여행' },
+        { icon: 'pin', label: '주 활동지', value: '카페' }
+    ],
+    bio: '도쿄에 유학 중이에요. 이쪽 오시면 같이 다닐 수 있어요.'
+  },
+  {
+    id: 'match_area_gomjun', nickname: '곰준', age: 35, regionId: 'bear',
+    hobbyId: 'wine', hobbyStyle: '베어 모임 · 와인', location: '마포', cycle: '격주 토요일',
+    specChips: [
+        { icon: 'target', label: '취미 깊이', value: '와인' },
+        { icon: 'clock', label: '활동 시간', value: '베어 모임' },
+        { icon: 'pin', label: '주 활동지', value: '토요일' }
+    ],
+    bio: '베어 모임에서 사람들 만나요. 와인 한잔 하면서 이야기 나누는 걸 좋아합니다.'
+  }
+];
+
+const REGION_SEED_GRADIENTS = [
+  'linear-gradient(135deg, #10B981 0%, #047857 100%)',
+  'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)',
+  'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
+  'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)',
+  'linear-gradient(135deg, #EC4899 0%, #9D174D 100%)',
+  'linear-gradient(135deg, #0E7490 0%, #22D3EE 100%)'
+];
+
+/** 지역 시드 사람 한 명을 프로필 모양으로 만든다. */
+function regionSeedProfileOf(p, index) {
+  const hobby = HOBBY_FLAT.find((h) => h.id === p.hobbyId) || HOBBY_FLAT[0];
+  return {
+    id: p.id,
+    nickname: p.nickname,
+    age: p.age,
+    regionId: p.regionId,
+    location: p.location,
+    hobbyIds: [p.hobbyId],
+    hobbyLabel: hobby.name,
+    hobbyIcon: hobby.icon,
+    hobbyStyle: p.hobbyStyle,
+    cycle: p.cycle,
+    cycleIcon: 'repeat',
+    hobbies: [hobby.name],
+    specChips: p.specChips.map((c) => ({ ...c })),
+    bio: p.bio,
+    avatarText: p.nickname.slice(0, 1),
+    avatarGradient: REGION_SEED_GRADIENTS[index % REGION_SEED_GRADIENTS.length],
+    badge: hobby.name,
+    ratio: ['tall', 'mid', 'square'][index % 3],
+    likesMe: false,
+    verified: true
+  };
+}
+
+/** 지역 시드 사람들(프로필) — matchProfiles 뒤에 붙는다. */
+function regionSeedProfiles() {
+  return REGION_SEED_PEOPLE.map((p, i) => regionSeedProfileOf(p, i));
+}
+
+/** 권역 id → 그 지역 글을 쓴 사람(같은 권역 → 같은 큰 분류 → 첫 사람). */
+function regionSeedAuthorFor(regionId) {
+  const region = EXPLORE_REGIONS.find((r) => r.id === regionId) || {};
+  const idx = REGION_SEED_PEOPLE.findIndex((p) => p.regionId === regionId);
+  const sameGroup = idx < 0
+    ? REGION_SEED_PEOPLE.findIndex((p) => (EXPLORE_REGIONS.find((r) => r.id === p.regionId) || {}).groupId === region.groupId)
+    : -1;
+  const pick = idx >= 0 ? idx : (sameGroup >= 0 ? sameGroup : 0);
+  return regionSeedProfileOf(REGION_SEED_PEOPLE[pick], pick);
+}
+
+/** 지역 시드 글 — explorePosts 뒤에 붙는다. */
+function regionSeedExplorePosts() {
+  const styleTag = { now: '번개', drink: '한잔', comfortable: '편한만남', dm: '1:1' };
+  return REGION_SEED_POSTS.map((row, i) => {
+    const regionId = row[0];
+    const hobbyId = row[1];
+    const styleId = row[2];
+    const caption = row[3];
+    const region = EXPLORE_REGIONS.find((r) => r.id === regionId) || EXPLORE_REGIONS[0];
+    const hobby = HOBBY_FLAT.find((h) => h.id === hobbyId) || HOBBY_FLAT[0];
+    const style = EXPLORE_MEET_STYLES.find((s) => s.id === styleId) || EXPLORE_MEET_STYLES[0];
+    const author = regionSeedAuthorFor(regionId);
+    return {
+      id: 'pub_area_' + regionId,
+      regionId,
+      meetStyle: style.id,
+      meetStyleLabel: style.name,
+      authorId: author.id,
+      authorName: author.nickname,
+      authorAvatarText: author.avatarText,
+      authorGradient: author.avatarGradient,
+      hobbyId: hobby.id,
+      hobbyLabel: hobby.name,
+      tag: styleTag[style.id] || '모임',
+      caption,
+      mediaCaption: '',
+      ratio: ['wide', 'square'][i % 2],
+      groupName: region.name + ' ' + hobby.name,
+      likes: 4 + ((i * 7) % 27),
+      likedByMe: false,
+      comments: [],
+      createdAt: ago(((i % 9) + 1) * HOUR + ((i * 13) % 50) * MINUTE)
+    };
+  });
+}
 
 const defaultInitialState = {
   /* 저장 스키마 버전 — 마이그레이션 판단에만 쓴다. */
@@ -1622,7 +2125,7 @@ const defaultInitialState = {
       mediaCaption: '클린 60kg · 5x3',
       ratio: 'wide',
       groupName: '성수 레벨업 퇴근 와드팟',
-      likes: 20,
+      likes: 46,
       likedByMe: false,
       comments: [
         { id: 'pc_mw1', authorName: '코치준', text: '오늘 자세 좋았어요. 다음 주에 65 가봅시다', createdAt: ago(2 * HOUR + 10 * MINUTE) },
@@ -1647,7 +2150,7 @@ const defaultInitialState = {
       mediaCaption: 'V2 첫 완등',
       ratio: 'square',
       groupName: '블록스 성수 볼더링 원정대',
-      likes: 9,
+      likes: 5,
       likedByMe: false,
       comments: [
         { id: 'pc_mc1', authorName: '성민', text: 'V2 축하드려요! 발끝만 잡히면 금방 올라갑니다', createdAt: ago(24 * HOUR) }
@@ -3045,6 +3548,11 @@ function isReviewTag(tag) {
   return t === '후기' || t === '리뷰' || t === '후기/리뷰' || t.indexOf('후기') >= 0;
 }
 
+/* Sprint 25 — 이반시티 우리동네의 모든 권역에 글 한 건·사람 한 명씩 (데모 전용).
+ *  실사용 계정은 buildCleanState() 가 이 내용을 모두 지운다. */
+defaultInitialState.explorePosts = defaultInitialState.explorePosts.concat(regionSeedExplorePosts());
+defaultInitialState.matchProfiles = defaultInitialState.matchProfiles.concat(regionSeedProfiles());
+
 /* Sprint 7 — 시드 전체에 regionId 를 채운다(사람·모임·글). */
 applyRegionIds(defaultInitialState);
 
@@ -3789,22 +4297,22 @@ class Store {
 
   /**
    * 저장된 탐색 필터를 이 저장 상태 기준으로 검증해 정규화한다.
+   * Sprint 25 — 탐색에서 **취미를 완전히 뺐다**(사용자 지시). 저장 상태에 옛 취미 필터가
+   * 남아 있어도 '전체'로 돌린다. 반경도 화면에서 뺐으므로('지역'이 그 역할을 한다)
+   * 항상 'all' 로 되돌려 **보이지 않는 조건**이 남지 않게 한다.
    * @param {object} prefs 후보 값 {filter, age, region, radius}
    * @param {object} [state] 검증 기준이 될 상태(기본: 현재 상태 · 마이그레이션에서는 merged)
    */
   static normalizeExplorePrefs(prefs, state) {
     const s = state || (window.appStore ? window.appStore.state : null) || {};
     const p = prefs || {};
-    const hobbyIds = (s.exploreHobbyChips || []).map((h) => h.id)
-      .concat((s.customHobbies || []).map((h) => h.id));
-    const typeIds = ['all', 'people', 'posts', ...hobbyIds];
+    const typeIds = ['all', 'people', 'posts'];
     const ageIds = ['all', 'for_me', 'none', ...(s.ageLimitOptions || []).filter((o) => o.id !== 'all').map((o) => o.id)];
-    /* Sprint 23 — 지역 조건은 동네 id · 큰 분류 id · 내 주변 을 모두 받는다. */
+    /* 지역 조건은 권역 id · 큰 분류 id · 내 주변 을 모두 받는다. */
     const regionIds = ['all', 'nearby',
       ...(s.exploreRegionGroups || EXPLORE_REGION_GROUPS).map((g) => g.id),
       ...(s.exploreRegions || EXPLORE_REGIONS).map((r) => r.id),
       ...Object.keys(REGION_ALIASES)];
-    const radiusIds = (s.exploreRadiusOptions || EXPLORE_RADIUS_OPTIONS).map((r) => r.id);
     const regionValue = regionIds.includes(p.region) ? p.region : 'all';
     const region = regionValue === 'all' || regionValue === 'nearby' || isKnownRegionGroup(regionValue)
       ? regionValue : (normalizeRegionId(regionValue) || 'all');
@@ -3812,7 +4320,7 @@ class Store {
       filter: typeIds.includes(p.filter) ? p.filter : 'all',
       age: ageIds.includes(p.age) ? p.age : 'all',
       region,
-      radius: radiusIds.includes(p.radius) ? p.radius : 'all',
+      radius: 'all',
       /* Sprint 16 — 0~99세 듀얼 레인지. 두 값이 뒤집혔으면 바로잡고, 범위 밖은 잘라낸다. */
       ageMin: clampAge(p.ageMin, 0),
       ageMax: clampAge(p.ageMax, 99)
@@ -3893,7 +4401,7 @@ class Store {
    *    지역별 사람·모임·글 수를 돌려준다 → 칩/드로운다운에 숫자를 그대로 쓴다.
    * ======================================================================== */
 
-  /** 동네 메타 목록 — 서울 7 + 그 밖의 지역 12 (+ 숨은 online). */
+  /** 동네 메타 목록 — 서울 12 · 경기 14 · 강원 5 · 충청 6 · 전라 4 · 경상 5 · 제주 · 해외 · 베어. */
   getExploreRegions() {
     return (this.state.exploreRegions || EXPLORE_REGIONS).map((r) => ({ ...r }));
   }
@@ -3941,20 +4449,28 @@ class Store {
   }
 
   /**
-   * 상단 지역 칩 — [전체] [내 주변] [서울] [경기] … [제주] (+ 건수).
-   * 서울은 안쪽 동네 7개를 따로 고를 수 있다(getSubRegions).
+   * 지역 칩 — 이반시티 '우리동네'와 같은 대분류 순서
+   * [전체] [서울] [경기] [강원] [충청] [전라] [경상] [제주] [해외] [베어] (+ 건수).
+   * 서울·경기·강원·충청·전라·경상은 안쪽 권역을 따로 고를 수 있다(getSubRegions).
    */
   getExploreRegionChips(filter = 'all', query = '', ageFilter = 'all', radius = 'all') {
     const stats = this.getExploreRegionStats(filter, query, ageFilter, radius);
     const byId = stats.reduce((map, s2) => { map[s2.id] = s2; return map; }, {});
     return [
       { id: 'all', name: '전체', icon: 'grid', count: byId.all ? byId.all.total : 0 },
-      { id: 'nearby', name: '내 주변', icon: 'walk', count: byId.nearby ? byId.nearby.total : 0 },
       ...this.getRegionGroups().map((g) => ({
         id: g.id, name: g.name, icon: g.icon, group: true,
         count: byId[g.id] ? byId[g.id].total : 0
       }))
     ];
+  }
+
+  /** 필터 시트의 '내 주변' 칩 — 거리 기준 바로가기(5km). */
+  getNearbyChip(filter = 'all', query = '', ageFilter = 'all', radius = 'all') {
+    const stats = this.getExploreRegionStats(filter, query, ageFilter, radius);
+    const near = stats.find((s2) => s2.id === 'nearby');
+    return { id: 'nearby', name: '내 주변', icon: 'walk',
+      label: `내 동네 ${NEARBY_KM}km 안`, count: near ? near.total : 0 };
   }
 
   /** 만남 스타일 목록 — 글 쓸 때 하나 고른다(선택). */
@@ -8937,27 +9453,24 @@ class Store {
    * ========================================================================== */
 
   /** 지금 적용된 탐색 조건을 한 줄로 — 취미 · 나이 · 거리 · 지역. */
+  /** 탐색 조건 한 줄 요약 — 지역 · 나이. (Sprint 25 — 취미·반경은 탐색에서 뺐다) */
   getExploreSummary() {
     const prefs = this.getExplorePrefs();
-    const href = this.getHobbyChip(prefs.filter);
     const range = this.getExploreAgeRange();
-    const radius = this.getRadiusOption(prefs.radius);
     const region = prefs.region === 'all' ? null : this.getRegion(prefs.region);
-    const hobbyLabel = href ? href.name : '전체 취미';
     const ageLabel = range.active ? `${range.min}~${range.max}세` : '나이 전체';
-    const radiusLabel = prefs.radius === 'all'
-      ? (prefs.region === 'nearby' ? '내 주변' : '내 동네 전체')
-      : (radius ? `내 동네 ${radius.km}km` : '내 동네 전체');
-    const regionLabel = region ? region.short || region.name : '전체 지역';
-    const activeCount = [!!href, range.active, prefs.radius !== 'all', prefs.region !== 'all'].filter(Boolean).length;
+    const regionLabel = prefs.region === 'nearby'
+      ? '내 주변'
+      : (region ? (region.group ? region.name : `${(regionGroupDef(region.groupId) || {}).name || ''} ${region.short || region.name}`.trim()) : '전체 지역');
+    const activeCount = [range.active, prefs.region !== 'all'].filter(Boolean).length;
     return {
-      hobbyId: href ? href.id : 'all',
-      hobbyLabel,
+      hobbyId: 'all',
+      hobbyLabel: '전체 취미',
       ageLabel,
-      radiusLabel,
+      radiusLabel: '내 동네 전체',
       regionLabel,
       activeCount,
-      text: `${hobbyLabel} · ${ageLabel} · ${radiusLabel} · ${regionLabel}`
+      text: `${regionLabel} · ${ageLabel}`
     };
   }
 
