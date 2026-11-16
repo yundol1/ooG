@@ -134,6 +134,10 @@ document.addEventListener('DOMContentLoaded', () => {
     dmTargetId: null,            // 쪽지 보내는 상대(id)
     ageMin: 0,                   // Sprint 16 — 나이 슬라이더 왼쪽
     ageMax: 99,                  //                나이 슬라이더 오른쪽
+    /* Sprint 21 — 필터 시트의 취미 대분류 탭 · 가입 후 스포트라이트 가이드 */
+    hobbyCategory: 'sports',
+    hobbyCategoryTouched: false,
+    guide: null,
 
     /* Sprint 17 — 회원가입 · 스토리 링/보관함 · 공지 읽음 · 표지 · 디엠 정렬 */
     onboardingMode: 'signup',    // 'signup' | 'login'
@@ -195,7 +199,26 @@ document.addEventListener('DOMContentLoaded', () => {
     galleryGrid: $('#group-gallery-grid'),
     gallerySub: $('#gallery-sub'),
     galleryEmpty: $('#group-gallery-empty'),
-    btnGalleryFind: $('#btn-gallery-find'),
+    /* Sprint 21 — 홈 하단 추천 모임 · 가입 후 스포트라이트 가이드 */
+    homeRecommend: $('#home-recommend'),
+    homeRecommendSub: $('#home-recommend-sub'),
+    homeRecommendGrid: $('#home-recommend-grid'),
+    btnHomeMoreGroups: $('#btn-home-more-groups'),
+    btnHomeRecommendTaste: $('#btn-home-recommend-taste'),
+    spotlight: $('#spotlight'),
+    spotlightHole: $('#spotlight-hole'),
+    spotlightBubble: $('#spotlight-bubble'),
+    spotlightStep: $('#spotlight-step'),
+    spotlightTitle: $('#spotlight-title'),
+    spotlightDesc: $('#spotlight-desc'),
+    spotlightBody: $('#spotlight-body'),
+    spotlightNext: $('#btn-spotlight-next'),
+    spotlightPrev: $('#btn-spotlight-prev'),
+    spotlightSkip: $('#btn-spotlight-skip'),
+    hobbyCats: $('#hobby-cats'),
+    hobbyCustomInput: $('#hobby-custom-input'),
+    hobbyCustomAdd: $('#btn-hobby-custom-add'),
+    hobbyCustomNote: $('#hobby-custom-note'),
     gallerySort: $('#gallery-sort'),
     btnNoticeMore: $('#btn-notice-more'),
     btnBoardPhoto: $('#btn-board-photo'),
@@ -778,7 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
       () => `
         <div class="ob-hero">
           <h1 class="ob-title">나를 소개해요</h1>
-          <p class="ob-desc">나이·지역·대표 취미는 탐색과 모임 추천에 쓰여요. 나중에 바꿀 수 있어요.</p>
+          <p class="ob-desc">나이와 지역만 알려주세요. 취미는 가입을 마친 뒤 가이드에서 여쭤볼게요.</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-age">나이 <span class="ob-hint">14~99세 · 선택</span></label>
@@ -791,12 +814,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${store.getExploreRegions().map((r) => `<option value="${escapeHtml(r.id)}" ${draft.regionId === r.id ? 'selected' : ''}>${escapeHtml(r.name)} · ${escapeHtml(r.short)}</option>`).join('')}
           </select>
         </div>
-        <div class="ob-field">
-          <span class="ob-label">대표 취미 <span class="ob-hint">최대 3개</span></span>
-          <div class="ob-hobbies" id="ob-hobbies">
-            ${store.getExploreHobbyFilters().map((h) => `<button class="ob-hobby ${draft.hobbies.includes(h.id) ? 'on' : ''}" data-ob-hobby="${h.id}" type="button" aria-pressed="${draft.hobbies.includes(h.id)}">${escapeHtml(h.name)}</button>`).join('')}
-          </div>
-        </div>
+        <p class="ob-note">취미는 다음 화면에서 묻습니다 — 무엇을 좋아하는지 몰라도 괜찮아요.</p>
         <p class="ob-error" id="ob-error" hidden></p>
         <div class="ob-actions">
           <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
@@ -881,10 +899,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProfileHeader();
     renderProfileMyFeed();
     updateBadges();
-    switchTab('tab-explore');
+    /* Sprint 21 — 가입 직후에는 홈(내 모임 갤러리)으로 들어가 스포트라이트 가이드를 본다.
+       가이드 안에서 취향을 묻고, 홈 하단 추천 모임이 그 답을 따라 고른다. */
+    switchTab('tab-home');
     const u = store.currentUser;
-    showToast(`${u.nickname}님, ooG에 오신 걸 환영해요`, 'success',
-      { label: '내정보', onClick: () => switchTab('tab-profile') });
+    showToast(`${u.nickname}님, ooG에 오신 걸 환영해요`, 'success');
+    startGuide();
   }
 
   /** 가입 전에는 앱을 가리고 회원가입만 보여준다. */
@@ -1269,6 +1289,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  Sprint 17 — 정렬(최근 활동순/가나다순/내가 그룹장) + 갤러리 안 '새 모임 만들기'. */
   function renderGallery() {
     if (!el.galleryGrid) return;
+    renderHomeRecommend();
     const items = store.getGroupGallery();
     const stories = items.reduce((sum, it) => sum + it.storyCount, 0);
     if (el.gallerySub) {
@@ -1327,8 +1348,10 @@ document.addEventListener('DOMContentLoaded', () => {
           `<span class="gallery-cover-photo"><img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async"></span>`).join('')}</span>`
       : `<span class="gallery-cover-emoji" aria-hidden="true">${ic(grp.icon)}</span>`;
     const next = item.nextEvent;
+    /* Sprint 21 — 사진이 없으면 취미 대분류 색조(운동=그린 · 게임=보라 …)로 표지를 구분한다. */
+    const tone = store.getHobbyTone(grp.hobbyId || grp.category);
     return `
-      <article class="gallery-card" data-open-group="${grp.id}" role="button" tabindex="0"
+      <article class="gallery-card tone-${escapeHtml(tone)}" data-open-group="${grp.id}" role="button" tabindex="0"
                aria-label="${escapeHtml(grp.name)} 모임 열기">
         <div class="gallery-cover${coverPhotos.length ? '' : ' is-plain'}"${coverPhotos.length ? ` style="background:${grp.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}"` : ''}>
           ${cover}
@@ -1347,6 +1370,368 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </article>`;
   }
+
+  /* ==========================================================================
+   * Sprint 21 — 홈 하단 추천 모임 · 가입 후 스포트라이트 가이드 · 취향 질문
+   * ------------------------------------------------------------------------
+   *  11/16 18:42 사용자 지시
+   *   · \"추천모임이 노출되도록 가입하면 모임이 없으니깐 처음에 어떤취향인지 물어보고 …\"
+   *   · \"홈 탭 하단에 추천 모임이 뜨도록 그리고 모임찾기는 추천모임 아래로 내리면서 볼거아니야?
+   *      좀만 내리면 더 많은 모임을 확인하세요! 나 더 많은 모임 둘러보기 이런식으로 버튼을 이동해줘\"
+   *   · \"스포트라이트 효과로 이용자가 처음에 익숙할 수 있게 가이드를 넣어주었으면 해\"
+   * ======================================================================== */
+
+  /** 추천 모임 카드 — 사진이 없으면 취미 대분류 색조(.tone-*)의 점토 타일로 표지를 만든다. */
+  function recommendCardHTML(item) {
+    const g = item.group;
+    const chip = store.getHobbyChip(g.hobbyId);
+    const icon = g.icon || (chip && chip.icon) || 'sparkle';
+    return `
+      <article class="recommend-card tone-${escapeHtml(item.tone)}" data-open-group="${g.id}"
+               role="button" tabindex="0"
+               aria-label="${escapeHtml(g.name)} 추천 모임 · ${escapeHtml(item.hobbyName)}">
+        <div class="recommend-cover">
+          ${g.photoUrl
+            ? `<img class="recommend-photo" src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
+            : `<span class="recommend-clay" aria-hidden="true">${ic(icon)}</span>`}
+          <span class="recommend-hobby">${ic(icon)} ${escapeHtml(item.hobbyName)}</span>
+        </div>
+        <div class="recommend-body">
+          <h4 class="recommend-name">${escapeHtml(g.name)}</h4>
+          <p class="recommend-meta">${escapeHtml(g.location || '온라인')} · 멤버 ${g.memberCount}명</p>
+          <p class="recommend-reason">${escapeHtml(item.reason)}</p>
+        </div>
+      </article>`;
+  }
+
+  /** 홈 하단 '추천 모임' — 취향 답변(없으면 프로필 취미)으로 고른다. */
+  function renderHomeRecommend() {
+    if (!el.homeRecommendGrid) return;
+    const taste = store.getTaste();
+    const picked = (taste.goalIds.length ? taste.goalIds : taste.hobbyIds.length ? taste.hobbyIds : store.getTasteHobbyIds());
+    const names = picked.map((id) => store.getHobbyChip(id)).filter(Boolean).map((h) => h.name).slice(0, 2);
+    if (el.homeRecommendSub) {
+      el.homeRecommendSub.textContent = names.length
+        ? `${names.join(' · ')} 취미로 골랐어요`
+        : '취미를 고르면 잘 맞는 모임을 골라드려요';
+    }
+    const items = store.getRecommendedGroups({ limit: 6 });
+    if (!items.length) {
+      el.homeRecommendGrid.innerHTML = `
+        <div class="recommend-empty">
+          <p class="recommend-empty-title">아직 추천할 모임이 없어요</p>
+          <p class="recommend-empty-desc">모임이 열리면 내 취미에 맞춰 이곳에 먼저 보여드릴게요.</p>
+          <button class="recommend-empty-btn" data-gallery-new="1" type="button">첫 모임 만들기</button>
+        </div>`;
+      return;
+    }
+    el.homeRecommendGrid.innerHTML = items.map(recommendCardHTML).join('');
+  }
+
+  /* ---------------------------------------------------- 스포트라이트 가이드 */
+
+  const GUIDE_STEPS = [
+    {
+      id: 'welcome', target: null,
+      title: '우그에 오신 걸 환영해요',
+      desc: '처음이라면 1분만 따라와 주세요. 화면을 짚어가며 어디에 무엇이 있는지 알려드릴게요.'
+    },
+    {
+      id: 'taste', target: null, body: 'taste',
+      title: '취향을 알려주세요',
+      desc: '고른 취미로 홈 하단의 추천 모임을 골라드려요. 우그에서 어떤 걸 해보고 싶은지도 함께 알려주세요.'
+    },
+    {
+      id: 'gallery', target: '#group-gallery .gallery-head',
+      title: '여기가 내 모임 자리예요',
+      desc: '가입한 모임이 이 2열 카드로 쌓입니다. 카드를 누르면 그 모임만의 피드·게시판·디엠으로 들어가요.'
+    },
+    {
+      id: 'recommend', target: '#home-recommend',
+      title: '취향에 맞는 모임을 모아뒀어요',
+      desc: '홈을 조금 내리면 내 취미에 맞는 모임이 나오고, 맨 아래 버튼으로 더 많은 모임을 볼 수 있어요.'
+    },
+    {
+      id: 'explore', target: '#bottom-nav .nav-tab-item[data-tab="tab-explore"]',
+      title: '탐색에서 사람·모임·글을 한 번에',
+      desc: '취미·지역·나이로 골라 볼 수 있어요. 필터는 이 탭 위쪽 버튼 하나에 모여 있습니다.'
+    },
+    {
+      id: 'dm', target: '#bottom-nav .nav-tab-item[data-tab="tab-chat"]',
+      title: '전체 디엠함',
+      desc: '모임 단체방과 1:1 대화가 모두 여기 모입니다. 새 소식은 탭 위 숫자로 알려드려요.'
+    }
+  ];
+
+  function guideState() {
+    if (!ui.guide) {
+      ui.guide = {
+        open: false, step: 0, mode: 'onboarding',
+        hobbyIds: [], goalIds: [], category: 'sports'
+      };
+    }
+    return ui.guide;
+  }
+
+  /** 가이드를 연다. step 을 주면 그 단계부터(취미 다시 고르기 = 'taste'). */
+  function startGuide(options = {}) {
+    const g = guideState();
+    const taste = store.getTaste();
+    g.open = true;
+    g.mode = options.mode || 'onboarding';
+    g.hobbyIds = taste.hobbyIds.slice(0, 3);
+    g.goalIds = taste.goalIds.slice(0, 3);
+    g.category = (store.getHobbyChip((g.hobbyIds[0] || g.goalIds[0])) || {}).categoryId || 'sports';
+    const stepIndex = options.step
+      ? Math.max(0, GUIDE_STEPS.findIndex((s) => s.id === options.step))
+      : Math.max(0, store.getGuideState().step || 0);
+    g.step = stepIndex;
+    store.startGuide(options.step === 'welcome');
+    renderGuide();
+  }
+
+  /** 가이드를 닫는다 — 마지막 단계면 'done', 건너뛰기면 'skipped'. */
+  function closeGuide(status) {
+    const g = guideState();
+    if (status !== 'hidden') store.finishGuide(status === 'skipped' ? 'skipped' : 'done');
+    g.open = false;
+    if (el.spotlight) {
+      el.spotlight.hidden = true;
+      el.spotlight.classList.remove('is-open');
+    }
+    document.body.classList.remove('spotlight-open');
+    if (ui.activeTab === 'tab-home') renderHomeRecommend();
+  }
+
+  /** 취향 선택을 저장한다 — 프로필 취미(최대 3)와 추천 기준(goal) 둘 다. */
+  function saveGuideTaste() {
+    const g = guideState();
+    const res = store.saveTaste({ hobbyIds: g.hobbyIds, goalIds: g.goalIds });
+    renderHomeRecommend();
+    renderExploreToolbar();
+    if (el.main) el.main.scrollTop = 0;
+    return res;
+  }
+
+  /** 스포트라이트가 비출 타겟의 화면 좌표(없으면 null = 가운데 카드). */
+  function guideTargetRect(step) {
+    if (!step || !step.target) return null;
+    const node = document.querySelector(step.target);
+    if (!node) return null;
+    const r = node.getBoundingClientRect();
+    if (!r.width && !r.height) return null;
+    return { x: r.left, y: r.top, w: r.width, h: r.height };
+  }
+
+  function placeSpotlight() {
+    const g = guideState();
+    if (!g.open || !el.spotlight) return;
+    const step = GUIDE_STEPS[g.step] || GUIDE_STEPS[0];
+    const rect = guideTargetRect(step);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (rect) {
+      const pad = 6;
+      el.spotlightHole.hidden = false;
+      el.spotlightHole.style.left = `${Math.max(0, rect.x - pad)}px`;
+      el.spotlightHole.style.top = `${Math.max(0, rect.y - pad)}px`;
+      el.spotlightHole.style.width = `${rect.w + pad * 2}px`;
+      el.spotlightHole.style.height = `${rect.h + pad * 2}px`;
+      el.spotlightHole.style.borderRadius = step.id === 'recommend' ? '22px' : '18px';
+    } else {
+      el.spotlightHole.hidden = true;
+      el.spotlightHole.style.width = '0px';
+      el.spotlightHole.style.height = '0px';
+    }
+    const bubble = el.spotlightBubble;
+    if (!bubble) return;
+    bubble.classList.toggle('is-center', !rect);
+    bubble.classList.remove('above', 'below');
+    el.spotlight.classList.toggle('is-center', !rect);
+    if (!rect) {
+      bubble.style.left = '50%';
+      bubble.style.top = '50%';
+      bubble.style.transform = 'translate(-50%, -50%)';
+      bubble.style.maxHeight = `${Math.round(vh * 0.82)}px`;
+      return;
+    }
+    const margin = 12;
+    const bubbleH = Math.min(bubble.offsetHeight || 220, vh * 0.62);
+    const below = rect.y + rect.h + margin;
+    const above = rect.y - bubbleH - margin;
+    const putAbove = below + bubbleH > vh - 12 && above > 12;
+    bubble.classList.add(putAbove ? 'above' : 'below');
+    bubble.style.transform = 'none';
+    const top = putAbove ? Math.max(12, above) : Math.min(vh - bubbleH - 12, below);
+    bubble.style.top = `${top}px`;
+    bubble.style.left = `${Math.max(10, Math.min(vw - 10 - 350, (vw - 350) / 2))}px`;
+    bubble.style.maxHeight = `${Math.round(vh * 0.62)}px`;
+  }
+
+  /** 가이드 한 단계를 그린다. 타겟은 화면 가운데로 스크롤해 보여준다. */
+  function renderGuide() {
+    const g = guideState();
+    if (!el.spotlight) return;
+    const step = GUIDE_STEPS[g.step] || GUIDE_STEPS[0];
+    el.spotlight.hidden = false;
+    el.spotlight.classList.add('is-open');
+    document.body.classList.add('spotlight-open');
+    if (el.spotlightStep) el.spotlightStep.textContent = `${g.step + 1} / ${GUIDE_STEPS.length}`;
+    if (el.spotlightTitle) el.spotlightTitle.textContent = step.title;
+    if (el.spotlightDesc) el.spotlightDesc.textContent = step.desc;
+    if (el.spotlightPrev) el.spotlightPrev.hidden = g.step === 0;
+    if (el.spotlightNext) {
+      el.spotlightNext.textContent = g.step === GUIDE_STEPS.length - 1
+        ? '시작하기' : (step.body === 'taste' ? '다음' : '다음');
+    }
+    if (el.spotlightBody) {
+      el.spotlightBody.innerHTML = step.body === 'taste' ? guideTasteHTML() : '';
+      el.spotlightBody.hidden = step.body !== 'taste';
+    }
+    store.setGuideStep(g.step);
+    if (step.target) {
+      const node = document.querySelector(step.target);
+      if (node) {
+        const main = el.main;
+        const nodeTop = node.getBoundingClientRect().top - (main ? main.getBoundingClientRect().top : 0);
+        if (main && (nodeTop < 40 || nodeTop > main.clientHeight * 0.66)) {
+          main.scrollTo({ top: Math.max(0, main.scrollTop + nodeTop - main.clientHeight * 0.32), behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+        }
+      }
+    } else if (el.main) {
+      el.main.scrollTop = 0;
+    }
+    requestAnimationFrame(placeSpotlight);
+    setTimeout(placeSpotlight, 240);
+    /* 키보드 사용자를 위해 말풍선으로 포커스를 옮긴다(포커스 링은 CSS 에서 지운다) */
+    if (el.spotlightBubble) {
+      try { el.spotlightBubble.focus({ preventScroll: true }); } catch (e) { /* 구형 브라우저 */ }
+    }
+  }
+
+  /** 취향 질문 두 개 — 대분류 탭 + 그 안의 세부 취미(최대 3개씩) + 직접 쓰기. */
+  function guideTasteHTML() {
+    const g = guideState();
+    const cats = store.getHobbyCategories();
+    const cat = cats.find((c) => c.id === g.category) || cats[0];
+    const pickHTML = (kind, selected) => cat.hobbies.map((h) => {
+      const on = selected.includes(h.id);
+      const full = !on && selected.length >= 3;
+      return `<button class="guide-chip ${on ? 'on' : ''}" data-guide-pick="${kind}" data-guide-hobby="${h.id}"
+                type="button" aria-pressed="${on}" ${full ? 'aria-disabled="true"' : ''}>
+                ${ic(h.icon)}<span>${escapeHtml(h.name)}</span>
+              </button>`;
+    }).join('');
+    return `
+      <div class="guide-cats" role="group" aria-label="취미 대분류">
+        ${cats.map((c) => `<button class="guide-cat ${c.id === cat.id ? 'on' : ''}" data-guide-cat="${c.id}"
+            type="button" aria-pressed="${c.id === cat.id}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`).join('')}
+      </div>
+      <div class="guide-q">
+        <p class="guide-q-title">당신의 취미는 무엇인가요? <span class="guide-q-count">${g.hobbyIds.length}/3</span></p>
+        <div class="guide-chips" role="group" aria-label="내 취미">${pickHTML('hobby', g.hobbyIds)}</div>
+      </div>
+      <div class="guide-q">
+        <p class="guide-q-title">우그에서 어떤 걸 해보고 싶나요? <span class="guide-q-count">${g.goalIds.length}/3</span></p>
+        <div class="guide-chips" role="group" aria-label="해보고 싶은 취미">${pickHTML('goal', g.goalIds)}</div>
+      </div>
+      <div class="guide-custom">
+        <input class="guide-custom-input" id="guide-custom-input" type="text" maxlength="12"
+               placeholder="목록에 없으면 직접 쓰기 (예: 파쿠르)" autocomplete="off">
+        <button class="guide-custom-add" id="btn-guide-custom-add" type="button">추가</button>
+      </div>`;
+  }
+
+  /** 취미 하나를 취향 답변에서 켜고 끈다(한 질문당 최대 3개). */
+  function toggleGuidePick(kind, hobbyId) {
+    const g = guideState();
+    const key = kind === 'goal' ? 'goalIds' : 'hobbyIds';
+    const list = g[key];
+    if (list.includes(hobbyId)) g[key] = list.filter((id) => id !== hobbyId);
+    else if (list.length < 3) g[key] = list.concat(hobbyId);
+    else {
+      showToast('한 질문에는 3개까지 고를 수 있어요', 'info');
+      return;
+    }
+    renderGuide();
+  }
+
+  /** 목록에 없는 취미를 직접 써서 취향에 더한다. */
+  function addGuideCustomHobby(kind) {
+    const input = document.querySelector('.guide-custom-input');
+    const value = input ? input.value : '';
+    const res = store.addCustomHobby(value, guideState().category);
+    if (!res.ok) {
+      showToast(res.reason === 'duplicate' ? '이미 있는 취미예요' : '취미 이름을 1자 이상 적어주세요', 'warning');
+      return;
+    }
+    const key = kind === 'goal' ? 'goalIds' : 'hobbyIds';
+    const g = guideState();
+    if (g[key].length >= 3) g[key] = g[key].slice(0, 2);
+    g[key] = g[key].concat(res.hobby.id);
+    showToast(`'${res.hobby.name}' 취미를 더했어요`, 'success');
+    renderGuide();
+  }
+
+  function guideNext() {
+    const g = guideState();
+    const step = GUIDE_STEPS[g.step];
+    if (step && step.body === 'taste') saveGuideTaste();
+    if (g.step >= GUIDE_STEPS.length - 1) {
+      closeGuide('done');
+      showToast('준비 끝! 내 취미에 맞는 모임부터 보여드릴게요', 'success');
+      return;
+    }
+    g.step += 1;
+    renderGuide();
+  }
+
+  function guidePrev() {
+    const g = guideState();
+    if (g.step <= 0) return;
+    g.step -= 1;
+    renderGuide();
+  }
+
+  function bindGuide() {
+    el.spotlightNext && el.spotlightNext.addEventListener('click', guideNext);
+    el.spotlightPrev && el.spotlightPrev.addEventListener('click', guidePrev);
+    el.spotlightSkip && el.spotlightSkip.addEventListener('click', () => {
+      closeGuide('skipped');
+      showToast('가이드는 내정보 › 가이드 다시 보기에서 언제든 볼 수 있어요', 'info');
+    });
+    el.spotlightBody && el.spotlightBody.addEventListener('click', (e) => {
+      const cat = e.target.closest('[data-guide-cat]');
+      if (cat) { guideState().category = cat.dataset.guideCat; renderGuide(); return; }
+      const pick = e.target.closest('[data-guide-pick]');
+      if (pick) { toggleGuidePick(pick.dataset.guidePick, pick.dataset.guideHobby); return; }
+      if (e.target.closest('#btn-guide-custom-add')) {
+        const field = document.querySelector('[data-guide-pick="hobby"]');
+        addGuideCustomHobby('hobby');
+        e.stopPropagation();
+      }
+    });
+    el.spotlightBody && el.spotlightBody.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const input = e.target.closest('#guide-custom-input');
+      if (!input) return;
+      e.preventDefault();
+      addGuideCustomHobby('hobby');
+    });
+    /* 가이드가 열려 있는 동안 탭·모달이 뒤에서 움직이지 않게 앞에서 막는다 */
+    el.spotlight && el.spotlight.addEventListener('click', (e) => {
+      if (e.target === el.spotlight) return;   /* 바깥을 눌러도 닫지 않는다(단계 안내) */
+    });
+    window.addEventListener('resize', () => { if (guideState().open) placeSpotlight(); });
+    el.main && el.main.addEventListener('scroll', () => { if (guideState().open) placeSpotlight(); }, { passive: true });
+    document.addEventListener('keydown', (e) => {
+      if (!guideState().open) return;
+      if (e.key === 'Escape') { closeGuide('skipped'); return; }
+      if (e.key === 'ArrowRight') guideNext();
+      if (e.key === 'ArrowLeft') guidePrev();
+    });
+  }
+  bindGuide();
 
   /* ------------------------------------------------------------------
    * 1-C. Sprint 16 — 인스타그램형 24시간 스토리
@@ -2970,7 +3355,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('[data-gallery-new]')) openGroupCreate();
       });
     }
-    if (el.btnGalleryFind) el.btnGalleryFind.addEventListener('click', () => switchTab('tab-explore'));
+    /* Sprint 21 — 추천 모임 카드 · 더 많은 모임 둘러보기 · 취미 다시 고르기 */
+    if (el.homeRecommendGrid) {
+      el.homeRecommendGrid.addEventListener('click', (e) => {
+        if (e.target.closest('[data-gallery-new]')) { openGroupCreate(); return; }
+        openFromCard(e.target.closest('[data-open-group]'));
+      });
+      el.homeRecommendGrid.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const card = e.target.closest('[data-open-group]');
+        if (!card) return;
+        e.preventDefault();
+        openFromCard(card);
+      });
+    }
+    if (el.btnHomeMoreGroups) {
+      el.btnHomeMoreGroups.addEventListener('click', () => {
+        /* '더 많은 모임 둘러보기' → 탐색의 '모임'으로 바로 */
+        ui.exploreFilter = 'groups';
+        ui.exploreBuffer = null;
+        store.updateExplorePrefs({ filter: 'groups' });
+        switchTab('tab-explore');
+        if (el.main) el.main.scrollTop = 0;
+        renderExploreWithSkeleton();
+      });
+    }
+    if (el.btnHomeRecommendTaste) {
+      el.btnHomeRecommendTaste.addEventListener('click', () => startGuide({ mode: 'taste', step: 'taste' }));
+    }
     /* Sprint 17 — 갤러리 정렬 */
     if (el.gallerySort) {
       el.gallerySort.addEventListener('click', (e) => {
@@ -3362,15 +3774,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderOnboarding();
         return;
       }
-      const hobby = target.closest('[data-ob-hobby]');
-      if (hobby) {
-        collectOnboardingInputs();
-        const id = hobby.dataset.obHobby;
-        if (d.hobbies.includes(id)) d.hobbies = d.hobbies.filter((h) => h !== id);
-        else if (d.hobbies.length >= 3) { showOnboardingError('대표 취미는 3개까지 고를 수 있어요'); return; }
-        else d.hobbies = d.hobbies.concat(id);
-        renderOnboarding();
-      }
+      /* Sprint 21 — 회원가입에서는 취미를 묻지 않는다. 취향은 가입 후 가이드에서 묻는다. */
     });
     el.onboardingBody.addEventListener('change', (e) => {
       const input = e.target.closest('#ob-photo-input');
@@ -3771,16 +4175,43 @@ document.addEventListener('DOMContentLoaded', () => {
     return { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius };
   }
 
-  /** 시트 안 취미 칩 8종 — 하나만 고를 수 있고, 다시 누르면 해제된다. */
+  /**
+   * Sprint 21 — 시트 안 취미: 대분류 탭 → 그 안의 세부 취미 칩.
+   *  · 하나만 고를 수 있고, 같은 칩을 다시 누르면 해제된다.
+   *  · 지금 고른 취미가 다른 대분류에 있으면 그 대분류를 먼저 연다.
+   */
+  function renderHobbyCats() {
+    if (!el.hobbyCats) return;
+    const draft = draftOrApplied();
+    const chip = store.getHobbyChip(draft.filter);
+    if (chip && ui.hobbyCategory !== chip.categoryId && ui.hobbyCategoryTouched !== true) {
+      ui.hobbyCategory = chip.categoryId;
+    }
+    const activeId = ui.hobbyCategory || 'sports';
+    el.hobbyCats.innerHTML = store.getHobbyCategories().map((c) => {
+      const on = c.id === activeId;
+      return `<button class="hobby-cat ${on ? 'on' : ''}" data-hobby-cat="${c.id}" type="button"
+                      aria-pressed="${on}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`;
+    }).join('');
+  }
+
   function renderExploreChips() {
     if (!el.exploreChips) return;
     const draft = draftOrApplied();
-    el.exploreChips.innerHTML = store.getExploreHobbyFilters().map((f) => {
-      const on = draft.filter === f.id;
+    const cats = store.getHobbyCategories();
+    const activeId = ui.hobbyCategory || 'sports';
+    const cat = cats.find((c) => c.id === activeId) || cats[0];
+    const chips = cat.hobbies.slice();
+    /* 지금 고른 취미가 이 대분류에 없으면 맨 앞에 붙여 함께 보여준다(해제할 수 있게) */
+    const picked = store.getHobbyChip(draft.filter);
+    if (picked && !chips.some((h) => h.id === picked.id)) chips.unshift(picked);
+    el.exploreChips.innerHTML = chips.map((h) => {
+      const on = draft.filter === h.id;
       return `<button class="explore-chip hobby ${on ? 'active' : ''}"
-                      data-explore-filter="${f.id}" aria-pressed="${on}" type="button">
-                ${f.icon ? `<span class="chip-emoji" aria-hidden="true">${ic(f.icon)}</span>` : ''}
-                <span>${escapeHtml(f.name)}</span>
+                      data-explore-filter="${h.id}" aria-pressed="${on}" type="button">
+                <span class="chip-emoji" aria-hidden="true">${ic(h.icon || 'sparkle')}</span>
+                <span>${escapeHtml(h.name)}</span>
+                ${h.custom ? '<span class="chip-custom-tag">직접 쓴</span>' : ''}
               </button>`;
     }).join('');
   }
@@ -3902,6 +4333,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function openFilterSheet() {
     if (!el.filterModal) return;
     ui.filterDraft = { filter: ui.exploreFilter, age: ui.exploreAge, radius: ui.exploreRadius };
+    ui.hobbyCategoryTouched = false;
+    const pickedChip = store.getHobbyChip(ui.exploreFilter);
+    ui.hobbyCategory = pickedChip ? pickedChip.categoryId : (ui.hobbyCategory || 'sports');
     ui.filterSheetOpen = true;
     renderFilterSheet();
     if (el.exploreFilterBtn) el.exploreFilterBtn.setAttribute('aria-expanded', 'true');
@@ -3915,6 +4349,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderFilterSheet() {
+    renderHobbyCats();
     renderExploreChips();
     renderAgeRange();
     renderRadiusChips();
@@ -4109,12 +4544,15 @@ document.addEventListener('DOMContentLoaded', () => {
       : joinState === 'pending' ? `${ic('hourglass')} 승인 대기`
         : (store.isGroupFull(g.id) ? '정원 마감'
           : (store.getGroupJoinMode(g) === 'approval' ? '가입 신청' : '참여하기'));
+    /* Sprint 21 — 사진 없는 모임 표지는 취미 대분류 색조로 (한눈에 모임 성격이 드러나게) */
+    const tone = store.getHobbyTone(g.hobbyId || g.category);
+    const coverBg = g.photoUrl ? null : store.getHobbyCoverGradient(g.hobbyId || g.category);
     return `
-      <article class="masonry-card group-tile ratio-${item.ratio}"
+      <article class="masonry-card group-tile tone-${escapeHtml(tone)} ratio-${item.ratio}"
                data-group-id="${g.id}" data-card-type="group" role="button" tabindex="0"
                data-age-limit="${escapeHtml(g.ageLimit || 'all')}"
                aria-label="${escapeHtml(g.name)} 소모임 상세 보기${ageBadge ? ` · ${escapeHtml(ageBadge.text)} 가입` : ''}">
-        <div class="group-tile-cover" style="background:${g.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}">
+        <div class="group-tile-cover"${coverBg ? ` style="background:${coverBg}"` : ''}>
           ${g.photoUrl
             ? `<img class="group-tile-photo" src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
             : `<span class="group-tile-emoji" aria-hidden="true">${ic(g.icon || 'dot')}</span>`}
@@ -4688,6 +5126,38 @@ document.addEventListener('DOMContentLoaded', () => {
     store.updateExplorePrefs({ filter: ui.exploreFilter });   // Sprint 7 — 필터 기억
     if (el.main) el.main.scrollTop = 0;
     renderExploreWithSkeleton();
+  });
+
+  /* Sprint 21 — 시트 안 대분류 탭: 그 안의 세부 취미 칩을 바꿔 보여준다 */
+  el.hobbyCats && el.hobbyCats.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-hobby-cat]');
+    if (!btn) return;
+    ui.hobbyCategory = btn.dataset.hobbyCat;
+    ui.hobbyCategoryTouched = true;
+    renderHobbyCats();
+    renderExploreChips();
+  });
+
+  /* Sprint 21 — 목록에 없는 취미를 직접 써서 필터에 바로 건다 */
+  function addHobbyFromSheet() {
+    const value = el.hobbyCustomInput ? el.hobbyCustomInput.value : '';
+    const res = store.addCustomHobby(value, ui.hobbyCategory || 'sports');
+    if (!res.ok) {
+      showToast(res.reason === 'duplicate' ? '이미 있는 취미예요' : '취미 이름을 1~12자로 적어주세요', 'warning');
+      return;
+    }
+    if (el.hobbyCustomInput) el.hobbyCustomInput.value = '';
+    ui.hobbyCategory = res.hobby.categoryId;
+    ui.hobbyCategoryTouched = true;
+    ui.filterDraft = { ...(ui.filterDraft || {}), filter: res.hobby.id };
+    renderFilterSheet();
+    showToast(`'${res.hobby.name}' 취미를 더했어요 · 이 취미로 볼게요`, 'success');
+  }
+  el.hobbyCustomAdd && el.hobbyCustomAdd.addEventListener('click', addHobbyFromSheet);
+  el.hobbyCustomInput && el.hobbyCustomInput.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    addHobbyFromSheet();
   });
 
   /* 시트 안 취미 칩 — 하나만 · 같은 칩을 다시 누르면 해제 */
@@ -6750,11 +7220,75 @@ document.addEventListener('DOMContentLoaded', () => {
     el.explorePublish.classList.toggle('ready', ready);
   }
 
+
+  /* ==========================================================================
+   * Sprint 21 — 취미 고르기 공통 부품 (프로필 수정 · 모임 개설 · 오픈 글)
+   * ------------------------------------------------------------------------
+   *  · 대분류 7개로 묶어 보여주고, 목록에 없으면 그 자리에서 직접 쓴다.
+   *  · 화면마다 따로 목록을 만들지 않고 store.getHobbyCategories() 하나를 쓴다.
+   * ======================================================================== */
+  function hobbyPickerHTML(scope, selectedId, options = {}) {
+    const customTag = options.customTag || scope;
+    return store.getHobbyCategories().map((cat) => `
+      <div class="hobby-pick-group">
+        <span class="hobby-pick-cat">${ic(cat.icon)}<span>${escapeHtml(cat.name)}</span></span>
+        <div class="hobby-pick-row">
+          ${cat.hobbies.map((h) => `
+            <button class="tag-pick ${selectedId === h.id ? 'active' : ''}" data-hobby-pick="${h.id}"
+                    data-hobby-scope="${scope}" type="button">
+              ${ic(h.icon || 'sparkle')} ${escapeHtml(h.name)}
+            </button>`).join('')}
+        </div>
+      </div>`).join('')
+      + (options.withCustom === false ? '' : `
+        <div class="hobby-custom hobby-custom-inline" ${customTag ? `data-hobby-custom-scope="${customTag}"` : ''}>
+          <div class="hobby-custom-row">
+            <input class="hobby-custom-input" data-hobby-custom-input="${customTag}" type="text" maxlength="12"
+                   placeholder="목록에 없으면 직접 쓰기 (예: 파쿠르)" autocomplete="off">
+            <button class="hobby-custom-add" data-hobby-custom-add="${customTag}" type="button">추가</button>
+          </div>
+        </div>`);
+  }
+
+  /** 공통 부품의 '직접 쓰기' — 어느 화면에서 눌렀든 그 대분류… 는 기본 '일상·기타'에 담는다. */
+  function addHobbyInline(scope) {
+    const input = document.querySelector(`[data-hobby-custom-input="${scope}"]`);
+    const picked = scope === 'group' ? store.getHobbyChip(ui.groupDraft.hobbyId) : null;
+    const res = store.addCustomHobby(input ? input.value : '', picked ? picked.categoryId : 'daily');
+    if (!res.ok) {
+      showToast(res.reason === 'duplicate' ? '이미 있는 취미예요' : '취미 이름을 1~12자로 적어주세요', 'warning');
+      return;
+    }
+    if (input) input.value = '';
+    if (scope === 'edit') {
+      if (ui.edit.hobbyIds.length >= 3) ui.edit.hobbyIds = ui.edit.hobbyIds.slice(0, 2);
+      ui.edit.hobbyIds = ui.edit.hobbyIds.concat(res.hobby.id);
+      renderEditHobbies();
+    } else if (scope === 'group') {
+      ui.groupDraft.hobbyId = res.hobby.id;
+      renderGroupDraft();
+    } else if (scope === 'compose') {
+      ui.exploreCompose.hobbyId = res.hobby.id;
+      renderExploreCompose();
+    }
+    showToast(`'${res.hobby.name}' 취미를 더했어요`, 'success');
+  }
+
+  document.addEventListener('click', (e) => {
+    const add = e.target.closest('[data-hobby-custom-add]');
+    if (add) { addHobbyInline(add.dataset.hobbyCustomAdd); return; }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const input = e.target.closest('[data-hobby-custom-input]');
+    if (!input) return;
+    e.preventDefault();
+    addHobbyInline(input.dataset.hobbyCustomInput);
+  });
+
   function renderExploreCompose() {
     if (el.exploreComposeHobbies) {
-      el.exploreComposeHobbies.innerHTML = store.state.exploreHobbyChips.map((h) => `
-        <button class="tag-pick ${ui.exploreCompose.hobbyId === h.id ? 'active' : ''}"
-                data-compose-hobby="${h.id}" type="button">${ic(h.icon)} ${escapeHtml(h.name)}</button>`).join('');
+      el.exploreComposeHobbies.innerHTML = hobbyPickerHTML('compose', ui.exploreCompose.hobbyId);
     }
     if (el.exploreCaptionCount && el.exploreComposeCaption) {
       el.exploreCaptionCount.textContent = String(el.exploreComposeCaption.value.length);
@@ -6771,9 +7305,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   el.exploreComposeHobbies && el.exploreComposeHobbies.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-compose-hobby]');
-    if (!chip) return;
-    ui.exploreCompose.hobbyId = chip.dataset.composeHobby;
+    const chip = e.target.closest('[data-hobby-pick]');
+    if (!chip || chip.dataset.hobbyScope !== 'compose') return;
+    ui.exploreCompose.hobbyId = chip.dataset.hobbyPick;
     renderExploreCompose();
   });
 
@@ -6829,9 +7363,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderEditHobbies() {
     if (!el.editHobbies) return;
-    el.editHobbies.innerHTML = store.state.exploreHobbyChips.map((h) => `
-      <button class="tag-pick ${ui.edit.hobbyIds.includes(h.id) ? 'active' : ''}"
-              data-edit-hobby="${h.id}" type="button">${ic(h.icon)} ${escapeHtml(h.name)}</button>`).join('');
+    el.editHobbies.innerHTML = store.getHobbyCategories().map((cat) => `
+      <div class="hobby-pick-group">
+        <span class="hobby-pick-cat">${ic(cat.icon)}<span>${escapeHtml(cat.name)}</span></span>
+        <div class="hobby-pick-row">
+          ${cat.hobbies.map((h) => `
+            <button class="tag-pick ${ui.edit.hobbyIds.includes(h.id) ? 'active' : ''}"
+                    data-edit-hobby="${h.id}" type="button">${ic(h.icon || 'sparkle')} ${escapeHtml(h.name)}</button>`).join('')}
+        </div>
+      </div>`).join('')
+      + `<div class="hobby-custom hobby-custom-inline">
+           <div class="hobby-custom-row">
+             <input class="hobby-custom-input" data-hobby-custom-input="edit" type="text" maxlength="12"
+                    placeholder="목록에 없으면 직접 쓰기" autocomplete="off">
+             <button class="hobby-custom-add" data-hobby-custom-add="edit" type="button">추가</button>
+           </div>
+         </div>`;
   }
 
   function renderEditActivity() {
@@ -6909,9 +7456,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ------------------------------------------------------------ 모임 개설 */
   function renderGroupDraft() {
     if (el.createGroupHobbies) {
-      el.createGroupHobbies.innerHTML = store.state.exploreHobbyChips.map((h) => `
-        <button class="tag-pick ${ui.groupDraft.hobbyId === h.id ? 'active' : ''}"
-                data-create-hobby="${h.id}" type="button">${ic(h.icon)} ${escapeHtml(h.name)}</button>`).join('');
+      el.createGroupHobbies.innerHTML = hobbyPickerHTML('group', ui.groupDraft.hobbyId);
     }
     if (el.createGroupPrivacy) {
       const options = [
@@ -6949,9 +7494,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   el.createGroupHobbies && el.createGroupHobbies.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-create-hobby]');
-    if (!chip) return;
-    ui.groupDraft.hobbyId = chip.dataset.createHobby;
+    const chip = e.target.closest('[data-hobby-pick]');
+    if (!chip || chip.dataset.hobbyScope !== 'group') return;
+    ui.groupDraft.hobbyId = chip.dataset.hobbyPick;
     renderGroupDraft();
   });
 
@@ -9312,6 +9857,10 @@ document.addEventListener('DOMContentLoaded', () => {
   paintMyAvatars();
   /* Sprint 17 — 가입 전이면 회원가입 화면만 보인다(입구). */
   applySignInGate();
+  /* Sprint 21 — 아직 가이드를 보지 않은 계정은 앱을 열 때 이어서 보여준다(도중에 닫아도 다음에 이어서). */
+  if (store.isSignedIn() && store.getGuideState().needed && !store.isDemoAccount()) {
+    setTimeout(() => startGuide(), 420);
+  }
   updateBadges();
   syncExploreSearchClear();
   setupExploreObserver();
@@ -9472,6 +10021,25 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 18 — 사이드바(모임 멤버·설정 / 내정보 설정) */
     openDrawer, closeDrawer, renderGroupDrawer, renderProfileDrawer,
     getDrawerState: () => ({ open: ui.drawerOpen }),
+    /* Sprint 21 — 점토 아이콘 · 취미 분류 · 추천 모임 · 스포트라이트 가이드 */
+    renderHomeRecommend,
+    getRecommend: () => store.getRecommendedGroups({ limit: 6 }).map((it) => ({ id: it.group.id, name: it.group.name, tone: it.tone, reason: it.reason })),
+    startGuide, closeGuide, renderGuide, nextGuide: guideNext, prevGuide: guidePrev,
+    saveGuideTaste, toggleGuidePick, addGuideCustomHobby,
+    getGuideUi: () => {
+      const g = guideState();
+      return {
+        open: g.open, step: g.step, mode: g.mode,
+        stepId: (GUIDE_STEPS[g.step] || {}).id || null,
+        total: GUIDE_STEPS.length,
+        hobbyIds: g.hobbyIds.slice(), goalIds: g.goalIds.slice(),
+        title: el.spotlightTitle ? el.spotlightTitle.textContent : '',
+        hole: el.spotlightHole && !el.spotlightHole.hidden
+          ? { w: el.spotlightHole.style.width, h: el.spotlightHole.style.height } : null
+      };
+    },
+    addCustomHobby: (name, categoryId) => store.addCustomHobby(name, categoryId),
+    renderHobbyCats,
     /* Sprint 19 — '우그' 클레이 로고 스플래시 · 클레이 모션 */
     splash,
     getSplashState: () => splash.getState(),

@@ -4,10 +4,10 @@
  * ----------------------------------------------------------------------------
  * 11/16 16:16 사용자: "이모지말고 우그만의 아이콘으로 해줘 이모지는 사용하지말아주고.."
  *
- * 우그의 아이콘은 **이모지가 아니라 직접 그린 선**이다. 규칙은 하나다.
- *   · 24×24 격자 · 선 두께 1.9 · 둥근 끝(round cap/join) · 3~21px 안쪽에 그린다
+ * 우그의 아이콘은 **이모지가 아니라 직접 그린 점토 면**이다. 규칙은 하나다.
+ *   · 24×24 격자 · 도형은 3~21px 안쪽 · 둥근 끝(round cap/join)
+ *   · Sprint 21 — 선(1.9px) 대신 **두툼한 점토 면**: 그늘 → 몸통 → 하이라이트 3겹
  *   · 색은 글자색(currentColor)을 그대로 물려받는다 → 크림·화이트·민트 어디에 놓아도 톤이 맞는다
- *   · 채워야 하는 것(하트·점)만 fill, 나머지는 전부 선(line)
  *   · 크기는 1em — 글자 크기를 따라가므로 라벨·칩·버튼 어디에 넣어도 정렬이 흐트러지지 않는다
  *
  * 쓰는 법
@@ -132,6 +132,28 @@ window.OOGIcons = (function () {
     meal: '<path d="M3.4 11.6h17.2a8.6 8.6 0 0 1-8.6 8.4 8.6 8.6 0 0 1-8.6-8.4z"/><path d="M9.2 8.4c-.9-1-.9-1.9 0-2.9M13.2 8.4c-.9-1-.9-1.9 0-2.9M17.2 8.4c-.9-1-.9-1.9 0-2.9"/>',
     beer: '<path d="M6.2 9.2h7.2v10.4a1.6 1.6 0 0 1-1.6 1.6H7.8a1.6 1.6 0 0 1-1.6-1.6z"/><path d="M13.4 11.4h2.4a1.9 1.9 0 0 1 1.9 1.9v3a1.9 1.9 0 0 1-1.9 1.9h-2.4"/><path d="M6.2 9.2c0-1.6 1.3-2.5 2.7-2.5.4-1.4 1.7-2.1 2.9-1.8 1.2.3 1.9 1.5 1.6 2.8z"/>',
     music: '<circle cx="8" cy="17.4" r="2.6"/><circle cx="18" cy="15.4" r="2.6"/><path d="M10.6 17.4V7.2l10-2v10.2"/>',
+    /* Sprint 21 — 취미 대분류·세부 취미를 덮는 아이콘 */
+    yoga: '<circle cx="12" cy="5.6" r="1.9"/><path d="M12 8.4v5.4M6.4 10.4c1.8 1.1 3.6 1.6 5.6 1.6s3.8-.5 5.6-1.6"/><path d="M12 13.8 7.6 20.4M12 13.8l4.4 6.6"/>',
+    tennis: '<ellipse cx="9.4" cy="9.4" rx="4.6" ry="5.4" transform="rotate(-38 9.4 9.4)"/><path d="M6.4 5.4l5.8 5.8M12 12.6 19.4 20"/><circle cx="17.6" cy="15.6" r="2.6"/>',
+    shuttle: '<ellipse cx="12" cy="18.2" rx="3.4" ry="2.6"/><path d="M9.4 16.2 7 4.4M11 15.8 10.6 3.4M13 15.8l.4-12.4M14.6 16.2 17 4.4"/><path d="M7.8 10.2h8.4"/>',
+    soccer: '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.2l3.4 2.4-1.3 4h-4.2l-1.3-4z"/><path d="M12 7.2V3.8M15.4 9.6l3.2-1.2M14.1 13.6l2 2.8M9.9 13.6l-2 2.8M8.6 9.6 5.4 8.4"/>',
+    basketball: '<circle cx="12" cy="12" r="8.4"/><path d="M3.8 10.2c4.6 1 12 1 16.4 0M3.8 13.8c4.6-1 12-1 16.4 0"/><path d="M12 3.6v16.8"/><path d="M6.6 5.4c2.8 3.8 2.8 9.4 0 13.2M17.4 5.4c-2.8 3.8-2.8 9.4 0 13.2"/>',
+    golf: '<path d="M8.4 3.8v14.8"/><path d="M8.4 3.8 17 6.8 8.4 9.8z"/><ellipse cx="12" cy="19.4" rx="6" ry="1.8"/><circle cx="19.4" cy="15.4" r="1.6"/>',
+    bowling: '<circle cx="11" cy="11" r="7.4"/><circle cx="8.8" cy="8.4" r=".9" fill="currentColor" stroke="none"/><circle cx="12.4" cy="7.6" r=".9" fill="currentColor" stroke="none"/><circle cx="10.4" cy="11.4" r=".9" fill="currentColor" stroke="none"/><circle cx="19.4" cy="17.6" r="2.4"/>',
+    pcgame: '<rect x="3.4" y="4.4" width="13.2" height="9.6" rx="2.2"/><path d="M8 18.6h4M10 14v4.6"/><path d="M17.4 11.4h1.4a2 2 0 0 1 2 2v5.2a2 2 0 0 1-2 2h-1.4z"/><path d="M6.4 8v3M4.9 9.5h3"/>',
+    trophy: '<path d="M8 4.4h8v5.2a4 4 0 0 1-8 0z"/><path d="M8 6H4.8v1.6a3.2 3.2 0 0 0 3.2 3.2M16 6h3.2v1.6a3.2 3.2 0 0 1-3.2 3.2"/><path d="M12 13.6v3.2M8.8 20h6.4M9.8 16.8h4.4"/>',
+    wine: '<path d="M7.4 3.8h9.2v4.4a4.6 4.6 0 0 1-9.2 0z"/><path d="M7.4 7h9.2"/><path d="M12 12.8v6M8.6 20.4h6.8"/>',
+    cook: '<ellipse cx="11" cy="15.6" rx="7.4" ry="3.6"/><path d="M3.6 15.6v1.4a3 3 0 0 0 3 3h8.8"/><path d="M19.4 16.8h1.4"/><path d="M8 12.6c-.9-1.2-.4-2.4.6-3.2M12 12.6c-.9-1.2-.4-2.4.6-3.2"/>',
+    tent: '<path d="M12 4.4 3.6 19.8h16.8z"/><path d="M12 4.4v15.4"/><path d="M12 11.6 8.6 19.8M12 11.6l3.4 8.2"/>',
+    car: '<path d="M4.4 13.6l1.7-5a2.4 2.4 0 0 1 2.3-1.6h7.2a2.4 2.4 0 0 1 2.3 1.6l1.7 5"/><rect x="3.4" y="12.8" width="17.2" height="5.6" rx="2.2"/><circle cx="7.4" cy="18.6" r="1.8"/><circle cx="16.6" cy="18.6" r="1.8"/><path d="M6.6 15.6h2M15.4 15.6h2"/>',
+    fishing: '<path d="M3.4 8.6c4.4 0 8 3.4 8 7.8"/><path d="M11.4 16.4a2.2 2.2 0 1 0 4.4 0 2.2 2.2 0 1 0-4.4 0"/><path d="M13.4 14.4 21 4.4M17.4 6.2l2.6 2"/><circle cx="5.4" cy="7.6" r="1.6"/>',
+    ski: '<circle cx="9" cy="5" r="1.9"/><path d="M9 7.6 6.4 13.4l3 2.2-.6 4.4"/><path d="M6.4 13.4 3.4 12M9.4 9.4l3.4 1.4 1.4 3"/><path d="M15.4 4.4 18.6 20M19.4 5.4 22 19.6"/>',
+    theater: '<path d="M4.4 5.4h6.2v9.2a3.1 3.1 0 0 1-6.2 0z"/><path d="M13.4 5.4h6.2v9.2a3.1 3.1 0 0 1-6.2 0z"/><path d="M6.4 9.2c.6.7 1.6.7 2.2 0M15.4 9.2c.6.7 1.6.7 2.2 0"/><path d="M6.6 12.2c.8-.7 1.6-.7 2.4 0M15.6 12.2c.8-.7 1.6-.7 2.4 0"/><path d="M6 18.6v2M16.2 18.6v2"/>',
+    dance: '<circle cx="14.6" cy="4.8" r="1.9"/><path d="M13.4 7.6 10 11.4l3 2 .4 4.4"/><path d="M10 11.4 6 10.4M14.6 9l4 1.4 1.4 3.4M13.4 13.4l-4.2 2.4.4 4"/><path d="M3.6 19.4h2M19 19.4h2"/>',
+    paw: '<ellipse cx="12" cy="15.6" rx="4.2" ry="3.6"/><circle cx="7" cy="10.4" r="2.1"/><circle cx="11.4" cy="8" r="2.1"/><circle cx="16.2" cy="9.2" r="2.1"/><circle cx="19.4" cy="13.4" r="1.9"/>',
+    shirt: '<path d="M8.6 4.4 12 6.4l3.4-2 4.4 2.6-2.2 3.8-2-.6v9.4H7.4v-9.4l-2 .6-2.2-3.8z"/>',
+    study: '<path d="M3.8 6.4h6.6a2 2 0 0 1 2 2v11a1.8 1.8 0 0 0-1.8-1.8H3.8z"/><path d="M20.2 6.4h-6.6a2 2 0 0 0-2 2v11a1.8 1.8 0 0 1 1.8-1.8h6.8z"/>',
+    idcard: '<rect x="3.2" y="5.4" width="17.6" height="13.2" rx="3"/><circle cx="8.8" cy="10.8" r="2"/><path d="M5.8 15.8c.6-1.6 1.7-2.4 3-2.4s2.4.8 3 2.4"/><path d="M14.6 9.6h4M14.6 12.4h4M14.6 15.2h2.6"/>',
 
     /* 내정보 · 설정 */
     menu: '<circle cx="12" cy="5.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18.6" r="1.5" fill="currentColor" stroke="none"/>',
@@ -155,21 +177,59 @@ window.OOGIcons = (function () {
   /* 채워야 하는 아이콘 — 선 대신 면 */
   const SOLID = { heart: true, heartFilled: true, bookmark: false };
 
+  /* ---------------------------------------------------------------- 점토 */
+  /*
+   * Sprint 21 — 점토 입체(면) 아이콘
+   * 11/16 18:42 사용자: "점토입체면"
+   *
+   * 선 하나(1.9px)로만 그리던 아이콘을 **두툼한 점토 면**으로 바꾼다.
+   * 같은 도형을 세 번 겹쳐 그려 빛과 그늘을 만든다.
+   *   ① 그늘  : 아래로 살짝 내린 진한 반투명 선(3.6px) — 점토가 바닥에 앉은 느낌
+   *   ② 몸통  : currentColor 로 채운 두툼한 선(3.0px) — 아이콘의 실제 면
+   *   ③ 하이라이트: 왼쪽 위로 살짝 올린 흰 선(1.15px, 55%) — 점토의 젖은 광택
+   * 좌표·도형은 Sprint 20 그대로다(24×24 격자). 규격만 선에서 면으로 바뀐다.
+   */
+  const CLAY = { body: 2.45, shade: 3.45, lift: 3.05, drop: 0.45, shadeX: 0.3, liftX: -0.35, liftY: -0.5 };
+
+  function clayLayers(body, solid) {
+    /* 그늘·하이라이트 층은 **선만** 쓴다 — 원래 점(fill)은 지워 광택이 점을 덮지 않게 */
+    const line = body.replace(/fill="currentColor"/g, 'fill="none"');
+    const shade = `<g class="oo-clay-shade" fill="none" stroke="rgba(6,58,42,0.26)"
+        stroke-width="${CLAY.shade}" stroke-linecap="round" stroke-linejoin="round"
+        transform="translate(${CLAY.shadeX} ${CLAY.drop})">${line}</g>`;
+    const base = `<g class="oo-clay-body" fill="${solid ? 'currentColor' : 'none'}" stroke="currentColor"
+        stroke-width="${CLAY.body}" stroke-linecap="round" stroke-linejoin="round">${body}</g>`;
+    const lift = `<g class="oo-clay-lift" fill="none" stroke="rgba(255,255,255,0.62)"
+        stroke-width="${CLAY.lift}" stroke-linecap="round" stroke-linejoin="round"
+        transform="translate(${CLAY.liftX} ${CLAY.liftY})">${line}</g>`;
+    return shade + lift + base;
+  }
+
   /* --------------------------------------------------------------- API */
   const NAMES = Object.keys(PATHS);
 
+  /**
+   * 아이콘 SVG.
+   *  { filled } 채운 하트 · { size } 크기(기본 1em) · { cls } 추가 클래스
+   *  { line: true } 옛 얇은 선 스타일(1.9px) — 아주 작은 체크 표시 등
+   */
   function svg(name, opts) {
     opts = opts || {};
     const body = PATHS[name] || PATHS.dot;
     const solid = opts.filled === true || (SOLID[name] && opts.filled !== false && name === 'heartFilled');
     const cls = 'oo-ic' + (opts.cls ? ' ' + opts.cls : '');
     const size = opts.size || '1em';
-    const fill = solid ? 'currentColor' : 'none';
-    const stroke = solid ? 'none' : 'currentColor';
-    const width = opts.stroke || 1.9;
-    return `<svg class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}"`
-      + ` stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"`
-      + ` aria-hidden="true" focusable="false">${body}</svg>`;
+    if (opts.line === true) {
+      const fill = solid ? 'currentColor' : 'none';
+      const stroke = solid ? 'none' : 'currentColor';
+      const width = opts.stroke || 1.9;
+      return `<svg class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}"`
+        + ` stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"`
+        + ` aria-hidden="true" focusable="false">${body}</svg>`;
+    }
+    return `<svg class="${cls} oo-ic-clay" width="${size}" height="${size}" viewBox="0 0 24 24"`
+      + ' fill="none" stroke="none" aria-hidden="true" focusable="false">'
+      + `${clayLayers(body, solid)}</svg>`;
   }
 
   /* 옛 상태(이모지) 호환 — 저장된 예전 데이터도 아이콘으로 그린다 */
@@ -221,5 +281,6 @@ window.OOGIcons = (function () {
 
   function has(name) { return !!PATHS[name]; }
 
-  return { svg, render, badge, label, has, names: NAMES, legacy: LEGACY };
+  return { svg, render, badge, label, has, names: NAMES, legacy: LEGACY,
+    clay: CLAY, style: 'clay', version: 2 };
 })();

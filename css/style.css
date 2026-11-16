@@ -104,17 +104,24 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html { -webkit-text-size-adjust: 100%; }
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Sprint 21 — 탭바가 스크롤에 밀려 가리지 않도록 문서 자체는 스크롤하지 않는다.
+     스크롤은 .app-main 안에서만 일어난다(아래 21-0 참고). */
+  height: 100%;
+  overflow: hidden;
+}
 
 body {
   font-family: var(--font);
   background: var(--bg-soft);
   color: var(--text);
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  overflow-x: hidden;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -135,8 +142,9 @@ img, svg { display: block; }
 .app-container {
   width: 100%;
   max-width: var(--app-max);
-  min-height: 100vh;
+  min-height: 0;
   height: 100vh;
+  height: 100dvh;         /* iOS 사파리 주소창이 접히고 펴져도 보이는 높이에 맞춘다 */
   background: var(--bg-app);
   position: relative;
   display: flex;
@@ -150,6 +158,7 @@ img, svg { display: block; }
    ========================================================================== */
 .app-header {
   /* iPhone 노치/상태바 영역을 침범하지 않도록 safe-area 반영 */
+  flex-shrink: 0;
   height: calc(var(--header-h) + env(safe-area-inset-top, 0px));
   flex: 0 0 calc(var(--header-h) + env(safe-area-inset-top, 0px));
   padding: env(safe-area-inset-top, 0px) 16px 0;
@@ -235,8 +244,10 @@ img, svg { display: block; }
 
 .app-main {
   flex: 1 1 auto;
+  min-height: 0;          /* flex 자식이 내용만큼 늘어나 탭바를 밀어내지 않게 */
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   position: relative;
   scrollbar-width: thin;
   scrollbar-color: var(--border-strong) transparent;
@@ -4113,8 +4124,9 @@ img, svg { display: block; }
 @media (min-width: 480px) {
   body { padding: 0; }
   .app-container {
-    min-height: 100vh;
+    min-height: 0;
     height: 100vh;
+    height: 100dvh;
   }
 }
 
@@ -11942,7 +11954,13 @@ body.group-mode #bottom-nav { display: none; }
   .dokbo-tile,
   .profile-feed-tile,
   .switch-toggle,
-  .switch-toggle .switch-knob {
+  .switch-toggle .switch-knob,
+  /* Sprint 21 — 추천 모임 카드 · 스포트라이트 가이드 */
+  .spotlight-hole,
+  .spotlight-bubble,
+  .guide-chip,
+  .recommend-card,
+  .home-recommend-more-btn {
     animation: none !important;
     transition: none !important;
   }
@@ -14264,3 +14282,612 @@ img[hidden] { display: none !important; }
 }
 .sheet-block > .sheet-section-title:first-child,
 .sheet-block > .sheet-section-head:first-child { margin-top: 0; }
+
+/* ==========================================================================
+   Sprint 21 — 점토 입체(면) 아이콘 · 취미 대분류 색조 · 추천 모임 · 스포트라이트 가이드
+   --------------------------------------------------------------------------
+   11/16 18:42 루키 님 지시
+     · "점토입체면" (아이콘 스타일) · "응 점토 심볼로해" (PWA 아이콘)
+     · "큰틀인 운동, 게임, 독서, 맛집, 여행 등 넣고 안에 세부적인것좀 채워주고 없는거는
+        이용자가 작성하게끔"
+     · "사진에 이 부분이 이상해 … 나이는 필터에 넣을 수 있는거아니야? 왜 뺐어
+        탭은 항상 고정되어있어야지 위로 스크롤하면 가려지네"
+     · "스포트라이트 효과로 … 가이드를 넣어주었으면 해 … 홈 탭 하단에 추천 모임이 뜨도록
+        … 더 많은 모임을 확인하세요! 나 더 많은 모임 둘러보기"
+   ========================================================================== */
+
+/* ---------------------------------------- 21-0. 탭바·헤더는 언제나 제자리 */
+/* .app-container 는 100dvh · .app-main 만 스크롤한다. 탭바는 flex 로 바닥에 고정되고
+   (position: relative + flex 0 0) 헤더도 flex-shrink:0 이라 스크롤에 밀리지 않는다. */
+.app-header,
+.bottom-nav-bar {
+  position: relative;
+  z-index: 60;
+}
+.bottom-nav-bar { z-index: 55; }
+/* 스크롤 끝에서도 마지막 카드가 탭바에 가리지 않게 */
+#tab-home, #tab-explore, #tab-chat, #tab-profile, #tab-board {
+  padding-bottom: 24px;
+}
+
+/* ---------------------------------------- 21-1. 점토 아이콘 (면 · 광택) */
+.oo-ic-clay { overflow: visible; }
+.oo-ic-clay .oo-clay-body { paint-order: stroke fill; }
+/* 배지·타일 위에서는 점토가 조금 더 도드라지게 (바깥 그림자는 표면이 만든다) */
+.oo-icbadge .oo-ic-clay,
+.gallery-cover-emoji .oo-ic-clay,
+.group-tile-emoji .oo-ic-clay,
+.recommend-clay .oo-ic-clay,
+.home-hero-emoji .oo-ic-clay {
+  filter: drop-shadow(0 2px 1.5px rgba(6, 58, 42, 0.18));
+}
+
+/* ---------------------------------------- 21-2. 취미 대분류 색조 (점토 표지) */
+:root {
+  --tone-green-from: #EAF9F1;  --tone-green-to: #CBEDDA;  --tone-green-ink: #065F46;  --tone-green-chip: #D7F2E4;
+  --tone-violet-from: #F4EEFE; --tone-violet-to: #DCD2FB; --tone-violet-ink: #4C1D95; --tone-violet-chip: #E7DDFD;
+  --tone-teal-from: #E8F6F8;   --tone-teal-to: #C9E8EE;   --tone-teal-ink: #0F525F;   --tone-teal-chip: #D6EEF2;
+  --tone-amber-from: #FFF5E6;  --tone-amber-to: #FBE1BA;  --tone-amber-ink: #8A4708;  --tone-amber-chip: #FCEBCF;
+  --tone-sky-from: #EAF4FE;    --tone-sky-to: #CFE4FA;    --tone-sky-ink: #0F4C75;    --tone-sky-chip: #DCEDFC;
+  --tone-coral-from: #FFF0EA;  --tone-coral-to: #FBD8CB;  --tone-coral-ink: #8A3418;  --tone-coral-chip: #FCE2D8;
+  --tone-mint-from: #EFFAF3;   --tone-mint-to: #D2EFE0;   --tone-mint-ink: #14532D;   --tone-mint-chip: #DEF4E8;
+}
+
+.tone-green { --tone-from: var(--tone-green-from); --tone-to: var(--tone-green-to); --tone-ink: var(--tone-green-ink); --tone-chip: var(--tone-green-chip); }
+.tone-violet { --tone-from: var(--tone-violet-from); --tone-to: var(--tone-violet-to); --tone-ink: var(--tone-violet-ink); --tone-chip: var(--tone-violet-chip); }
+.tone-teal { --tone-from: var(--tone-teal-from); --tone-to: var(--tone-teal-to); --tone-ink: var(--tone-teal-ink); --tone-chip: var(--tone-teal-chip); }
+.tone-amber { --tone-from: var(--tone-amber-from); --tone-to: var(--tone-amber-to); --tone-ink: var(--tone-amber-ink); --tone-chip: var(--tone-amber-chip); }
+.tone-sky { --tone-from: var(--tone-sky-from); --tone-to: var(--tone-sky-to); --tone-ink: var(--tone-sky-ink); --tone-chip: var(--tone-sky-chip); }
+.tone-coral { --tone-from: var(--tone-coral-from); --tone-to: var(--tone-coral-to); --tone-ink: var(--tone-coral-ink); --tone-chip: var(--tone-coral-chip); }
+.tone-mint { --tone-from: var(--tone-mint-from); --tone-to: var(--tone-mint-to); --tone-ink: var(--tone-mint-ink); --tone-chip: var(--tone-mint-chip); }
+
+/* 사진이 없는 표지 = 그 취미의 점토 색조 (운동=그린 · 게임=보라 · 독서=틸 · 맛집=앰버 · 여행=스카이 · 문화=코랄) */
+.gallery-cover.is-plain,
+.group-tile-cover,
+.recommend-cover {
+  background: linear-gradient(152deg, var(--tone-from, #EAF9F1) 0%, var(--tone-to, #CBEDDA) 100%);
+}
+.gallery-cover.is-plain { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -10px 18px -14px rgba(20, 66, 50, 0.35); }
+.gallery-cover.is-plain .gallery-cover-emoji,
+.group-tile-emoji {
+  background: rgba(255, 253, 247, 0.9);
+  color: var(--tone-ink, var(--green-deep));
+  opacity: 1;
+}
+.group-tile-tone-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--tone-ink, var(--green-dark));
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  display: inline-block;
+  margin-right: 4px;
+}
+/* 취미 칩·카테고리도 같은 색조를 쓴다 */
+.recommend-hobby {
+  background: rgba(255, 253, 247, 0.92);
+  color: var(--tone-ink, var(--green-deep));
+}
+.hobby-cat.on,
+.guide-cat.on {
+  background: var(--tone-chip, var(--clay-mint));
+  color: var(--tone-ink, var(--green-dark));
+}
+
+/* ---------------------------------------- 21-3. 홈 하단 추천 모임 */
+.home-recommend {
+  margin: 20px 0 6px;
+  padding: 16px 14px 14px;
+  border-radius: 24px;
+  background: var(--clay-cream, #FFFDF7);
+  box-shadow: var(--clay-soft, 0 10px 24px -18px rgba(20, 66, 50, 0.5)), var(--clay-light, inset 0 1px 0 rgba(255, 255, 255, 0.9));
+}
+.home-recommend-head-text { min-width: 0; }
+.home-recommend-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.home-recommend-title {
+  font-size: 16px;
+  font-weight: var(--fw-display);
+  color: var(--text-strong);
+  letter-spacing: -0.3px;
+}
+.home-recommend-sub {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: var(--fw-meta);
+}
+.home-recommend-taste {
+  flex: 0 0 auto;
+  border: none;
+  background: var(--clay-mint, #E8F8F0);
+  color: var(--green-dark);
+  font-size: 10.5px;
+  font-weight: var(--fw-label);
+  padding: 6px 10px;
+  border-radius: 999px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.home-recommend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.recommend-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--clay-soft, 0 8px 18px -14px rgba(20, 66, 50, 0.5)), 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+  transition: transform 0.22s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)), box-shadow 0.22s ease;
+  cursor: pointer;
+}
+.recommend-card:active { transform: scale(0.972); }
+.recommend-cover {
+  position: relative;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 -10px 16px -14px rgba(20, 66, 50, 0.4);
+}
+.recommend-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.recommend-clay {
+  display: grid;
+  place-items: center;
+  width: 46px; height: 46px;
+  border-radius: 18px;
+  background: rgba(255, 253, 247, 0.9);
+  color: var(--tone-ink, var(--green-deep));
+  box-shadow: 0 6px 12px -8px rgba(20, 66, 50, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+.recommend-clay .oo-ic { width: 27px; height: 27px; }
+.recommend-hobby {
+  position: absolute;
+  left: 8px; bottom: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: var(--fw-label);
+  box-shadow: 0 2px 6px -4px rgba(20, 66, 50, 0.5);
+}
+.recommend-hobby .oo-ic { width: 10px; height: 10px; }
+.recommend-body { padding: 9px 10px 10px; }
+.recommend-name {
+  font-size: 12.5px;
+  font-weight: var(--fw-label);
+  color: var(--text-strong);
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recommend-meta {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recommend-reason {
+  margin-top: 5px;
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: var(--fw-label);
+  color: var(--tone-ink, var(--green-dark));
+  background: var(--tone-chip, var(--green-soft));
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+.recommend-empty {
+  grid-column: 1 / -1;
+  padding: 16px 12px;
+  text-align: center;
+  border-radius: 16px;
+  background: var(--bg-subtle, #F8FAFC);
+}
+.recommend-empty-title { font-size: 12.5px; font-weight: var(--fw-label); color: var(--text-strong); }
+.recommend-empty-desc { margin-top: 4px; font-size: 10.5px; font-weight: var(--fw-meta); color: var(--text-muted); line-height: 1.5; }
+.recommend-empty-btn {
+  margin-top: 10px;
+  border: none;
+  background: var(--green-dark);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: var(--fw-label);
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+.home-recommend-more {
+  margin-top: 12px;
+  padding: 14px 12px 12px;
+  border-radius: 18px;
+  text-align: center;
+  background: linear-gradient(160deg, #FFFDF7 0%, #EFFAF3 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -8px 14px -12px rgba(20, 66, 50, 0.35);
+}
+.home-recommend-more-title { font-size: 12.5px; font-weight: var(--fw-label); color: var(--text-strong); }
+.home-recommend-more-desc { margin-top: 3px; font-size: 10.5px; font-weight: var(--fw-meta); color: var(--text-muted); }
+.home-recommend-more-btn {
+  margin-top: 10px;
+  border: none;
+  background: var(--green-grad, linear-gradient(135deg, #059669, #047857));
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: var(--fw-label);
+  padding: 11px 18px;
+  border-radius: 999px;
+  box-shadow: 0 10px 18px -12px rgba(4, 120, 87, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.home-recommend-more-btn:active { transform: scale(0.97); }
+
+/* ---------------------------------------- 21-4. 취미 대분류 탭 · 세부 취미 칩 */
+.hobby-cats {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+  scrollbar-width: none;
+}
+.hobby-cats::-webkit-scrollbar { display: none; }
+.hobby-cat {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: var(--clay-cream-soft, #FBF5EA);
+  color: var(--text-sub);
+  font-size: 11px;
+  font-weight: var(--fw-label);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -2px 4px -3px rgba(20, 66, 50, 0.16);
+  transition: transform 0.2s var(--spring), background 0.16s ease, color 0.16s ease;
+}
+.hobby-cat:active { transform: scale(0.95); }
+.hobby-cat .oo-ic { width: 13px; height: 13px; }
+.hobby-cat.on {
+  background: var(--green-soft, #ECFDF5);
+  color: var(--green-dark);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 6px 12px -10px rgba(4, 120, 87, 0.7);
+}
+.chip-custom-tag {
+  margin-left: 3px;
+  font-size: 8.5px;
+  font-weight: var(--fw-label);
+  color: var(--green-dark);
+  background: rgba(16, 185, 129, 0.14);
+  padding: 1px 4px;
+  border-radius: 999px;
+}
+
+/* 목록에 없는 취미 직접 쓰기 */
+.hobby-custom { margin-top: 10px; }
+.hobby-custom-label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+.hobby-custom-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.hobby-custom-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  background: var(--clay-cream, #FFFDF7);
+  box-shadow: var(--clay-inset);
+  font-size: 13px;
+  font-weight: var(--fw-body);
+  color: var(--text-strong);
+}
+.hobby-custom-input::placeholder { color: var(--text-muted); }
+.hobby-custom-input:focus {
+  outline: none;
+  border-color: var(--green);
+  background: #FFFFFF;
+}
+.hobby-custom-add {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 12px;
+  background: var(--green-dark);
+  color: #FFFFFF;
+  font-size: 11.5px;
+  font-weight: var(--fw-label);
+  box-shadow: var(--clay-green-in, inset 0 1px 0 rgba(255, 255, 255, 0.35));
+}
+.hobby-custom-add:active { transform: scale(0.96); }
+.hobby-custom-note {
+  margin-top: 5px;
+  font-size: 9.5px;
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* 프로필 수정·모임 개설의 취미 고르기 (대분류 묶음) */
+.hobby-pick-group { margin-bottom: 8px; }
+.hobby-pick-cat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: var(--fw-label);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.hobby-pick-cat .oo-ic { width: 11px; height: 11px; }
+.hobby-pick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.hobby-custom-inline { margin-top: 4px; }
+
+/* 필터 시트 안 '지금 조건' 한 줄 (예전 탐색 상단 요약) */
+.explore-summary.filter-current {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--clay-cream-soft, #FBF5EA);
+  font-size: 10.5px;
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ---------------------------------------- 21-5. 스포트라이트 가이드 */
+body.spotlight-open { overflow: hidden; }
+.spotlight {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+.spotlight[hidden] { display: none; }
+.spotlight.is-open { animation: spotlightIn 0.24s ease both; }
+/* 타겟이 없는 단계(환영·취향 질문)는 화면 전체를 어둡게 덮는다(타겟 단계는 구멍의 그림자가 덮는다) */
+.spotlight.is-center::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 33, 26, 0.62);
+}
+.spotlight-bubble:focus,
+.spotlight-bubble:focus-visible { outline: none !important; box-shadow: 0 26px 60px -22px rgba(4, 40, 30, 0.62), inset 0 2px 0 rgba(255, 255, 255, 0.95); }
+@keyframes spotlightIn { from { opacity: 0; } to { opacity: 1; } }
+.spotlight-hole {
+  position: fixed;
+  border-radius: 18px;
+  pointer-events: none;
+  box-shadow: 0 0 0 240vw rgba(9, 33, 26, 0.62), 0 0 0 2px rgba(255, 255, 255, 0.85) inset;
+  transition: left 0.28s var(--spring-soft), top 0.28s var(--spring-soft),
+              width 0.28s var(--spring-soft), height 0.28s var(--spring-soft);
+}
+/* 가운데 단계에서는 구멍을 아예 그리지 않는다 — 그림자·테두리가 남지 않게 */
+.spotlight-hole[hidden] { display: none !important; }
+.spotlight-bubble {
+  position: fixed;
+  width: min(350px, calc(100vw - 24px));
+  max-height: 62vh;
+  overflow-y: auto;
+  padding: 16px 16px 14px;
+  border-radius: 24px;
+  background: var(--clay-cream, #FFFDF7);
+  box-shadow: 0 26px 60px -22px rgba(4, 40, 30, 0.62), inset 0 2px 0 rgba(255, 255, 255, 0.95);
+  z-index: 2;
+  animation: bubblePop 0.3s var(--spring) both;
+}
+@keyframes bubblePop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.spotlight-bubble.is-center { animation: none; }
+.spotlight-bubble.above::after,
+.spotlight-bubble.below::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: var(--clay-cream, #FFFDF7);
+  transform: rotate(45deg);
+  border-radius: 2px;
+}
+.spotlight-bubble.below::after { top: -5px; }
+.spotlight-bubble.above::after { bottom: -5px; }
+.spotlight-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.spotlight-step {
+  font-size: 10px;
+  font-weight: var(--fw-label);
+  color: var(--green-dark);
+  background: var(--green-soft);
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.spotlight-skip {
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: var(--fw-meta);
+  padding: 4px 2px;
+}
+.spotlight-title {
+  font-size: 17px;
+  font-weight: var(--fw-display);
+  color: var(--text-strong);
+  letter-spacing: -0.4px;
+  line-height: 1.3;
+}
+.spotlight-desc {
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: var(--fw-body);
+  line-height: 1.6;
+  color: var(--text-sub);
+}
+.spotlight-body { margin-top: 4px; }
+.spotlight-body[hidden] { display: none; }
+.spotlight-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.spotlight-prev {
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 14px;
+  background: var(--clay-cream-soft, #FBF5EA);
+  color: var(--text-sub);
+  font-size: 12px;
+  font-weight: var(--fw-label);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.spotlight-prev[hidden] { display: none; }
+.spotlight-next {
+  flex: 1 1 auto;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 14px;
+  background: var(--green-grad);
+  color: #FFFFFF;
+  font-size: 12.5px;
+  font-weight: var(--fw-label);
+  box-shadow: 0 12px 20px -14px rgba(4, 120, 87, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+.spotlight-next:active { transform: scale(0.98); }
+
+/* 가이드 안 취향 질문 */
+.guide-cats {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 10px 0 8px;
+  scrollbar-width: none;
+}
+.guide-cats::-webkit-scrollbar { display: none; }
+.guide-cat {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--clay-cream-soft, #FBF5EA);
+  color: var(--text-sub);
+  font-size: 10.5px;
+  font-weight: var(--fw-label);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.guide-cat .oo-ic { width: 12px; height: 12px; }
+.guide-cat.on { background: var(--green-soft); color: var(--green-dark); }
+.guide-q { margin-top: 10px; }
+.guide-q-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: var(--fw-label);
+  color: var(--text-strong);
+  margin-bottom: 6px;
+}
+.guide-q-count {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  font-weight: var(--fw-meta);
+  font-variant-numeric: tabular-nums;
+}
+.guide-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.guide-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1.5px solid transparent;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #FFFFFF;
+  color: var(--text-sub);
+  font-size: 11px;
+  font-weight: var(--fw-label);
+  box-shadow: var(--clay-soft);
+  transition: transform 0.18s var(--spring), background 0.16s ease, color 0.16s ease;
+}
+.guide-chip .oo-ic { width: 13px; height: 13px; }
+.guide-chip.on {
+  background: var(--green-soft);
+  color: var(--green-dark);
+  border-color: var(--green-soft-border, #A7F3D0);
+}
+.guide-chip[aria-disabled="true"] { opacity: 0.45; }
+.guide-chip:active { transform: scale(0.95); }
+.guide-custom {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.guide-custom-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  background: #FFFFFF;
+  box-shadow: var(--clay-inset);
+  font-size: 12px;
+  font-weight: var(--fw-meta);
+  color: var(--text-strong);
+}
+.guide-custom-input:focus { outline: none; border-color: var(--green); }
+.guide-custom-add {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--green-dark);
+  color: #FFFFFF;
+  font-size: 11px;
+  font-weight: var(--fw-label);
+}
+
+
+/* 점토 아이콘의 층 — 생성되는 <g> 도 CSS 에 이름을 남겨 스타일·점검에서 보이게 한다 */
+.oo-ic-clay .oo-clay-shade { opacity: 1; }
+.oo-ic-clay .oo-clay-lift { opacity: 1; }
+.oo-ic-clay .oo-clay-body { opacity: 1; }

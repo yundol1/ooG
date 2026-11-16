@@ -114,12 +114,32 @@
               <h2 class="gallery-title" id="gallery-title">내 그룹</h2>
               <p class="gallery-sub" id="gallery-sub">모임을 눌러 들어가세요</p>
             </div>
-            <button class="gallery-find" id="btn-gallery-find" type="button">모임 찾기</button>
           </div>
           <!-- Sprint 17 — 갤러리 정렬(최근 활동순 · 가나다순 · 내가 그룹장) -->
           <div class="gallery-sort" id="gallery-sort" role="group" aria-label="갤러리 정렬"><!-- JS --></div>
           <div class="gallery-grid" id="group-gallery-grid" aria-live="polite"><!-- JS --></div>
           <div class="gallery-empty" id="group-gallery-empty" hidden><!-- JS --></div>
+
+          <!-- Sprint 21 — 취향 기반 추천 모임 (가입 직후 내 모임이 0개여도 보인다)
+               11/16 18:42 사용자: "홈 탭 하단에 추천 모임이 뜨도록 … 모임 찾기는 추천모임
+               아래로 내리면서 볼거아니야? 좀만 내리면 더 많은 모임을 확인하세요!
+               나 더 많은 모임 둘러보기 이런식으로 버튼을 이동해줘" -->
+          <section class="home-recommend" id="home-recommend" aria-labelledby="home-recommend-title">
+            <div class="home-recommend-head">
+              <div class="home-recommend-head-text">
+                <h3 class="home-recommend-title" id="home-recommend-title">추천 모임</h3>
+                <p class="home-recommend-sub" id="home-recommend-sub">내 취미에 맞춰 골랐어요</p>
+              </div>
+              <button class="home-recommend-taste" id="btn-home-recommend-taste" type="button">취미 다시 고르기</button>
+            </div>
+            <div class="home-recommend-grid" id="home-recommend-grid" aria-live="polite"><!-- JS --></div>
+            <div class="home-recommend-more" id="home-recommend-more">
+              <p class="home-recommend-more-title">더 많은 모임을 확인하세요!</p>
+              <p class="home-recommend-more-desc">취미·지역·나이로 골라 볼 수 있어요</p>
+              <button class="home-recommend-more-btn" id="btn-home-more-groups" type="button">더 많은 모임 둘러보기</button>
+            </div>
+          </section>
+
           <p class="gallery-note">모임을 열면 그 모임의 피드·게시판·디엠·내정보가 하단 4탭으로 바뀌고,
             왼쪽 위 화살표로 이 갤러리로 돌아옵니다.</p>
         </div>
@@ -256,29 +276,10 @@
               <span class="explore-filter-badge" id="explore-filter-count" hidden>0</span>
             </button>
           </div>
-          <!-- 적용된 세부 조건만 작은 칩 1줄로 — 누르면 바로 해제된다 -->
+          <!-- 적용된 세부 조건만 작은 칩 1줄로 — 누르면 바로 해제된다
+               (Sprint 21 — 한 줄 요약은 필터 시트 안으로 옮겼다. 같은 말을 두 번 하지 않게) -->
           <div class="explore-active-filters" id="explore-active-filters" role="group"
                aria-label="적용된 탐색 조건" hidden><!-- JS --></div>
-          <!-- Sprint 17 — 취미 조합 한 줄 요약(나이·거리·지역 포함) -->
-          <p class="explore-summary" id="explore-summary">전체 취미 · 나이 전체 · 내 동네 전체 · 전체 지역</p>
-
-          <!-- Sprint 16 — 0~99세 듀얼 레인지 나이 슬라이더 (11/15 19:05 "나이는 0~99세 드래그 슬라이더로") -->
-          <div class="age-range" id="age-range" role="group" aria-label="나이 범위">
-            <div class="age-range-head">
-              <span class="age-range-label" id="age-range-label">나이 0~99세</span>
-              <button class="age-range-clear" id="btn-age-range-clear" type="button" hidden>나이 조건 없음</button>
-            </div>
-            <div class="age-range-track" id="age-range-track">
-              <span class="age-range-fill" id="age-range-fill" aria-hidden="true"></span>
-              <input class="age-range-input" id="age-range-min" type="range" min="0" max="99" step="1" value="0"
-                     aria-label="최소 나이">
-              <input class="age-range-input" id="age-range-max" type="range" min="0" max="99" step="1" value="99"
-                     aria-label="최대 나이">
-            </div>
-            <div class="age-range-foot" aria-hidden="true">
-              <span>0세</span><span>99세</span>
-            </div>
-          </div>
         </div>
 
         <div class="explore-head">
@@ -806,21 +807,50 @@
         <div class="filter-head">
           <h2 class="sheet-title">탐색 필터</h2>
           <p class="filter-sub">취미·나이·거리를 한 번에 고르고 [적용하기]를 누르면 탐색에 반영돼요.</p>
+          <!-- Sprint 21 — 지금 적용된 조건을 한 줄로 (예전엔 탐색 상단에 칩과 겹쳐 있었다) -->
+          <p class="explore-summary filter-current" id="explore-summary">전체 취미 · 나이 전체 · 내 동네 전체 · 전체 지역</p>
         </div>
         <div class="filter-sheet-body">
-          <!-- 취미 — 하나만 고를 수 있고, 다시 누르면 해제된다 -->
+          <!-- 취미 — 대분류(큰틀)를 고르면 그 안의 세부 취미가 나온다. 없는 취미는 직접 쓴다 -->
           <section class="filter-group" aria-labelledby="filter-hobby-label">
             <div class="filter-group-head">
               <h3 class="filter-group-title" id="filter-hobby-label">취미</h3>
               <span class="filter-group-hint">하나만 고를 수 있어요 · 다시 누르면 해제</span>
             </div>
+            <div class="hobby-cats" id="hobby-cats" role="group" aria-label="취미 대분류"><!-- JS --></div>
             <div class="explore-chips filter-chips" id="explore-chips" role="group" aria-label="취미 필터"><!-- JS --></div>
+            <div class="hobby-custom" id="hobby-custom">
+              <label class="hobby-custom-label" for="hobby-custom-input">내 취미가 없나요? 직접 쓰기</label>
+              <div class="hobby-custom-row">
+                <input class="hobby-custom-input" id="hobby-custom-input" type="text" maxlength="12"
+                       placeholder="예: 파쿠르, 악기 연주" autocomplete="off">
+                <button class="hobby-custom-add" id="btn-hobby-custom-add" type="button">추가</button>
+              </div>
+              <p class="hobby-custom-note" id="hobby-custom-note">추가한 취미는 프로필·모임 개설에서도 같이 써요</p>
+            </div>
           </section>
-          <!-- 나이 — 11/15 19:05 "나이는 0~99세 드래그 슬라이더로" → 탐색 상단 슬라이더로 이동 -->
+          <!-- 나이 — 11/15 19:05 "나이는 0~99세 드래그 슬라이더로"
+               Sprint 21 — 탐색 상단에 튀어나와 칩과 겹쳐 보이던 것을 **이 시트 안으로** 옮겼다 -->
           <section class="filter-group" aria-labelledby="filter-age-label">
             <div class="filter-group-head">
               <h3 class="filter-group-title" id="filter-age-label">나이</h3>
-              <span class="filter-group-hint">탐색 화면 위 슬라이더에서 0~99세로 조절해요</span>
+              <span class="filter-group-hint">0~99세 사이로 드래그</span>
+            </div>
+            <div class="age-range" id="age-range" role="group" aria-label="나이 범위">
+              <div class="age-range-head">
+                <span class="age-range-label" id="age-range-label">나이 0~99세</span>
+                <button class="age-range-clear" id="btn-age-range-clear" type="button" hidden>나이 조건 없음</button>
+              </div>
+              <div class="age-range-track" id="age-range-track">
+                <span class="age-range-fill" id="age-range-fill" aria-hidden="true"></span>
+                <input class="age-range-input" id="age-range-min" type="range" min="0" max="99" step="1" value="0"
+                       aria-label="최소 나이">
+                <input class="age-range-input" id="age-range-max" type="range" min="0" max="99" step="1" value="99"
+                       aria-label="최대 나이">
+              </div>
+              <div class="age-range-foot" aria-hidden="true">
+                <span>0세</span><span>99세</span>
+              </div>
             </div>
             <p class="filter-age-note" id="filter-age-note">지금은 나이 조건 없이 전체를 보고 있어요</p>
           </section>
@@ -1272,6 +1302,29 @@
 
     <!-- ==================== 토스트 알림 ==================== -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- ==================== Sprint 21 — 가입 후 스포트라이트 가이드 ====================
+         11/16 18:42 사용자: "처음 회원가입할때 무엇을 할지모르잖아 스포트라이트 효과로 이용자가
+         처음에 익숙할 수 있게 가이드를 넣어주었으면 해".
+         · 화면을 어둡게 덮고 타겟 요소만 점토 빛으로 뚫어 보여준다(.spotlight-hole 의 box-shadow).
+         · 말풍선 안에서 취향 질문(당신의 취미는 무엇인가요? / 우그에서 어떤 걸 해보고 싶나요?)을 묻는다. -->
+    <div class="spotlight" id="spotlight" hidden>
+      <div class="spotlight-hole" id="spotlight-hole" aria-hidden="true"></div>
+      <div class="spotlight-bubble" id="spotlight-bubble" role="dialog" aria-modal="true"
+           aria-labelledby="spotlight-title" tabindex="-1">
+        <div class="spotlight-top">
+          <span class="spotlight-step" id="spotlight-step">1 / 6</span>
+          <button class="spotlight-skip" id="btn-spotlight-skip" type="button">건너뛰기</button>
+        </div>
+        <h2 class="spotlight-title" id="spotlight-title">우그에 오신 걸 환영해요</h2>
+        <p class="spotlight-desc" id="spotlight-desc"></p>
+        <div class="spotlight-body" id="spotlight-body"><!-- JS --></div>
+        <div class="spotlight-actions">
+          <button class="spotlight-prev" id="btn-spotlight-prev" type="button">이전</button>
+          <button class="spotlight-next" id="btn-spotlight-next" type="button">다음</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ==================== 하단 탭바 (Sprint 16) — 바깥 3탭 / 그룹 안 4탭 ==================== -->
     <nav class="bottom-nav-bar" id="bottom-nav" role="tablist" aria-label="주요 화면">

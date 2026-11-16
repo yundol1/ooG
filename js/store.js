@@ -688,6 +688,122 @@ const SIMULATED_PERSONAS = [
  *                 대화방 헤더의 '취미 프로필 보기'가 이 규격을 그대로 재사용한다.
  * ------------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------------
+ * Sprint 21 — 취미 분류 체계 (대분류 → 세부 취미 → 이용자 직접 작성)
+ * ---------------------------------------------------------------------------
+ * 11/16 18:42 사용자: "현재 취미는 없는거들이 많아 일단 큰틀인 운동, 게임, 독서,
+ * 맛집, 여행 등 넣고 안에 세부적인것좀 채워주고 없는거는 이용자가 작성하게끔".
+ *
+ *  · 7개 대분류 아래 42개 세부 취미를 기본으로 둔다. id 는 옛 데이터(모임 hobbyId·
+ *    사람 카드 hobbyIds·게시글 hobbyId)와 그대로 이어진다 — 기존 id 는 이름만 다듬었다.
+ *  · core:true 인 8종은 탐색 필터의 '핵심 취미'로 위에 놓인다(옛 칩 8종과 같은 id).
+ *  · tone 은 사진 없는 모임 표지·배지의 점토 색조다(운동=그린 · 게임=보라 · 독서=틸 ·
+ *    맛집=앰버 · 여행=스카이 · 문화=코랄 · 일상=민트).
+ *  · 목록에 없는 취미는 state.customHobbies 에 쌓이고, 같은 곳에서 필터·프로필·모임
+ *    개설이 함께 읽는다(모듈마다 따로 두지 않는다).
+ * ------------------------------------------------------------------------- */
+const HOBBY_TAXONOMY = [
+  {
+    id: 'sports', name: '운동·스포츠', icon: 'dumbbell', tone: 'green',
+    hobbies: [
+      { id: 'fitness', name: '헬스·크로스핏', icon: 'dumbbell', core: true },
+      { id: 'run', name: '러닝', icon: 'run', core: true },
+      { id: 'swim', name: '수영', icon: 'swim', core: true },
+      { id: 'climb', name: '클라이밍', icon: 'climb', core: true },
+      { id: 'hike', name: '등산·트레킹', icon: 'mountain' },
+      { id: 'yoga', name: '요가·필라테스', icon: 'yoga' },
+      { id: 'tennis', name: '테니스', icon: 'tennis' },
+      { id: 'badminton', name: '배드민턴', icon: 'shuttle' },
+      { id: 'soccer', name: '축구', icon: 'soccer' },
+      { id: 'basketball', name: '농구', icon: 'basketball' },
+      { id: 'bike', name: '자전거', icon: 'bike' },
+      { id: 'golf', name: '골프', icon: 'golf' },
+      { id: 'bowling', name: '볼링', icon: 'bowling' },
+      { id: 'ski', name: '스키·보드', icon: 'ski' }
+    ]
+  },
+  {
+    id: 'game', name: '게임', icon: 'gamepad', tone: 'violet',
+    hobbies: [
+      { id: 'game', name: '게임', icon: 'gamepad', core: true },
+      { id: 'pcgame', name: 'PC·e스포츠', icon: 'pcgame' },
+      { id: 'boardgame', name: '보드게임', icon: 'dice', core: true },
+      { id: 'console', name: '콘솔 게임', icon: 'gamepad' },
+      { id: 'trpg', name: 'TRPG', icon: 'dice' }
+    ]
+  },
+  {
+    id: 'read', name: '독서·글', icon: 'book', tone: 'teal',
+    hobbies: [
+      { id: 'novel', name: '소설', icon: 'book' },
+      { id: 'essay', name: '에세이', icon: 'note' },
+      { id: 'bookclub', name: '독서모임', icon: 'book' },
+      { id: 'comics', name: '만화·웹툰', icon: 'image' },
+      { id: 'writing', name: '글쓰기', icon: 'pencil' }
+    ]
+  },
+  {
+    id: 'food', name: '맛집·카페', icon: 'cup', tone: 'amber',
+    hobbies: [
+      { id: 'cafe', name: '카페·맛집', icon: 'cup', core: true },
+      { id: 'cooking', name: '요리', icon: 'cook' },
+      { id: 'baking', name: '베이킹', icon: 'cake' },
+      { id: 'wine', name: '와인·술', icon: 'wine' },
+      { id: 'brunch', name: '브런치', icon: 'meal' }
+    ]
+  },
+  {
+    id: 'travel', name: '여행·야외', icon: 'globe', tone: 'sky',
+    hobbies: [
+      { id: 'domestic', name: '국내여행', icon: 'train' },
+      { id: 'travel', name: '해외여행', icon: 'globe' },
+      { id: 'camping', name: '캠핑', icon: 'tent' },
+      { id: 'drive', name: '드라이브', icon: 'car' },
+      { id: 'fishing', name: '낚시', icon: 'fishing' },
+      { id: 'photo', name: '사진', icon: 'camera' }
+    ]
+  },
+  {
+    id: 'culture', name: '문화·예술', icon: 'palette', tone: 'coral',
+    hobbies: [
+      { id: 'movie', name: '영화·전시', icon: 'movie', core: true },
+      { id: 'performance', name: '공연·뮤지컬', icon: 'theater' },
+      { id: 'music', name: '음악·밴드', icon: 'music' },
+      { id: 'dance', name: '댄스', icon: 'dance' },
+      { id: 'gallery', name: '미술·전시', icon: 'palette' }
+    ]
+  },
+  {
+    id: 'daily', name: '일상·기타', icon: 'sparkle', tone: 'mint',
+    hobbies: [
+      { id: 'pet', name: '반려동물', icon: 'paw' },
+      { id: 'plant', name: '식물·정원', icon: 'leaf' },
+      { id: 'fashion', name: '패션', icon: 'shirt' },
+      { id: 'volunteer', name: '봉사', icon: 'handshake' },
+      { id: 'study', name: '스터디·언어', icon: 'study' }
+    ]
+  }
+];
+
+/* 대분류 색조 → 점토 그라디언트(표지) · 잉크색(배지). CSS 의 .tone-* 과 같은 값이다. */
+const HOBBY_TONES = {
+  green: { from: '#EAF9F1', to: '#CBEDDA', ink: '#065F46', chip: '#D7F2E4' },
+  violet: { from: '#F4EEFE', to: '#DCD2FB', ink: '#4C1D95', chip: '#E7DDFD' },
+  teal: { from: '#E8F6F8', to: '#C9E8EE', ink: '#0F525F', chip: '#D6EEF2' },
+  amber: { from: '#FFF5E6', to: '#FBE1BA', ink: '#8A4708', chip: '#FCEBCF' },
+  sky: { from: '#EAF4FE', to: '#CFE4FA', ink: '#0F4C75', chip: '#DCEDFC' },
+  coral: { from: '#FFF0EA', to: '#FBD8CB', ink: '#8A3418', chip: '#FCE2D8' },
+  mint: { from: '#EFFAF3', to: '#D2EFE0', ink: '#14532D', chip: '#DEF4E8' }
+};
+
+/** 세부 취미 한 줄 — 대분류 id 를 붙인 평면 목록(필터·칩·프로필 공용). */
+const HOBBY_FLAT = HOBBY_TAXONOMY.reduce((list, cat) => list.concat(
+  cat.hobbies.map((h) => ({
+    id: h.id, name: h.name, icon: h.icon, categoryId: cat.id,
+    categoryName: cat.name, tone: cat.tone, core: h.core === true
+  }))
+), []);
+
 const defaultInitialState = {
   /* 저장 스키마 버전 — 마이그레이션 판단에만 쓴다. */
   schemaVersion: STORAGE_SCHEMA_VERSION,
@@ -735,17 +851,28 @@ const defaultInitialState = {
   /* ---------------- 탐색 탭 취미 필터 (사람·모임 카드 공용 키) ----------------
    * group.hobbyId / matchProfile.hobbyIds 가 이 키를 쓴다. 모임은 category 와 달라도
    * 같은 취미로 묶인다(예: 크로스핏 모임과 헬스 모임이 모두 'fitness').
+   * Sprint 21 — 대분류 7개 아래 세부 취미 45종 전체를 담는다(옛 8종 id 그대로 유지).
+   *   필터 시트는 대분류로 묶어 보여주고, 이용자가 직접 쓴 취미는 customHobbies 에 쌓인다.
    * ------------------------------------------------------------------------- */
-  exploreHobbyChips: [
-    { id: 'game', name: '게임', icon: 'gamepad' },
-    { id: 'run', name: '러닝', icon: 'run' },
-    { id: 'cafe', name: '카페/맛집', icon: 'cup' },
-    { id: 'movie', name: '영화/전시', icon: 'movie' },
-    { id: 'boardgame', name: '보드게임', icon: 'dice' },
-    { id: 'fitness', name: '크로스핏', icon: 'dumbbell' },
-    { id: 'swim', name: '수영', icon: 'swim' },
-    { id: 'climb', name: '클라이밍', icon: 'climb' }
-  ],
+  exploreHobbyChips: JSON.parse(JSON.stringify(HOBBY_FLAT)),
+
+  /* ---------------- Sprint 21 — 이용자가 직접 쓴 취미 ----------------
+   * { id:'custom_xxx', name, icon, categoryId, custom:true }
+   * getHobbyChips() 가 기본 목록 뒤에 이어 붙여 필터·프로필·모임 개설이 함께 본다.
+   * ------------------------------------------------------------------------- */
+  customHobbies: [],
+
+  /* ---------------- Sprint 21 — 가입 후 스포트라이트 가이드 ----------------
+   * status: 'pending'(아직 안 봄) | 'done'(끝까지 봄) | 'skipped'(건너뜀)
+   * step  : 마지막으로 보던 단계(도중에 앱을 닫아도 이어서)
+   * ------------------------------------------------------------------------- */
+  guide: { status: 'pending', step: 0, startedAt: null, finishedAt: null },
+
+  /* ---------------- Sprint 21 — 취향 질문 답변 ----------------
+   * hobbyIds : "당신의 취미는 무엇인가요?" 에서 고른 취미(내 프로필 취미에도 반영)
+   * goalIds  : "우그에서 어떤 걸 해보고 싶나요?" 에서 고른 취미(추천 모임의 기준)
+   * ------------------------------------------------------------------------- */
+  tastePrefs: { hobbyIds: [], goalIds: [], updatedAt: null },
 
   /* ---------------- 탐색 지역(생활권) — Sprint 7 ----------------
    * '이반시티처럼 지역별로 사람과 글을 모아 보기'의 기준 목록.
@@ -2828,6 +2955,10 @@ function buildCleanState() {
   state.account = null;
   state.sessionActive = false;
   state.galleryPrefs = { sort: 'recent' };
+  /* Sprint 21 — 새 계정은 가입 직후 스포트라이트 가이드를 본다(취향은 아직 비어 있다). */
+  state.guide = { status: 'pending', step: 0, startedAt: null, finishedAt: null };
+  state.tastePrefs = { hobbyIds: [], goalIds: [], updatedAt: null };
+  state.customHobbies = [];
   applyRegionIds(state);
   return state;
 }
@@ -2947,6 +3078,25 @@ class Store {
       merged.homePrefs = { ...defaultInitialState.homePrefs, ...(parsed.homePrefs || {}) };
       merged.galleryPrefs = { ...defaultInitialState.galleryPrefs, ...(parsed.galleryPrefs || {}) };
       merged.ageRangeBounds = { min: 0, max: 99 };
+      /* Sprint 21 — 취미 분류 체계는 **코드가 가진 선택지**다(사용자 콘텐츠가 아니다).
+         저장 상태에 옛 8종 칩이 남아 있어도 지금의 42종으로 맞춘다. */
+      merged.exploreHobbyChips = JSON.parse(JSON.stringify(HOBBY_FLAT));
+      merged.customHobbies = Array.isArray(parsed.customHobbies)
+        ? parsed.customHobbies.filter((h) => h && h.id && h.name).slice(0, 20) : [];
+      const gd = parsed.guide && typeof parsed.guide === 'object' ? parsed.guide : {};
+      merged.guide = {
+        status: ['pending', 'running', 'done', 'skipped'].includes(gd.status) ? gd.status : 'pending',
+        step: Number.isFinite(gd.step) ? gd.step : 0,
+        startedAt: gd.startedAt || null,
+        finishedAt: gd.finishedAt || null
+      };
+      const tp = parsed.tastePrefs && typeof parsed.tastePrefs === 'object' ? parsed.tastePrefs : {};
+      const tasteIds = (list) => (Array.isArray(list) ? list : []).filter((id) => typeof id === 'string').slice(0, 8);
+      merged.tastePrefs = {
+        hobbyIds: tasteIds(tp.hobbyIds),
+        goalIds: tasteIds(tp.goalIds),
+        updatedAt: tp.updatedAt || null
+      };
       merged.hotRankSnapshots = (merged.hotRankSnapshots && typeof merged.hotRankSnapshots === 'object') ? merged.hotRankSnapshots : {};
       merged.hotEntryState = (merged.hotEntryState && typeof merged.hotEntryState === 'object') ? merged.hotEntryState : {};
       if (!merged.hotEntryBaseline || typeof merged.hotEntryBaseline !== 'object') merged.hotEntryBaseline = null;
@@ -3394,9 +3544,9 @@ class Store {
     return this.getExploreFilters().filter((f) => f.kind === 'type');
   }
 
-  /** Sprint 9 — 통합 필터 시트의 '취미' 섹션에 쓰는 취미 8종(‘전체’ 제외). */
+  /** Sprint 9~21 — 탐색 필터의 '핵심 취미' 8종(‘전체’ 제외). 세부 취미는 대분류로 고른다. */
   getExploreHobbyFilters() {
-    return this.getExploreFilters().filter((f) => f.kind === 'hobby');
+    return this.getCoreHobbyChips().map((h) => Object.assign({}, h, { kind: 'hobby' }));
   }
 
   /* ==========================================================================
@@ -3416,7 +3566,8 @@ class Store {
   static normalizeExplorePrefs(prefs, state) {
     const s = state || (window.appStore ? window.appStore.state : null) || {};
     const p = prefs || {};
-    const hobbyIds = (s.exploreHobbyChips || []).map((h) => h.id);
+    const hobbyIds = (s.exploreHobbyChips || []).map((h) => h.id)
+      .concat((s.customHobbies || []).map((h) => h.id));
     const typeIds = ['all', 'people', 'groups', 'posts', ...hobbyIds];
     const ageIds = ['all', 'for_me', 'none', ...(s.ageLimitOptions || []).filter((o) => o.id !== 'all').map((o) => o.id)];
     const regionIds = ['all', ...(s.exploreRegions || EXPLORE_REGIONS).map((r) => r.id)];
@@ -4489,7 +4640,236 @@ class Store {
    * 프로필 · 모임 (Sprint 4)
    * ======================================================================== */
   getHobbyChip(hobbyId) {
-    return (this.state.exploreHobbyChips || []).find((h) => h.id === hobbyId) || null;
+    return this.getHobbyChips().find((h) => h.id === hobbyId) || null;
+  }
+
+  /* ==========================================================================
+   * Sprint 21 — 취미 분류 체계 · 직접 쓴 취미 · 취향 · 추천 모임 · 가이드
+   * ------------------------------------------------------------------------
+   *  11/16 18:42 사용자: "큰틀인 윤동, 게임, 독서, 맛집, 여행 등 넣고 안에 세부적인것좀
+   *  채워주고 없는거는 이용자가 작성하게끔" · "당신의 취미는 무엇인가요? 나 우그에서 어떤걸
+   *  해보고 싶나요?" · "홈 탭 하단에 추천 모임이 뜨도록".
+   *  · 모든 화면(필터·프로필·모임 개설·오픈 글)은 getHobbyChips() 하나만 본다.
+   *  · 추천은 **내가 고른 취미/해보고 싶은 취미**를 1순위, 같은 대분류를 2순위로 본다.
+   * ======================================================================== */
+
+  /** 지금 쓸 수 있는 모든 취미 — 기본 42종 + 이용자가 직접 쓴 취미. */
+  getHobbyChips() {
+    const custom = (this.state.customHobbies || []).map((h) => ({
+      id: h.id,
+      name: h.name,
+      icon: h.icon || 'sparkle',
+      categoryId: h.categoryId || 'daily',
+      categoryName: h.categoryName || '일상·기타',
+      tone: h.tone || this.getHobbyTone(h.categoryId === 'daily' ? 'pet' : h.categoryId),
+      custom: true
+    }));
+    return (this.state.exploreHobbyChips || []).concat(custom);
+  }
+
+  /** 대분류 7개 — 각각의 세부 취미(이용자가 쓴 것 포함)를 함께 돌려준다. */
+  getHobbyCategories() {
+    const cats = HOBBY_TAXONOMY.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+      icon: cat.icon,
+      tone: cat.tone,
+      hobbies: cat.hobbies.map((h) => ({
+        id: h.id, name: h.name, icon: h.icon, core: h.core === true,
+        categoryId: cat.id, categoryName: cat.name, tone: cat.tone
+      }))
+    }));
+    (this.state.customHobbies || []).forEach((h) => {
+      const cat = cats.find((c) => c.id === h.categoryId) || cats[cats.length - 1];
+      cat.hobbies.push({
+        id: h.id, name: h.name, icon: h.icon || 'sparkle',
+        categoryId: cat.id, categoryName: cat.name, tone: cat.tone, custom: true
+      });
+    });
+    return cats;
+  }
+
+  /** 옛 칩 8종(핵심 취미) — 탐색 필터의 첫 줄에 놓인다. */
+  getCoreHobbyChips() {
+    return (this.state.exploreHobbyChips || []).filter((h) => h.core === true);
+  }
+
+  /** 취미 id → 점토 색조 키(운동=green · 게임=violet …). 모르는 id 는 green. */
+  getHobbyTone(hobbyId) {
+    const chip = (this.state.exploreHobbyChips || []).find((h) => h.id === hobbyId)
+      || (this.state.customHobbies || []).find((h) => h.id === hobbyId);
+    if (chip && chip.tone) return chip.tone;
+    const cat = HOBBY_TAXONOMY.find((c) => c.id === hobbyId);
+    return cat ? cat.tone : 'green';
+  }
+
+  /** 점토 색조의 실제 색 — 표지 그라디언트·배지 잉크색을 화면이 직접 만들 때 쓴다. */
+  getHobbyToneColors(hobbyId) {
+    const tone = this.getHobbyTone(hobbyId);
+    return Object.assign({ tone }, HOBBY_TONES[tone] || HOBBY_TONES.green);
+  }
+
+  /** 사진이 없는 모임 표지에 쓸 취미 색조 그라디언트. */
+  getHobbyCoverGradient(hobbyId) {
+    const c = this.getHobbyToneColors(hobbyId);
+    return `linear-gradient(152deg, ${c.from} 0%, ${c.to} 100%)`;
+  }
+
+  /**
+   * 목록에 없는 취미를 이용자가 직접 쓴다.
+   *  · 같은 이름(공백·대소문자 무시)이 있으면 새로 만들지 않고 그 취미를 돌려준다.
+   *  · 최대 20개까지. 이름은 1~12자.
+   * @returns {{ok:boolean, reason?:string, hobby?:object}}
+   */
+  addCustomHobby(name, categoryId) {
+    const label = String(name == null ? '' : name).replace(/\s+/g, ' ').trim().slice(0, 12);
+    if (!label) return { ok: false, reason: 'empty' };
+    const key = label.toLowerCase();
+    const existing = this.getHobbyChips().find((h) => String(h.name).toLowerCase() === key);
+    if (existing) return { ok: false, reason: 'duplicate', hobby: existing };
+    const cat = this.getHobbyCategories().find((c) => c.id === categoryId)
+      || this.getHobbyCategories().find((c) => c.id === 'daily');
+    if ((this.state.customHobbies || []).length >= 20) return { ok: false, reason: 'too_many' };
+    const hobby = {
+      id: `custom_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
+      name: label,
+      icon: 'sparkle',
+      categoryId: cat.id,
+      categoryName: cat.name,
+      tone: cat.tone,
+      custom: true,
+      createdAt: new Date().toISOString()
+    };
+    this.state.customHobbies = (this.state.customHobbies || []).concat(hobby);
+    this.saveState();
+    return { ok: true, hobby };
+  }
+
+  /** 내 취향 — "당신의 취미는 무엇인가요?"(hobbyIds) · "어떤 걸 해보고 싶나요?"(goalIds). */
+  getTaste() {
+    const t = this.state.tastePrefs || {};
+    const ids = (list) => (Array.isArray(list) ? list : []).filter((id) => !!this.getHobbyChip(id));
+    return {
+      hobbyIds: ids(t.hobbyIds),
+      goalIds: ids(t.goalIds),
+      updatedAt: t.updatedAt || null
+    };
+  }
+
+  /**
+   * 가입 직후·가이드에서 고른 취향을 저장한다.
+   *  · hobbyIds 는 내 프로필 대표 취미(최대 3개)에도 반영된다.
+   *  · goalIds 는 "우그에서 해보고 싶은 것" — 홈의 추천 모임 순서를 정한다.
+   */
+  saveTaste(data) {
+    const d = data || {};
+    const clean = (list, max) => (Array.isArray(list) ? list : [])
+      .filter((id) => !!this.getHobbyChip(id))
+      .filter((id, i, arr) => arr.indexOf(id) === i)
+      .slice(0, max);
+    const hobbyIds = clean(d.hobbyIds, 8);
+    const goalIds = clean(d.goalIds, 8);
+    this.state.tastePrefs = { hobbyIds, goalIds, updatedAt: new Date().toISOString() };
+    const user = this.state.currentUser;
+    if (user && hobbyIds.length) {
+      user.hobbyIds = hobbyIds.slice(0, 3);
+      user.hobbies = user.hobbyIds.map((id) => this.getHobbyChip(id).name);
+    }
+    this.saveState();
+    return { ok: true, taste: this.getTaste() };
+  }
+
+  /** 추천에 쓰는 내 취미 집합 — 취향 답변 우선, 없으면 프로필 취미. */
+  getTasteHobbyIds() {
+    const taste = this.getTaste();
+    const user = this.state.currentUser || {};
+    const list = [];
+    [...taste.goalIds, ...taste.hobbyIds, ...(user.hobbyIds || [])].forEach((id) => {
+      if (this.getHobbyChip(id) && !list.includes(id)) list.push(id);
+    });
+    return list;
+  }
+
+  /**
+   * 홈 하단 '추천 모임' — 내가 아직 가입하지 않은 모임을 취향에 맞춰 고른다.
+   *  점수: 내 취미와 같은 모임 +3 · 같은 대분류 +1 · 활동 멤버 수·가까운 순으로 정렬.
+   * @returns {Array<{group, hobbyName, tone, reason, score}>}
+   */
+  getRecommendedGroups(options = {}) {
+    const limit = options.limit == null ? 4 : options.limit;
+    const mine = this.getTasteHobbyIds();
+    const myCats = mine.map((id) => this.getHobbyTone(id));
+    const joined = this.state.currentUser ? this.state.currentUser.joinedGroupIds || [] : [];
+    const scored = (this.state.groups || [])
+      .filter((g) => !joined.includes(g.id))
+      .map((g) => {
+        const chip = this.getHobbyChip(g.hobbyId);
+        const sameHobby = mine.includes(g.hobbyId);
+        const sameTone = !!(chip && myCats.includes(chip.tone));
+        let score = 0;
+        if (sameHobby) score += 3;
+        else if (sameTone) score += 1;
+        score += Math.min(2, Math.floor((g.memberCount || 0) / 12));
+        return {
+          group: g,
+          hobbyName: chip ? chip.name : (g.categoryName || '취미'),
+          tone: this.getHobbyTone(g.hobbyId || g.category),
+          reason: sameHobby ? '내 취미와 같아요'
+            : (sameTone ? '같은 분야 취미예요' : '지금 활동 중이에요'),
+          score
+        };
+      });
+    scored.sort((a, b) => (b.score - a.score)
+      || ((a.group.distanceKm || 99) - (b.group.distanceKm || 99))
+      || (b.group.memberCount || 0) - (a.group.memberCount || 0));
+    return scored.slice(0, limit);
+  }
+
+  /* ---------------- Sprint 21 — 스포트라이트 가이드 상태 ---------------- */
+
+  getGuideState() {
+    const g = this.state.guide || {};
+    const status = ['pending', 'done', 'skipped', 'running'].includes(g.status) ? g.status : 'pending';
+    return {
+      status,
+      step: Number.isFinite(g.step) ? g.step : 0,
+      startedAt: g.startedAt || null,
+      finishedAt: g.finishedAt || null,
+      needed: status === 'pending' || status === 'running'
+    };
+  }
+
+  /** 가이드를 시작한다(가입 직후·내정보에서 다시 보기). */
+  startGuide(reset) {
+    const prev = this.getGuideState();
+    const step = reset === true ? 0 : (prev.step || 0);
+    this.state.guide = {
+      status: 'running', step,
+      startedAt: new Date().toISOString(),
+      finishedAt: prev.finishedAt || null
+    };
+    this.saveState();
+    return { ok: true, guide: this.getGuideState() };
+  }
+
+  /** 단계를 옮긴다(뒤로도 가능). */
+  setGuideStep(step) {
+    const g = this.getGuideState();
+    const next = Math.max(0, Number(step) || 0);
+    this.state.guide = Object.assign({}, this.state.guide, { status: 'running', step: next });
+    this.saveState();
+    return { ok: true, guide: this.getGuideState(), prevStep: g.step };
+  }
+
+  /** 가이드를 끝냈다('done') 또는 건너뗐다('skipped'). 다시는 자동으로 뜨지 않는다. */
+  finishGuide(status) {
+    const next = status === 'skipped' ? 'skipped' : 'done';
+    this.state.guide = Object.assign({}, this.state.guide, {
+      status: next,
+      finishedAt: new Date().toISOString()
+    });
+    this.saveState();
+    return { ok: true, guide: this.getGuideState() };
   }
 
   /**
