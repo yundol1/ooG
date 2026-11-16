@@ -13088,6 +13088,10 @@ body.drawer-open { overflow: hidden; }
 .media-picker-photos .media-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .media-picker-photos .media-option.active .media-thumb { outline: 2px solid var(--green); outline-offset: 1px; }
 .media-empty { font-size: 11.5px; font-weight: 600; color: var(--text-muted); line-height: 1.5; }
+/* 세상이 아직 빈 첫 화면 — 그림 없이 크게 한 줄 */
+.empty-state.is-field-empty { padding: 34px 18px; gap: 6px; }
+.empty-state.is-field-empty .empty-title { font-size: 18px; font-weight: 700; color: var(--text-strong); }
+.empty-state.is-field-empty .empty-desc { max-width: 260px; margin: 0 auto; }
 
 /* 프로필 상단(설정은 사이드바로) */
 .profile-topbar {
