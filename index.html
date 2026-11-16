@@ -25,7 +25,24 @@
     <div style="padding:24px;font-family:sans-serif;line-height:1.6">
       ooG(우그)는 자바스크립트로 동작합니다. 브라우저에서 자바스크립트를 켜 주세요.
     </div>
+    <style>.oog-splash { display: none !important; }</style>
   </noscript>
+
+  <!-- ==================== Sprint 19 — '우그' 클레이 로고 스플래시 ====================
+       11/16 14:29 사용자: "접속시 우그라는 로고가 잠깐 로딩되도록 해주고".
+       · 첫 화면 위에 잠깐 떠 있다가 부드럽게 사라진다(기본 1.05초).
+       · pointer-events: none — 떠 있는 동안에도 아래 앱은 바로 만질 수 있고,
+         화면을 누르거나 키를 누르면 즉시 건너뛴다.
+       · OS '동작 줄이기' · 자동화 테스트(navigator.webdriver)에서는 기다리지 않는다. -->
+  <div class="oog-splash" id="oog-splash" role="status" aria-live="polite" aria-label="우그 불러오는 중">
+    <div class="oog-splash-stage">
+      <div class="oog-splash-clay" aria-hidden="true">
+        <span class="oog-splash-logo">ooG</span>
+      </div>
+      <p class="oog-splash-word" aria-hidden="true">우그</p>
+      <div class="oog-splash-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    </div>
+  </div>
 
   <!-- ==================== Sprint 17 — 회원가입(온보딩) ====================
        11/15 21:32 사용자: "회원가입 기능도 넣어주소 프로필 사진 등록하는거 닉넴까지 다 해주고

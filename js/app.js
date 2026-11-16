@@ -9210,6 +9210,84 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }, 60000);
 
+  /* ------------------------------------------------------------------------
+     Sprint 19 — 접속 시 '우그' 클레이 로고 스플래시
+     11/16 14:29 사용자: "접속시 우그라는 로고가 잠깐 로딩되도록 해주고".
+       · 1.05초 동안 점토 로고가 통통 튀며 떠 있다가 부드럽게 사라진다.
+       · 화면을 누르거나 키를 누르면 즉시 건너뛴다(원하면 바로 앱으로).
+       · OS '동작 줄이기'에서는 140ms 만에, 자동화 테스트(navigator.webdriver)에서는
+         기다리지 않고 바로 통과한다 — 테스트·접근성을 해치지 않는다.
+       · 주소에 ?splash=1 을 붙이면 강제로 보여 주고, ?splash=hold 는 직접 끌 때까지,
+         ?splash=0 은 끈다(미리보기·촬영용).
+     ------------------------------------------------------------------------ */
+  const splash = (() => {
+    const node = document.getElementById('oog-splash');
+    const params = new URLSearchParams(window.location.search || '');
+    const param = params.get('splash');
+    const hold = param === 'hold';
+    const force = param === '1' || hold;
+    const off = param === '0';
+    const reduced = prefersReducedMotion();
+    const automated = !force && typeof navigator !== 'undefined' && navigator.webdriver === true;
+    const skipNow = off || automated;
+    const stayMs = reduced ? 140 : 1050;
+    const leaveMs = reduced ? 0 : 240;
+    const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const state = {
+      present: !!node,
+      mode: hold ? 'hold' : skipNow ? (off ? 'off' : 'auto') : (reduced ? 'reduced' : 'full'),
+      visible: !!node && !skipNow,
+      stayMs: skipNow ? 0 : stayMs,
+      ms: 0,
+      reason: null
+    };
+    function record() {
+      state.ms = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - started) * 10) / 10;
+      window.oogPerf = window.oogPerf || {};
+      window.oogPerf.splash = { ms: state.ms, mode: state.mode, reason: state.reason };
+    }
+    function markDone(reason) {
+      state.reason = reason || state.reason;
+      state.visible = false;
+      if (node) {
+        node.hidden = true;
+        node.setAttribute('aria-hidden', 'true');
+      }
+      record();
+    }
+    const listeners = [];
+    function detach() {
+      listeners.forEach(([type, fn, opts]) => window.removeEventListener(type, fn, opts));
+      listeners.length = 0;
+    }
+    function finish(reason) {
+      state.reason = reason || state.reason;
+      if (!node) { markDone(state.reason); return; }
+      if (node.hidden || node.classList.contains('is-leaving')) return;
+      detach();
+      node.classList.add('is-leaving');
+      if (leaveMs <= 0) { markDone(state.reason); return; }
+      window.setTimeout(() => markDone(state.reason), leaveMs + 30);
+    }
+    if (!node || skipNow) {
+      markDone(off ? 'off' : automated ? 'auto' : 'absent');
+    } else {
+      const onInput = () => finish('input');
+      [['pointerdown', { passive: true, capture: true }],
+        ['keydown', true],
+        ['touchstart', { passive: true, capture: true }],
+        ['wheel', { passive: true, capture: true }]].forEach(([type, opts]) => {
+        window.addEventListener(type, onInput, opts);
+        listeners.push([type, onInput, opts]);
+      });
+      if (!hold) window.setTimeout(() => finish('timeout'), stayMs);
+    }
+    return {
+      skip: (reason) => finish(reason || 'api'),
+      getState: () => Object.assign({}, state, { hold, leaving: !!(node && node.classList.contains('is-leaving')) })
+    };
+  })();
+
   /* --- 초기 마운트 --- */
   const bootStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
   /* Sprint 11 — 펼쳐 둔 알림 묶음을 세션에서 복원 */
@@ -9383,6 +9461,9 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 18 — 사이드바(모임 멤버·설정 / 내정보 설정) */
     openDrawer, closeDrawer, renderGroupDrawer, renderProfileDrawer,
     getDrawerState: () => ({ open: ui.drawerOpen }),
+    /* Sprint 19 — '우그' 클레이 로고 스플래시 · 클레이 모션 */
+    splash,
+    getSplashState: () => splash.getState(),
     setDmView: (v) => { ui.dmView = v === 'group' ? 'group' : 'recent'; renderChatRooms(); },
     setDmUnreadOnly: (on) => { ui.dmUnreadOnly = !!on; renderChatRooms(); },
     getDmViewState: () => ({ view: ui.dmView, unreadOnly: ui.dmUnreadOnly, sent: ui.dmSent })
