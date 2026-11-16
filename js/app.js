@@ -7909,10 +7909,10 @@ document.addEventListener('DOMContentLoaded', () => {
   /* Sprint 15 — 돋보기 그리드 타일 → 모임 글 / 취미 글 상세 */
 
   /* ==========================================================================
-   * 5-2. 취미 게시글 상세 + 공개 게시글 작성 (Sprint 4)
+   * 5-2. 동네 글 상세 + 공개 글 작성 (Sprint 4 · 23)
    * ------------------------------------------------------------------------
    *  · 게시글 카드를 탭하면 상세 시트가 열린다 (본문 전문·좋아요·댓글·소속 모임).
-   *  · 탐색 상단 '취미 게시글 쓰기'는 모임 프라이빗 피드와 분리된 공개 글을 쓴다.
+   *  · 탐색 상단 '우리 동네 글 쓰기'는 모임 프라이빗 피드와 분리된 공개 글을 쓴다.
    * ======================================================================== */
   function postGroupOf(post) {
     return store.state.groups.find((g) => g.name === post.groupName) || null;
@@ -8645,7 +8645,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <button class="notif-sim-btn" data-notif-action="sim-result" type="button">${ic('checkCircle')} 가입 결과</button>
         <button class="notif-sim-btn" data-notif-action="sim-hot" type="button">${ic('fire')} 실베 진입</button>
       </div>
-      <p class="notif-sim-note">실제 이벤트와 <strong>똑같은 경로</strong>로 알림을 보내 봅니다. 대화는 첫 1:1 방에, 좋아요·댓글은 내가 올린 취미 게시글에, 가입 신청은 내가 그룹장인 모임에, 실베 진입은 내 최신 글이 Top 10에 들면 도착해요.</p>`;
+      <p class="notif-sim-note">실제 이벤트와 <strong>똑같은 경로</strong>로 알림을 보내 봅니다. 대화는 첫 1:1 방에, 좋아요·댓글은 내가 올린 동네 글에, 가입 신청은 내가 그룹장인 모임에, 실베 진입은 내 최신 글이 Top 10에 들면 도착해요.</p>`;
   }
 
   /** 권한 안내 배너 — 아직 허용하지 않았고 '나중에'를 누르지 않았을 때만 보인다. */
@@ -9211,7 +9211,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isLike = action === 'sim-like';
       const res = store.simulateIncomingReaction(isLike ? 'like' : 'comment');
       if (!res.ok) {
-        showToast('먼저 내 취미 게시글을 하나 올려 주세요 · 탐색 탭에서 쓸 수 있어요', 'warning');
+        showToast('먼저 내 동네 글을 하나 올려 주세요 · 탐색 탭에서 쓸 수 있어요', 'warning');
         switchTab('tab-explore');
         return;
       }
@@ -9256,7 +9256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'sim-hot') {
       const res = store.simulateHotEntry({ regionId: ui.exploreRegion });
       if (!res.ok) {
-        showToast('먼저 내 취미 게시글을 하나 올려 주세요 · 탐색 탭에서 쓸 수 있어요', 'warning');
+        showToast('먼저 내 동네 글을 하나 올려 주세요 · 탐색 탭에서 쓸 수 있어요', 'warning');
         switchTab('tab-explore');
         return;
       }
