@@ -4,6 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#10B981">
+  <!-- Sprint 24 — 다크모드는 첫 페인트 전에 붙인다(밝은 화면이 번쩍이지 않게). 저장 상태에서 읽는다. -->
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem('oog_app_state_v16');
+        var saved = raw ? JSON.parse(raw) : null;
+        var dark = !!(saved && saved.settings && saved.settings.darkMode);
+        if (dark) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', '#10161B');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) { /* 저장소를 못 읽어도 라이트로 연다 */ }
+    })();
+  </script>
   <meta property="og:title" content="ooG (우그) — 취미로 이어지는 사람과 모임">
   <meta property="og:description" content="토스쇼핑처럼 퍼즐처럼 얽히는 2열 탐색 피드에서 취미친구와 소모임을 한 번에. 모임 인증은 모임원에게만.">
   <meta property="og:type" content="website">
@@ -65,10 +82,12 @@
 
     <!-- ==================== 상단 헤더 (화이트 글래스) ==================== -->
     <header class="app-header">
-      <div class="header-brand">
+      <!-- Sprint 24 — 로고를 누르면 어디에 있든 처음 화면(바깥 홈)으로 -->
+      <button class="header-brand" id="btn-header-home" type="button"
+              aria-label="ooG — 처음 화면으로">
         <span class="brand-logo">ooG</span>
         <span class="brand-tag">Our Own Group</span>
-      </div>
+      </button>
       <div class="header-actions">
         <button class="icon-btn" id="btn-header-profile" aria-label="내정보 — 내 프로필과 설정">
           <span class="header-avatar" id="header-avatar">루</span>
@@ -87,7 +106,7 @@
     <div class="push-permission-banner" id="push-permission-banner" hidden>
             <div class="ppb-text">
         <strong class="ppb-title">앱을 꺼도 새 메시지 알림 받기</strong>
-        <span class="ppb-desc">대화 답장·좋아요·댓글·모임 가입 소식을 놓치지 않게 알려드려요</span>
+        <span class="ppb-desc">새 메시지·반응을 알려드려요</span>
       </div>
       <button class="ppb-cta" id="btn-push-allow" type="button">알림 켜기</button>
       <button class="ppb-close" id="btn-push-dismiss" type="button" aria-label="나중에 하기">&times;</button>
@@ -109,7 +128,7 @@
           <div class="gallery-head">
             <div class="gallery-head-text">
               <h2 class="gallery-title" id="gallery-title">내 그룹</h2>
-              <p class="gallery-sub" id="gallery-sub">모임을 눌러 들어가세요</p>
+              <p class="gallery-sub" id="gallery-sub"></p>
             </div>
           </div>
           <!-- Sprint 17 — 갤러리 정렬(최근 활동순 · 가나다순 · 내가 그룹장) -->
@@ -124,14 +143,13 @@
           <section class="home-discover" id="home-discover" aria-labelledby="home-discover-title">
             <div class="home-discover-head">
               <h3 class="home-discover-title" id="home-discover-title">모임 찾기</h3>
-              <p class="home-discover-sub">추천 모임은 옆으로 넘겨 보고, 아래에서 직접 찾아보세요</p>
             </div>
 
             <div class="home-recommend" id="home-recommend" aria-labelledby="home-recommend-title">
               <div class="home-recommend-head">
                 <div class="home-recommend-head-text">
                   <h4 class="home-recommend-title" id="home-recommend-title">추천 모임</h4>
-                  <p class="home-recommend-sub" id="home-recommend-sub">내 취미에 맞춰 골랐어요</p>
+                  <p class="home-recommend-sub" id="home-recommend-sub"></p>
                 </div>
                 <button class="home-recommend-taste" id="btn-home-recommend-taste" type="button">취미 다시 고르기</button>
               </div>
@@ -147,7 +165,7 @@
               <div class="home-browse-head">
                 <div class="home-browse-head-text">
                   <h4 class="home-browse-title" id="home-browse-title">모임 둘러보기</h4>
-                  <p class="home-browse-sub" id="home-browse-sub">취미·동네·나이로 찾아보세요</p>
+                  <p class="home-browse-sub" id="home-browse-sub"></p>
                 </div>
                 <button class="home-browse-new" id="btn-home-browse-new" type="button">모임 만들기</button>
               </div>
@@ -165,8 +183,6 @@
             </div>
           </section>
 
-          <p class="gallery-note">모임을 열면 그 모임의 피드·게시판·디엠·내정보가 하단 4탭으로 바뀌고,
-            왼쪽 위 화살표로 이 갤러리로 돌아옵니다.</p>
         </div>
 
         <!-- (2) 그룹 전용 공간 = 피드(24시간 스토리 + 인스타형 피드) -->
@@ -330,10 +346,8 @@
         <div class="explore-profile-publish" id="explore-profile-publish">
           <span class="epp-text">
             <span class="epp-title">탐색에 내 프로필 올리기</span>
-            <span class="epp-desc" id="epp-desc">끄면 사람 카드에 나오지 않아요</span>
+            <span class="epp-desc" id="epp-desc"></span>
           </span>
-          <!-- Sprint 17 — 내 프로필 카드 꾸미기(대표 사진·한 줄 소개) -->
-          <button class="epp-edit" id="btn-explore-card-edit" type="button">카드 꾸미기</button>
           <button class="switch-toggle" id="explore-profile-toggle" role="switch" aria-checked="false"
                   aria-label="탐색에 내 프로필 올리기" type="button">
             <span class="switch-knob" aria-hidden="true"></span>
@@ -345,13 +359,14 @@
           <div class="hot-head">
             <div class="hot-head-text">
               <h3 class="hot-title" id="hot-title">실시간 베스트</h3>
-              <p class="hot-sub" id="hot-sub">지금 반응이 뜨거운 취미 글</p>
+              <p class="hot-sub" id="hot-sub"></p>
             </div>
             <button class="hot-more" id="btn-hot-more" type="button">더보기 <span aria-hidden="true">›</span></button>
           </div>
           <div class="hot-rail" id="hot-rail" aria-live="polite"><!-- JS --></div>
         </section>
 
+        <!-- Sprint 24 — 사람은 비주얼 카드(2열), 글은 게시판 한 줄 리스트. 둘 다 이 안에 담는다. -->
         <div class="masonry" id="explore-masonry" aria-live="polite"><!-- JS --></div>
 
         <div class="explore-loader" id="explore-loader" hidden>
@@ -366,7 +381,7 @@
         <div class="chat-header" id="dm-head">
           <div class="chat-title-area">
             <h2 class="chat-title" id="dm-title">전체 디엠함</h2>
-            <p class="chat-sub" id="dm-sub">모든 모임 단체방과 1:1 대화를 한곳에서</p>
+            <p class="chat-sub" id="dm-sub"></p>
           </div>
           <span class="chat-count-badge" id="chat-room-count">0</span>
         </div>
@@ -402,7 +417,6 @@
           <p class="chat-dm-policy" id="chat-dm-policy"><!-- JS --></p>
           <div class="chat-rooms-list" id="chat-rooms-container"><!-- JS --></div>
         </section>
-        <p class="chat-note">탐색에서 마음에 드는 사람에게는 매칭을 기다리지 않고 바로 쪽지를 보낼 수 있어요. 보낸 쪽지는 이곳에 바로 올라옵니다.</p>
       </section>
 
       <!-- ========== 4. 프로필 탭 ========== -->
@@ -411,7 +425,7 @@
         <div class="profile-topbar">
           <div class="profile-topbar-text">
             <h2 class="profile-topbar-title" id="profile-topbar-title">내정보</h2>
-            <p class="profile-topbar-sub" id="profile-topbar-sub">내 피드와 활동</p>
+            <p class="profile-topbar-sub" id="profile-topbar-sub"></p>
           </div>
           <button class="profile-menu-btn" id="btn-profile-drawer" type="button"
                   aria-label="내정보 메뉴 열기(설정)" aria-controls="profile-drawer" aria-expanded="false">
@@ -479,6 +493,49 @@
           <div class="profile-recent-list" id="profile-recent-list"><!-- JS --></div>
         </section>
 
+      </section>
+
+      <!-- ========== 5. 내 프로필 (바깥 4번째 탭 · Sprint 24) ==========
+           11/17 00:30 루키 님: "바깥 탭에 내 프로필 탭 추가 + 공개 이미지 4장 / 비밀앨범 4장".
+           · 공개 앨범은 누구나 보고, 비밀앨범은 1:1 대화방에서 공개한 상대만 본다. -->
+      <section class="tab-view" id="tab-myprofile">
+        <div class="myprofile-head" id="myprofile-head">
+          <div class="myprofile-avatar" id="myprofile-avatar">
+            <span class="avatar-letter" id="myprofile-avatar-letter">나</span>
+            <img class="avatar-img" id="myprofile-avatar-img" alt="" hidden>
+          </div>
+          <div class="myprofile-id">
+            <h2 class="myprofile-name" id="myprofile-name">내 프로필</h2>
+            <p class="myprofile-meta" id="myprofile-meta"></p>
+          </div>
+          <button class="myprofile-settings" id="btn-myprofile-settings" type="button">설정</button>
+        </div>
+
+        <section class="album-block" aria-labelledby="album-public-title">
+          <div class="album-head">
+            <h3 class="album-title" id="album-public-title">공개 사진 <span class="album-count" id="album-public-count">0 / 4</span></h3>
+            <button class="album-add" id="btn-album-public-add" type="button">사진 추가</button>
+          </div>
+          <div class="album-grid" id="album-public-grid"><!-- JS --></div>
+          <input class="photo-file" id="album-public-album" type="file" accept="image/*" hidden>
+          <input class="photo-file" id="album-public-camera" type="file" accept="image/*" capture="environment" hidden>
+        </section>
+
+        <section class="album-block is-secret" aria-labelledby="album-secret-title">
+          <div class="album-head">
+            <h3 class="album-title" id="album-secret-title">
+              <span class="album-lock" aria-hidden="true" data-oog-icon="lock"></span>
+              비밀앨범 <span class="album-count" id="album-secret-count">0 / 4</span>
+            </h3>
+            <button class="album-add" id="btn-album-secret-add" type="button">사진 추가</button>
+          </div>
+          <div class="album-grid is-secret" id="album-secret-grid"><!-- JS --></div>
+          <p class="album-share-note" id="album-share-note"></p>
+          <input class="photo-file" id="album-secret-album" type="file" accept="image/*" hidden>
+          <input class="photo-file" id="album-secret-camera" type="file" accept="image/*" capture="environment" hidden>
+        </section>
+
+        <section class="myprofile-stats" id="myprofile-stats"><!-- JS --></section>
       </section>
     </main>
 
@@ -566,7 +623,6 @@
         <div class="sheet-grabber"></div>
         <button class="sheet-close-btn" id="btn-close-joined" aria-label="닫기">&times;</button>
         <h2 class="sheet-title joined-title">가입한 소모임</h2>
-        <p class="joined-sub">모임을 나가면 그 모임의 프라이빗 피드는 더 이상 보이지 않아요.</p>
         <div class="joined-list" id="joined-groups-body"><!-- JS --></div>
       </div>
     </div>
@@ -619,7 +675,7 @@
           <button class="btn-publish" id="btn-explore-publish" disabled>게시</button>
         </div>
         <div class="composer-body">
-          <p class="compose-note">동네 사람들에게 <strong>공개</strong>로 올라갑니다. 만나고 싶은 동네를 먼저 골라주세요.</p>
+          <p class="compose-note">동네 사람 모두에게 공개돼요.</p>
           <div class="field-group">
             <label class="field-label" for="explore-compose-region">동네 <span class="field-hint">필수</span></label>
             <select class="text-input explore-region-select" id="explore-compose-region"><!-- JS --></select>
@@ -752,7 +808,6 @@
         <div class="sheet-grabber"></div>
         <button class="sheet-close-btn" id="btn-close-my-applications" aria-label="닫기">&times;</button>
         <h2 class="sheet-title">내 모임 가입 신청</h2>
-        <p class="joined-sub">승인제 모임은 그룹장이 소개서를 보고 수락하면 멤버가 됩니다.</p>
         <div class="myapp-list" id="my-applications-body"><!-- JS --></div>
       </div>
     </div>
@@ -763,7 +818,7 @@
         <div class="sheet-grabber"></div>
         <button class="sheet-close-btn" id="btn-close-notif" aria-label="닫기">&times;</button>
         <h2 class="sheet-title">알림</h2>
-        <p class="joined-sub" id="notif-head-note">나에게 온 반응만 모여요 · 내가 한 일은 프로필 › 내 활동 로그에 쌓여요.</p>
+        <p class="joined-sub" id="notif-head-note"></p>
         <!-- Sprint 7 — 종류 필터 · 안 읽은 것만 보기 · 모두 읽음 -->
         <div class="notif-filters" id="notif-filters" role="group" aria-label="알림 종류 필터"><!-- JS --></div>
         <div class="notif-tools">
@@ -812,7 +867,6 @@
         <button class="sheet-close-btn" id="btn-close-region" aria-label="닫기">&times;</button>
         <div class="region-head">
           <h2 class="sheet-title">지역으로 보기</h2>
-          <p class="region-sub">지역을 고르면 그 동네의 사람·모임·글만 모아 보여드려요. 고른 지역은 기억됩니다.</p>
         </div>
         <div class="region-list" id="region-list"><!-- JS --></div>
       </div>
@@ -825,7 +879,7 @@
         <button class="sheet-close-btn" id="btn-close-hot" aria-label="닫기">&times;</button>
         <div class="hot-sheet-head">
           <h2 class="sheet-title">실시간 베스트</h2>
-          <p class="hot-sheet-sub" id="hot-sheet-sub">좋아요·댓글과 최신성으로 계산한 지금의 인기 순위</p>
+          <p class="hot-sheet-sub" id="hot-sheet-sub"></p>
         </div>
         <div class="hot-list" id="hot-list"><!-- JS --></div>
       </div>
@@ -838,7 +892,6 @@
         <button class="sheet-close-btn" id="btn-close-filter" aria-label="닫기">&times;</button>
         <div class="filter-head">
           <h2 class="sheet-title">탐색 필터</h2>
-          <p class="filter-sub">취미·나이·거리를 한 번에 고르고 [적용하기]를 누르면 탐색에 반영돼요.</p>
           <!-- Sprint 21 — 지금 적용된 조건을 한 줄로 (예전엔 탐색 상단에 칩과 겹쳐 있었다) -->
           <p class="explore-summary filter-current" id="explore-summary">전체 취미 · 나이 전체 · 내 동네 전체 · 전체 지역</p>
         </div>
@@ -858,7 +911,7 @@
                        placeholder="예: 파쿠르, 악기 연주" autocomplete="off">
                 <button class="hobby-custom-add" id="btn-hobby-custom-add" type="button">추가</button>
               </div>
-              <p class="hobby-custom-note" id="hobby-custom-note">추가한 취미는 프로필·모임 개설에서도 같이 써요</p>
+              <p class="hobby-custom-note" id="hobby-custom-note"></p>
             </div>
           </section>
           <!-- 나이 — 11/15 19:05 "나이는 0~99세 드래그 슬라이더로"
@@ -884,7 +937,7 @@
                 <span>0세</span><span>99세</span>
               </div>
             </div>
-            <p class="filter-age-note" id="filter-age-note">지금은 나이 조건 없이 전체를 보고 있어요</p>
+            <p class="filter-age-note" id="filter-age-note"></p>
           </section>
           <!-- 내 동네 반경 — 11/14 22:59 "내 동네 반경 필터 넣어줘" -->
           <section class="filter-group" aria-labelledby="filter-radius-label">
@@ -899,7 +952,7 @@
         </div>
         <div class="filter-sheet-foot">
           <span class="filter-result" id="filter-result" aria-live="polite">조건에 맞는 카드 0장</span>
-          <div class="filter-actions">
+          <div class="filter-actions btn-pair">
             <button class="btn-secondary" id="btn-filter-reset" type="button">초기화</button>
             <button class="btn-primary" id="btn-filter-apply" type="button">적용하기</button>
           </div>
@@ -917,7 +970,7 @@
           <button class="btn-publish" id="btn-story-publish" type="button" disabled>올리기</button>
         </div>
         <div class="composer-body">
-          <p class="compose-note">스토리는 <strong>24시간</strong> 뒤에 자동으로 사라져요. 이 모임 멤버만 볼 수 있습니다.</p>
+          <p class="compose-note">24시간 뒤 자동으로 사라져요 · 모임 멤버만 볼 수 있어요.</p>
           <div class="field-group">
             <label class="field-label">사진</label>
             <div class="photo-upload" id="story-photo-upload">
@@ -995,7 +1048,7 @@
                       placeholder="매칭 없이 바로 보낼 수 있어요. 짧게 인사해 보세요."></textarea>
             <div class="caption-counter"><span id="dm-caption-count">0</span> / 300</div>
           </div>
-          <p class="compose-note">보낸 쪽지는 <strong>전체 디엠함</strong>에 바로 뜨고, 상대가 답장하면 이어서 대화할 수 있어요.</p>
+          <p class="compose-note">보낸 쪽지는 전체 디엠함에 바로 떠요.</p>
         </div>
       </div>
     </div>
@@ -1007,7 +1060,7 @@
         <button class="sheet-close-btn" id="btn-close-members" aria-label="닫기">&times;</button>
         <div class="members-head">
           <h2 class="sheet-title" id="group-members-title">전체 멤버</h2>
-          <p class="joined-sub" id="group-members-sub">그룹장·나·멤버를 구분해서 보여드려요. 멤버를 누르면 프로필과 1:1 대화로 이어집니다.</p>
+          <p class="joined-sub" id="group-members-sub"></p>
         </div>
         <div class="members-list" id="group-members-body"><!-- JS --></div>
       </div>
@@ -1020,7 +1073,7 @@
         <button class="sheet-close-btn" id="btn-close-notice" aria-label="닫기">&times;</button>
         <div class="notice-head">
           <h2 class="sheet-title" id="notice-title">모임 공지</h2>
-          <p class="joined-sub" id="notice-sub">공지는 그룹장과 그룹장이 지정한 부방장만 쓸 수 있어요.</p>
+          <p class="joined-sub" id="notice-sub"></p>
         </div>
         <div class="notice-list" id="notice-list"><!-- JS --></div>
         <div class="notice-editor" id="notice-editor"><!-- JS --></div>
@@ -1046,7 +1099,7 @@
           <button class="btn-publish" id="btn-event-submit" disabled>올리기</button>
         </div>
         <div class="composer-body">
-          <p class="compose-note" id="event-group-note">모임에 올리면 멤버 모두에게 보입니다.</p>
+          <p class="compose-note" id="event-group-note"></p>
           <div class="field-group">
             <label class="field-label" for="event-title">무엇을 하나요 <span class="field-hint">2~30자</span></label>
             <input type="text" class="text-input" id="event-title" maxlength="30" autocomplete="off" placeholder="예: 금요일 성수 술모임">
@@ -1117,7 +1170,10 @@
               <span class="chat-partner-hobby" id="chat-room-hobby">취미</span>
             </div>
           </div>
-          <button class="chat-profile-btn" id="btn-chat-profile" type="button">취미 프로필 보기</button>
+          <button class="chat-album-btn" id="btn-chat-album" type="button" aria-label="비밀앨범">
+            <span aria-hidden="true" data-oog-icon="lock"></span>
+          </button>
+          <button class="chat-profile-btn" id="btn-chat-profile" type="button">프로필</button>
         </header>
 
         <div class="chat-messages" id="chat-messages" aria-live="polite"><!-- JS --></div>
@@ -1138,7 +1194,6 @@
         <button class="sheet-close-btn" id="btn-close-archive" aria-label="닫기">&times;</button>
         <div class="archive-head">
           <h2 class="sheet-title">내 스토리 보관함</h2>
-          <p class="joined-sub">24시간이 지나 스토리 바에서 내려간 내 스토리예요. 지우기 전까지는 계속 다시 볼 수 있어요.</p>
         </div>
         <div class="archive-grid" id="story-archive-grid"><!-- JS --></div>
       </div>
@@ -1151,10 +1206,9 @@
         <button class="sheet-close-btn" id="btn-close-cover" aria-label="닫기">&times;</button>
         <div class="cover-head">
           <h2 class="sheet-title">모임 카드 표지</h2>
-          <p class="joined-sub">사진을 최대 2장까지 고를 수 있어요. 고른 순서대로 카드 표지가 됩니다.</p>
         </div>
         <div class="cover-grid" id="cover-grid"><!-- JS --></div>
-        <div class="cover-actions">
+        <div class="cover-actions btn-pair">
           <button class="btn-secondary" id="btn-cover-reset" type="button">기본 표지로</button>
           <button class="btn-primary" id="btn-cover-save" type="button">표지 저장</button>
         </div>
@@ -1168,33 +1222,46 @@
         <button class="sheet-close-btn" id="btn-close-notice-read" aria-label="닫기">&times;</button>
         <div class="notice-read-head">
           <h2 class="sheet-title">공지 읽음</h2>
-          <p class="joined-sub" id="notice-read-sub">읽은 사람만 모아 봐요. 읽음 표시는 알림을 만들지 않아요.</p>
+          <p class="joined-sub" id="notice-read-sub"></p>
         </div>
         <div class="notice-read-list" id="notice-read-list"><!-- JS --></div>
       </div>
     </div>
 
-    <!-- ==================== Sprint 17. 탐색 내 프로필 카드 꾸미기 ==================== -->
-    <div class="modal-overlay" id="explore-card-modal" role="dialog" aria-modal="true" aria-label="탐색 내 프로필 카드 꾸미기">
+    <!-- ==================== Sprint 24. 내 프로필 올리기 (만남 목적 · 한 줄 소개 · 2시간) ==================== -->
+    <div class="modal-overlay" id="explore-publish-modal" role="dialog" aria-modal="true" aria-label="내 프로필 올리기">
       <div class="modal-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>
         <div class="composer-header">
-          <button class="text-btn ghost" id="btn-explore-card-cancel" type="button">취소</button>
-          <h3 class="composer-title">내 카드 꾸미기</h3>
-          <button class="btn-publish ready" id="btn-explore-card-save" type="button">저장</button>
+          <button class="text-btn ghost" id="btn-publish-cancel" type="button">취소</button>
+          <h3 class="composer-title">내 프로필 올리기</h3>
+          <button class="btn-publish ready" id="btn-publish-confirm" type="button">올리기</button>
         </div>
         <div class="composer-body">
-          <p class="compose-note">탐색 '사람' 카드에 보이는 대표 사진과 한 줄 소개를 정해요.</p>
           <div class="field-group">
-            <label class="field-label">대표 사진 <span class="field-hint">내가 올린 사진에서</span></label>
-            <div class="media-picker media-picker-photos" id="explore-card-media"><!-- JS --></div>
+            <label class="field-label">어떤 만남을 찾아요? <span class="field-hint">하나</span></label>
+            <div class="composer-tag-list meet-style-list" id="publish-style-list"><!-- JS --></div>
           </div>
           <div class="field-group">
-            <label class="field-label" for="explore-card-intro">한 줄 소개 <span class="field-hint">40자까지</span></label>
-            <input type="text" class="text-input" id="explore-card-intro" maxlength="40" autocomplete="off"
-                   placeholder="예: 주 3회 크로스핏 · 퇴근 후 땀">
+            <label class="field-label" for="publish-intro">한 줄 소개 <span class="field-hint">40자</span></label>
+            <input type="text" class="text-input" id="publish-intro" maxlength="40" autocomplete="off"
+                   placeholder="예: 퇴근하고 한잔하실 분">
           </div>
+          <p class="publish-note" id="publish-note">올리면 2시간 뒤 자동으로 내려가요.</p>
         </div>
+      </div>
+    </div>
+
+    <!-- ==================== Sprint 24. 1:1 대화방 — 비밀앨범 ==================== -->
+    <div class="modal-overlay" id="secret-album-modal" role="dialog" aria-modal="true" aria-label="비밀앨범">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-secret-album-close" type="button">닫기</button>
+          <h3 class="composer-title">비밀앨범</h3>
+          <button class="btn-publish" id="btn-secret-album-share" type="button">공개하기</button>
+        </div>
+        <div class="composer-body" id="secret-album-body"><!-- JS --></div>
       </div>
     </div>
 
@@ -1204,7 +1271,7 @@
         <div class="sheet-grabber"></div>
         <h2 class="sheet-title" id="confirm-title">확인</h2>
         <p class="joined-sub" id="confirm-desc"></p>
-        <div class="confirm-actions">
+        <div class="confirm-actions btn-pair">
           <button class="btn-secondary" id="btn-confirm-cancel" type="button">취소</button>
           <button class="btn-primary danger" id="btn-confirm-ok" type="button">확인</button>
         </div>
@@ -1315,6 +1382,17 @@
             </section>
           </section>
 
+          <section class="drawer-section" aria-labelledby="drawer-profile-display-title">
+            <h3 class="drawer-section-title" id="drawer-profile-display-title">화면</h3>
+            <div class="settings-menu-list">
+              <div class="menu-item is-switch" id="menu-dark-mode" role="switch" tabindex="0" aria-checked="false">
+                <span class="menu-label">다크모드</span>
+                <span class="menu-val" id="menu-dark-mode-state">꺼짐</span>
+                <span class="switch-toggle" aria-hidden="true"><span class="switch-knob"></span></span>
+              </div>
+            </div>
+          </section>
+
           <section class="drawer-section" aria-labelledby="drawer-profile-danger-title">
             <h3 class="drawer-section-title" id="drawer-profile-danger-title">계정</h3>
             <div class="settings-menu-list">
@@ -1382,6 +1460,14 @@
         </span>
         <span class="tab-label">전체 디엠함</span>
         <span class="nav-badge hide" id="nav-chat-badge">0</span>
+      </button>
+
+      <!-- Sprint 24 — 바깥 4탭의 마지막: 내 프로필 -->
+      <button class="nav-tab-item" data-tab="tab-myprofile" role="tab" aria-selected="false" aria-controls="tab-myprofile" aria-label="내 프로필 — 공개 사진과 비밀앨범">
+        <span class="tab-icon">
+          <span data-oog-icon="person"></span>
+        </span>
+        <span class="tab-label">내 프로필</span>
       </button>
     </nav>
 

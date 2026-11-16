@@ -554,6 +554,10 @@ const REGION_ALIASES = {
 /** 내 주변 — 기본 5km 안. (반경 필터를 직접 고르면 그 값이 우선한다) */
 const NEARBY_KM = 5;
 
+/** Sprint 24 — 탐색에 올린 내 프로필의 수명(2시간)과 앨범 한 종류의 최대 장수(4장). */
+const EXPLORE_PUBLISH_HOURS = 2;
+const ALBUM_MAX = 4;
+
 /** 만남 스타일 — 글을 올릴 때 하나 고르면 카드에 그대로 붙는다(선택). */
 const EXPLORE_MEET_STYLES = [
   { id: 'now', name: '지금 번개', icon: 'sparkle', desc: '바로 만나요' },
@@ -950,7 +954,13 @@ const defaultInitialState = {
     /* 루키이 '그룹장'인 모임 + 단순 가입 모임을 함께 둔다 (권한 분기 검증용) */
     joinedGroupIds: ['grp_crossfit_1', 'grp_fitness_1', 'grp_climbing_1'],
     /* Sprint 16 — 내 프로필을 탐색 '사람' 카드로 공개할지 (기본 OFF · 내가 켤 때만) */
-    exploreProfileVisible: false
+    exploreProfileVisible: false,
+    /* Sprint 24 — 탐색에 올린 내 프로필: 만남 목적 + 한 줄 소개 + 2시간 만료 */
+    explorePublish: null,
+    /* Sprint 24 — 내 프로필 앨범: 공개 최대 4장 · 비밀 최대 4장 */
+    album: { public: [], secret: [] },
+    /* Sprint 24 — 1:1 대화 상대별 비밀앨범 공개 여부 { partnerId: true } */
+    secretShares: {}
   },
 
   /* ---------------- 탐색 탭 취미 필터 (사람·모임 카드 공용 키) ----------------
@@ -1028,6 +1038,12 @@ const defaultInitialState = {
    * 'recent'(최근 활동순) | 'name'(가나다순) | 'leader'(내가 그룹장 먼저)
    * ------------------------------------------------------------------------- */
   galleryPrefs: { sort: 'recent' },
+
+  /* ---------------- Sprint 24 — 화면 설정 ----------------
+   * 11/17 00:30 루키 님: "설정 안에 다크모드 ON/OFF".
+   *  · darkMode: 크림 클레이 ↔ 다크 클레이. 기기에 남고(저장 상태), 첫 화면부터 적용된다.
+   * ------------------------------------------------------------------------- */
+  settings: { darkMode: false },
 
   /* ---------------- 모임 나이 제한 옵션 (Sprint 4.5 · Sprint 5 강조) ----------------
    * 그룹장이 개설·설정에서 고르는 4가지. min·max 는 신청자 나이 판정에 쓴다.
@@ -3099,7 +3115,11 @@ function blankCurrentUser() {
     joinedGroupIds: [],
     exploreProfileVisible: false,
     /* Sprint 17 — 탐색 사람 카드 꾸미기(대표 사진·한 줄 소개) */
-    exploreCard: { photoUrl: null, intro: '' }
+    exploreCard: { photoUrl: null, intro: '' },
+    /* Sprint 24 — 2시간 탐색 프로필 · 공개/비밀 앨범 · 비밀앨범 공개 대상 */
+    explorePublish: null,
+    album: { public: [], secret: [] },
+    secretShares: {}
   };
 }
 
@@ -3267,6 +3287,8 @@ class Store {
         parsed.notificationSettings && parsed.notificationSettings.channels
       );
       merged.pwa = { ...defaultInitialState.pwa, ...(parsed.pwa || {}) };
+      merged.settings = { ...defaultInitialState.settings, ...(parsed.settings || {}) };
+      merged.settings.darkMode = merged.settings.darkMode === true;
       merged.homePrefs = { ...defaultInitialState.homePrefs, ...(parsed.homePrefs || {}) };
       merged.galleryPrefs = { ...defaultInitialState.galleryPrefs, ...(parsed.galleryPrefs || {}) };
       merged.ageRangeBounds = { min: 0, max: 99 };
@@ -3343,6 +3365,15 @@ class Store {
       if (!merged.currentUser.exploreCard || typeof merged.currentUser.exploreCard !== 'object') {
         merged.currentUser.exploreCard = { photoUrl: null, intro: '' };
       }
+      /* Sprint 24 — 2시간 프로필 · 앨범 · 비밀앨범 공개 대상(옛 저장 상태에는 없으므로 기본값을 채운다) */
+      const cu = merged.currentUser;
+      cu.explorePublish = (cu.explorePublish && typeof cu.explorePublish === 'object') ? cu.explorePublish : null;
+      if (!cu.album || typeof cu.album !== 'object') cu.album = { public: [], secret: [] };
+      ['public', 'secret'].forEach((kind) => {
+        cu.album[kind] = Array.isArray(cu.album[kind])
+          ? cu.album[kind].filter((p) => p && p.url).slice(0, 4) : [];
+      });
+      cu.secretShares = (cu.secretShares && typeof cu.secretShares === 'object') ? cu.secretShares : {};
       merged.schemaVersion = STORAGE_SCHEMA_VERSION;
       return merged;
     } catch (e) {
@@ -8019,13 +8050,92 @@ class Store {
    * -------------------------------------------------------------------------
    * 11/15 19:05 사용자: "그룹과 별개로 누구나 탐색에 게시글과 본인 프로필을 올릴 수 있게".
    * ======================================================================== */
+  /**
+   * Sprint 24 — 내 프로필을 탐색에 올린 상태(2시간 자동 종료).
+   *  · 올릴 때 고른 만남 목적(meetStyleId)과 한 줄 소개(intro), 올린 시각·끝나는 시각을 함께 남긴다.
+   *  · 2시간이 지나면 **처음 읽는 순간** 스스로 내려가고(exploreProfileVisible=false) 저장한다.
+   *    그래서 앱을 닫아 두었다 열어도 이미 끝난 프로필이 남아 있지 않다.
+   * @returns {{active:boolean, startedAt:string|null, expiresAt:string|null, msLeft:number,
+   *            remainingLabel:string, meetStyleId:string|null, meetStyleLabel:string|null, intro:string}}
+   */
+  getMyExplorePublishState() {
+    const u = this.state.currentUser;
+    const p = u.explorePublish;
+    const empty = {
+      active: false, startedAt: null, expiresAt: null, msLeft: 0, remainingLabel: '',
+      meetStyleId: null, meetStyleLabel: null, intro: '', hours: EXPLORE_PUBLISH_HOURS
+    };
+    if (!p || typeof p !== 'object') return empty;
+    const expires = new Date(p.expiresAt || 0).getTime();
+    const left = Number.isFinite(expires) ? expires - Date.now() : 0;
+    if (!Number.isFinite(expires) || left <= 0) {
+      /* 시간이 다 됐다 — 조용히 내린다(알림 없음). */
+      u.explorePublish = null;
+      if (u.exploreProfileVisible) { u.exploreProfileVisible = false; this.saveState(); }
+      return empty;
+    }
+    return {
+      active: u.exploreProfileVisible === true,
+      startedAt: p.startedAt || null,
+      expiresAt: p.expiresAt || null,
+      msLeft: left,
+      remainingLabel: this.formatExplorePublishLeft(left),
+      meetStyleId: p.meetStyleId || null,
+      meetStyleLabel: p.meetStyleLabel || (meetStyleDef(p.meetStyleId) || {}).name || null,
+      intro: p.intro || '',
+      hours: EXPLORE_PUBLISH_HOURS
+    };
+  }
+
+  /** 남은 시간 표기 — '1시간 59분 남음' / '58분 남음' / '곧 종료'. */
+  formatExplorePublishLeft(msLeft) {
+    const totalMin = Math.max(0, Math.floor((Number(msLeft) || 0) / 60000));
+    if (totalMin <= 0) return '곧 종료';
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h > 0) return `${h}시간 ${m}분 남음`;
+    return `${m}분 남음`;
+  }
+
   isMyProfileExploreVisible() {
-    return this.state.currentUser.exploreProfileVisible === true;
+    return this.getMyExplorePublishState().active;
+  }
+
+  /**
+   * Sprint 24 — 내 프로필을 탐색에 올린다(만남 목적 + 한 줄 소개 → 2시간 뒤 자동 종료).
+   * @param {{meetStyleId?:string, intro?:string}} detail
+   */
+  publishMyExploreProfile(detail = {}) {
+    const style = meetStyleDef(detail.meetStyleId) || meetStyleDef('now');
+    const u = this.state.currentUser;
+    if (!u.registered) return { ok: false, reason: 'not_signed_in' };
+    const intro = String(detail.intro == null ? '' : detail.intro).trim().slice(0, 40);
+    const now = Date.now();
+    u.explorePublish = {
+      meetStyleId: style.id,
+      meetStyleLabel: style.name,
+      intro,
+      startedAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + EXPLORE_PUBLISH_HOURS * HOUR).toISOString()
+    };
+    u.exploreProfileVisible = true;
+    this.saveState();
+    return { ok: true, publish: this.getMyExplorePublishState() };
+  }
+
+  /** 올린 프로필을 내린다. */
+  unpublishMyExploreProfile() {
+    const u = this.state.currentUser;
+    u.explorePublish = null;
+    u.exploreProfileVisible = false;
+    this.saveState();
+    return { ok: true, exploreProfileVisible: false };
   }
 
   /** 내가 탐색 '사람' 카드로 올렸을 때 보이는 내 카드 (안 올렸으면 null). */
   getMyExploreProfile() {
-    if (!this.isMyProfileExploreVisible()) return null;
+    const publish = this.getMyExplorePublishState();
+    if (!publish.active) return null;
     const u = this.state.currentUser;
     return {
       id: u.id,
@@ -8041,20 +8151,136 @@ class Store {
       hobbyIds: u.hobbyIds || [],
       hobbyStyle: u.workoutSpec || '',
       bio: u.bio || '',
-      /* Sprint 17 — 내 사람 카드 꾸미기(대표 사진·한 줄 소개) */
-      intro: this.getMyExploreCard().intro,
-      photoUrl: u.photoUrl || null,
+      /* Sprint 24 — 올릴 때 고른 만남 목적 + 한 줄 소개 */
+      intro: publish.intro || this.getMyExploreCard().intro,
+      meetStyleId: publish.meetStyleId,
+      meetStyleLabel: publish.meetStyleLabel,
+      publishLeft: publish.remainingLabel,
+      expiresAt: publish.expiresAt,
+      photoUrl: (this.getMyAlbum('public')[0] || {}).url || u.photoUrl || null,
       badge: '내 프로필',
       ratio: 'mid',
       isMe: true
     };
   }
 
-  /** 내 프로필을 탐색에 올릴지(켜고 끄기). */
+  /** 내 프로필을 탐색에 올릴지(켜고 끄기) — 켤 때는 마지막으로 고른 조건(없으면 '지금 번개')으로 올린다. */
   setMyProfileExploreVisible(on) {
-    this.state.currentUser.exploreProfileVisible = !!on;
+    if (!on) return this.unpublishMyExploreProfile();
+    const last = this.state.currentUser.explorePublish;
+    return this.publishMyExploreProfile({
+      meetStyleId: (last && last.meetStyleId) || 'now',
+      intro: (last && last.intro) || ''
+    });
+  }
+
+  /* ==========================================================================
+   * 16-E-2. Sprint 24 — 내 프로필 앨범(공개 4장 · 비밀 4장) · 비밀앨범 공개
+   * -------------------------------------------------------------------------
+   * 11/17 00:30 루키 님: "내 프로필 탭 … 공개 이미지(최대 4장)와 비밀앨범(최대 4장)을
+   * 앨범 선택/카메라 촬영으로 각각 등록·삭제·관리", "1:1 대화방 안에서 상대방에게
+   * 내 비밀앨범을 공개(열람 허용/해제)".
+   *  · 사진은 Data URL 로 저장한다(서버 업로드 전까지). 한 칸에 한 장, 최대 4칸.
+   *  · 비밀앨범은 기본 잠김. 공개한 상대(대화방)에서만 열린다.
+   * ======================================================================== */
+  getMyAlbum(kind = 'public') {
+    const key = kind === 'secret' ? 'secret' : 'public';
+    const album = this.state.currentUser.album || {};
+    return Array.isArray(album[key]) ? album[key] : [];
+  }
+
+  /** 앨범 한 칸 채우기 — 최대 4장. 넘치면 reason:'full'. */
+  addMyAlbumPhoto(kind, dataUrl, options = {}) {
+    const key = kind === 'secret' ? 'secret' : 'public';
+    const url = String(dataUrl || '');
+    if (!/^data:image\//.test(url)) return { ok: false, reason: 'invalid' };
+    const u = this.state.currentUser;
+    if (!u.album || typeof u.album !== 'object') u.album = { public: [], secret: [] };
+    if (!Array.isArray(u.album[key])) u.album[key] = [];
+    if (u.album[key].length >= ALBUM_MAX) return { ok: false, reason: 'full', max: ALBUM_MAX };
+    const photo = {
+      id: `ph_${key}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      url,
+      caption: String((options && options.caption) || '').slice(0, 30),
+      at: new Date().toISOString()
+    };
+    u.album[key].push(photo);
     this.saveState();
-    return { ok: true, exploreProfileVisible: this.state.currentUser.exploreProfileVisible };
+    return { ok: true, photo, photos: u.album[key] };
+  }
+
+  removeMyAlbumPhoto(kind, photoId) {
+    const key = kind === 'secret' ? 'secret' : 'public';
+    const u = this.state.currentUser;
+    const list = (u.album && Array.isArray(u.album[key])) ? u.album[key] : [];
+    const next = list.filter((p) => p.id !== photoId);
+    if (next.length === list.length) return { ok: false, reason: 'not_found' };
+    u.album[key] = next;
+    this.saveState();
+    return { ok: true, photos: next };
+  }
+
+  /** 이 1:1 상대에게 내 비밀앨범을 공개했는가. */
+  isSecretAlbumSharedWith(partnerId) {
+    const shares = this.state.currentUser.secretShares || {};
+    return shares[partnerId] === true;
+  }
+
+  /** 대화방에서 비밀앨범 공개/해제. */
+  setSecretAlbumShared(partnerId, on) {
+    if (!partnerId) return { ok: false, reason: 'invalid' };
+    const u = this.state.currentUser;
+    if (!u.secretShares || typeof u.secretShares !== 'object') u.secretShares = {};
+    if (on) u.secretShares[partnerId] = true;
+    else delete u.secretShares[partnerId];
+    this.saveState();
+    return { ok: true, partnerId, shared: !!on };
+  }
+
+  /**
+   * 대화방의 비밀앨범 상태 — 내 앨범(공개 여부)과 상대 앨범(잠김/열림).
+   * 상대 앨범은 상대가 나에게 공개했을 때만 열린다(데모에서는 상대 쪽 공개 상태를 저장하지 않는다).
+   */
+  getSecretAlbumState(partnerId) {
+    const mine = this.getMyAlbum('secret');
+    const shared = this.isSecretAlbumSharedWith(partnerId);
+    return {
+      partnerId,
+      mine: { photos: mine, shared, locked: !shared },
+      theirs: { photos: [], shared: false, locked: true }
+    };
+  }
+
+  /** 내 공개 앨범·비밀앨범 장수 요약(내 프로필 탭). */
+  getAlbumSummary() {
+    const pub = this.getMyAlbum('public');
+    const secret = this.getMyAlbum('secret');
+    return {
+      public: { photos: pub, count: pub.length, max: ALBUM_MAX },
+      secret: { photos: secret, count: secret.length, max: ALBUM_MAX },
+      sharedWith: Object.keys(this.state.currentUser.secretShares || {})
+    };
+  }
+
+  /* ==========================================================================
+   * 16-Z. Sprint 24 — 화면 설정(다크모드)
+   * -------------------------------------------------------------------------
+   * 설정 값은 저장 상태에 두어 앱을 다시 열어도 그대로다.
+   * 화면(app.js)이 부팅 때 이 값을 읽어 <html data-theme="dark"> 를 붙인다.
+   * ======================================================================== */
+  isDarkMode() {
+    return this.state.settings ? this.state.settings.darkMode === true : false;
+  }
+
+  setDarkMode(on) {
+    if (!this.state.settings) this.state.settings = { darkMode: false };
+    this.state.settings.darkMode = !!on;
+    this.saveState();
+    return { ok: true, darkMode: this.state.settings.darkMode };
+  }
+
+  toggleDarkMode() {
+    return this.setDarkMode(!this.isDarkMode());
   }
 
   /** 그룹과 무관한 오픈 글만(내가 올린 것부터). */

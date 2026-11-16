@@ -156,7 +156,10 @@ document.addEventListener('DOMContentLoaded', () => {
     noticeReadId: null,          // 읽음 상태를 연 공지
     coverGroupId: null,          // 표지를 고르는 모임
     coverDraft: [],              // 고른 표지 프리셋(최대 2)
-    exploreCardPhoto: null,      // 탐색 카드 꾸미기 드래프트(내 사진 URL)
+    /* Sprint 24 — 내 프로필 올리기 시트 드래프트 · 비밀앨범 시트 상태 */
+    publishStyleId: 'now',
+    publishEditing: false,
+    secretAlbumPartnerId: null,
     dmView: 'recent',            // 'recent' | 'group'
     dmUnreadOnly: false,         // 안 읽은 대화만
     dmSent: null,                // 방금 쪽지를 보낸 상대 {partnerId, name, roomId}
@@ -240,10 +243,36 @@ document.addEventListener('DOMContentLoaded', () => {
     btnBoardPhoto: $('#btn-board-photo'),
     btnBoardReview: $('#btn-board-review'),
     exploreSummary: $('#explore-summary'),
-    btnExploreCardEdit: $('#btn-explore-card-edit'),
-    exploreCardModal: $('#explore-card-modal'),
-    exploreCardMedia: $('#explore-card-media'),
-    exploreCardIntro: $('#explore-card-intro'),
+    /* Sprint 24 — 내 프로필 올리기 시트(만남 목적 · 한 줄 소개 · 2시간) */
+    publishModal: $('#explore-publish-modal'),
+    publishStyleList: $('#publish-style-list'),
+    publishIntro: $('#publish-intro'),
+    publishConfirm: $('#btn-publish-confirm'),
+    /* Sprint 24 — 내 프로필 탭 · 앨범 */
+    myProfileAvatar: $('#myprofile-avatar'),
+    myProfileAvatarLetter: $('#myprofile-avatar-letter'),
+    myProfileAvatarImg: $('#myprofile-avatar-img'),
+    myProfileName: $('#myprofile-name'),
+    myProfileMeta: $('#myprofile-meta'),
+    albumPublicGrid: $('#album-public-grid'),
+    albumSecretGrid: $('#album-secret-grid'),
+    albumPublicCount: $('#album-public-count'),
+    albumSecretCount: $('#album-secret-count'),
+    albumShareNote: $('#album-share-note'),
+    albumPublicAlbum: $('#album-public-album'),
+    albumPublicCamera: $('#album-public-camera'),
+    albumSecretAlbum: $('#album-secret-album'),
+    albumSecretCamera: $('#album-secret-camera'),
+    myProfileStats: $('#myprofile-stats'),
+    /* Sprint 24 — 화면 설정(다크모드) */
+    menuDarkMode: $('#menu-dark-mode'),
+    menuDarkModeState: $('#menu-dark-mode-state'),
+    /* Sprint 24 — 1:1 대화방 비밀앨범 */
+    chatAlbumBtn: $('#btn-chat-album'),
+    secretAlbumModal: $('#secret-album-modal'),
+    secretAlbumBody: $('#secret-album-body'),
+    secretAlbumShare: $('#btn-secret-album-share'),
+    headerHomeBtn: $('#btn-header-home'),
     dmViewSeg: $('#dm-view-seg'),
     dmUnreadToggle: $('#dm-unread-toggle'),
     dmSentBanner: $('#dm-sent-banner'),
@@ -1536,6 +1565,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabId === 'tab-profile') {
       renderChatRooms(); renderProfileHeader(); renderNotificationSettings(); renderProfileGroupContext();
     }
+    if (tabId === 'tab-myprofile') { renderMyProfileTab(); }
 
     /* 글쓰기 FAB은 그 모임 피드·게시판에서만 노출 (바깥 갤러리에는 없다) */
     el.fab.classList.toggle('visible',
@@ -2861,7 +2891,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ------------------------------------------------------------------
-   * 1-D-2. Sprint 17 — 갤러리 표지 고르기 · 탐색 한 줄 요약 · 카드 꾸미기
+   * 1-D-2. Sprint 17 — 갤러리 표지 고르기 · 탐색 한 줄 요약
    * ---------------------------------------------------------------- */
   function openCoverPicker(groupId) {
     if (!store.isGroupLeader(groupId)) {
@@ -2929,53 +2959,6 @@ document.addEventListener('DOMContentLoaded', () => {
     el.exploreSummary.textContent = s.text;
     el.exploreSummary.classList.toggle('is-filtered', s.activeCount > 0);
     el.exploreSummary.setAttribute('aria-label', `지금 탐색 조건 · ${s.text}`);
-  }
-
-  function openExploreCardEditor() {
-    const card = store.getMyExploreCard();
-    ui.exploreCardPhoto = card.photoUrl || null;
-    renderExploreCardMedia();
-    if (el.exploreCardIntro) el.exploreCardIntro.value = card.intro || '';
-    openModal(el.exploreCardModal);
-  }
-
-  /** Sprint 18 — 내가 올린 사진 중에서 대표 사진을 고른다(예시 그림 없음). */
-  function myPhotoOptions() {
-    const me = store.currentUser;
-    const seen = new Set();
-    const list = [];
-    const add = (url) => {
-      if (!url || seen.has(url)) return;
-      seen.add(url);
-      list.push(url);
-    };
-    add(me.photoUrl);
-    store.getMyFeedPosts().forEach((p) => add(p.photoUrl));
-    return list.slice(0, 24);
-  }
-
-  function renderExploreCardMedia() {
-    if (!el.exploreCardMedia) return;
-    const options = myPhotoOptions();
-    el.exploreCardMedia.innerHTML = options.length
-      ? options.map((url) => `
-      <button class="media-option ${ui.exploreCardPhoto === url ? 'active' : ''}" data-explore-card-media="${escapeHtml(url)}" type="button">
-        <span class="media-thumb"><img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async"></span>
-        <span class="media-option-check">${ic('check')}</span>
-      </button>`).join('')
-      : '<p class="media-empty">올린 사진이 아직 없어요 · 사진을 올리면 대표 사진으로 고를 수 있어요.</p>';
-  }
-
-  function saveExploreCard() {
-    const res = store.setMyExploreCard({
-      photoUrl: ui.exploreCardPhoto,
-      intro: el.exploreCardIntro ? el.exploreCardIntro.value : ''
-    });
-    if (!res.ok) { showToast('카드를 저장하지 못했어요', 'warning'); return; }
-    closeModal(el.exploreCardModal);
-    ui.exploreBuffer = null;
-    renderExploreWithSkeleton();
-    showToast('탐색 카드를 꾸몄어요');
   }
 
   /** 모임 안 내정보 상단 한 줄 — 어느 모임의 내정보인지. */
@@ -4322,32 +4305,92 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btn) openCoverPicker(btn.dataset.coverOpen);
   });
 
-  /* 탐색 — 내 프로필 올리기 토글 */
+  /* ==========================================================================
+   * Sprint 24 — 탐색 '내 프로필 올리기'
+   * ------------------------------------------------------------------------
+   * 11/17 00:30 루키 님: "토글을 켜는 순간 ① 어떤 만남을 찾을지 선택 ② 한줄소개 입력
+   * 시트를 거쳐 올라가게, 올린 프로필은 2시간만 유지되고 2시간이 지나면 자동으로 꺼진다."
+   *  · 대표 사진을 고르는 꾸미기는 없앴다(같은 지적).
+   *  · 올린 상태에서는 토글 옆에 '만남 목적 · 1시간 59분 남음'만 남긴다.
+   * ======================================================================== */
   function renderExploreProfileToggle() {
     if (!el.exploreProfileToggle) return;
-    const on = store.isMyProfileExploreVisible();
-    el.exploreProfileToggle.setAttribute('aria-checked', String(on));
-    el.exploreProfileToggle.classList.toggle('on', on);
+    const pub = store.getMyExplorePublishState();
+    el.exploreProfileToggle.setAttribute('aria-checked', String(pub.active));
+    el.exploreProfileToggle.classList.toggle('on', pub.active);
     if (el.eppDesc) {
-      el.eppDesc.textContent = on
-        ? '켜져 있어요 · 탐색 사람 카드에 내 프로필이 보여요'
-        : '끄면 사람 카드에 나오지 않아요';
+      el.eppDesc.textContent = pub.active
+        ? `${pub.meetStyleLabel || '지금 번개'} · ${pub.remainingLabel}`
+        : '';
     }
   }
 
-  function setExploreProfileVisible(on) {
-    const res = store.setMyProfileExploreVisible(on);
+  function renderPublishSheet() {
+    if (!el.publishStyleList) return;
+    const styles = store.getMeetStyles();
+    const picked = ui.publishStyleId || 'now';
+    el.publishStyleList.innerHTML = styles.map((s) => `
+      <button class="composer-tag ${s.id === picked ? 'active' : ''}" data-publish-style="${s.id}" type="button"
+              aria-pressed="${s.id === picked}">${s.name}</button>`).join('');
+    const pub = store.getMyExplorePublishState();
+    if (el.publishIntro && !ui.publishEditing) {
+      el.publishIntro.value = pub.active ? (pub.intro || '') : '';
+      ui.publishEditing = true;
+    }
+  }
+
+  function openPublishSheet() {
+    const pub = store.getMyExplorePublishState();
+    ui.publishStyleId = (pub.active && pub.meetStyleId) || 'now';
+    ui.publishEditing = false;
+    renderPublishSheet();
+    if (el.publishIntro) el.publishIntro.value = pub.intro || '';
+    openModal(el.publishModal);
+    setTimeout(() => el.publishIntro && el.publishIntro.focus({ preventScroll: true }), 160);
+  }
+
+  function submitPublishSheet() {
+    const intro = el.publishIntro ? el.publishIntro.value.trim() : '';
+    const res = store.publishMyExploreProfile({ meetStyleId: ui.publishStyleId, intro });
+    if (!res.ok) {
+      showToast('로그인한 뒤에 올릴 수 있어요', 'warning');
+      return;
+    }
+    closeModal(el.publishModal);
     renderExploreProfileToggle();
     ui.exploreBuffer = null;
     renderExploreWithSkeleton();
-    showToast(res.exploreProfileVisible
-      ? '내 프로필을 탐색에 올렸어요 · 사람 카드에서 보여요'
-      : '내 프로필을 탐색에서 내렸어요', 'info');
-    return res;
+    showToast(`내 프로필을 올렸어요 · ${res.publish.remainingLabel}`, 'success');
+  }
+
+  function setExploreProfileVisible(on) {
+    if (on === false) {
+      const res = store.unpublishMyExploreProfile();
+      renderExploreProfileToggle();
+      ui.exploreBuffer = null;
+      renderExploreWithSkeleton();
+      showToast('내 프로필을 탐색에서 내렸어요', 'info');
+      return res;
+    }
+    openPublishSheet();
+    return { ok: true, opened: true };
   }
 
   el.exploreProfileToggle && el.exploreProfileToggle.addEventListener('click', () => {
-    setExploreProfileVisible(!store.isMyProfileExploreVisible());
+    if (store.isMyProfileExploreVisible()) { setExploreProfileVisible(false); return; }
+    openPublishSheet();
+  });
+
+  el.publishStyleList && el.publishStyleList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-publish-style]');
+    if (!btn) return;
+    ui.publishStyleId = btn.dataset.publishStyle;
+    renderPublishSheet();
+  });
+  el.publishConfirm && el.publishConfirm.addEventListener('click', submitPublishSheet);
+  $('#btn-publish-cancel') && $('#btn-publish-cancel').addEventListener('click', () => closeModal(el.publishModal));
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-explore-profile-publish]')) openPublishSheet();
   });
 
   /* 쪽지 보내기 */
@@ -4390,18 +4433,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const room = e.target.closest('[data-dm-open-room]');
       if (room && room.dataset.dmOpenRoom) openChatRoom(room.dataset.dmOpenRoom);
-    });
-  }
-
-  el.btnExploreCardEdit && el.btnExploreCardEdit.addEventListener('click', openExploreCardEditor);
-  $('#btn-explore-card-cancel') && $('#btn-explore-card-cancel').addEventListener('click', () => closeModal(el.exploreCardModal));
-  $('#btn-explore-card-save') && $('#btn-explore-card-save').addEventListener('click', saveExploreCard);
-  if (el.exploreCardMedia) {
-    el.exploreCardMedia.addEventListener('click', (e) => {
-      const pick = e.target.closest('[data-explore-card-media]');
-      if (!pick) return;
-      ui.exploreCardPhoto = pick.dataset.exploreCardMedia;
-      renderExploreCardMedia();
     });
   }
 
@@ -5260,6 +5291,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <span class="person-meta">${escapeHtml(p.location)}${item.distanceKm != null ? ` · ${distLabel(item.distanceKm)}` : ''}</span>
             <span class="person-meta person-cycle">${ic(p.cycleIcon)} ${escapeHtml(p.cycle)}</span>
+            ${p.isMe && p.meetStyleLabel
+              ? `<span class="person-publish">${escapeHtml(p.meetStyleLabel)}${p.intro ? ` · ${escapeHtml(p.intro)}` : ''}</span>`
+              : ''}
           </div>
           <button class="quick-like ${liked ? 'liked' : ''}" data-like-person="${p.id}"
                   aria-pressed="${liked}" type="button"
@@ -5358,43 +5392,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const p = item.post;
     const hasMedia = !!p.photoUrl;
     const caption = (p.caption || '').trim();
-    const preview = hasMedia ? firstSentence(caption) : '';
+    const preview = firstSentence(caption);
     const regionName = postRegionLabel(p);
     const styleName = postStyleLabel(p);
     const styleDef = p.meetStyle ? store.getMeetStyle(p.meetStyle) : null;
+    /* Sprint 24 — 한 줄 리스트: 제목(첫 문장) · 지역 배지 · 만남 태그 · 시간/좋아요/댓글.
+       사진이 있으면 오른쪽에 작은 썸네일만 붙는다(2열 카드 그리드가 아니라 게시판 행). */
     return `
-      <article class="masonry-card post-card ratio-${item.ratio} ${p.likedByMe ? 'is-liked' : ''} ${hasMedia ? 'has-media' : 'is-text-only'}"
+      <article class="masonry-card post-card board-row ${p.likedByMe ? 'is-liked' : ''} ${hasMedia ? 'has-media' : 'is-text-only'}"
                data-post-card="${p.id}" data-card-type="post" data-has-media="${hasMedia ? '1' : '0'}"
                data-region-id="${escapeHtml(store.getExplorePostRegionId(p) || '')}"
                role="button" tabindex="0"
-               aria-label="${escapeHtml(regionName)} · ${escapeHtml(p.authorName)}님의 ${escapeHtml(styleName)} 글 보기${hasMedia && caption ? ' · 첫 문장만 보이고 본문은 상세에서' : ''}">
-        <header class="post-head">
-          <span class="post-avatar" style="background:${p.authorGradient}">${escapeHtml(p.authorAvatarText || p.authorName.charAt(0))}</span>
-          <div class="post-author-block">
-            <span class="post-author">${escapeHtml(p.authorName)}${p.isMine ? ' <span class="me-badge">나</span>' : ''}</span>
-            <span class="post-meta">
-              ${p.tag ? `<span class="post-tag">#${escapeHtml(p.tag)}</span>` : ''}
-              <span class="post-region">${ic('pin')} ${escapeHtml(regionName)}</span>
-              <span class="post-style">${ic(styleDef ? styleDef.icon : 'sparkle')} ${escapeHtml(styleName)}</span>
-              ${item.distanceKm != null ? `<span class="post-distance">${distLabel(item.distanceKm)}</span>` : ''}
-            </span>
+               aria-label="${escapeHtml(regionName)} · ${escapeHtml(p.authorName)}님의 ${escapeHtml(styleName)} 글 · ${escapeHtml(preview.slice(0, 34))}${hasMedia ? ' · 첫 문장만 보이고 본문은 상세에서' : ''}">
+        <span class="board-row-body">
+          <header class="post-head">
+            <span class="post-avatar" style="background:${p.authorGradient}">${escapeHtml(p.authorAvatarText || p.authorName.charAt(0))}</span>
+            <div class="post-author-block">
+              <span class="post-author">${escapeHtml(p.authorName)}${p.isMine ? ' <span class="me-badge">나</span>' : ''}</span>
+              <span class="post-meta">
+                ${p.tag ? `<span class="post-tag">#${escapeHtml(p.tag)}</span>` : ''}
+                <span class="post-region">${ic('pin')} ${escapeHtml(regionName)}</span>
+                <span class="post-style">${ic(styleDef ? styleDef.icon : 'sparkle')} ${escapeHtml(styleName)}</span>
+                ${item.distanceKm != null ? `<span class="post-distance">${distLabel(item.distanceKm)}</span>` : ''}
+              </span>
+            </div>
+          </header>
+          ${caption ? `<p class="post-caption${hasMedia ? ' post-caption-preview' : ''}">${escapeHtml(hasMedia ? preview : caption)}</p>` : ''}
+          <div class="post-foot">
+            <button class="post-like ${p.likedByMe ? 'liked' : ''}" data-like-post="${p.id}"
+                    aria-pressed="${p.likedByMe}" aria-label="게시글 좋아요" type="button">
+              ${HEART_SVG(p.likedByMe)}<span>${fmtCount(p.likes)}</span>
+            </button>
+            <span class="post-stat">${COMMENT_SVG} ${p.comments.length}</span>
+            <span class="post-group">${escapeHtml(p.groupName || regionName)}</span>
+            <span class="post-time" data-created="${p.createdAt}">${timeAgo(p.createdAt)}</span>
           </div>
-          <span class="post-time" data-created="${p.createdAt}">${timeAgo(p.createdAt)}</span>
-        </header>
+        </span>
         ${hasMedia
-          ? `<div class="post-media"><img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="게시글 사진" loading="lazy" decoding="async"></div>`
+          ? `<span class="post-media"><img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="게시글 사진" loading="lazy" decoding="async"></span>`
           : ''}
-        ${hasMedia && preview ? `<p class="post-caption post-caption-preview">${escapeHtml(preview)}</p>` : ''}
-        ${!hasMedia && caption ? `<p class="post-caption">${escapeHtml(caption)}</p>` : ''}
-        <div class="post-foot">
-          <button class="post-like ${p.likedByMe ? 'liked' : ''}" data-like-post="${p.id}"
-                  aria-pressed="${p.likedByMe}" aria-label="게시글 좋아요" type="button">
-            ${HEART_SVG(p.likedByMe)}<span>${fmtCount(p.likes)}</span>
-          </button>
-          <span class="post-stat">${COMMENT_SVG} ${p.comments.length}</span>
-          <span class="post-group">${escapeHtml(p.groupName || regionName)}</span>
-          <span class="post-open-hint" aria-hidden="true">›</span>
-        </div>
+        <span class="board-row-chevron" aria-hidden="true">›</span>
       </article>`;
   }
 
@@ -5417,19 +5454,35 @@ document.addEventListener('DOMContentLoaded', () => {
     return explorePostCardHTML(item);
   }
 
+  /**
+   * Sprint 24 — 탐색은 두 모양을 한 화면에 둔다.
+   *   · 사람(그리고 홈에서만 쓰는 모임) → 2열 비주얼 카드(.masonry-col)
+   *   · 글·실시간 베스트 → 커뮤니티 게시판 같은 **한 줄 리스트**(.explore-board)
+   * 11/17 00:30 루키 님: "글 영역이 토스쇼핑 같은 2열 카드 그리드로 나오지 않고
+   * 커뮤니티 게시판 글처럼 한 줄 리스트형으로 보이게."
+   */
   function resetExploreColumns() {
     if (!el.exploreMasonry) return;
     el.exploreMasonry.innerHTML = `
-      <div class="masonry-col" data-column="0"></div>
-      <div class="masonry-col" data-column="1"></div>`;
+      <div class="explore-board" id="explore-board"></div>
+      <div class="masonry-cols">
+        <div class="masonry-col" data-column="0"></div>
+        <div class="masonry-col" data-column="1"></div>
+      </div>`;
     ui.exploreCols = Array.from(el.exploreMasonry.querySelectorAll('.masonry-col'))
       .map((node) => ({ node, height: 0 }));
+    ui.exploreBoardNode = el.exploreMasonry.querySelector('.explore-board');
     ui.explorePage = 0;
   }
 
   function appendExploreItems(items) {
-    if (!ui.exploreCols || !items.length) return;
+    if (!items.length) return;
+    if (!ui.exploreCols) return;
     items.forEach((item) => {
+      if (item.type === 'post') {
+        if (ui.exploreBoardNode) ui.exploreBoardNode.insertAdjacentHTML('beforeend', explorePostCardHTML(item));
+        return;
+      }
       const target = ui.exploreCols[0].height <= ui.exploreCols[1].height
         ? ui.exploreCols[0] : ui.exploreCols[1];
       target.node.insertAdjacentHTML('beforeend', exploreCardHTML(item));
@@ -5667,31 +5720,26 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderHotStrip() {
     if (!el.hotRail) return;
     const list = store.getHotPosts({ limit: HOT_STRIP_LIMIT, regionId: ui.exploreRegion });
-    const region = store.getRegion(ui.exploreRegion);
-    if (el.hotSub) {
-      el.hotSub.textContent = region
-        ? `${region.name}에서 지금 반응이 뜨거운 글 · 직전 집계 대비 순위`
-        : '지금 반응이 뜨거운 취미 글 · 좋아요+댓글 순 · 직전 집계 대비 순위';
-    }
+    if (el.hotSub) el.hotSub.textContent = '';
     if (!list.length) {
       el.hotRail.innerHTML = '<div class="hot-empty">아직 반응이 모인 글이 없어요 · 첫 글의 주인공이 되어보세요</div>';
       return;
     }
+    /* Sprint 24 — 실베도 카드 가로 슬라이드가 아니라 게시판 순위 행으로 한 줄씩. */
     el.hotRail.innerHTML = list.map((it) => {
       const p = it.post;
       return `<button class="hot-card rank-${it.rank}" data-hot-post="${p.id}" type="button"
                       aria-label="실시간 베스트 ${it.rank}위 · ${escapeHtml(p.authorName)}님의 ${escapeHtml(postStyleLabel(p))} 글 보기">
+        <span class="hot-rank" aria-hidden="true">${it.rank}</span>
+        <span class="hot-card-body">
+          <span class="hot-card-hobby">${it.regionName ? `${ic('pin')} ${escapeHtml(it.regionName)} · ` : ''}${escapeHtml(postStyleLabel(p))}</span>
+          <span class="hot-card-caption">${escapeHtml(firstSentence(p.caption || ''))}</span>
+          <span class="hot-card-meta">${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}${hotMoveHTML(it, true)}</span>
+        </span>
         <span class="hot-card-media">
           ${p.photoUrl ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">` : `<span class="hot-card-noimg" aria-hidden="true">${ic(p.hobbyIcon || 'note')}</span>`}
-          <span class="hot-rank" aria-hidden="true">${it.rank}</span>
-          ${hotMoveHTML(it)}
-          <span class="hot-heat" aria-hidden="true"><span class="hot-heat-bar" style="width:${it.heat}%"></span></span>
         </span>
-        <span class="hot-card-body">
-          <span class="hot-card-hobby">${escapeHtml(postStyleLabel(p))}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
-          <span class="hot-card-caption">${escapeHtml(p.caption || '')}</span>
-          <span class="hot-card-meta">${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}</span>
-        </span>
+        <span class="hot-heat" aria-hidden="true"><span class="hot-heat-bar" style="width:${it.heat}%"></span></span>
       </button>`;
     }).join('');
     /* 내 글이 방금 실베에 들어왔는지 확인 → 들어왔으면 알림(같은 글로 반복 없음). */
@@ -7493,9 +7541,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.dmTitle) el.dmTitle.textContent = inGroup ? '모임 디엠' : '전체 디엠함';
     if (el.dmSub) {
-      el.dmSub.textContent = inGroup
-        ? '이 모임의 전체방과 1:1 대화'
-        : '모든 모임 단체방과 1:1 대화를 한곳에서';
+      el.dmSub.textContent = inGroup ? '이 모임의 전체방과 1:1 대화' : '';
     }
     if (el.chatRoomCount) el.chatRoomCount.textContent = String(rooms.length);
     if (el.chatDmCount) el.chatDmCount.textContent = `${rooms.length}명`;
@@ -7503,11 +7549,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* Sprint 15 — 1:1 대화를 꺼둔 모임이 있으면 여기서 먼저 알려준다. */
     if (el.chatDmPolicy) {
+      /* Sprint 24 — 기본 상태는 설명하지 않는다. 꺼둔 모임이 있을 때만 그 사실을 적는다. */
       const off = store.getJoinedGroups().filter((g) => g.dmEnabled === false);
       el.chatDmPolicy.className = `chat-dm-policy ${off.length ? 'is-off' : 'is-on'}`;
       el.chatDmPolicy.innerHTML = off.length
-        ? `${off.map((g) => escapeHtml(g.name)).join(', ')}는 그룹장이 1:1 대화를 꺼두었어요 · 모임 전체방에서 이야기해요`
-        : '모든 모임에서 그룹 안 1:1 대화가 허용되어 있어요';
+        ? `${off.map((g) => escapeHtml(g.name)).join(', ')}는 1:1 대화가 꺼져 있어요`
+        : '';
     }
 
     if (!rooms.length) {
@@ -7701,6 +7748,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.chatRoomModal.hidden = false;
     document.body.classList.add('modal-open');
+    syncChatAlbumBtn();
     renderChatMessages();
     renderChatRooms();
     updateBadges();
@@ -10846,12 +10894,281 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { /* URLSearchParams 없음 */ }
   })();
 
+  /* ==========================================================================
+   * Sprint 24 — 다크모드 · 내 프로필 탭(공개 4장 / 비밀 4장) · 대화방 비밀앨범
+   * ------------------------------------------------------------------------
+   * 11/17 00:30 루키 님 지시 8건 중 1·3·5·6·7·8번의 화면 쪽 구현.
+   *  · 다크모드: 설정 › 화면 › 다크모드. 값은 저장 상태(settings.darkMode)에 남는다.
+   *  · 로고: 어디에 있든 처음 화면(바깥 홈 탭 최상단)으로.
+   *  · 내 프로필 탭: 공개 사진 4칸 · 비밀앨범 4칸(앨범/카메라).
+   *  · 1:1 대화방: 비밀앨범 공개/해제 · 공개 전에는 잠금.
+   * ======================================================================== */
+  const ALBUM_MAX = 4;
+
+  /** 저장된 값을 화면에 반영한다(부팅·토글 공용). */
+  function applyThemeDom(dark) {
+    const on = !!dark;
+    document.documentElement.setAttribute('data-theme', on ? 'dark' : 'light');
+    document.body.classList.toggle('theme-dark', on);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', on ? '#10161B' : '#10B981');
+    if (el.menuDarkMode) {
+      el.menuDarkMode.setAttribute('aria-checked', String(on));
+      el.menuDarkMode.classList.toggle('on', on);
+    }
+    if (el.menuDarkModeState) el.menuDarkModeState.textContent = on ? '켜짐' : '꺼짐';
+    return on;
+  }
+
+  function applyThemePreference(on) {
+    const dark = on === undefined ? !store.isDarkMode() : !!on;
+    store.setDarkMode(dark);
+    applyThemeDom(dark);
+    showToast(dark ? '다크모드로 바꿨어요' : '크림 모드로 바꿨어요', 'info');
+    return { darkMode: dark };
+  }
+
+  /** 로고 → 처음 화면. 모임 안·다른 탭 어디에 있든 갤러리 홈 맨 위로. */
+  function goHomeTop() {
+    closeDrawer({ silent: true });
+    if (ui.groupSpaceId) { ui.groupSpaceId = null; syncNavMode(); }
+    switchTab('tab-home');
+    if (el.main) el.main.scrollTop = 0;
+    requestAnimationFrame(() => { if (el.main) el.main.scrollTop = 0; });
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(6);
+  }
+
+  /* ---------------------------------------------- 내 프로필 탭 · 앨범 */
+  function albumFilledHTML(kind, photo, index) {
+    return `<figure class="album-slot is-filled" data-album-photo="${escapeHtml(photo.id)}" data-album-kind="${kind}">
+      <img class="album-img" src="${escapeHtml(photo.url)}" alt="${kind === 'secret' ? '비밀앨범' : '공개'} 사진 ${index + 1}" loading="lazy" decoding="async">
+      <button class="album-remove" data-album-remove="${escapeHtml(photo.id)}" data-album-kind="${kind}" type="button"
+              aria-label="사진 지우기">&times;</button>
+    </figure>`;
+  }
+
+  function albumEmptyHTML(kind, index) {
+    return `<button class="album-slot is-empty" data-album-add="${kind}" type="button"
+              aria-label="${kind === 'secret' ? '비밀앨범' : '공개'} 사진 ${index + 1}칸 — 사진 추가">
+      <span class="album-plus" aria-hidden="true">+</span>
+    </button>`;
+  }
+
+  function renderAlbumGrid(node, kind) {
+    if (!node) return;
+    const photos = store.getMyAlbum(kind);
+    const slots = photos.map((p, i) => albumFilledHTML(kind, p, i));
+    for (let i = photos.length; i < ALBUM_MAX; i += 1) slots.push(albumEmptyHTML(kind, i));
+    node.innerHTML = slots.join('');
+  }
+
+  function renderMyProfileTab() {
+    const me = store.currentUser || {};
+    if (el.myProfileName) el.myProfileName.textContent = me.nickname || '내 프로필';
+    if (el.myProfileMeta) {
+      const bits = [me.age ? `${me.age}세` : '', me.location || '', me.handle || ''].filter(Boolean);
+      el.myProfileMeta.textContent = bits.join(' · ');
+    }
+    if (el.myProfileAvatarLetter) el.myProfileAvatarLetter.textContent = me.avatarText || (me.nickname || '나').charAt(0);
+    if (el.myProfileAvatarImg) {
+      const photo = (store.getMyAlbum('public')[0] || {}).url || me.photoUrl || '';
+      el.myProfileAvatarImg.hidden = !photo;
+      if (photo) el.myProfileAvatarImg.src = photo;
+      if (photo) el.myProfileAvatarLetter.hidden = true;
+      else el.myProfileAvatarLetter.hidden = false;
+    }
+    renderAlbumGrid(el.albumPublicGrid, 'public');
+    renderAlbumGrid(el.albumSecretGrid, 'secret');
+    const summary = store.getAlbumSummary();
+    if (el.albumPublicCount) el.albumPublicCount.textContent = `${summary.public.count} / ${ALBUM_MAX}`;
+    if (el.albumSecretCount) el.albumSecretCount.textContent = `${summary.secret.count} / ${ALBUM_MAX}`;
+    if (el.albumShareNote) {
+      const n = summary.sharedWith.length;
+      el.albumShareNote.textContent = n
+        ? `대화방 ${n}곳에 공개 중 · 나머지는 잠겨 있어요`
+        : '1:1 대화방에서 공개한 상대만 볼 수 있어요';
+    }
+    if (el.myProfileStats) {
+      const stats = store.getProfileStats ? store.getProfileStats() : null;
+      const posts = stats ? stats.posts : store.getMyFeedPosts().length;
+      const likes = stats ? stats.likes : 0;
+      const groups = store.getJoinedGroups().length;
+      el.myProfileStats.innerHTML = `
+        <span class="myprofile-stat"><strong>${posts}</strong><span>내 글</span></span>
+        <span class="myprofile-stat"><strong>${likes}</strong><span>받은 좋아요</span></span>
+        <span class="myprofile-stat"><strong>${groups}</strong><span>내 모임</span></span>`;
+    }
+  }
+
+  function pickAlbumPhoto(kind, file) {
+    if (!file) return;
+    readImageFile(file, (url) => {
+      const res = store.addMyAlbumPhoto(kind, url);
+      if (!res.ok) {
+        showToast(res.reason === 'full' ? '사진은 4장까지 올릴 수 있어요' : '사진을 올리지 못했어요', 'warning');
+        return;
+      }
+      renderMyProfileTab();
+      if (kind === 'secret' && ui.secretAlbumPartnerId) renderSecretAlbumBody();
+      showToast(kind === 'secret' ? '비밀앨범에 사진을 넣었어요' : '공개 사진에 넣었어요', 'success');
+    }, 720);
+  }
+
+  function openAlbumPicker(kind, camera) {
+    const input = camera
+      ? (kind === 'secret' ? el.albumSecretCamera : el.albumPublicCamera)
+      : (kind === 'secret' ? el.albumSecretAlbum : el.albumPublicAlbum);
+    if (input) input.click();
+  }
+
+  [[el.albumPublicAlbum, 'public'], [el.albumPublicCamera, 'public'],
+   [el.albumSecretAlbum, 'secret'], [el.albumSecretCamera, 'secret']].forEach(([input, kind]) => {
+    if (!input) return;
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (file) pickAlbumPhoto(kind, file);
+      input.value = '';
+    });
+  });
+
+  const myProfileTabNode = $('#tab-myprofile');
+  myProfileTabNode && myProfileTabNode.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-album-remove]');
+    if (rm) {
+      const kind = rm.dataset.albumKind === 'secret' ? 'secret' : 'public';
+      store.removeMyAlbumPhoto(kind, rm.dataset.albumRemove);
+      renderMyProfileTab();
+      if (kind === 'secret' && ui.secretAlbumPartnerId) renderSecretAlbumBody();
+      showToast('사진을 지웠어요', 'info');
+      return;
+    }
+    const add = e.target.closest('[data-album-add]');
+    if (add) { openAlbumPicker(add.dataset.albumAdd === 'secret' ? 'secret' : 'public', false); }
+  });
+  $('#btn-album-public-add') && $('#btn-album-public-add').addEventListener('click', () => openAlbumPicker('public', false));
+  $('#btn-album-secret-add') && $('#btn-album-secret-add').addEventListener('click', () => openAlbumPicker('secret', false));
+  $('#btn-myprofile-settings') && $('#btn-myprofile-settings').addEventListener('click', () => openDrawer('profile'));
+
+  /* ---------------------------------------------- 1:1 대화방 비밀앨범 */
+  function syncChatAlbumBtn() {
+    if (!el.chatAlbumBtn) return;
+    const room = ui.openRoomId ? store.getChatRoom(ui.openRoomId) : null;
+    const shared = !!(room && store.isSecretAlbumSharedWith(room.partnerId));
+    el.chatAlbumBtn.classList.toggle('is-shared', shared);
+    el.chatAlbumBtn.setAttribute('aria-label', shared ? '비밀앨범 — 공개 중' : '비밀앨범 — 잠김');
+  }
+
+  function openSecretAlbum(partnerId) {
+    if (!partnerId) return;
+    ui.secretAlbumPartnerId = partnerId;
+    renderSecretAlbumBody();
+    openModal(el.secretAlbumModal);
+  }
+
+  function renderSecretAlbumBody() {
+    if (!el.secretAlbumBody) return;
+    const pid = ui.secretAlbumPartnerId;
+    const room = pid ? store.findChatRoomByPartner(pid) : null;
+    const st = store.getSecretAlbumState(pid);
+    const name = room ? room.partnerName : '상대';
+    el.secretAlbumBody.innerHTML = `
+      <section class="secret-block">
+        <h4 class="secret-title">내 비밀앨범 <span class="album-count">${st.mine.photos.length} / ${ALBUM_MAX}</span></h4>
+        <div class="album-grid is-secret">
+          ${st.mine.photos.length
+            ? st.mine.photos.map((p, i) => albumFilledHTML('secret', p, i)).join('')
+            : '<p class="secret-empty">내 프로필 탭에서 비밀앨범 사진을 먼저 넣어주세요.</p>'}
+        </div>
+      </section>
+      <section class="secret-block">
+        <h4 class="secret-title">${escapeHtml(name)}님의 앨범</h4>
+        <div class="secret-locked">
+          <span class="secret-lock" aria-hidden="true">${ic('lock')}</span>
+          <p class="secret-empty">${st.mine.shared ? '내 앨범만 공개했어요 · 상대 앨범은 아직 잠겨 있어요' : '공개하면 서로의 비밀앨범이 열려요'}</p>
+        </div>
+      </section>`;
+    if (el.secretAlbumShare) el.secretAlbumShare.textContent = st.mine.shared ? '공개 해제' : '공개하기';
+    syncChatAlbumBtn();
+  }
+
+  function toggleSecretAlbumShare(on) {
+    const pid = ui.secretAlbumPartnerId;
+    if (!pid) return { ok: false, reason: 'no_partner' };
+    const next = on === undefined ? !store.isSecretAlbumSharedWith(pid) : !!on;
+    store.setSecretAlbumShared(pid, next);
+    renderSecretAlbumBody();
+    syncChatAlbumBtn();
+    showToast(next ? '이 대화 상대에게 비밀앨범을 공개했어요' : '비밀앨범 공개를 해제했어요', 'info');
+    return { ok: true, shared: next };
+  }
+
+  el.secretAlbumShare && el.secretAlbumShare.addEventListener('click', () => toggleSecretAlbumShare());
+  $('#btn-secret-album-close') && $('#btn-secret-album-close').addEventListener('click', () => closeModal(el.secretAlbumModal));
+  el.secretAlbumModal && el.secretAlbumModal.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-album-remove]');
+    if (rm) {
+      store.removeMyAlbumPhoto(rm.dataset.albumKind === 'secret' ? 'secret' : 'public', rm.dataset.albumRemove);
+      renderSecretAlbumBody();
+      renderMyProfileTab();
+    }
+  });
+
+  /* 2시간이 지난 프로필은 화면에서도 조용히 내린다(20초마다 확인 — 남은 시간 표기도 함께 갱신). */
+  let publishWasActive = store.isMyProfileExploreVisible();
+  setInterval(() => {
+    const active = store.isMyProfileExploreVisible();
+    renderExploreProfileToggle();
+    if (publishWasActive && !active) {
+      ui.exploreBuffer = null;
+      if (ui.exploreRendered) renderExploreWithSkeleton();
+      renderMyProfileTab();
+      showToast('2시간이 지나 내 프로필이 자동으로 내려갔어요', 'info');
+    }
+    publishWasActive = active;
+  }, 20000);
+
+  /* ---------------------------------------------- 탐색 상단: 아래로 스크롤하면 숨김 */
+  function initExploreTopHide() {
+    if (!el.main) return;
+    const top = document.querySelector('.explore-top');
+    if (!top) return;
+    let lastY = 0;
+    el.main.addEventListener('scroll', () => {
+      if (ui.activeTab !== 'tab-explore') return;
+      const y = el.main.scrollTop;
+      const dy = y - lastY;
+      if (y <= 24) top.classList.remove('is-tucked');
+      else if (dy > 6 && y > 72) top.classList.add('is-tucked');
+      else if (dy < -6) top.classList.remove('is-tucked');
+      lastY = y;
+    }, { passive: true });
+    /* 탭을 벗어나면 다시 보이게 해 둔다(돌아왔을 때 검색창이 사라져 있지 않게). */
+    el.navButtons.forEach((btn) => btn.addEventListener('click', () => top.classList.remove('is-tucked')));
+  }
+
+  /* ---------------------------------------------- 이벤트 배선 */
+  el.headerHomeBtn && el.headerHomeBtn.addEventListener('click', goHomeTop);
+  el.menuDarkMode && el.menuDarkMode.addEventListener('click', () => applyThemePreference());
+  el.menuDarkMode && el.menuDarkMode.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    applyThemePreference();
+  });
+  el.chatAlbumBtn && el.chatAlbumBtn.addEventListener('click', () => {
+    const room = ui.openRoomId ? store.getChatRoom(ui.openRoomId) : null;
+    if (room) openSecretAlbum(room.partnerId);
+  });
+
   /* --- 초기 마운트 --- */
   const bootStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
   /* Sprint 11 — 펼쳐 둔 알림 묶음을 세션에서 복원 */
   /* Sprint 8 — 첫 렌더 경량화: 탐색 탭만 먼저 그린다.
      피드·대화방·알림 목록은 그 탭을 처음 열 때(또는 알림이 바뀔 때) 그린다. */
   /* Sprint 14 — 첫 화면은 홈(내 그룹 갤러리). 탐색은 그 다음에 그려 둔다(탭을 열면 바로). */
+  /* Sprint 24 — 저장된 다크모드를 첫 화면부터 적용하고, 내 프로필 탭을 그려 둔다. */
+  applyThemeDom(store.isDarkMode());
+  renderMyProfileTab();
+  initExploreTopHide();
   syncNavMode();
   renderHome();
   renderExplore();
@@ -11019,8 +11336,12 @@ document.addEventListener('DOMContentLoaded', () => {
     openNoticeRead, getNoticeRead: (id) => store.getNoticeReadState(id),
     openCoverPicker, renderCoverGrid, toggleCoverPreset, saveCover,
     getCoverState: () => ({ groupId: ui.coverGroupId, draft: ui.coverDraft.slice() }),
-    renderGallerySort, renderExploreSummary, openExploreCardEditor, saveExploreCard,
-    getExploreCardState: () => ({ photo: ui.exploreCardPhoto, card: store.getMyExploreCard() }),
+    renderGallerySort, renderExploreSummary,
+    /* Sprint 24 — 내 프로필 올리기(2시간) · 프로필 탭 · 앨범 · 다크모드 */
+    openPublishSheet, submitPublishSheet, renderExploreProfileToggle,
+    getExplorePublishState: () => store.getMyExplorePublishState(),
+    renderMyProfileTab, setDarkMode: (on) => applyThemePreference(on), getDarkMode: () => store.isDarkMode(),
+    openSecretAlbum: (partnerId) => openSecretAlbum(partnerId), setSecretAlbumShared: (on) => toggleSecretAlbumShare(on === undefined ? undefined : on),
     /* Sprint 18 — 사이드바(모임 멤버·설정 / 내정보 설정) */
     openDrawer, closeDrawer, renderGroupDrawer, renderProfileDrawer,
     getDrawerState: () => ({ open: ui.drawerOpen }),
