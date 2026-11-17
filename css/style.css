@@ -17348,3 +17348,1492 @@ html[data-theme="dark"] .acc-chevron { color: var(--text-muted); }
 .explore-profile-publish .epp-text { cursor: pointer; }
 .explore-profile-publish .epp-text:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 8px; }
 html[data-theme="dark"] .onboarding-body { background: transparent; box-shadow: none; }
+
+/* ==========================================================================
+   28.5. UX·UI 대개편 (Sprint 28.5 · 2026-11-17)
+   --------------------------------------------------------------------------
+   이번 층은 화면을 새로 그리지 않고 **규칙을 한 곳에 모아 덮어쓴다**.
+     28.5-1  디자인 토큰 단일화(간격·라운드·글자·모션·그림자 1겹/3겹)
+     28.5-2  색: 글자·버튼 초록 = #047857 계열 / #10B981 는 장식만
+     28.5-3  글자 크기 최소선 · 터치 영역 44px · 포커스/누름
+     28.5-4  그림자 규칙: 목록·카드·입력·바텀시트 = 1겹 + 1px, 입체는 대표 3곳만
+     28.5-5  모션: 스프링은 탭·버튼·시트 3곳만, 나머지 150ms 이하
+     28.5-6  하단 4탭 고정 · 모임 상단 3탭 · 탐색 상단 슬림 · 지역 시트
+     28.5-7  동네 글 한 줄 · 홈 2열 카드 · 설정 iOS 목록 · 내 프로필 탭 · 디엠 목록
+     28.5-8  프로필 카드/MATCH · 홈 주간 일정 · 2시간 프로필 · 디엠 요청
+     28.5-9  로딩·빈·오류 상태 · 스플래시 자산 상수
+   ========================================================================== */
+
+/* ---------------------------------------- 28.5-1. 디자인 토큰 */
+:root {
+  /* 간격 — 4px 격자만 쓴다 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
+  /* 라운드 */
+  --r-1: 8px;
+  --r-2: 12px;
+  --r-3: 16px;
+  --r-4: 20px;
+  --r-5: 26px;
+
+  /* 글자 — 본문 14px 미만 금지, 보조 12px 미만 금지 */
+  --fs-display: 28px;
+  --fs-title: 20px;
+  --fs-subtitle: 16px;
+  --fs-body: 14px;
+  --fs-helper: 12px;
+  --lh-body: 1.5;
+  --lh-helper: 1.45;
+
+  /* 모션 */
+  --dur-fast: 120ms;
+  --dur-base: 150ms;
+  --dur-sheet: 260ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 그림자 — 1겹(기본) / 3겹(대표 요소만) */
+  --sh-1: 0 1px 2px rgba(20, 66, 50, 0.06);
+  --sh-2: 0 4px 14px -8px rgba(20, 66, 50, 0.22);
+  --sh-3:
+    0 18px 30px -22px rgba(20, 66, 50, 0.44),
+    0 8px 14px -10px rgba(20, 66, 50, 0.26),
+    inset 0 2px 1px rgba(255, 255, 255, 0.9);
+  --sh-inset: inset 0 2px 5px rgba(20, 66, 50, 0.16);
+
+  /* 대비용 초록 — 흰 글씨·크림 바탕 모두 4.5:1 이상 */
+  --green-text: #047857;
+  --green-solid: #047857;
+  --green-solid-hover: #04654B;
+  --green-deco: #10B981;       /* 장식·아이콘 배경 전용 */
+  --green-on: #ECFDF5;
+  --focus-ring: 0 0 0 3px rgba(4, 120, 87, 0.35);
+
+  /* 레이아웃 */
+  --nav-h-fixed: 68px;
+  --gtab-h: 44px;
+
+  /* 스플래시 자산 — 이미지를 바꾸려면 이 두 줄만 고친다. */
+  --splash-art-svg: url('../assets/oog_christmas_night.svg');
+  --splash-art-fallback: url('../assets/splash-bg.jpg');
+}
+
+:root[data-theme="dark"] {
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --sh-2: 0 6px 16px -10px rgba(0, 0, 0, 0.66);
+  --sh-3:
+    0 18px 30px -20px rgba(0, 0, 0, 0.8),
+    0 8px 14px -10px rgba(0, 0, 0, 0.6),
+    inset 0 2px 1px rgba(203, 236, 224, 0.1);
+  --green-text: #6EE7B7;
+  /* 흰 글씨가 4.5:1 로 읽히는 진한 초록 — 다크에서도 같은 값을 쓴다 */
+  --green-solid: #047857;
+  --green-solid-hover: #036147;
+  --green-deco: #34D399;
+  --green-on: #14312A;
+  --focus-ring: 0 0 0 3px rgba(110, 231, 183, 0.4);
+  /* 다크에서도 크림 계열의 따뜻함을 남긴다 — 순수 검정(#000) 금지 */
+  --bg-app: #121820;
+  --clay-page: #0C1116;
+}
+
+/* ---------------------------------------- 28.5-2. 초록 = 글자는 #047857 */
+/* 크림·흰 바탕 위 초록 '글자'는 모두 진한 초록으로. #10B981 는 면(배경)에만. */
+.brand-logo,
+.gallery-sub,
+.home-week-sub,
+.explore-count,
+.post-style,
+.home-block-more,
+.text-btn,
+.board-block-more,
+.home-recommend-more-title,
+.filter-current,
+.dm-scope-name,
+.section-count,
+.gallery-title + .gallery-sub,
+.menu-val,
+.acc-meta {
+  color: var(--green-text);
+}
+
+.brand-logo {
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  color: var(--green-text);
+}
+
+/* 채워진 초록 버튼 — 흰 글씨가 4.5:1 로 읽히는 진한 초록 */
+.btn-primary,
+.ob-btn.primary,
+.ppb-cta,
+.btn-publish,
+.group-topbar-act.is-primary,
+.home-browse-new,
+.filter-apply,
+#btn-filter-apply,
+#btn-alert-allow {
+  background: var(--green-solid);
+  background-image: none;
+  color: #FFFFFF;
+  border-color: var(--green-solid);
+  box-shadow: var(--sh-2);
+}
+
+.btn-primary:hover,
+.ob-btn.primary:hover,
+.ppb-cta:hover { background: var(--green-solid-hover); }
+
+/* 초록 테두리·옅은 초록 바탕 위 글자 */
+.chip.active,
+.explore-region-chip.active,
+.explore-sub-chip.active,
+.explore-type-btn.active,
+.dm-view-btn.active,
+.album-tab.active,
+.group-top-tab.active,
+.gallery-sort-btn.active,
+.home-view-seg button.active {
+  color: var(--green-text);
+}
+
+/* ---------------------------------------- 28.5-3. 글자·터치·포커스 */
+body { font-size: var(--fs-body); line-height: var(--lh-body); }
+
+/* 본문 최소 14px — 작은 글씨를 쓰던 자리를 14px 로 올린다 */
+.post-caption,
+.post-caption-preview,
+.board-row-title,
+.detail-bio,
+.home-block-title,
+.board-block-title,
+.group-tile-name,
+.recommend-card-name,
+.chat-last-msg,
+.menu-label,
+.ob-desc,
+.ob-input,
+.field-input,
+.composer-textarea,
+.filter-group-title,
+.empty-desc,
+.album-share-note,
+.home-photo-guide-text span {
+  font-size: var(--fs-body);
+}
+
+/* 보조 글씨 최소 12px */
+.post-meta,
+.post-time,
+.post-stat,
+.chat-time,
+.chat-hobby,
+.gallery-sub,
+.board-row-meta,
+.board-row-sub,
+.explore-count,
+.home-week-sub,
+.menu-val,
+.acc-meta,
+.ob-note,
+.ob-hint,
+.ob-label,
+.ob-kicker-label,
+.detail-badge,
+.detail-age,
+.detail-spec-label,
+.detail-spec-value,
+.hot-card-meta,
+.hot-row-meta,
+.member-row-meta,
+.member-row-joined,
+.chat-day-head,
+.dm-scope,
+.filter-group-hint,
+.album-count,
+.myprofile-meta,
+.home-recommend-sub,
+.home-browse-sub,
+.group-topbar-meta {
+  font-size: var(--fs-helper);
+  line-height: var(--lh-helper);
+}
+
+/* 44×44 터치 영역 — 손가락으로 누르는 것은 모두 */
+.icon-btn,
+.nav-tab-item,
+.group-top-tab,
+.menu-item,
+.explore-nearby-chip,
+.explore-region-all-btn,
+.explore-filter-btn,
+.explore-region-chip,
+.explore-sub-chip,
+.explore-type-btn,
+.gallery-sort-btn,
+.dm-view-btn,
+.dm-unread-toggle,
+.album-tab,
+.btn-primary,
+.btn-secondary,
+.ob-btn,
+.post-like,
+.chat-room-item,
+.chain-chip,
+.spec-chip {
+  min-height: 44px;
+}
+
+.icon-btn { width: 44px; height: 44px; }
+
+.nav-tab-item { min-width: 60px; padding-top: 6px; padding-bottom: 6px; }
+
+/* 누름·포커스 — 키보드로도 지금 어디인지 보이게 */
+:where(button, [role="button"], a, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--r-2);
+}
+
+:where(button, [role="button"]):active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .chat-room-item:hover,
+  .menu-item:hover,
+  .board-row:hover {
+    background: var(--green-on);
+  }
+}
+
+/* ---------------------------------------- 28.5-4. 그림자: 1겹 + 1px 테두리 */
+.masonry-card,
+.gallery-card,
+.recommend-card,
+.group-tile,
+.post-card,
+.board-row,
+.chat-room-item,
+.chat-group-item,
+.menu-item,
+.settings-menu-list,
+.drawer-section,
+.modal-sheet,
+.filter-sheet,
+.home-block,
+.board-block,
+.home-photo-guide,
+.home-week,
+.album-block,
+.profile-block,
+.explore-profile-publish,
+.chat-request-section,
+.empty-state,
+.skeleton-card,
+.composer-sheet,
+.member-row,
+.notif-item,
+.myprofile-head {
+  box-shadow: var(--sh-1);
+  border: 1px solid var(--border);
+}
+
+.post-card,
+.board-row,
+.chat-room-item,
+.chat-group-item,
+.menu-item,
+.member-row,
+.notif-item {
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border-color: var(--border-soft);
+}
+
+/* 입체(3중)는 대표 버튼 · 뱃지 · 마스코트 · 활성 탭 표시에만 */
+.btn-primary,
+.ob-btn.primary,
+.fab-write,
+.nav-tab-item.active .tab-icon,
+.unread-badge,
+.notif-dot,
+.popup-avatar,
+.story-ring.is-active {
+  box-shadow: var(--sh-3);
+}
+
+/* 활성 탭 표시는 아래 점 하나로 단순하게(입체는 아이콘 배경에만) */
+.nav-indicator { display: none; }
+
+.nav-tab-item.active .tab-icon {
+  background: var(--green-on);
+  color: var(--green-text);
+}
+
+.nav-tab-item.active .tab-label { color: var(--green-text); font-weight: 700; }
+
+/* 입력창은 1px 테두리만 */
+input, textarea, select, .ob-input, .explore-search, .home-browse-search {
+  box-shadow: none;
+  border: 1px solid var(--border-strong);
+}
+
+input:focus, textarea:focus, select:focus, .ob-input:focus {
+  border-color: var(--green-solid);
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------------------------------------- 28.5-5. 모션 */
+.tab-view.active { animation: fadeIn285 var(--dur-base) var(--ease-out) both; }
+@keyframes fadeIn285 { from { opacity: 0; } to { opacity: 1; } }
+
+/* 스프링은 세 곳만 — 탭 전환 · 버튼 눌림 · 시트 열기 */
+.modal-overlay.active .modal-sheet { animation: sheetIn285 var(--dur-sheet) var(--ease-spring) both; }
+@keyframes sheetIn285 {
+  from { transform: translateY(18px); opacity: 0.6; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* 나머지 전환은 150ms 이하 페이드/이동 */
+.gallery-card, .recommend-card, .group-tile, .post-card, .board-row,
+.chat-room-item, .chat-group-item, .menu-item, .album-slot, .hot-card, .hot-row {
+  transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease,
+              transform var(--dur-base) var(--ease-out), opacity var(--dur-base) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .oog-splash { display: none !important; }
+}
+
+/* ---------------------------------------- 28.5-6. 내비게이션 */
+/* 하단 4탭은 모임 안에서도 늘 그대로 — 그룹 전용 하단 탭은 CSS 로만 숨긴다 */
+body.group-mode #bottom-nav,
+#bottom-nav {
+  display: flex !important;
+  visibility: visible !important;
+  transform: none !important;
+  opacity: 1 !important;
+  flex: 0 0 auto;
+}
+
+#group-nav { display: none !important; }
+
+.bottom-nav-bar {
+  background: var(--bg-glass);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -1px 0 var(--border), 0 -10px 24px -22px rgba(20, 66, 50, 0.5);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.nav-tab-item { color: var(--text-muted); }
+.nav-tab-item.active { color: var(--green-text); }
+.nav-tab-item .tab-label { font-size: 12px; }
+
+.nav-badge {
+  background: #B91C1C;
+  color: #FFFFFF;
+  border: 2px solid var(--bg-app);
+  font-size: 11px;
+  min-width: 20px;
+  height: 20px;
+}
+.nav-badge.hide { display: none; }
+
+/* 모임 안 상단 탭 3개 */
+.group-top-tabs {
+  display: none;
+  flex: 0 0 var(--gtab-h);
+  height: var(--gtab-h);
+  padding: 0 var(--sp-3);
+  gap: var(--sp-1);
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 55;
+}
+
+body.group-mode .group-top-tabs { display: flex; }
+
+.group-top-tab {
+  flex: 1 1 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  border-radius: var(--r-2);
+  position: relative;
+}
+
+.group-top-tab.active { color: var(--green-text); }
+
+.group-top-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 22px;
+  height: 3px;
+  margin-left: -11px;
+  border-radius: 2px;
+  background: var(--green-solid);
+}
+
+/* 모임 게시판 탭은 이제 '일정'으로 부른다 — 머리 글자만 바꾼다 */
+body.group-mode #tab-board .board-block-title#board-posts-title::before { content: ''; }
+
+/* ---------------------------------------- 28.5-7. 탐색 상단 슬림 */
+.tab-view#tab-explore { padding-top: var(--sp-3); }
+
+.explore-top { gap: var(--sp-2); }
+
+.explore-toolbar-slim {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+}
+
+.explore-nearby-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-full);
+  border: 1px solid var(--green-solid);
+  background: var(--green-on);
+  color: var(--green-text);
+  font-size: var(--fs-body);
+  font-weight: 700;
+}
+
+.explore-nearby-chip .oo-ic { width: 16px; height: 16px; }
+.explore-nearby-caret { display: inline-flex; opacity: 0.7; }
+
+.explore-region-all-btn {
+  padding: 0 var(--sp-2);
+  border: 0;
+  background: transparent;
+  color: var(--text-sub);
+  font-size: var(--fs-helper);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.explore-filter-btn {
+  margin-left: auto;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-base);
+  color: var(--text);
+  border-radius: var(--r-full);
+  padding: 0 var(--sp-3);
+}
+
+.explore-filter-btn.is-filtering {
+  border-color: var(--green-solid);
+  color: var(--green-text);
+}
+
+/* 지역 시트 */
+.region-sheet-body {
+  padding: var(--sp-3) var(--sp-4) var(--sp-6);
+  display: grid;
+  gap: var(--sp-3);
+  overflow-y: auto;
+}
+
+.region-sheet .explore-region-chips,
+.region-sheet .explore-region-sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  overflow: visible;
+}
+
+.region-sheet .explore-region-chip {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-base);
+  color: var(--text);
+  border-radius: var(--r-full);
+  padding: 0 var(--sp-3);
+}
+
+.region-sheet .explore-region-chip.active {
+  border-color: var(--green-solid);
+  background: var(--green-on);
+  color: var(--green-text);
+}
+
+/* 베어는 지역 목록에서 빼고 '관심 유형' 필터로 옮겼다 */
+#explore-region-chips [data-region-chip="bear"],
+#filter-region-chips [data-region-chip="bear"] { display: none; }
+
+.filter-type-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+
+.filter-bear-chip {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-base);
+  color: var(--text);
+}
+
+.filter-bear-chip.active {
+  border-color: var(--green-solid);
+  background: var(--green-on);
+  color: var(--green-text);
+}
+
+/* 탐색 머리 — '사람 N · 글 N' 대신 '방금 올라온' */
+.explore-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.explore-count::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green-deco);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+}
+
+/* ---------------------------------------- 28.5-8. 동네 글 한 줄 */
+#explore-board { display: grid; gap: 0; }
+
+.board-row.post-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-1);
+  border-bottom: 1px solid var(--border-soft);
+  background: transparent;
+}
+
+.board-row .board-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* 작성자 줄은 둘째 줄로 내리고, 제목이 가장 크게 */
+.board-row .post-head { order: 2; }
+.board-row .post-avatar { display: none; }
+.board-row .post-caption,
+.board-row .post-caption-preview {
+  order: 1;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.board-row .post-foot { display: none; }
+
+.board-row .post-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--fs-helper);
+  white-space: nowrap;
+}
+
+.board-row .post-meta .post-tag,
+.board-row .post-meta .post-region,
+.board-row .post-meta .post-style { display: none; }
+
+.board-row .post-author { font-size: var(--fs-helper); color: var(--text-muted); font-weight: 500; }
+
+/* 새 글 표시 점 */
+.board-row.is-new .post-caption::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--green-deco);
+  vertical-align: middle;
+}
+
+.board-row .post-media {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-1);
+  overflow: hidden;
+}
+
+.board-row .post-media img { width: 100%; height: 100%; object-fit: cover; }
+
+.board-row .board-row-chevron { display: none; }
+
+/* ---------------------------------------- 28.5-9. 홈 2열 카드 통일 */
+.gallery-grid, .home-browse-grid, .home-recommend-grid { align-items: stretch; }
+
+.gallery-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-3);
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+.gallery-card .gallery-card-name,
+.gallery-card .gallery-title,
+.gallery-card h4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.35em * 2);
+}
+
+.gallery-card .gallery-card-cover,
+.gallery-card .gallery-cover {
+  aspect-ratio: 4 / 3;
+}
+
+/* ---------------------------------------- 28.5-10. 설정 = iOS 그룹 목록 */
+.drawer-profile .drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-3) var(--sp-8);
+}
+
+/* 아코디언을 없애고 모두 펼친 채로 — 순서: 알림 · 비밀앨범 · 화면 설정 · 계정 */
+.drawer-profile .drawer-body { overflow-y: auto; }
+.drawer-profile .drawer-section { flex: 0 0 auto; }   /* 사이드바 높이에 맞춰 찌그러지지 않게 */
+.drawer-profile .drawer-section[data-acc="alerts"] { order: 1; }
+.drawer-profile .drawer-section[data-acc="profile"] { order: 2; }
+.drawer-profile .drawer-section[data-acc="display"] { order: 3; }
+.drawer-profile .drawer-section[data-acc="account"] { order: 4; }
+.drawer-profile .drawer-section[data-acc="groups"] { order: 5; }
+.drawer-profile .drawer-section[data-acc="talk"] { order: 6; }
+.drawer-profile .drawer-section[data-acc="data"] { order: 7; }
+
+.drawer-profile .acc-body { display: block !important; }
+
+.drawer-profile .drawer-section {
+  border-radius: var(--r-3);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.drawer-profile .acc-head {
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  background: transparent;
+  border: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  pointer-events: none;   /* 더 이상 접고 펼치는 제목이 아니다 */
+}
+
+.drawer-profile .acc-chevron { display: none; }
+
+.drawer-profile .acc-label {
+  font-size: var(--fs-helper);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  text-transform: none;
+}
+
+.drawer-profile .acc-meta { margin-left: auto; color: var(--text-muted); }
+
+.drawer-profile .settings-menu-list { border-top: 1px solid var(--border); }
+
+.drawer-profile .menu-item {
+  min-height: 48px;
+  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-soft);
+  font-size: var(--fs-body);
+}
+
+.drawer-profile .menu-item:last-child { border-bottom: 0; }
+.drawer-profile .menu-item.danger .menu-label { color: #B91C1C; }
+.drawer-profile .notif-settings-card { border: 0; box-shadow: none; }
+
+/* 데이터 초기화는 개발 모드에서만 */
+body:not(.oog-dev) #menu-reset-data { display: none !important; }
+
+/* ---------------------------------------- 28.5-11. 내 프로필 */
+.myprofile-head { border-radius: 0; border: 0; box-shadow: none; padding-bottom: var(--sp-3); }
+
+.myprofile-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: var(--r-3);
+}
+
+.album-tabs {
+  display: flex;
+  gap: var(--sp-1);
+  padding: var(--sp-1);
+  margin: var(--sp-2) 0 var(--sp-3);
+  background: var(--bg-subtle);
+  border-radius: var(--r-full);
+}
+
+.album-tab {
+  flex: 1 1 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: var(--r-full);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.album-tab.active {
+  background: var(--bg-base);
+  color: var(--green-text);
+  box-shadow: var(--sh-1);
+}
+
+.album-block { border-radius: var(--r-3); padding: var(--sp-3); }
+.album-grid { gap: var(--sp-2); }
+.album-slot { border-radius: var(--r-2); }
+
+/* ---------------------------------------- 28.5-12. 디엠 목록 위계 */
+.chat-header { padding-bottom: var(--sp-2); }
+
+.chat-room-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-1);
+}
+
+.chat-room-item .chat-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-full);
+  flex: 0 0 48px;
+}
+
+.chat-content { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+
+.chat-name-row { display: flex; align-items: baseline; gap: 6px; }
+.chat-name { font-size: 15px; font-weight: 700; color: var(--text-strong); }
+.chat-time { margin-left: auto; color: var(--text-muted); }
+
+.chat-last-msg {
+  color: var(--text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-hobby { color: var(--text-muted); }
+
+.unread-badge {
+  flex: 0 0 auto;
+  min-width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  background: var(--green-solid);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--sh-1);
+}
+
+.chat-dm-section, .chat-group-section, .chat-request-section {
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* ---------------------------------------- 28.5-13. 프로필 카드 · MATCH · 요청 */
+.detail-common,
+.popup-common-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--sp-2) 0;
+}
+
+.common-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--green-solid);
+  background: var(--green-on);
+  color: var(--green-text);
+  font-size: var(--fs-helper);
+  font-weight: 600;
+}
+
+.msg-suggest {
+  display: grid;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
+}
+
+.msg-suggest-title {
+  font-size: var(--fs-helper);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.msg-suggest-chip {
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-2);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-base);
+  color: var(--text);
+  font-size: var(--fs-body);
+  text-align: left;
+}
+
+.chat-request-list { display: grid; gap: var(--sp-2); }
+
+.chat-request-card {
+  display: grid;
+  grid-template-columns: 48px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  background: var(--bg-base);
+  box-shadow: var(--sh-1);
+}
+
+.chat-request-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #FFFFFF;
+  position: relative;
+}
+
+.chat-request-avatar img,
+.chat-request-avatar.is-blurred {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(7px);
+  transform: scale(1.15);
+}
+
+.chat-request-body { min-width: 0; display: grid; gap: 2px; }
+.chat-request-name { font-size: var(--fs-body); font-weight: 700; color: var(--text-strong); }
+.chat-request-msg {
+  font-size: var(--fs-helper);
+  color: var(--text-sub);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-request-actions { display: flex; gap: 6px; }
+.chat-request-actions button {
+  min-height: 36px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--r-1);
+  font-size: var(--fs-helper);
+  font-weight: 700;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-base);
+  color: var(--text);
+}
+.chat-request-actions .accept { background: var(--green-solid); color: #FFFFFF; border-color: var(--green-solid); }
+
+/* 2시간 프로필 남은 시간 */
+.profile-countdown-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+  background: #FEF3C7;
+  color: #92400E;
+  font-size: var(--fs-helper);
+  font-weight: 700;
+  border: 1px solid #FDE68A;
+}
+
+:root[data-theme="dark"] .profile-countdown-chip {
+  background: #33280F;
+  color: #FCD34D;
+  border-color: #5A4415;
+}
+
+.explore-publish-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-2);
+  background: #FFF7E6;
+  border: 1px solid #FCD34D;
+  color: #7C2D12;
+  font-size: var(--fs-helper);
+  font-weight: 600;
+  margin-bottom: var(--sp-2);
+}
+
+/* ---------------------------------------- 28.5-14. 홈: 사진 안내 · 주간 일정 */
+.home-photo-guide {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-3);
+  background: var(--green-on);
+  border: 1px solid var(--green-solid);
+  color: var(--text);
+  text-align: left;
+}
+
+.home-photo-guide-face {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: var(--r-full);
+  display: grid;
+  place-items: center;
+  background: var(--bg-base);
+  color: var(--green-text);
+  border: 1px solid var(--green-solid);
+}
+
+.home-photo-guide-text { display: grid; gap: 2px; flex: 1 1 auto; }
+.home-photo-guide-text strong { font-size: var(--fs-body); color: var(--text-strong); }
+.home-photo-guide-cta {
+  flex: 0 0 auto;
+  color: #FFFFFF;
+  background: var(--green-solid);
+  border-radius: var(--r-full);
+  padding: 0 14px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-helper);
+  font-weight: 700;
+}
+
+.home-photo-guide-text strong,
+.home-photo-guide-text span { display: block; }
+.home-photo-guide-text span { color: var(--text-sub); }
+
+.home-week { margin: 0 0 var(--sp-4); }
+
+.home-week-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+
+.home-week-title { font-size: var(--fs-subtitle); font-weight: 700; color: var(--text-strong); }
+.home-week-sub { margin-left: auto; color: var(--text-muted); }
+
+.home-week-rail {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding-bottom: var(--sp-1);
+  scroll-snap-type: x mandatory;
+}
+
+.home-week-card {
+  flex: 0 0 156px;
+  scroll-snap-align: start;
+  display: grid;
+  gap: 4px;
+  padding: var(--sp-3);
+  border-radius: var(--r-3);
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  box-shadow: var(--sh-1);
+  text-align: left;
+}
+
+.home-week-card .hw-day { font-size: var(--fs-helper); color: var(--green-text); font-weight: 700; }
+.home-week-card .hw-title {
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--text-strong);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.home-week-card .hw-group { font-size: var(--fs-helper); color: var(--text-muted); }
+
+/* ---------------------------------------- 28.5-15. 상태: 스켈레톤 · 빈 · 오류 */
+.oog-skeleton-list { display: grid; gap: var(--sp-2); padding: var(--sp-2) 0; }
+
+.oog-skeleton-row {
+  height: 64px;
+  border-radius: var(--r-2);
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-soft) 37%, var(--bg-subtle) 63%);
+  background-size: 400% 100%;
+  animation: shimmer285 1.3s ease-in-out infinite;
+}
+
+@keyframes shimmer285 {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+.empty-state, .board-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-6) var(--sp-4);
+  text-align: center;
+  border-radius: var(--r-3);
+  color: var(--text-sub);
+}
+
+.empty-title { font-size: var(--fs-subtitle); font-weight: 700; color: var(--text-strong); }
+.empty-desc { color: var(--text-sub); }
+.empty-actions { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+
+.oog-error-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-6) var(--sp-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-3);
+  text-align: center;
+  color: var(--text-sub);
+}
+
+.oog-error-state .retry {
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border-radius: var(--r-2);
+  border: 1px solid var(--green-solid);
+  color: var(--green-text);
+  background: var(--green-on);
+  font-weight: 700;
+}
+
+/* ---------------------------------------- 28.5-16. 스플래시 자산 상수 */
+.oog-splash-bg {
+  background-image: var(--splash-art-fallback);
+  background-position: center 20%;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* 크리스마스 밤 SVG 가 있을 때만 두 겹으로 — 없으면 위의 기존 일러스트가 그대로 보인다. */
+.oog-splash-bg.has-art-svg {
+  background-image: var(--splash-art-svg), var(--splash-art-fallback);
+  background-position: center 20%, center 20%;
+  background-size: cover, cover;
+  background-repeat: no-repeat, no-repeat;
+}
+
+/* 이미지 지연 로딩 — 화면 밖 사진은 그리지 않는다 */
+img[loading="lazy"] { content-visibility: auto; }
+
+/* 탐색의 '우리 동네 글 쓰기'는 보조 버튼 — 화면에서 가장 무거운 요소가 되지 않게 */
+.explore-action-btn {
+  min-height: 44px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--green-solid);
+  background: var(--bg-base);
+  color: var(--green-text);
+  font-weight: 700;
+  box-shadow: var(--sh-1);
+}
+
+/* 설정 › 알림 — iOS 목록처럼 한 줄씩. 설명·예시 버튼은 접는다. */
+.drawer-profile .notif-cat-desc,
+.drawer-profile .notif-cat-preview-btn,
+.drawer-profile .notif-cat-state,
+.drawer-profile .notif-section-hint,
+.drawer-profile .notif-row-desc,
+.drawer-profile .notif-ios-hint,
+.drawer-profile .notif-denied-note,
+.drawer-profile .notif-dnd-now {
+  display: none !important;
+}
+.drawer-profile .notif-cat-item {
+  min-height: 52px;
+  padding: 6px 10px;
+  border-radius: var(--r-2);
+  margin-bottom: 2px;
+}
+.drawer-profile .notif-cat-label { font-size: var(--fs-body); font-weight: 600; }
+.drawer-profile .notif-section-title { margin: var(--sp-3) 0 var(--sp-2); font-size: var(--fs-helper); color: var(--text-muted); }
+.drawer-profile .notif-row { min-height: 52px; }
+.drawer-profile .notif-permission-btn { min-height: 44px; }
+.drawer-profile .notif-settings-card { padding: 0; }
+.drawer-profile #notif-settings-body { padding: 0 4px 4px; }
+
+/* 프로필 카드 버튼 글자가 두 줄로 접히지 않게 */
+.detail-actions .detail-btn,
+.detail-actions button { white-space: nowrap; min-width: 0; padding-left: var(--sp-3); padding-right: var(--sp-3); }
+.detail-actions { gap: var(--sp-2); }
+
+/* 대표 사진은 크게 */
+.myprofile-avatar { width: 96px; height: 96px; }
+.myprofile-avatar .avatar-letter { font-size: 34px; }
+
+/* 홈 2열 카드 — 높이·여백을 같게, 다음 약속은 한 줄로 */
+.gallery-grid { grid-auto-rows: 1fr; }
+.gallery-card { height: 100%; }
+.gallery-card .gallery-name {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: calc(1.32em * 2);
+}
+.gallery-card .gallery-next,
+.gallery-card .gallery-meta {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.home-photo-guide-text strong { font-size: var(--fs-body); }
+.home-photo-guide-text span { font-size: var(--fs-helper); }
+
+/* ---------------------------------------- 28.5-17. 글자 최소선 실제 적용 */
+/* 본문 14px 아래로 내려가지 않는 보조 글씨는 모두 12px 로 올린다. */
+.brand-tag,
+.gallery-sort-btn,
+.gallery-meta,
+.gallery-next,
+.gallery-leader,
+.gallery-new-desc,
+.home-recommend-taste,
+.recommend-hobby,
+.recommend-meta,
+.recommend-reason,
+.home-recommend-more-desc,
+.home-browse-new,
+.home-browse-sort,
+.group-tile-badge,
+.group-age-badge,
+.group-tile-member,
+.group-tile-meta,
+.group-tile-pill,
+.group-tile-cat,
+.group-tile-join,
+.filter-btn-label,
+.explore-action-btn,
+.epp-title,
+.hot-more,
+.hot-card-hobby,
+.hot-move,
+.person-badge,
+.person-age,
+.person-meta,
+.card-dm,
+.chat-count-badge,
+.dm-view-btn,
+.dm-unread-toggle,
+.chat-section-sub,
+.chat-group-name,
+.chat-group-members,
+.chat-group-last,
+.chat-group-next,
+.chat-group-count,
+.chat-dm-policy,
+.chat-day-count,
+.myprofile-settings,
+.album-add,
+.profile-topbar-sub,
+.badge-role,
+.badge-membership,
+.spec-chip,
+.section-count,
+.profile-feed-sub,
+.profile-feed-text,
+.profile-feed-like,
+.profile-group-name,
+.profile-group-sub,
+.profile-saved-text,
+.profile-saved-author,
+.profile-saved-time,
+.profile-recent-title,
+.profile-recent-sub,
+.profile-recent-time,
+.drawer-sub,
+.notif-settings-state,
+.notif-permission-btn,
+.notif-time-label,
+.notif-test-result,
+.notif-sim-btn,
+.notif-sim-note,
+.pwa-card-state,
+.pwa-card-desc,
+.pwa-steps,
+.home-browse-chip,
+.hot-rank {
+  font-size: var(--fs-helper);
+}
+
+/* 44×44 터치 영역 — 목록·칩·작은 버튼 */
+.header-brand,
+.home-recommend-taste,
+.home-browse-new,
+.home-browse-chip,
+.home-browse-sort,
+.group-tile-join,
+.home-browse-more,
+.epp-text,
+.hot-more,
+.card-dm,
+.chat-request-actions button,
+.myprofile-settings,
+.album-add,
+.profile-menu-btn,
+.text-btn,
+.drawer-close,
+.notif-permission-btn,
+.notif-test-btn,
+.notif-sim-btn,
+.notif-time-input,
+.quick-like {
+  min-height: 44px;
+}
+
+.header-brand { min-width: 44px; }
+
+/* 작은 토글도 손가락으로 누르는 영역은 44 높이로 */
+.switch-toggle,
+.notif-switch {
+  min-height: 32px;
+  min-width: 52px;
+  position: relative;
+}
+.switch-toggle::after,
+.notif-switch::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+}
+
+.hot-more { padding: 0 var(--sp-2); }
+.text-btn { padding: 0 var(--sp-2); display: inline-flex; align-items: center; }
+
+/* 사람 카드의 작은 쪽지 버튼도 44 */
+.quick-like { min-width: 44px; }
+
+/* 검색 입력은 높이 44 이상 */
+.explore-search, .home-browse-search { min-height: 44px; }
+.explore-search input, .home-browse-search input { min-height: 40px; }
+
+/* 남은 작은 글씨·터치 보정 */
+.header-avatar,
+.nav-badge { font-size: 12px; }
+.nav-badge { min-width: 22px; height: 22px; }
+.myprofile-stat span,
+.stat-cell span,
+.chat-day-head span { font-size: var(--fs-helper); }
+.profile-saved-author,
+.profile-saved-time { font-size: var(--fs-helper); }
+.group-tile-crown { font-size: var(--fs-helper); }
+
+.home-browse-search input,
+.explore-search input { min-height: 44px; }
+.chat-request-actions button { min-width: 44px; }
+.home-browse-sort { padding: 0 var(--sp-3); }
+.profile-menu-btn, .drawer-close { min-width: 44px; }
+
+.chat-day-head span { font-size: var(--fs-helper) !important; }
+.profile-saved-author,
+.profile-saved-time { font-size: var(--fs-helper) !important; }
+.card-dm { min-width: 44px; min-height: 44px; }
+
+/* 토글: 손가락 영역은 44 높이, 보이는 트랙은 32 높이(배경을 content-box 로 자름) */
+.switch-toggle,
+.notif-switch {
+  min-height: 44px;
+  min-width: 56px;
+  padding: 6px 0;
+  background-clip: content-box !important;
+  box-sizing: border-box;
+}
+.switch-toggle .switch-knob,
+.notif-switch .notif-switch-knob { top: 50%; transform: translateY(-50%); }
+
+.home-week-head { padding-right: var(--sp-1); }
+.home-week-sub { flex: 0 0 auto; }
+
+/* ---------------------------------------- 28.5-18. 입체는 세 곳만 */
+/* 점토 그림자 변수를 1겹으로 낮춘다 — 목록·카드·칩·입력창이 조용해진다. */
+:root,
+:root[data-theme="dark"] {
+  --clay-soft: 0 1px 2px rgba(20, 66, 50, 0.06);
+  --clay-out: 0 2px 6px -3px rgba(20, 66, 50, 0.16);
+  --clay-lift: 0 6px 16px -10px rgba(20, 66, 50, 0.24);
+  --clay-light: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --clay-light-soft: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --clay-inset: inset 0 1px 2px rgba(20, 66, 50, 0.12);
+  --clay-press: inset 0 2px 4px rgba(20, 66, 50, 0.16);
+  --clay-green-lift: 0 4px 12px -8px rgba(4, 120, 87, 0.4);
+  --clay-green-in: inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+:root[data-theme="dark"] {
+  --clay-soft: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --clay-out: 0 2px 6px -3px rgba(0, 0, 0, 0.55);
+  --clay-lift: 0 6px 16px -10px rgba(0, 0, 0, 0.65);
+  --clay-light: inset 0 1px 0 rgba(203, 236, 224, 0.08);
+  --clay-light-soft: inset 0 1px 0 rgba(203, 236, 224, 0.06);
+  --clay-inset: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  --clay-press: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  --clay-green-lift: 0 4px 12px -8px rgba(0, 0, 0, 0.6);
+  --clay-green-in: inset 0 1px 1px rgba(203, 236, 224, 0.08);
+}
+
+/* 남아 있는 3겹 조합을 1겹으로 */
+.icon-btn,
+.header-avatar,
+.gallery-cover-emoji,
+.gallery-ring,
+.group-tile-pill,
+.group-tile-join,
+.group-age-badge,
+.home-browse-chip,
+.home-browse-sort,
+.home-browse-more,
+.gallery-sort-btn,
+.dm-view-btn,
+.dm-unread-toggle,
+.feed-card,
+.comment-submit,
+.home-hero-btn,
+.home-view-btn,
+.home-switch-chip,
+.drawer-section,
+.spec-chip,
+.profile-recent-item,
+.notif-item,
+.album-slot,
+.member-row,
+.chat-room-item,
+.chat-group-item,
+.modal-sheet,
+.filter-sheet,
+.sheet-body,
+.toast {
+  box-shadow: var(--sh-1);
+}
+
+.dm-view-btn, .dm-view-btn.active,
+.home-view-btn, .home-view-btn.active,
+.home-view-seg, .dm-view-seg {
+  box-shadow: var(--sh-1);
+}
+
+/* 실시간 베스트 '더보기'는 글자 버튼 */
+.hot-more {
+  background: transparent;
+  color: var(--green-text);
+  border: 1px solid transparent;
+  min-height: 44px;
+  padding: 0 var(--sp-2);
+  font-weight: 700;
+}
+
+/* 동네 글 한 줄 — 순서: 제목 → 닉네임·나이·거리·시간 */
+.board-row .board-row-meta { order: 2; }
+.board-row .post-head { display: none; }
+.board-row .post-foot { display: none; }
+.board-row .post-caption { order: 1; }
+.board-row { border-left: 0; border-right: 0; border-radius: 0; }
+
+/* 사람 카드 — 쪽지·하트 버튼이 이름/거리 글자를 덮지 않게 */
+.person-card .person-info { padding-right: 92px; }
+.person-card .person-name-row,
+.person-card .person-meta { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person-card .quick-like,
+.person-card .card-dm { bottom: 10px; }
+.person-card .quick-like { right: 8px; }
+.person-card .card-dm { right: 56px; }
+
+/* 사람 카드 — 버튼을 오른쪽에 세로로 쌓아 글자와 겹치지 않게 */
+.person-card .person-info { right: 62px; padding-right: 0; }
+.person-card .quick-like { right: 10px; bottom: 10px; }
+.person-card .card-dm { right: 10px; bottom: 58px; min-width: 44px; min-height: 44px; padding: 0; border-radius: var(--r-full); }
+
+/* 사람 카드 하단: 버튼 한 줄, 글자는 그 위 */
+.person-card .person-info { right: 10px; bottom: 64px; padding-right: 0; }
+.person-card .quick-like { right: 10px; bottom: 10px; }
+.person-card .card-dm { right: 60px; bottom: 10px; }
+
+/* 알림 종류의 '예시' 미리보기는 남긴다 — 작은 글자 버튼으로 */
+.drawer-profile .notif-cat-preview-btn {
+  display: inline-flex !important;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-1);
+  background: var(--bg-base);
+  color: var(--text-sub);
+  font-size: var(--fs-helper);
+}
+
+/* 매칭 팝업(어두운 판) 위의 공통 칩·추천 문구는 판에 맞는 톤으로 */
+.match-popup .common-chip {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(110, 231, 183, 0.5);
+  color: #A7F3D0;
+}
+.match-popup .msg-suggest-title { color: #A7F3D0; }
+.match-popup .msg-suggest-chip {
+  background: rgba(15, 40, 32, 0.9);
+  border-color: rgba(110, 231, 183, 0.35);
+  color: #E2E8F0;
+  text-align: left;
+}

@@ -2,15 +2,19 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#10B981">
+  <!-- Sprint 28.5 — 핀치 확대를 막지 않는다(접근성). maximum-scale·user-scalable 제거. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#047857">
   <!-- Sprint 24 — 다크모드는 첫 페인트 전에 붙인다(밝은 화면이 번쩍이지 않게). 저장 상태에서 읽는다. -->
   <script>
     (function () {
       try {
         var raw = localStorage.getItem('oog_app_state_v16');
         var saved = raw ? JSON.parse(raw) : null;
-        var dark = !!(saved && saved.settings && saved.settings.darkMode);
+        /* Sprint 28.5 — 저장된 선택이 없으면 **기기의 밝기 설정(prefers-color-scheme)**을 따른다. */
+        var savedChoice = saved && saved.settings ? saved.settings.darkMode : null;
+        var systemDark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var dark = savedChoice === true || (savedChoice !== false && systemDark);
         if (dark) {
           document.documentElement.setAttribute('data-theme', 'dark');
           var m = document.querySelector('meta[name="theme-color"]');
@@ -21,8 +25,8 @@
       } catch (e) { /* 저장소를 못 읽어도 라이트로 연다 */ }
     })();
   </script>
-  <meta property="og:title" content="ooG (우그) — 취미로 이어지는 사람과 모임">
-  <meta property="og:description" content="토스쇼핑처럼 퍼즐처럼 얽히는 2열 탐색 피드에서 취미친구와 소모임을 한 번에. 모임 인증은 모임원에게만.">
+  <meta property="og:title" content="ooG(우그) - 취미로 이어지는 사람과 모임">
+  <meta property="og:description" content="취미로 이어지는 사람과 모임. 동네 사람과 취미 모임을 한 곳에서 만나고, 관심이 맞으면 1:1 대화로 이어져요.">
   <meta property="og:type" content="website">
   <!-- ===== PWA (Sprint 5) — 홈 화면에 추가 · 앱처럼 실행 ===== -->
   <link rel="manifest" href="manifest.json">
@@ -33,8 +37,8 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310B981'/%3E%3Ctext x='32' y='42' font-family='sans-serif' font-size='30' font-weight='800' fill='white' text-anchor='middle'%3EooG%3C/text%3E%3C/svg%3E">
-  <meta name="description" content="ooG(우그) - 취미 소모임 프라이빗 피드 & 1:1 매칭">
-  <title>ooG (우그) - 취미 소모임 & 1:1 매칭</title>
+  <meta name="description" content="ooG(우그) - 취미로 이어지는 사람과 모임">
+  <title>ooG(우그) - 취미로 이어지는 사람과 모임</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -102,6 +106,15 @@
       </div>
     </header>
 
+    <!-- ==================== 모임 안 상단 탭 3개 (Sprint 28.5) ====================
+         모임을 열었을 때만 보인다. 하단의 전역 4탭은 그대로 두고,
+         모임 안에서는 피드·채팅·일정을 위에서 고른다. -->
+    <nav class="group-top-tabs" id="group-top-tabs" role="tablist" aria-label="모임 안 화면" hidden>
+      <button class="group-top-tab active" data-gtab="feed" role="tab" aria-selected="true" aria-controls="tab-home" type="button">피드</button>
+      <button class="group-top-tab" data-gtab="chat" role="tab" aria-selected="false" aria-controls="tab-chat" type="button">채팅</button>
+      <button class="group-top-tab" data-gtab="schedule" role="tab" aria-selected="false" aria-controls="tab-board" type="button">일정</button>
+    </nav>
+
     <!-- ==================== 푸시 알림 권한 안내 배너 (Sprint 4.5) ==================== -->
     <div class="push-permission-banner" id="push-permission-banner" hidden>
             <div class="ppb-text">
@@ -118,20 +131,39 @@
     <!-- ==================== 메인 콘텐츠 ==================== -->
     <main class="app-main" id="main-content">
 
-      <!-- ========== 0. 홈 — 내 그룹 2열 갤러리 (Sprint 16) ==========
-           11/15 19:05 사용자: "홈탭 첫 화면은 내가 가입한 그룹들이 2열 갤러리식 카드로 나열되고
-           그룹을 탭해서 들어가면 그 그룹 전용 공간(피드·게시판·디엠·내정보 4탭)으로 전환". -->
+      <!-- ========== 0. 홈 — 내 모임 2열 갤러리 (Sprint 16) ==========
+           11/15 19:05 사용자: "홈탭 첫 화면은 내가 가입한 모임들이 2열 갤러리식 카드로 나열되고
+           모임을 탭해서 들어가면 그 모임 전용 공간(피드·게시판·디엠·내정보 4탭)으로 전환". -->
       <section class="tab-view active" id="tab-home">
 
-        <!-- (1) 바깥 홈 = 내 그룹 갤러리 -->
+        <!-- (1) 바깥 홈 = 내 모임 갤러리 -->
         <div class="group-gallery" id="group-gallery">
           <div class="gallery-head">
             <div class="gallery-head-text">
-              <h2 class="gallery-title" id="gallery-title">내 그룹</h2>
+              <h2 class="gallery-title" id="gallery-title">내 모임</h2>
               <p class="gallery-sub" id="gallery-sub"></p>
             </div>
           </div>
-          <!-- Sprint 17 — 갤러리 정렬(최근 활동순 · 가나다순 · 내가 그룹장) -->
+          <!-- Sprint 17 — 갤러리 정렬(최근 활동순 · 가나다순 · 내가 모임장) -->
+          <!-- Sprint 28.5 — 가입 직후 프로필 사진 안내 카드(가입 흐름에서 사진 질문을 뺐다) -->
+          <button class="home-photo-guide" id="home-photo-guide" type="button" hidden>
+            <span class="home-photo-guide-face" aria-hidden="true" data-oog-icon="person"></span>
+            <span class="home-photo-guide-text">
+              <strong>프로필 사진 추가하기</strong>
+              <span>사진을 올리면 이웃이 알아봐요</span>
+            </span>
+            <span class="home-photo-guide-cta" aria-hidden="true">추가</span>
+          </button>
+
+          <!-- Sprint 28.5 — 이번 주 내 모임 일정(가로 스크롤) · 없으면 추천 모임 -->
+          <section class="home-week" id="home-week" aria-labelledby="home-week-title" hidden>
+            <div class="home-week-head">
+              <h3 class="home-week-title" id="home-week-title">이번 주 내 모임 일정</h3>
+              <span class="home-week-sub" id="home-week-sub"></span>
+            </div>
+            <div class="home-week-rail" id="home-week-rail"><!-- JS --></div>
+          </section>
+
           <div class="gallery-sort" id="gallery-sort" role="group" aria-label="갤러리 정렬"><!-- JS --></div>
           <div class="gallery-grid" id="group-gallery-grid" aria-live="polite"><!-- JS --></div>
           <div class="gallery-empty" id="group-gallery-empty" hidden><!-- JS --></div>
@@ -185,10 +217,10 @@
 
         </div>
 
-        <!-- (2) 그룹 전용 공간 = 피드(24시간 스토리 + 인스타형 피드) -->
+        <!-- (2) 모임 전용 공간 = 피드(24시간 스토리 + 인스타형 피드) -->
         <div class="group-space" id="group-space">
           <div class="group-topbar">
-            <button class="group-back" data-group-back="1" type="button" aria-label="내 그룹 갤러리로 돌아가기">
+            <button class="group-back" data-group-back="1" type="button" aria-label="내 모임 갤러리로 돌아가기">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"></path></svg>
             </button>
             <div class="group-topbar-text">
@@ -230,15 +262,15 @@
         </div>
       </section>
 
-      <!-- ========== 0-B. 그룹게시판 — 공지 · 일정 · 자유/후기 글 (Sprint 16) ==========
-           11/15 19:05 사용자: "그룹피드 상단에 공지 구역이 너무 커 그룹게시판 탭을 넣고 거기에 넣자". -->
+      <!-- ========== 0-B. 모임게시판 — 공지 · 일정 · 자유/후기 글 (Sprint 16) ==========
+           11/15 19:05 사용자: "모임피드 상단에 공지 구역이 너무 커 모임게시판 탭을 넣고 거기에 넣자". -->
       <section class="tab-view" id="tab-board">
         <div class="board-topbar">
-          <button class="group-back" data-group-back="1" type="button" aria-label="내 그룹 갤러리로 돌아가기">
+          <button class="group-back" data-group-back="1" type="button" aria-label="내 모임 갤러리로 돌아가기">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"></path></svg>
           </button>
           <div class="group-topbar-text">
-            <h2 class="group-topbar-name" id="board-space-name">그룹게시판</h2>
+            <h2 class="group-topbar-name" id="board-space-name">모임게시판</h2>
             <p class="group-topbar-meta" id="board-space-meta">공지 · 일정 · 자유/후기 글</p>
           </div>
           <button class="group-topbar-act" id="btn-board-drawer" type="button"
@@ -298,12 +330,18 @@
             <input type="search" id="explore-search-input" aria-label="동네나 닉네임 검색" placeholder="동네나 닉네임으로 찾기" autocomplete="off">
             <button class="explore-search-clear hide" id="explore-search-clear" aria-label="검색어 지우기">&times;</button>
           </div>
-          <div class="explore-toolbar">
-            <!-- Sprint 9 — 종류는 상단 1줄 세그먼트로 (전체 / 사람 / 모임 / 글) -->
-            <div class="explore-type-seg" id="explore-type-seg" role="group" aria-label="탐색 종류"><!-- JS --></div>
-            <!-- Sprint 25 — 지역 드롭다운 버튼을 없앴다. 지역은 아래 가로 칩 줄에서
-                 왼쪽→오른쪽으로 넘겨 고른다(이반시티 우리동네와 같은 방식). -->
-            <!-- Sprint 9 — 나이는 통합 필터 시트로 접는다 -->
+          <!-- Sprint 28.5 — 탐색 상단은 **검색 + 내 동네 칩 + 필터** 세 가지만 남긴다.
+               49개 지역 칩과 종류 세그먼트는 각각 '지역' 시트와 '관심 유형' 필터로 접었다. -->
+          <div class="explore-toolbar explore-toolbar-slim">
+            <button class="explore-nearby-chip" id="explore-nearby-chip" type="button"
+                    aria-haspopup="dialog" aria-controls="region-modal" aria-expanded="false"
+                    aria-label="내 동네 바꾸기">
+              <span aria-hidden="true" data-oog-icon="pin"></span>
+              <span id="explore-nearby-label">내 동네</span>
+              <span class="explore-nearby-caret" aria-hidden="true" data-oog-icon="chevronDown"></span>
+            </button>
+            <button class="explore-region-all-btn" id="btn-region-sheet" type="button"
+                    aria-haspopup="dialog" aria-controls="region-modal" aria-expanded="false">전체 보기</button>
             <button class="explore-filter-btn" id="btn-explore-filter" type="button" aria-haspopup="dialog"
                     aria-controls="filter-modal" aria-expanded="false" aria-label="상세 필터 열기">
               <span class="filter-btn-icon" aria-hidden="true" data-oog-icon="sliders"></span>
@@ -317,10 +355,8 @@
                전체 · 서울 · 경기 · 강원 · 충청 · 전라 · 경상 · 제주 · 해외 · 베어 를
                왼쪽에서 오른쪽으로 터치해 고르고, 큰 분류를 고르면 그 아래 줄에
                하위 권역(종로.중구 · 동작.성동 …)이 같은 방식으로 펼쳐진다. -->
-          <div class="explore-region-chips" id="explore-region-chips" role="group"
-               aria-label="지역 대분류"><!-- JS --></div>
-          <div class="explore-region-sub" id="explore-region-sub" role="group"
-               aria-label="지역 권역" hidden><!-- JS --></div>
+          <!-- Sprint 28.5 — 2시간 프로필이 떠 있는 동안 남은 시간을 여기서 알린다 -->
+          <div id="explore-top-extra" hidden><!-- JS --></div>
           <div class="explore-active-filters" id="explore-active-filters" role="group"
                aria-label="적용된 탐색 조건" hidden><!-- JS --></div>
         </div>
@@ -382,7 +418,7 @@
           <span class="chat-count-badge" id="chat-room-count">0</span>
         </div>
 
-        <!-- Sprint 16 — 그룹 안에 들어와 있을 때는 그 모임 대화만 보여준다 -->
+        <!-- Sprint 16 — 모임 안에 들어와 있을 때는 그 모임 대화만 보여준다 -->
         <div class="dm-scope" id="dm-scope" hidden>
           <span class="dm-scope-name" id="dm-scope-name"></span>
           <button class="dm-scope-all" id="btn-dm-scope-all" type="button">전체 디엠함 보기</button>
@@ -403,6 +439,16 @@
             <span class="chat-section-sub" id="chat-group-count">0곳</span>
           </div>
           <div class="chat-group-rooms" id="chat-group-rooms"><!-- JS --></div>
+        </section>
+
+        <!-- Sprint 28.5 — 모르는 사람의 첫 메시지는 '요청'으로 모아 수락/거절한다 -->
+        <section class="chat-request-section" id="dm-request-section" aria-labelledby="chat-request-title" hidden>
+          <div class="chat-section-head">
+            <h3 class="chat-section-title" id="chat-request-title">요청</h3>
+            <span class="chat-section-sub" id="chat-request-count">0</span>
+          </div>
+          <p class="chat-request-note">모르는 사람이 보낸 첫 메시지예요. 수락해야 대화가 이어져요.</p>
+          <div class="chat-request-list" id="dm-request-list"><!-- JS --></div>
         </section>
 
         <section class="chat-dm-section" aria-labelledby="chat-dm-title">
@@ -438,7 +484,7 @@
           <div class="profile-info-block">
             <div class="profile-name-row">
               <h2 class="profile-nickname" id="profile-nickname">루키</h2>
-              <span class="badge-role">그룹장</span>
+              <span class="badge-role">모임장</span>
               <span class="badge-membership">PLUS</span>
             </div>
             <p class="profile-bio" id="profile-bio">성수동 거주 · 크로스핏 6개월차 푸시업 맹연습 중</p>
@@ -507,6 +553,15 @@
           <button class="myprofile-settings" id="btn-myprofile-settings" type="button">설정</button>
         </div>
 
+        <!-- Sprint 28.5 — 공개 사진 / 비밀앨범을 탭으로 나눈다 -->
+        <div class="album-tabs" id="album-tabs" role="tablist" aria-label="내 사진">
+          <button class="album-tab active" data-album-tab="public" role="tab" aria-selected="true" type="button">공개 사진</button>
+          <button class="album-tab" data-album-tab="secret" role="tab" aria-selected="false" type="button">
+            <span class="album-tab-lock" aria-hidden="true" data-oog-icon="lock"></span> 비밀앨범
+          </button>
+        </div>
+
+        <div class="album-panes" id="album-panes">
         <section class="album-block" aria-labelledby="album-public-title">
           <div class="album-head">
             <h3 class="album-title" id="album-public-title">공개 사진 <span class="album-count" id="album-public-count">0 / 4</span></h3>
@@ -517,7 +572,7 @@
           <input class="photo-file" id="album-public-camera" type="file" accept="image/*" capture="environment" hidden>
         </section>
 
-        <section class="album-block is-secret" aria-labelledby="album-secret-title">
+        <section class="album-block is-secret" aria-labelledby="album-secret-title" hidden>
           <div class="album-head">
             <h3 class="album-title" id="album-secret-title">
               <span class="album-lock" aria-hidden="true" data-oog-icon="lock"></span>
@@ -530,6 +585,8 @@
           <input class="photo-file" id="album-secret-album" type="file" accept="image/*" hidden>
           <input class="photo-file" id="album-secret-camera" type="file" accept="image/*" capture="environment" hidden>
         </section>
+
+        </div>
 
         <section class="myprofile-stats" id="myprofile-stats"><!-- JS --></section>
       </section>
@@ -566,7 +623,7 @@
           </div>
 
           <div class="field-group">
-            <label class="field-label">말머리 태그 <span class="field-hint">그룹장이 만든 태그</span></label>
+            <label class="field-label">말머리 태그 <span class="field-hint">모임장이 만든 태그</span></label>
             <div class="composer-tag-list" id="composer-tag-list"><!-- JS --></div>
           </div>
 
@@ -870,6 +927,25 @@
       </div>
     </div>
 
+    <!-- ==================== 모달 14-B. 지역 선택 시트 (Sprint 28.5) ====================
+         탐색 상단에는 '내 동네' 칩만 두고, 49개 지역은 이 시트에서 고른다. -->
+    <div class="modal-overlay" id="region-modal" role="dialog" aria-modal="true" aria-label="지역 선택">
+      <div class="modal-sheet region-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-region" aria-label="닫기">&times;</button>
+        <div class="filter-head">
+          <h2 class="sheet-title">지역 선택</h2>
+          <p class="filter-current" id="region-sheet-current">전체 지역</p>
+        </div>
+        <div class="region-sheet-body">
+          <div class="explore-region-chips" id="explore-region-chips" role="group"
+               aria-label="지역 대분류"><!-- JS --></div>
+          <div class="explore-region-sub" id="explore-region-sub" role="group"
+               aria-label="지역 권역" hidden><!-- JS --></div>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== 모달 15. 통합 탐색 필터 (Sprint 9) ==================== -->
     <div class="modal-overlay" id="filter-modal" role="dialog" aria-modal="true" aria-label="탐색 필터">
       <div class="modal-sheet filter-sheet" tabindex="-1">
@@ -881,6 +957,19 @@
           <p class="explore-summary filter-current" id="explore-summary">전체 지역 · 나이 전체</p>
         </div>
         <div class="filter-sheet-body">
+          <!-- Sprint 28.5 — 관심 유형: 사람/글 종류와 '베어 커뮤니티'를 한 묶음으로 분리
+               (지역 목록에 섞여 있던 베어는 여기서만 고른다). -->
+          <section class="filter-group" aria-labelledby="filter-type-label">
+            <div class="filter-group-head">
+              <h3 class="filter-group-title" id="filter-type-label">관심 유형</h3>
+              <span class="filter-group-hint">보고 싶은 카드</span>
+            </div>
+            <div class="explore-type-seg" id="explore-type-seg" role="group" aria-label="탐색 종류"><!-- JS --></div>
+            <div class="filter-type-row">
+              <button class="explore-sub-chip filter-bear-chip" id="filter-bear-chip" type="button"
+                      data-region-chip="bear" aria-pressed="false">베어 커뮤니티</button>
+            </div>
+          </section>
           <!-- Sprint 25 — 지역: 이반시티 '우리동네' 대분류 그대로, 왼쪽→오른쪽 가로 터치 칩.
                큰 분류를 고르면 그 아래 줄에 하위 권역이 펼쳐진다(취미 없음). -->
           <section class="filter-group" aria-labelledby="filter-region-label">
@@ -902,7 +991,7 @@
           <section class="filter-group" aria-labelledby="filter-age-label">
             <div class="filter-group-head">
               <h3 class="filter-group-title" id="filter-age-label">나이</h3>
-              <span class="filter-group-hint">0~99세 사이로 드래그</span>
+              <span class="filter-group-hint">19~99세 사이로 드래그</span>
             </div>
             <div class="age-range" id="age-range" role="group" aria-label="나이 범위">
               <div class="age-range-head">
@@ -911,13 +1000,13 @@
               </div>
               <div class="age-range-track" id="age-range-track">
                 <span class="age-range-fill" id="age-range-fill" aria-hidden="true"></span>
-                <input class="age-range-input" id="age-range-min" type="range" min="0" max="99" step="1" value="0"
+                <input class="age-range-input" id="age-range-min" type="range" min="19" max="99" step="1" value="19"
                        aria-label="최소 나이">
-                <input class="age-range-input" id="age-range-max" type="range" min="0" max="99" step="1" value="99"
+                <input class="age-range-input" id="age-range-max" type="range" min="19" max="99" step="1" value="99"
                        aria-label="최대 나이">
               </div>
               <div class="age-range-foot" aria-hidden="true">
-                <span>0세</span><span>99세</span>
+                <span>19세</span><span>99세</span>
               </div>
             </div>
             <p class="filter-age-note" id="filter-age-note"></p>
@@ -1172,7 +1261,7 @@
       </div>
     </div>
 
-    <!-- ==================== Sprint 17. 모임 카드 표지 고르기 (그룹장) ==================== -->
+    <!-- ==================== Sprint 17. 모임 카드 표지 고르기 (모임장) ==================== -->
     <div class="modal-overlay" id="cover-modal" role="dialog" aria-modal="true" aria-label="모임 카드 표지 고르기">
       <div class="modal-sheet cover-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>
@@ -1329,7 +1418,7 @@
           <section class="drawer-section acc is-open" data-acc="account">
             <h3 class="drawer-section-title">
               <button class="acc-head" id="acc-head-account" type="button" aria-expanded="true" aria-controls="acc-body-account">
-                <span class="acc-label">계정 및 보안</span>
+                <span class="acc-label">계정</span>
                 <span class="acc-meta">프로필 · 로그인</span>
                 <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
               </button>
@@ -1355,7 +1444,7 @@
           <section class="drawer-section acc" data-acc="profile">
             <h3 class="drawer-section-title">
               <button class="acc-head" id="acc-head-profile" type="button" aria-expanded="false" aria-controls="acc-body-profile">
-                <span class="acc-label">프로필 및 공개</span>
+                <span class="acc-label">비밀앨범</span>
                 <span class="acc-meta">앨범 · 2시간 상태</span>
                 <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
               </button>
@@ -1446,7 +1535,7 @@
           <section class="drawer-section acc" data-acc="display">
             <h3 class="drawer-section-title">
               <button class="acc-head" id="acc-head-display" type="button" aria-expanded="false" aria-controls="acc-body-display">
-                <span class="acc-label">화면 및 앱</span>
+                <span class="acc-label">화면 설정</span>
                 <span class="acc-meta" id="acc-meta-display">라이트</span>
                 <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
               </button>
@@ -1455,8 +1544,12 @@
               <div class="settings-menu-list">
                 <div class="menu-item is-switch" id="menu-dark-mode" role="switch" tabindex="0" aria-checked="false">
                   <span class="menu-label">다크모드</span>
-                  <span class="menu-val" id="menu-dark-mode-state">꺼짐</span>
+                  <span class="menu-val" id="menu-dark-mode-state">기기 설정</span>
                   <span class="switch-toggle" aria-hidden="true"><span class="switch-knob"></span></span>
+                </div>
+                <div class="menu-item" id="menu-theme-system" role="button" tabindex="0">
+                  <span class="menu-label">기기 설정 따르기</span>
+                  <span class="menu-val">밝기 자동</span>
                 </div>
               </div>
               <!-- ===== PWA · 홈 화면에 추가 (Sprint 5) ===== -->
@@ -1533,10 +1626,10 @@
       </div>
     </div>
 
-    <!-- ==================== 하단 탭바 (Sprint 16) — 바깥 3탭 / 그룹 안 4탭 ==================== -->
+    <!-- ==================== 하단 탭바 (Sprint 16) — 바깥 3탭 / 모임 안 4탭 ==================== -->
     <nav class="bottom-nav-bar" id="bottom-nav" role="tablist" aria-label="주요 화면">
       <span class="nav-indicator" id="nav-indicator" aria-hidden="true"></span>
-      <button class="nav-tab-item active" data-tab="tab-home" role="tab" aria-selected="true" aria-controls="tab-home" aria-label="홈 — 내 그룹 갤러리">
+      <button class="nav-tab-item active" data-tab="tab-home" role="tab" aria-selected="true" aria-controls="tab-home" aria-label="홈 — 내 모임 갤러리">
         <span class="tab-icon">
           <span data-oog-icon="grid"></span>
         </span>
@@ -1568,7 +1661,8 @@
       </button>
     </nav>
 
-    <!-- 그룹 안 4탭 — 모임을 열었을 때만 보인다 -->
+    <!-- 모임 안 4탭 — Sprint 28.5 부터는 쓰지 않는다(상단 3탭 + 전역 하단 4탭).
+         코드·마크업은 되돌리기 쉬우도록 남겨 두고 CSS 로만 숨긴다. -->
     <nav class="bottom-nav-bar group-nav" id="group-nav" role="tablist" aria-label="모임 안 화면">
       <span class="nav-indicator" id="nav-indicator-group" aria-hidden="true"></span>
       <button class="nav-tab-item active" data-tab="tab-home" role="tab" aria-selected="true" aria-controls="tab-home" aria-label="피드 — 이 모임 피드">

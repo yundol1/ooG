@@ -5,7 +5,7 @@
  * "Unified State Tree for Seamless A-C-D Modular Integration"
  *
  *   A (프로필)  ──┐
- *   B (그룹)    ──┼──·  feedPosts / customTags  ──·  D (1:1 매칭) ──· E (채팅)
+ *   B (모임)    ──┼──·  feedPosts / customTags  ──·  D (1:1 매칭) ──· E (채팅)
  *   C (피드)    ──┘
  *
  * 모든 화면(탭)은 이 저장소 하나만 바라보고, 저장소가 바뀌면 구독자(화면)가
@@ -18,7 +18,7 @@
  *   store.getPosts('my');                         // 필터별 피드 조회
  *   store.toggleLike('post_cf_01');               // 좋아요
  *   store.createPost({ ... });                    // 글 작성
- *   store.addGroupCustomTag(gid, '태그');          // 그룹장 말머리 추가
+ *   store.addGroupCustomTag(gid, '태그');          // 모임장 말머리 추가
  *   store.getExploreFeed('all');                  // 2열 메이슨리 피드(사람+모임+게시글) 항목
  *   store.getExploreFeed('game', '성수');          // 필터 + 검색어
  *   store.getExploreFeed('all', '', {page, limit}); // 무한 스크롤 페이지
@@ -36,9 +36,9 @@
  *   store.isDndActive();                          // 지금이 야간 방해 금지 시간인가
  *   store.getJoinState(groupId);                  // member / pending / rejected / none
  *   store.applyToGroup(groupId, answers);         // 승인제 가입 신청서 제출
- *   store.getPendingApplications(groupId);        // 그룹장: 신청 대기 목록
- *   store.approveApplication(appId);              // 그룹장: 수락(멤버 추가 + 환영 알림)
- *   store.rejectApplication(appId);               // 그룹장: 거절
+ *   store.getPendingApplications(groupId);        // 모임장: 신청 대기 목록
+ *   store.approveApplication(appId);              // 모임장: 수락(멤버 추가 + 환영 알림)
+ *   store.rejectApplication(appId);               // 모임장: 거절
  *   store.getMyApplications();                    // 내가 낸 신청 + 취소
  *   store.updateGroupJoinPolicy(groupId, {...});  // 가입 방식·나이 제한·가입 질문 변경
  *
@@ -46,7 +46,7 @@
  *   store.getNotificationCategories();            // 알림 종류 3종(chat/reaction/membership) 메타
  *   store.updateNotificationSettings({channels:{reaction:false}});   // 종류별 ON/OFF
  *   store.notifyPostReaction({source, postId, kind});  // 내 글의 좋아요·댓글 알림
- *   store.notifyJoinRequest(applicationId);      // 그룹장: 새 가입 신청 도착 알림
+ *   store.notifyJoinRequest(applicationId);      // 모임장: 새 가입 신청 도착 알림
  *   store.notifyJoinDecision(application, true); // 신청자: 수락/거절 결과 알림
  *   store.simulateIncomingReaction('like');      // 시뮬레이션 트리거(실제 이벤트와 같은 경로)
  *   store.simulateJoinRequest(groupId);          // 시뮬레이션: 새 신청서 도착
@@ -92,17 +92,17 @@
  *   주간 알림 요약·활동 월간 리포트는 **사용자 지시로 제거**했다(다시 만들지 않는다).
  *
  * · Sprint 15 — 인스타그램형 4탭 (피드 · 탐색 · 디엠 · 내정보)
- *   store.getGroupNotices(groupId);               // 모임 공지(고정 우선) — 작성·고정은 그룹장+부방장
+ *   store.getGroupNotices(groupId);               // 모임 공지(고정 우선) — 작성·고정은 모임장+부방장
  *   store.getGroupNoticePermission(groupId);      // { role:'leader'|'deputy'|'member', canManage }
- *   store.createGroupNotice(groupId, '공지 문구');  // 그룹장·부방장만
+ *   store.createGroupNotice(groupId, '공지 문구');  // 모임장·부방장만
  *   store.setGroupNoticePinned(noticeId, true);   // 공지 고정/해제
- *   store.setGroupDeputy(groupId, memberId, true);// 그룹장이 부방장 지정/해제
- *   store.getGroupDmPolicy(groupId);              // { enabled } 그룹 내 1:1 대화 허용 여부
- *   store.updateGroupDmPolicy(groupId, false);    // 그룹장만 ON/OFF
+ *   store.setGroupDeputy(groupId, memberId, true);// 모임장이 부방장 지정/해제
+ *   store.getGroupDmPolicy(groupId);              // { enabled } 모임 내 1:1 대화 허용 여부
+ *   store.updateGroupDmPolicy(groupId, false);    // 모임장만 ON/OFF
  *   store.getMyFeedPosts();                       // 내정보 탭 '내 피드'(내가 올린 글)
  *   store.setGroupEventRsvp(id, 'yes');           // 정원이 차면 자동으로 '대기'로 들어간다
  *
- * · Sprint 14 — 홈 = 내 모임 허브 (11/15 14:55 "홈이 우리 그룹의 사진 피드·단체 채팅·술모임")
+ * · Sprint 14 — 홈 = 내 모임 허브 (11/15 14:55 "홈이 우리 모임의 사진 피드·단체 채팅·술모임")
  *   store.getHomeGroupId();                       // 홈에서 보고 있는 모임(마지막으로 열었던 모임)
  *   store.setHomeGroupId(groupId);                // 홈 모임 전환(가입한 모임만)
  *   store.getHomeGroups();                        // 내 모임 + 다음 일정·단체 채팅·사진 수
@@ -114,7 +114,7 @@
  *   store.createGroupEvent(groupId, {title, kind, when, place, note});
  *   store.setGroupEventRsvp(eventId, 'yes'|'maybe'|'no');  // 참석/대기/불참
  *   store.getGroupEventSummary(eventId);          // 참석·대기·불참 수와 참석자 목록
- *   store.getGroupRoster(groupId);                // 전체 멤버(그룹장·나·멤버, 취미·가입 시점)
+ *   store.getGroupRoster(groupId);                // 전체 멤버(모임장·나·멤버, 취미·가입 시점)
  *   store.ensureMemberChat(groupId, memberId);    // 멤버 → 1:1 대화방(없으면 연다)
  * ============================================================================
  */
@@ -157,10 +157,10 @@ const GROUP_EVENT_RSVPS = [
   { id: 'no', label: '불참', icon: 'closeCircle', tone: 'no' }
 ];
 
-/* Sprint 15 — 모임 공지(고정) · 부방장 · 그룹 내 1:1 대화 정책.
-   11/15 16:00 사용자: "공지는 그룹장 또는 그룹장이 지정한 자(부방장 개념)",
-   "디엠(전체방) 및 그룹내 개인적인 1:1대화 이때는 그룹장이 1:1대화 기능을 on/off할 수 있음".
-   · 공지 작성·수정·고정은 **그룹장 + 그룹장이 지정한 부방장**만 할 수 있다.
+/* Sprint 15 — 모임 공지(고정) · 부방장 · 모임 내 1:1 대화 정책.
+   11/15 16:00 사용자: "공지는 모임장 또는 모임장이 지정한 자(부방장 개념)",
+   "디엠(전체방) 및 모임내 개인적인 1:1대화 이때는 모임장이 1:1대화 기능을 on/off할 수 있음".
+   · 공지 작성·수정·고정은 **모임장 + 모임장이 지정한 부방장**만 할 수 있다.
    · 부방장은 저장 상태(groups[].deputyIds)에 남고, 공지가 누가 쓴 것인지(authorRole)도 함께 남긴다. */
 const GROUP_NOTICE_SEED = [
   {
@@ -211,7 +211,7 @@ const GROUP_NOTICE_SEED = [
   }
 ];
 
-/* 부방장 시드 — 그룹장이 지정한 사람만 공지를 쓸 수 있다. */
+/* 부방장 시드 — 모임장이 지정한 사람만 공지를 쓸 수 있다. */
 const GROUP_DEPUTY_SEED = {
   grp_crossfit_1: ['user_kettle'],
   grp_climbing_1: ['match_junseo']
@@ -294,7 +294,7 @@ const STORY_SEED = [
   }
 ];
 
-/* 그룹 내 1:1 대화 정책 시드 — 기본은 허용(true).
+/* 모임 내 1:1 대화 정책 시드 — 기본은 허용(true).
    금지 사례를 하나 둬서 OFF 안내가 어떻게 보이는지 홈에서 바로 볼 수 있게 한다. */
 const GROUP_DM_SEED = { grp_climbing_1: false };
 
@@ -331,7 +331,7 @@ const HOT_ENTRY_TOP_N = 10;         // 이 순위 안에 내 글이 들어오면
  *   chat        : 1:1 대화 답장
  *   like        : 내 게시글의 좋아요
  *   comment     : 내 게시글의 댓글
- *   join_request: 내가 그룹장인 모임에 가입 신청이 도착
+ *   join_request: 내가 모임장인 모임에 가입 신청이 도착
  *   join_result : 내가 낸 가입 신청의 수락/거절 결과
  *   hot         : 내가 쓴 공개 글이 실시간 베스트(실베)에 진입 (Sprint 8)
  * system(테스트 푸시)은 사용자가 끌 수 없는 알림이라 토글이 없다.
@@ -1001,7 +1001,7 @@ const SIMULATED_PERSONAS = [
  *                 privacyType, privacyLabel, description, tags[], rules,
  *                 leaderId, leaderName, customTags[], ratio, members[] }
  *                 ← hobbyId: 탐색 취미 필터와 맞물리는 키 (category 와 별개로 정규화)
- *                 ← members: 실제로 승인된 멤버(없으면 그룹장·나만) — 지어낸 이름은 쓰지 않는다
+ *                 ← members: 실제로 승인된 멤버(없으면 모임장·나만) — 지어낸 이름은 쓰지 않는다
  *                 ← ratio: 'wide'(4:3) | 'square'(1:1) — 2열 메이슨리의 높이 변주
  * post        : { id, groupId, authorId, authorName, authorAvatarText,
  *                 authorGradient, tag, caption, photoUrl, mediaCaption,
@@ -1465,7 +1465,7 @@ const defaultInitialState = {
     activityIcon: '',
     workoutSpec: '크로스핏 6개월차 · 푸시업 정자세 훈련 중',
     bio: '성수동 거주. 퇴근 후 레벨업 크로스핏 박스에서 땀 흘립니다. 잡생각 없애는 덴 운동이 최고!',
-    /* 루키이 '그룹장'인 모임 + 단순 가입 모임을 함께 둔다 (권한 분기 검증용) */
+    /* 루키이 '모임장'인 모임 + 단순 가입 모임을 함께 둔다 (권한 분기 검증용) */
     joinedGroupIds: ['grp_crossfit_1', 'grp_fitness_1', 'grp_climbing_1'],
     /* Sprint 16 — 내 프로필을 탐색 '사람' 카드로 공개할지 (기본 OFF · 내가 켤 때만) */
     exploreProfileVisible: false,
@@ -1535,7 +1535,7 @@ const defaultInitialState = {
    * 예전 4구간 고정 칩 대신 explorePrefs.ageMin/ageMax(0~99)로 거른다.
    * ageMin 0 · ageMax 99 는 '나이 조건 없음'이다.
    * ------------------------------------------------------------------------- */
-  ageRangeBounds: { min: 0, max: 99 },
+  ageRangeBounds: { min: 19, max: 99 },
 
   /* ---------------- Sprint 16 — 24시간 스토리 (모임 단위) ----------------
    * 위 STORY_SEED 참고. 읽을 때 24시간 지난 것은 걸러낸다.
@@ -1548,8 +1548,8 @@ const defaultInitialState = {
    * ------------------------------------------------------------------------- */
   storyArchive: [],
 
-  /* ---------------- Sprint 17 — 내 그룹 갤러리 정렬 기억 ----------------
-   * 'recent'(최근 활동순) | 'name'(가나다순) | 'leader'(내가 그룹장 먼저)
+  /* ---------------- Sprint 17 — 내 모임 갤러리 정렬 기억 ----------------
+   * 'recent'(최근 활동순) | 'name'(가나다순) | 'leader'(내가 모임장 먼저)
    * ------------------------------------------------------------------------- */
   galleryPrefs: { sort: 'recent' },
 
@@ -1557,10 +1557,11 @@ const defaultInitialState = {
    * 11/17 00:30 루키 님: "설정 안에 다크모드 ON/OFF".
    *  · darkMode: 크림 클레이 ↔ 다크 클레이. 기기에 남고(저장 상태), 첫 화면부터 적용된다.
    * ------------------------------------------------------------------------- */
-  settings: { darkMode: false },
+  /* Sprint 28.5 — null = 아직 고르지 않음 → 기기 설정(prefers-color-scheme)을 따른다. */
+  settings: { darkMode: null },
 
   /* ---------------- 모임 나이 제한 옵션 (Sprint 4.5 · Sprint 5 강조) ----------------
-   * 그룹장이 개설·설정에서 고르는 4가지. min·max 는 신청자 나이 판정에 쓴다.
+   * 모임장이 개설·설정에서 고르는 4가지. min·max 는 신청자 나이 판정에 쓴다.
    * badge     : 상세 시트의 정책 배지(아이콘 포함)
    * cardBadge : **모임 카드 겉면**에 붙는 짧고 직관적인 표기 ('2030만' / '20대만' / '30대+')
    * tone      : 배지 색조 키 (CSS .age-badge.age-2030 …)
@@ -1573,7 +1574,7 @@ const defaultInitialState = {
   ],
 
   /* ---------------- 가입 질문 프리셋 (Sprint 4.5) ----------------
-   * 승인제 모임을 만들 때 그룹장이 그대로 고를 수 있는 기본 질문 네 가지.
+   * 승인제 모임을 만들 때 모임장이 그대로 고를 수 있는 기본 질문 네 가지.
    * ------------------------------------------------------------------------- */
   joinQuestionPresets: [
     '취미 구력이나 선호 요일을 적어주세요!',
@@ -1582,7 +1583,7 @@ const defaultInitialState = {
     '이 취미를 시작한 계기가 있나요?'
   ],
 
-  /* ---------------- 소모임 그룹 ---------------- */
+  /* ---------------- 소모임(모임) ---------------- */
   groups: [
     {
       id: 'grp_crossfit_1',
@@ -1602,7 +1603,7 @@ const defaultInitialState = {
       privacyLabel: '비공개 승인제',
       description: '평일 퇴근 후 19:10 수업 같이 듣고 레벨업 성수 박스에서 오운완 인증해요! 초보자 대환영.',
       tags: ['#성수동', '#크로스핏', '#19시10분반', '#오운완인증'],
-      rules: '그룹 피드 사진은 운동 인증/바디체크 위주 권장. 아웃팅 방지 규칙 엄수.',
+      rules: '모임 피드 사진은 운동 인증/바디체크 위주 권장. 아웃팅 방지 규칙 엄수.',
       leaderId: 'user_rookie',
       leaderName: '루키',
       customTags: ['오운완', 'WOD기록', 'PR달성', '식단인증', '주말번개'],
@@ -3234,7 +3235,7 @@ const defaultInitialState = {
   ],
 
   /* ---------------- 모임 가입 신청서 (Sprint 4.5) ----------------
-   * 승인제 모임에 들어온 신청 한 건. 그룹장이 수락/거절하고, 신청자는 취소할 수 있다.
+   * 승인제 모임에 들어온 신청 한 건. 모임장이 수락/거절하고, 신청자는 취소할 수 있다.
    *
    * groupApplication : { id, groupId, groupName, groupIcon,
    *                      applicantId, applicantName, applicantAge, applicantHobby,
@@ -3243,7 +3244,7 @@ const defaultInitialState = {
    *                      status:'pending'|'approved'|'rejected'|'canceled',
    *                      createdAt, decidedAt, decisionNote }
    *
-   * 시드: 내가 그룹장인 '성수 레벨업 퇴근 와드팟'에 대기 신청자 2명을 두어
+   * 시드: 내가 모임장인 '성수 레벨업 퇴근 와드팟'에 대기 신청자 2명을 두어
    *       수락·거절 UI를 바로 시험해 볼 수 있게 했다.
    * ------------------------------------------------------------------------- */
   groupApplications: [
@@ -3365,8 +3366,8 @@ const defaultInitialState = {
   /* =======================================================================
    * Sprint 14 — 홈 = 내 모임 허브
    * -----------------------------------------------------------------------
-   * 11/15 14:55 사용자: "탐색도 중요하지만 내 그룹에서의 활동이나 그룹의 모임 등
-   * 그런것도 중요해 … 홈이 우리 그룹의 사진 피드가 보이고 멤버들의 단체 채팅
+   * 11/15 14:55 사용자: "탐색도 중요하지만 내 모임에서의 활동이나 모임의 모임 등
+   * 그런것도 중요해 … 홈이 우리 모임의 사진 피드가 보이고 멤버들의 단체 채팅
    * 아니면 술모임이나 그런게 중요하지".
    *   homePrefs  : 홈에서 마지막으로 열어 둔 모임(앱을 다시 열어도 그 모임으로)
    *   groupChats : 모임 단체 채팅방 — groupId 마다 messages[] (1:1 chatRooms 와 별개)
@@ -3493,7 +3494,7 @@ const defaultInitialState = {
  * ---------------------------------------------------------------------------
  * joinMode      : 'open'(자유 가입·항시 오픈) | 'approval'(소개서 심사·승인제)
  * ageLimit      : ageLimitOptions 의 id ('all'|'20s'|'2030'|'30plus')
- * joinQuestions : 승인제일 때 신청서에 묻는 질문 (1~2개, 그룹장이 직접 쓴다)
+ * joinQuestions : 승인제일 때 신청서에 묻는 질문 (1~2개, 모임장이 직접 쓴다)
  *
  * privacyType 과 joinMode 는 같은 뜻을 두 이름으로 쓴다 (기존 저장 상태 호환).
  *   open ↔ privacyType:'open'   /   approval ↔ privacyType:'approval_private'
@@ -3547,7 +3548,7 @@ defaultInitialState.groups.forEach((g) => {
   g.ageLimit = seed.ageLimit || 'all';
   g.joinQuestions = seed.joinQuestions
     || (g.joinMode === 'approval' ? ['취미 구력이나 선호 요일을 적어주세요!'] : []);
-  /* Sprint 15 — 부방장 · 그룹 내 1:1 대화 허용 여부 */
+  /* Sprint 15 — 부방장 · 모임 내 1:1 대화 허용 여부 */
   g.deputyIds = (GROUP_DEPUTY_SEED[g.id] || []).slice();
   g.dmEnabled = GROUP_DM_SEED[g.id] === false ? false : true;
   if (!Array.isArray(g.members)) g.members = [];
@@ -4297,7 +4298,8 @@ class Store {
       );
       merged.pwa = { ...defaultInitialState.pwa, ...(parsed.pwa || {}) };
       merged.settings = { ...defaultInitialState.settings, ...(parsed.settings || {}) };
-      merged.settings.darkMode = merged.settings.darkMode === true;
+      /* true/false 는 사용자가 고른 값, 그 외(null)는 '기기 설정 따르기'로 남긴다. */
+      merged.settings.darkMode = typeof merged.settings.darkMode === 'boolean' ? merged.settings.darkMode : null;
       merged.homePrefs = { ...defaultInitialState.homePrefs, ...(parsed.homePrefs || {}) };
       merged.galleryPrefs = { ...defaultInitialState.galleryPrefs, ...(parsed.galleryPrefs || {}) };
       merged.ageRangeBounds = { min: 0, max: 99 };
@@ -4477,7 +4479,7 @@ class Store {
 
   /**
    * 모임 상세의 '멤버' 구획 — 저장된 것에서 파생한다(새 시드 없음).
-   *  1) 그룹장  2) 이 모임 프라이빗 피드에 글을 쓴 사람들  3) 내가 가입했으면 나
+   *  1) 모임장  2) 이 모임 프라이빗 피드에 글을 쓴 사람들  3) 내가 가입했으면 나
    * 겉면 카드는 인원만 보여주고, 실제 이름은 상세에서만 꺼낸다.
    * @returns {{people:Array, hidden:number, total:number}}
    */
@@ -4520,8 +4522,8 @@ class Store {
   }
 
   /**
-   * 그룹장 권한 판별 — 현재 로그인 유저가 해당 모임의 leaderId 인지 확인.
-   * 말머리 태그 관리, 모임 설정 변경 등 그룹장 전용 UI의 유일한 기준.
+   * 모임장 권한 판별 — 현재 로그인 유저가 해당 모임의 leaderId 인지 확인.
+   * 말머리 태그 관리, 모임 설정 변경 등 모임장 전용 UI의 유일한 기준.
    */
   isGroupLeader(groupId) {
     const group = this.getGroup(groupId);
@@ -4607,7 +4609,7 @@ class Store {
   /**
    * 모임 나가기 — Sprint 18 사이드바 '모임 설정'의 탈퇴.
    * 내 가입 목록·멤버 수·홈 모임에서 빠지고, 그 모임의 단체방은 목록에서 사라진다.
-   * 그룹장은 나갈 수 없다(모임을 지우는 deleteGroup 을 쓴다).
+   * 모임장은 나갈 수 없다(모임을 지우는 deleteGroup 을 쓴다).
    */
   leaveGroup(groupId) {
     const group = this.getGroup(groupId);
@@ -4623,7 +4625,7 @@ class Store {
     return { ok: true, groupId, nextGroupId: this.state.homePrefs ? this.state.homePrefs.groupId : null };
   }
 
-  /** 그룹장이 모임을 지운다 — 모임·그 모임의 글·공지·일정·단체방·스토리까지 함께 정리한다. */
+  /** 모임장이 모임을 지운다 — 모임·그 모임의 글·공지·일정·단체방·스토리까지 함께 정리한다. */
   deleteGroup(groupId) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
@@ -4756,7 +4758,7 @@ class Store {
     return true;
   }
 
-  /** 그룹장 전용 — 말머리 태그 추가. 중복/형식 검증 후 저장. */
+  /** 모임장 전용 — 말머리 태그 추가. 중복/형식 검증 후 저장. */
   addGroupCustomTag(groupId, tagName) {
     const group = this.getGroup(groupId);
     if (!group || !this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
@@ -4774,7 +4776,7 @@ class Store {
     return { ok: true, tag: clean };
   }
 
-  /** 그룹장 전용 — 말머리 태그 삭제. 이미 글에 달린 태그는 글에 그대로 남는다(기록 보존). */
+  /** 모임장 전용 — 말머리 태그 삭제. 이미 글에 달린 태그는 글에 그대로 남는다(기록 보존). */
   deleteGroupCustomTag(groupId, tagName) {
     const group = this.getGroup(groupId);
     if (!group || !this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
@@ -4857,7 +4859,7 @@ class Store {
       region,
       radius: 'all',
       /* Sprint 16 — 0~99세 듀얼 레인지. 두 값이 뒤집혔으면 바로잡고, 범위 밖은 잘라낸다. */
-      ageMin: clampAge(p.ageMin, 0),
+      ageMin: clampAge(Math.max(19, Number(p.ageMin) || 19), 19),
       ageMax: clampAge(p.ageMax, 99)
     };
   }
@@ -4865,9 +4867,10 @@ class Store {
   /** Sprint 16 — 지금 고른 나이 범위(0~99). active = 실제로 걸러야 하는 상태인지. */
   getExploreAgeRange() {
     const prefs = this.getExplorePrefs();
-    const min = Math.min(prefs.ageMin, prefs.ageMax);
-    const max = Math.max(prefs.ageMin, prefs.ageMax);
-    return { min, max, active: !(min === 0 && max === 99), bounds: { min: 0, max: 99 } };
+    /* Sprint 28.5 — 탐색 나이 필터는 성인 기준 19~99세. */
+    const max = Math.max(19, Math.min(99, Math.max(prefs.ageMin, prefs.ageMax)));
+    const min = Math.max(19, Math.min(max, Math.min(prefs.ageMin, prefs.ageMax)));
+    return { min, max, active: !(min === 19 && max === 99), bounds: { min: 19, max: 99 } };
   }
 
   /**
@@ -4875,7 +4878,7 @@ class Store {
    * @returns {{ok:boolean, range:object, prefs:object}}
    */
   setExploreAgeRange(min, max) {
-    const lo = clampAge(min, 0);
+    const lo = clampAge(Math.max(19, Number(min) || 19), 19);
     const hi = clampAge(max, 99);
     const prefs = this.updateExplorePrefs({
       ageMin: Math.min(lo, hi),
@@ -6003,7 +6006,7 @@ class Store {
       hobbyId: chip ? chip.id : null,
       hobbyLabel: chip ? chip.name : (style ? style.name : '지역만남'),
       hobbyIcon: chip ? chip.icon : '',
-      /* Sprint 23 — 그룹과 무관하게 올리는 '동네 글' */
+      /* Sprint 23 — 모임과 무관하게 올리는 '동네 글' */
       scope: 'region',
       tag: String(d.tag || '').trim().slice(0, 8) || (style ? style.name : null),
       caption: caption.slice(0, 300),
@@ -6434,7 +6437,7 @@ class Store {
   }
 
   /**
-   * 새 소모임 개설 — 개설자는 자동으로 그룹장이 되어 가입 목록에 들어간다.
+   * 새 소모임 개설 — 개설자는 자동으로 모임장이 되어 가입 목록에 들어간다.
    * @returns {{ok:boolean, reason?:string, group?:object}}
    */
   createGroup(data) {
@@ -6914,7 +6917,7 @@ class Store {
   }
 
   /**
-   * 그룹장에게 가는 '새 가입 신청 도착' 알림. 그룹장이 아니면 보내지 않는다.
+   * 모임장에게 가는 '새 가입 신청 도착' 알림. 모임장이 아니면 보내지 않는다.
    * @param {string|object} applicationIdOrApp
    */
   notifyJoinRequest(applicationIdOrApp) {
@@ -6994,7 +6997,7 @@ class Store {
     return { ok: true, post, persona, res };
   }
 
-  /** 그룹장 모임에 새 가입 신청이 도착한 상황을 만든다. */
+  /** 모임장 모임에 새 가입 신청이 도착한 상황을 만든다. */
   simulateJoinRequest(groupId, options = {}) {
     const ledger = (this.state.groups || []).filter((g) => this.isGroupLeader(g.id));
     const group = groupId ? this.getGroup(groupId) : ledger[0];
@@ -7585,7 +7588,7 @@ class Store {
     return mine.length ? mine[0] : null;
   }
 
-  /** 그룹장 화면: 이 모임의 신청서 (기본은 대기 중인 것만, 최신순). */
+  /** 모임장 화면: 이 모임의 신청서 (기본은 대기 중인 것만, 최신순). */
   getApplicationsForGroup(groupId, status) {
     const wanted = status === undefined ? 'pending' : status;
     return (this.state.groupApplications || [])
@@ -7598,7 +7601,7 @@ class Store {
     return this.getApplicationsForGroup(groupId, 'pending');
   }
 
-  /** 내가 그룹장인 모든 모임의 대기 신청서. */
+  /** 내가 모임장인 모든 모임의 대기 신청서. */
   getLeaderPendingApplications() {
     return (this.state.groupApplications || []).filter(
       (a) => a.status === 'pending' && this.isGroupLeader(a.groupId)
@@ -7707,7 +7710,7 @@ class Store {
     return { ok: true, application: app, group: this.getGroup(app.groupId) };
   }
 
-  /** 그룹장만 — 신청서를 수락해 멤버로 만든다. */
+  /** 모임장만 — 신청서를 수락해 멤버로 만든다. */
   approveApplication(applicationId) {
     const app = (this.state.groupApplications || []).find((a) => a.id === applicationId);
     if (!app) return { ok: false, reason: 'not_found' };
@@ -7739,12 +7742,12 @@ class Store {
       /* 신청자에게 갈 환영 알림 내용(실서비스에서는 서버가 상대 기기로 보낸다). */
       welcome: {
         title: `${group.name}`,
-        body: `${this.state.currentUser.nickname} 그룹장이 가입을 승인했어요. 지금 바로 모임 피드에 인사해 보세요!`
+        body: `${this.state.currentUser.nickname} 모임장이 가입을 승인했어요. 지금 바로 모임 피드에 인사해 보세요!`
       }
     };
   }
 
-  /** 그룹장만 — 신청서를 거절한다(대기 목록에서 빠진다). */
+  /** 모임장만 — 신청서를 거절한다(대기 목록에서 빠진다). */
   rejectApplication(applicationId, note) {
     const app = (this.state.groupApplications || []).find((a) => a.id === applicationId);
     if (!app) return { ok: false, reason: 'not_found' };
@@ -7758,7 +7761,7 @@ class Store {
   }
 
   /**
-   * 그룹장만 — 가입 정책(가입 방식 · 나이 제한 · 가입 질문)을 바꾼다.
+   * 모임장만 — 가입 정책(가입 방식 · 나이 제한 · 가입 질문)을 바꾼다.
    * @param {string} groupId
    * @param {{joinMode?:'open'|'approval', ageLimit?:string, joinQuestions?:string[]}} patch
    */
@@ -7815,7 +7818,7 @@ class Store {
     if (age && age.id !== 'all') {
       badges.push({ id: age.id, kind: 'age', label: age.badge || age.short, labelText: age.cardBadge || age.short });
     }
-    /* 그룹장에게는 처리할 신청 수를 카드에서 바로 보여준다 */
+    /* 모임장에게는 처리할 신청 수를 카드에서 바로 보여준다 */
     const pending = this.isGroupLeader(groupId) ? this.getPendingApplications(groupId).length : 0;
     if (pending > 0) {
       badges.push({ id: 'pending', kind: 'pending', label: `대기 ${pending}`, labelText: `대기 ${pending}` });
@@ -8012,7 +8015,7 @@ class Store {
         icon: 'mail',
         tone: 'amber',
         title: `'${a.groupName}' 가입을 신청했어요`,
-        body: a.status === 'pending' ? '그룹장 승인을 기다리는 중'
+        body: a.status === 'pending' ? '모임장 승인을 기다리는 중'
           : a.status === 'canceled' ? '신청을 취소했어요' : '신청서를 냈어요',
         at: a.createdAt,
         targetType: 'group',
@@ -8529,7 +8532,7 @@ class Store {
   /**
    * 전체 멤버 목록 — **실제로 있는 사람만** 센다.
    * Sprint 18: 예전에는 memberCount 만큼 이름을 지어내 채웠다. 이제 사용자가 만든 모임은
-   * 그룹장(나) 한 명에서 시작하고, 승인된 가입 신청·실제 글 작성자만 명단에 오른다.
+   * 모임장(나) 한 명에서 시작하고, 승인된 가입 신청·실제 글 작성자만 명단에 오른다.
    * @returns {{total:number, members:Array}}
    */
   getGroupRoster(groupId) {
@@ -8553,11 +8556,11 @@ class Store {
     const hobbyList = (hobbyNames) => (hobbyNames || []).slice(0, 2)
       .map((name) => ({ name, icon: 'dot' }));
 
-    /* 1) 그룹장 */
+    /* 1) 모임장 */
     const leaderIsMe = group.leaderId === me.id;
     push({
       id: group.leaderId || 'leader',
-      name: leaderIsMe ? me.nickname : (group.leaderName || '그룹장'),
+      name: leaderIsMe ? me.nickname : (group.leaderName || '모임장'),
       role: 'leader',
       isLeader: true,
       isMe: leaderIsMe,
@@ -8616,12 +8619,12 @@ class Store {
   }
 
   /** 멤버 → 1:1 대화방 — 이미 있으면 그 방, 없으면 만든다(프로필에서 말 걸기).
-   *  Sprint 15 — 그룹장이 '그룹 내 1:1 대화'를 꺼둔 모임은 방을 열지 않는다. */
+   *  Sprint 15 — 모임장이 '모임 내 1:1 대화'를 꺼둔 모임은 방을 열지 않는다. */
   ensureMemberChat(groupId, memberId) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
     if (group.dmEnabled === false) {
-      return { ok: false, reason: 'dm_disabled', group, message: '이 모임은 그룹장이 1:1 대화를 꺼두었어요' };
+      return { ok: false, reason: 'dm_disabled', group, message: '이 모임은 모임장이 1:1 대화를 꺼두었어요' };
     }
     const roster = this.getGroupRoster(groupId);
     const member = roster.members.find((m) => m.id === memberId);
@@ -8661,8 +8664,8 @@ class Store {
    * Sprint 15 — 인스타그램형 4탭: 피드(공지·일정·스크롤 피드) · 돋보기 · 디엠 · 내정보
    * ------------------------------------------------------------------------
    * 11/15 16:00~16:09 사용자 지시를 그대로 옮긴 구획이다.
-   *   15-1 공지(그룹장+부방장)   15-2 부방장 지정
-   *   15-3 그룹 내 1:1 대화 ON/OFF  15-4 돋보기(타 그룹) 노출 동의
+   *   15-1 공지(모임장+부방장)   15-2 부방장 지정
+   *   15-3 모임 내 1:1 대화 ON/OFF  15-4 돋보기(타 모임) 노출 동의
    *   15-5 내 피드(내정보)        15-6 일정 정원 초과 → 자동 대기
    * ======================================================================== */
 
@@ -8688,13 +8691,13 @@ class Store {
     return (this.state.groupNotices || []).find((n) => n.id === noticeId) || null;
   }
 
-  /** 공지 작성·수정·고정 권한 — 그룹장과 그룹장이 지정한 부방장만. */
+  /** 공지 작성·수정·고정 권한 — 모임장과 모임장이 지정한 부방장만. */
   getGroupNoticePermission(groupId) {
     if (!this.isGroupJoined(groupId)) {
       return { ok: false, role: 'guest', label: '비멤버', canManage: false, reason: 'not_member' };
     }
     if (this.isGroupLeader(groupId)) {
-      return { ok: true, role: 'leader', label: '그룹장', canManage: true };
+      return { ok: true, role: 'leader', label: '모임장', canManage: true };
     }
     if (this.isGroupDeputy(groupId, this.currentUser.id)) {
       return { ok: true, role: 'deputy', label: '부방장', canManage: true };
@@ -8702,7 +8705,7 @@ class Store {
     return { ok: true, role: 'member', label: '멤버', canManage: false, reason: 'permission' };
   }
 
-  /** 공지 쓰기 — 2~120자. 그룹장·부방장만. */
+  /** 공지 쓰기 — 2~120자. 모임장·부방장만. */
   createGroupNotice(groupId, text, options = {}) {
     const perm = this.getGroupNoticePermission(groupId);
     if (!perm.canManage) return { ok: false, reason: perm.reason || 'permission', permission: perm };
@@ -8778,7 +8781,7 @@ class Store {
                     gradient: m.gradient, isMe: !!m.isMe }));
   }
 
-  /** 그룹장이 멤버를 부방장으로 지정/해제 — 최대 5명, 그룹장 본인은 대상이 아니다. */
+  /** 모임장이 멤버를 부방장으로 지정/해제 — 최대 5명, 모임장 본인은 대상이 아니다. */
   setGroupDeputy(groupId, memberId, on = true) {
     if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
     const g = this.getGroup(groupId);
@@ -8806,7 +8809,7 @@ class Store {
     };
   }
 
-  /* ------------------------------------ 15-3. 그룹 내 1:1 대화 ON/OFF */
+  /* ------------------------------------ 15-3. 모임 내 1:1 대화 ON/OFF */
   getGroupDmPolicy(groupId) {
     const g = this.getGroup(groupId);
     return {
@@ -8818,7 +8821,7 @@ class Store {
     };
   }
 
-  /** 그룹 내 1:1 대화 허용 여부 — 그룹장만 바꿀 수 있다. */
+  /** 모임 내 1:1 대화 허용 여부 — 모임장만 바꿀 수 있다. */
   updateGroupDmPolicy(groupId, enabled) {
     if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
     const g = this.getGroup(groupId);
@@ -8890,10 +8893,10 @@ class Store {
   }
 
   /* ==========================================================================
-   * 16-A. 바깥 3탭 — 홈 = 내 그룹 2열 갤러리
+   * 16-A. 바깥 3탭 — 홈 = 내 모임 2열 갤러리
    * -------------------------------------------------------------------------
-   * 11/15 19:05 사용자: "홈탭 첫 화면은 내가 가입한 그룹들이 2열 갤러리식 카드로
-   * 나열되고, 그룹을 탭해서 들어가면 그 그룹 전용 공간으로 전환".
+   * 11/15 19:05 사용자: "홈탭 첫 화면은 내가 가입한 모임들이 2열 갤러리식 카드로
+   * 나열되고, 모임을 탭해서 들어가면 그 모임 전용 공간으로 전환".
    * 갤러리 카드 하나에 필요한 것만 한 번에 모아 준다(모임·표지·사진·스토리·약속).
    * ======================================================================== */
   getGroupGallery(options = {}) {
@@ -9061,10 +9064,10 @@ class Store {
   }
 
   /* ==========================================================================
-   * 16-C. 부방장 권한 — 공지·일정은 늘, 멤버 승인·강퇴는 그룹장이 켤 때만
+   * 16-C. 부방장 권한 — 공지·일정은 늘, 멤버 승인·강퇴는 모임장이 켤 때만
    * -------------------------------------------------------------------------
    * 11/15 18:36 사용자 답: "공지·일정 만들기·멤버 승인/강퇴 모두 지원하되,
-   * 멤버 승인·강퇴 권한은 그룹장이 선택(부여/해제)할 수 있게".
+   * 멤버 승인·강퇴 권한은 모임장이 선택(부여/해제)할 수 있게".
    * ======================================================================== */
   getDeputyPermissions(groupId) {
     const group = this.getGroup(groupId);
@@ -9076,17 +9079,17 @@ class Store {
       isLeader,
       isDeputy,
       deputyCanModerate: grant,
-      /* 공지·일정 작성: 그룹장 + 부방장 */
+      /* 공지·일정 작성: 모임장 + 부방장 */
       canManageNotices: isLeader || isDeputy,
       canManageEvents: isLeader || isDeputy,
-      /* 멤버 승인·강퇴: 그룹장, 또는 그룹장이 권한을 켠 부방장 */
+      /* 멤버 승인·강퇴: 모임장, 또는 모임장이 권한을 켠 부방장 */
       canModerateMembers: isLeader || (isDeputy && grant),
-      /* 이 스위치는 그룹장만 바꿀 수 있다 */
+      /* 이 스위치는 모임장만 바꿀 수 있다 */
       canToggleModerate: isLeader
     };
   }
 
-  /** 부방장에게 '멤버 승인·강퇴'까지 맡길지 — 그룹장만 바꿀 수 있다. */
+  /** 부방장에게 '멤버 승인·강퇴'까지 맡길지 — 모임장만 바꿀 수 있다. */
   setDeputyModeratePermission(groupId, on) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
@@ -9099,7 +9102,7 @@ class Store {
   /* ==========================================================================
    * 16-E. 탐색에 내 프로필 올리기 · 오픈 글
    * -------------------------------------------------------------------------
-   * 11/15 19:05 사용자: "그룹과 별개로 누구나 탐색에 게시글과 본인 프로필을 올릴 수 있게".
+   * 11/15 19:05 사용자: "모임과 별개로 누구나 탐색에 게시글과 본인 프로필을 올릴 수 있게".
    * ======================================================================== */
   /**
    * Sprint 24 — 내 프로필을 탐색에 올린 상태(2시간 자동 종료).
@@ -9425,8 +9428,18 @@ class Store {
    * 설정 값은 저장 상태에 두어 앱을 다시 열어도 그대로다.
    * 화면(app.js)이 부팅 때 이 값을 읽어 <html data-theme="dark"> 를 붙인다.
    * ======================================================================== */
+  /** 저장된 선택(true/false)이 없으면 기기의 밝기 설정을 따른다. */
   isDarkMode() {
-    return this.state.settings ? this.state.settings.darkMode === true : false;
+    const choice = this.state.settings ? this.state.settings.darkMode : null;
+    if (typeof choice === 'boolean') return choice;
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    } catch (e) { return false; }
+  }
+
+  /** 사용자가 직접 고른 값인지(null 이면 기기 설정을 따르는 중). */
+  hasDarkModeChoice() {
+    return !!(this.state.settings && typeof this.state.settings.darkMode === 'boolean');
   }
 
   setDarkMode(on) {
@@ -9440,7 +9453,7 @@ class Store {
     return this.setDarkMode(!this.isDarkMode());
   }
 
-  /** 그룹과 무관한 오픈 글만(내가 올린 것부터). */
+  /** 모임과 무관한 오픈 글만(내가 올린 것부터). */
   getOpenExplorePosts() {
     return (this.state.explorePosts || [])
       .filter((p) => !p.hobbyId || p.scope === 'open')
@@ -9474,6 +9487,66 @@ class Store {
 
   /** 전체 디엠함 — 모든 모임 단체방 + 모든 1:1 방을 한 번에(바깥 3번째 탭).
    *  Sprint 17 — sort:'recent'|'group' · unreadOnly 로 모임별/읽지 않은 대화 보기. */
+  /* ------------------------------------------------------------------------
+   * Sprint 28.5 — 모르는 사람의 첫 메시지 = '요청'함
+   *  · 받은 편지함에는 올리지 않고, 수락해야 대화방이 열린다(거절하면 목록에서 사라진다).
+   *  · 예시 데이터(가명 사람)로만 채운다 — 실제 사람 사진은 쓰지 않는다.
+   * ---------------------------------------------------------------------- */
+  getDmRequests() {
+    if (!Array.isArray(this.state.dmRequests)) this.state.dmRequests = [];
+    return this.state.dmRequests.filter((r) => r && r.status === 'pending');
+  }
+
+  seedDmRequests() {
+    if (Array.isArray(this.state.dmRequests) && this.state.dmRequests.length) return this.state.dmRequests;
+    /* 지금 탐색에 보이는 사람(가명) 상위 2명으로 요청을 만든다 — 사진은 쓰지 않는다. */
+    let profiles = [];
+    try {
+      profiles = (this.getExploreFeed('people', '', null) || [])
+        .map((it) => (it.profile || it.person || null))
+        .filter(Boolean)
+        .slice(0, 2);
+    } catch (e) { profiles = []; }
+    if (!profiles.length) {
+      profiles = ['sample_p_mora', 'sample_p_danchu'].map((id) => this.getPersonProfile(id)).filter(Boolean);
+    }
+    const requests = profiles
+      .map((p, i) => ({
+        id: `dmreq_${p.id}`,
+        profileId: p.id,
+        name: p.nickname,
+        gradient: p.avatarGradient,
+        photoUrl: p.photoUrl || null,
+        text: i === 0
+          ? '안녕하세요! 이번 주 러닝 같이 하실래요?'
+          : '동네 보드게임 모임에서 봤어요. 한 판 하실래요?',
+        at: new Date(Date.now() - (i + 1) * 26 * 60 * 1000).toISOString(),
+        status: 'pending'
+      }));
+    this.state.dmRequests = requests;
+    if (requests.length) this.saveState();
+    return requests;
+  }
+
+  acceptDmRequest(requestId) {
+    const list = Array.isArray(this.state.dmRequests) ? this.state.dmRequests : [];
+    const req = list.find((r) => r.id === requestId && r.status === 'pending');
+    if (!req) return { ok: false, reason: 'not_found' };
+    req.status = 'accepted';
+    const res = this.startDirectMessage(req.profileId, '');
+    this.saveState();
+    return { ok: true, request: req, room: res && res.room ? res.room : null };
+  }
+
+  rejectDmRequest(requestId) {
+    const list = Array.isArray(this.state.dmRequests) ? this.state.dmRequests : [];
+    const req = list.find((r) => r.id === requestId && r.status === 'pending');
+    if (!req) return { ok: false, reason: 'not_found' };
+    req.status = 'rejected';
+    this.saveState();
+    return { ok: true, request: req };
+  }
+
   getDmInbox(options = {}) {
     const groupRooms = this.getJoinedGroups().map((group) => {
       const chat = this.getGroupChatPreview(group.id);
@@ -10034,7 +10107,7 @@ class Store {
    * 17-D. 갤러리 2차 — 표지 직접 선택 · 정렬 · 새 모임 진입
    * ========================================================================== */
 
-  /** 모임 카드 표지 — 그룹장이 고른 **사진(1~2장)** 이 있으면 그것, 없으면 모임 글 사진에서.
+  /** 모임 카드 표지 — 모임장이 고른 **사진(1~2장)** 이 있으면 그것, 없으면 모임 글 사진에서.
    *  Sprint 18 — 예시 일러스트 프리셋은 없앴다. 표지는 사용자가 올린 사진만 쓴다. */
   getGroupCover(groupId) {
     const group = this.getGroup(groupId);
@@ -10051,7 +10124,7 @@ class Store {
     };
   }
 
-  /** 그룹장이 표지 사진을 직접 고른다(1~2장 · 모임에 올라온 사진만). */
+  /** 모임장이 표지 사진을 직접 고른다(1~2장 · 모임에 올라온 사진만). */
   setGroupCoverPhotos(groupId, photoUrls) {
     if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
     const group = this.getGroup(groupId);
@@ -10081,7 +10154,7 @@ class Store {
     return [
       { id: 'recent', label: '최근 활동순' },
       { id: 'name', label: '가나다순' },
-      { id: 'leader', label: '내가 그룹장' }
+      { id: 'leader', label: '내가 모임장' }
     ];
   }
 

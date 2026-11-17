@@ -26,7 +26,6 @@ window.OOGIcons = (function () {
   /* --------------------------------------------------------------- 도형 */
   const PATHS = {
     /* 브랜드 · 기본 */
-    logo: '<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 8.8 8.8 0 0 0 0-17.6z"/><path d="M8.6 14.4a4.4 4.4 0 0 1 6.8 0"/>',
     dot: '<circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/>',
     sparkle: '<path d="M12 3.6l1.7 4.4 4.4 1.7-4.4 1.7L12 15.8l-1.7-4.4L5.9 9.7l4.4-1.7z"/><path d="M18.4 15.2l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/>',
 
@@ -45,16 +44,13 @@ window.OOGIcons = (function () {
     close: '<path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/>',
     closeCircle: '<circle cx="12" cy="12" r="8.6"/><path d="M9 9l6 6M15 9l-6 6"/>',
     plus: '<path d="M12 5.4v13.2M5.4 12h13.2"/>',
-    minus: '<path d="M5.4 12h13.2"/>',
     trash: '<path d="M4.6 7h14.8M9.6 7V5.3A1.3 1.3 0 0 1 10.9 4h2.2a1.3 1.3 0 0 1 1.3 1.3V7"/><path d="M6.6 7l.8 11.1a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9L17.4 7"/><path d="M10.2 10.8v5.4M13.8 10.8v5.4"/>',
     pencil: '<path d="M16.6 4.5a2.1 2.1 0 0 1 3 3L8.2 18.9l-4.7 1.4 1.4-4.7z"/><path d="M14.4 6.7l2.9 2.9"/>',
     pin: '<path d="M12 21.2s6.6-5.9 6.6-10.7A6.6 6.6 0 0 0 5.4 10.5c0 4.8 6.6 10.7 6.6 10.7z"/><circle cx="12" cy="10.4" r="2.4"/>',
     pushpin: '<path d="M12 14.6v6.2"/><path d="M8.2 4.4h7.6l-.9 5.4 3.1 2.2-.6 1.8H6.6l-.6-1.8 3.1-2.2z"/>',
     sliders: '<path d="M4 7.2h4.4M13.4 7.2H20M4 12h8.2M17.2 12H20M4 16.8h2.6M11.6 16.8H20"/><circle cx="10.9" cy="7.2" r="2.1"/><circle cx="14.6" cy="12" r="2.1"/><circle cx="8.9" cy="16.8" r="2.1"/>',
-    filter: '<path d="M4.2 5.4h15.6L14 12.4v6.2L10 21v-8.6z"/>',
     calendar: '<rect x="4" y="5.6" width="16" height="14.4" rx="3"/><path d="M8.2 3.4v4.2M15.8 3.4v4.2M4 10.2h16"/>',
     calendarWeek: '<rect x="4" y="5.6" width="16" height="14.4" rx="3"/><path d="M8.2 3.4v4.2M15.8 3.4v4.2M4 10.2h16"/><path d="M8 14h2.4M12.6 14H16M8 17.2h3.6"/>',
-    calendarMonth: '<rect x="4" y="5.6" width="16" height="14.4" rx="3"/><path d="M8.2 3.4v4.2M15.8 3.4v4.2M4 10.2h16"/><path d="M7.8 13.4h.1M12 13.4h.1M16.2 13.4h.1M7.8 16.8h.1M12 16.8h.1M16.2 16.8h.1"/>',
     clock: '<circle cx="12" cy="12" r="8.6"/><path d="M12 7.4V12l3.3 2.1"/>',
     hourglass: '<path d="M7.2 4.2h9.6M7.2 19.8h9.6"/><path d="M8.2 4.2v3.2c0 2 3.8 3.2 3.8 4.6s-3.8 2.6-3.8 4.6v3.2M15.8 4.2v3.2c0 2-3.8 3.2-3.8 4.6s3.8 2.6 3.8 4.6v3.2"/>',
     maybe: '<circle cx="12" cy="12" r="8.6"/><path d="M9.6 9.2a2.5 2.5 0 1 1 3.6 2.2c-.8.5-1.2 1-1.2 1.9v.4"/><circle cx="12" cy="16.8" r=".9" fill="currentColor" stroke="none"/>',
@@ -69,8 +65,6 @@ window.OOGIcons = (function () {
     camera: '<path d="M3.9 8.8A2.6 2.6 0 0 1 6.5 6.2h1.6l1.2-1.8h5.4l1.2 1.8h1.6a2.6 2.6 0 0 1 2.6 2.6v7.4a2.6 2.6 0 0 1-2.6 2.6H6.5a2.6 2.6 0 0 1-2.6-2.6z"/><circle cx="12" cy="12.4" r="3.2"/>',
     send: '<path d="M21 3.4 2.8 9.9l7.1 2.9 2.8 7.1z"/><path d="M9.9 12.8 21 3.4"/>',
     bookmark: '<path d="M18.6 20.6 12 15.4l-6.6 5.2V5.4a2.2 2.2 0 0 1 2.2-2.2h8.8a2.2 2.2 0 0 1 2.2 2.2z"/>',
-    link: '<path d="M9.4 14.6 14.6 9.4"/><path d="M11.2 6.8l1.4-1.4a3.7 3.7 0 0 1 5.2 5.2l-1.4 1.4M12.8 17.2l-1.4 1.4a3.7 3.7 0 0 1-5.2-5.2l1.4-1.4"/>',
-    eye: '<path d="M2.8 12S6.4 5.8 12 5.8 21.2 12 21.2 12 17.6 18.2 12 18.2 2.8 12 2.8 12z"/><circle cx="12" cy="12" r="3"/>',
 
     /* 이동 · 장소 */
     walk: '<circle cx="12.4" cy="4.8" r="1.9"/><path d="M12.2 7.6v5M12.2 12.6 9.4 20M12.2 12.6l2.8 6.2M12.2 9.4 9 11.8M12.2 9.4l3.2 2.2"/>',
@@ -96,13 +90,8 @@ window.OOGIcons = (function () {
     moon: '<path d="M20.2 14.6A8.6 8.6 0 0 1 9.4 3.8a8.6 8.6 0 1 0 10.8 10.8z"/>',
     night: '<path d="M19 13.6A7.2 7.2 0 0 1 10.4 5a7.2 7.2 0 1 0 8.6 8.6z"/><path d="M16.4 4.2l.7 1.7 1.7.7-1.7.7-.7 1.7-.7-1.7-1.7-.7 1.7-.7z"/>',
     repeat: '<path d="M4.4 10.4V9a3.6 3.6 0 0 1 3.6-3.6h9.4"/><path d="M14.8 2.8 17.6 5.6l-2.8 2.8"/><path d="M19.6 13.6V15a3.6 3.6 0 0 1-3.6 3.6H6.6"/><path d="M9.2 21.2 6.4 18.4l2.8-2.8"/>',
-    history: '<path d="M3.8 12a8.2 8.2 0 1 0 2.4-5.8"/><path d="M3.4 4.2v4.2h4.2"/><path d="M12 8v4.4l3 1.8"/>',
 
     /* 사람 · 감정 */
-    crown: '<path d="M4 18.6h16"/><path d="M4.2 15.6 5.8 7l3.9 3.4L12 5.2l2.3 5.2L18.2 7l1.6 8.6z"/>',
-    shield: '<path d="M12 3.4 5.4 6v5.2c0 4 2.7 7.4 6.6 9 3.9-1.6 6.6-5 6.6-9V6z"/><path d="M9.2 11.8 11.4 14 15 10.4"/>',
-    logout: '<path d="M13.8 5.4H6.6a2 2 0 0 0-2 2v9.2a2 2 0 0 0 2 2h7.2"/><path d="M16.8 8.4 20.4 12l-3.6 3.6"/><path d="M9.6 12h10.8"/>',
-    refresh: '<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20.4 4.2v4.4h-4.4"/>',
     install: '<rect x="3.6" y="3.6" width="16.8" height="16.8" rx="4.4"/><path d="M12 8v8M8 12h8"/>',
     lock: '<rect x="5" y="10.4" width="14" height="9.6" rx="2.8"/><path d="M8.2 10.4V8a3.8 3.8 0 0 1 7.6 0v2.4"/><circle cx="12" cy="15.2" r="1.2" fill="currentColor" stroke="none"/>',
     unlock: '<rect x="5" y="10.4" width="14" height="9.6" rx="2.8"/><path d="M8.2 10.4V8a3.8 3.8 0 0 1 7.2-1.6"/><circle cx="12" cy="15.2" r="1.2" fill="currentColor" stroke="none"/>',
@@ -110,12 +99,10 @@ window.OOGIcons = (function () {
     phone: '<rect x="6.6" y="2.8" width="10.8" height="18.4" rx="3"/><path d="M10.6 5.2h2.8"/><circle cx="12" cy="18" r=".9" fill="currentColor" stroke="none"/>',
     flask: '<path d="M9.6 3.4h4.8M10.4 3.4v5.2L5.8 17a2.4 2.4 0 0 0 2.1 3.6h8.2a2.4 2.4 0 0 0 2.1-3.6L13.6 8.6V3.4"/><path d="M8.2 14.2h7.6"/>',
     mail: '<rect x="3.6" y="5.6" width="16.8" height="12.8" rx="3"/><path d="M4.4 7.6 12 13l7.6-5.4"/>',
-    megaphone: '<path d="M4.4 10.4 15 6.2v11.6L4.4 13.6z"/><path d="M15 9.4h2.4a2.6 2.6 0 0 1 0 5.2H15"/><path d="M7.4 13.8v4a2 2 0 0 0 4 0v-2.4"/>',
     target: '<circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="4.6"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
     headphones: '<path d="M5 15v-2.6a7 7 0 0 1 14 0V15"/><rect x="3.4" y="14.2" width="3.6" height="6.2" rx="1.8"/><rect x="17" y="14.2" width="3.6" height="6.2" rx="1.8"/>',
     idea: '<path d="M9.4 18.4h5.2M10.2 20.8h3.6"/><path d="M12 3.4a5.6 5.6 0 0 0-3.4 10.1c.5.4.8 1 .8 1.6v1.3h5.2v-1.3c0-.6.3-1.2.8-1.6A5.6 5.6 0 0 0 12 3.4z"/>',
     cake: '<path d="M3.8 20.4h16.4"/><path d="M6.2 20.4v-4.4c0-3.1 2.6-5.6 5.8-5.6s5.8 2.5 5.8 5.6v4.4"/><path d="M6.2 16.2c1.9 1.5 3.8 1.5 5.8 0s3.9-1.5 5.8 0"/><path d="M12 10.4V8.2"/><circle cx="12" cy="6.6" r="1.1"/>',
-    gem: '<path d="M7.4 4.2h9.2l4 5.6-8.6 10-8.6-10z"/><path d="M3.4 9.8h17.2M9 4.2 7.2 9.8 12 19.8l4.8-10L15 4.2"/>',
 
     /* 취미 */
     dumbbell: '<path d="M5.2 12h13.6"/><path d="M8 8v8M16 8v8M8 12h8"/><path d="M4 10v4M20 10v4"/>',
@@ -141,7 +128,6 @@ window.OOGIcons = (function () {
     golf: '<path d="M8.4 3.8v14.8"/><path d="M8.4 3.8 17 6.8 8.4 9.8z"/><ellipse cx="12" cy="19.4" rx="6" ry="1.8"/><circle cx="19.4" cy="15.4" r="1.6"/>',
     bowling: '<circle cx="11" cy="11" r="7.4"/><circle cx="8.8" cy="8.4" r=".9" fill="currentColor" stroke="none"/><circle cx="12.4" cy="7.6" r=".9" fill="currentColor" stroke="none"/><circle cx="10.4" cy="11.4" r=".9" fill="currentColor" stroke="none"/><circle cx="19.4" cy="17.6" r="2.4"/>',
     pcgame: '<rect x="3.4" y="4.4" width="13.2" height="9.6" rx="2.2"/><path d="M8 18.6h4M10 14v4.6"/><path d="M17.4 11.4h1.4a2 2 0 0 1 2 2v5.2a2 2 0 0 1-2 2h-1.4z"/><path d="M6.4 8v3M4.9 9.5h3"/>',
-    trophy: '<path d="M8 4.4h8v5.2a4 4 0 0 1-8 0z"/><path d="M8 6H4.8v1.6a3.2 3.2 0 0 0 3.2 3.2M16 6h3.2v1.6a3.2 3.2 0 0 1-3.2 3.2"/><path d="M12 13.6v3.2M8.8 20h6.4M9.8 16.8h4.4"/>',
     wine: '<path d="M7.4 3.8h9.2v4.4a4.6 4.6 0 0 1-9.2 0z"/><path d="M7.4 7h9.2"/><path d="M12 12.8v6M8.6 20.4h6.8"/>',
     cook: '<ellipse cx="11" cy="15.6" rx="7.4" ry="3.6"/><path d="M3.6 15.6v1.4a3 3 0 0 0 3 3h8.8"/><path d="M19.4 16.8h1.4"/><path d="M8 12.6c-.9-1.2-.4-2.4.6-3.2M12 12.6c-.9-1.2-.4-2.4.6-3.2"/>',
     tent: '<path d="M12 4.4 3.6 19.8h16.8z"/><path d="M12 4.4v15.4"/><path d="M12 11.6 8.6 19.8M12 11.6l3.4 8.2"/>',
@@ -153,25 +139,46 @@ window.OOGIcons = (function () {
     paw: '<ellipse cx="12" cy="15.6" rx="4.2" ry="3.6"/><circle cx="7" cy="10.4" r="2.1"/><circle cx="11.4" cy="8" r="2.1"/><circle cx="16.2" cy="9.2" r="2.1"/><circle cx="19.4" cy="13.4" r="1.9"/>',
     shirt: '<path d="M8.6 4.4 12 6.4l3.4-2 4.4 2.6-2.2 3.8-2-.6v9.4H7.4v-9.4l-2 .6-2.2-3.8z"/>',
     study: '<path d="M3.8 6.4h6.6a2 2 0 0 1 2 2v11a1.8 1.8 0 0 0-1.8-1.8H3.8z"/><path d="M20.2 6.4h-6.6a2 2 0 0 0-2 2v11a1.8 1.8 0 0 1 1.8-1.8h6.8z"/>',
-    idcard: '<rect x="3.2" y="5.4" width="17.6" height="13.2" rx="3"/><circle cx="8.8" cy="10.8" r="2"/><path d="M5.8 15.8c.6-1.6 1.7-2.4 3-2.4s2.4.8 3 2.4"/><path d="M14.6 9.6h4M14.6 12.4h4M14.6 15.2h2.6"/>',
 
     /* 내정보 · 설정 */
     menu: '<circle cx="12" cy="5.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18.6" r="1.5" fill="currentColor" stroke="none"/>',
-    gear: '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.6"/><path d="M12 2.6v1.8M12 19.6v1.8M2.6 12h1.8M19.6 12h1.8M5.4 5.4 6.7 6.7M17.3 17.3l1.3 1.3M18.6 5.4 17.3 6.7M6.7 17.3l-1.3 1.3"/>',
-    chart: '<path d="M4 3.8v16.4h16.2"/><path d="M8.2 16.4v-4.2M12.2 16.4V7.8M16.2 16.4v-6.2"/>',
     timeline: '<path d="M6.2 3.8v16.4"/><circle cx="6.2" cy="8.2" r="2.2"/><circle cx="6.2" cy="16" r="2.2"/><path d="M11 8.2h9M11 16h6.4"/>',
     grid: '<rect x="4" y="4" width="6.6" height="6.6" rx="2"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="2"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="2"/><rect x="13.4" y="13.4" width="6.6" height="6.6" rx="2"/>',
+    chevronDown: '<path d="M5.4 9.6 12 16.2l6.6-6.6"/>',
+    chevronUp: '<path d="M5.4 14.4 12 7.8l6.6 6.6"/>',
+    star: '<path d="M12 3.6l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9-5.3-2.9-5.3 2.9 1.1-5.9L3.5 9.8l5.9-.8z"/>',
+    handshake: '<path d="M3.4 10.4 7 6.8l3.2 3.2-2 2"/><path d="M20.6 10.4 17 6.8l-4.4 4.4 2.2 2.2 1.8-1.8 1.4 1.4"/><path d="M10.2 10 12.4 7.8M8.2 12l3.4 3.4M11.4 14.2l2 2"/>',
+  };
+
+  /* ------------------------------------------------------------------
+   * 28.5 — 지금 화면에서 쓰지 않는 아이콘은 지우지 않고 여기로 옮겼다.
+   *  (레거시 이모지 호환표가 참조할 수 있어 render 는 여기까지 찾는다.)
+   * ------------------------------------------------------------------ */
+  const UNUSED = {
+    logo: '<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6 8.8 8.8 0 0 0 0-17.6z"/><path d="M8.6 14.4a4.4 4.4 0 0 1 6.8 0"/>',
+    minus: '<path d="M5.4 12h13.2"/>',
+    filter: '<path d="M4.2 5.4h15.6L14 12.4v6.2L10 21v-8.6z"/>',
+    calendarMonth: '<rect x="4" y="5.6" width="16" height="14.4" rx="3"/><path d="M8.2 3.4v4.2M15.8 3.4v4.2M4 10.2h16"/><path d="M7.8 13.4h.1M12 13.4h.1M16.2 13.4h.1M7.8 16.8h.1M12 16.8h.1M16.2 16.8h.1"/>',
+    link: '<path d="M9.4 14.6 14.6 9.4"/><path d="M11.2 6.8l1.4-1.4a3.7 3.7 0 0 1 5.2 5.2l-1.4 1.4M12.8 17.2l-1.4 1.4a3.7 3.7 0 0 1-5.2-5.2l1.4-1.4"/>',
+    eye: '<path d="M2.8 12S6.4 5.8 12 5.8 21.2 12 21.2 12 17.6 18.2 12 18.2 2.8 12 2.8 12z"/><circle cx="12" cy="12" r="3"/>',
+    history: '<path d="M3.8 12a8.2 8.2 0 1 0 2.4-5.8"/><path d="M3.4 4.2v4.2h4.2"/><path d="M12 8v4.4l3 1.8"/>',
+    crown: '<path d="M4 18.6h16"/><path d="M4.2 15.6 5.8 7l3.9 3.4L12 5.2l2.3 5.2L18.2 7l1.6 8.6z"/>',
+    shield: '<path d="M12 3.4 5.4 6v5.2c0 4 2.7 7.4 6.6 9 3.9-1.6 6.6-5 6.6-9V6z"/><path d="M9.2 11.8 11.4 14 15 10.4"/>',
+    logout: '<path d="M13.8 5.4H6.6a2 2 0 0 0-2 2v9.2a2 2 0 0 0 2 2h7.2"/><path d="M16.8 8.4 20.4 12l-3.6 3.6"/><path d="M9.6 12h10.8"/>',
+    refresh: '<path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20.4 4.2v4.4h-4.4"/>',
+    megaphone: '<path d="M4.4 10.4 15 6.2v11.6L4.4 13.6z"/><path d="M15 9.4h2.4a2.6 2.6 0 0 1 0 5.2H15"/><path d="M7.4 13.8v4a2 2 0 0 0 4 0v-2.4"/>',
+    gem: '<path d="M7.4 4.2h9.2l4 5.6-8.6 10-8.6-10z"/><path d="M3.4 9.8h17.2M9 4.2 7.2 9.8 12 19.8l4.8-10L15 4.2"/>',
+    trophy: '<path d="M8 4.4h8v5.2a4 4 0 0 1-8 0z"/><path d="M8 6H4.8v1.6a3.2 3.2 0 0 0 3.2 3.2M16 6h3.2v1.6a3.2 3.2 0 0 1-3.2 3.2"/><path d="M12 13.6v3.2M8.8 20h6.4M9.8 16.8h4.4"/>',
+    idcard: '<rect x="3.2" y="5.4" width="17.6" height="13.2" rx="3"/><circle cx="8.8" cy="10.8" r="2"/><path d="M5.8 15.8c.6-1.6 1.7-2.4 3-2.4s2.4.8 3 2.4"/><path d="M14.6 9.6h4M14.6 12.4h4M14.6 15.2h2.6"/>',
+    gear: '<circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7.6"/><path d="M12 2.6v1.8M12 19.6v1.8M2.6 12h1.8M19.6 12h1.8M5.4 5.4 6.7 6.7M17.3 17.3l1.3 1.3M18.6 5.4 17.3 6.7M6.7 17.3l-1.3 1.3"/>',
+    chart: '<path d="M4 3.8v16.4h16.2"/><path d="M8.2 16.4v-4.2M12.2 16.4V7.8M16.2 16.4v-6.2"/>',
     arrowLeft: '<path d="M19.4 12H4.6"/><path d="M10.6 5.8 4.4 12l6.2 6.2"/>',
     arrowRight: '<path d="M4.6 12h14.8"/><path d="M13.4 5.8 19.6 12l-6.2 6.2"/>',
     chevronRight: '<path d="M9.6 5.4 16.2 12l-6.6 6.6"/>',
-    chevronDown: '<path d="M5.4 9.6 12 16.2l6.6-6.6"/>',
-    chevronUp: '<path d="M5.4 14.4 12 7.8l6.6 6.6"/>',
     swap: '<path d="M7.4 4.2v13.2M4.2 14.2l3.2 3.2 3.2-3.2"/><path d="M16.6 19.8V6.6M13.4 9.8l3.2-3.2 3.2 3.2"/>',
     flag: '<path d="M5.4 21V3.8"/><path d="M5.4 4.4h10.2l-1.6 3.6 1.6 3.6H5.4z"/>',
-    star: '<path d="M12 3.6l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9-5.3-2.9-5.3 2.9 1.1-5.9L3.5 9.8l5.9-.8z"/>',
     circleDot: '<circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>',
-    people2: '<path d="M4.4 18.6a7.6 7.6 0 0 1 15.2 0"/><circle cx="12" cy="7.4" r="3.4"/>',
-    handshake: '<path d="M3.4 10.4 7 6.8l3.2 3.2-2 2"/><path d="M20.6 10.4 17 6.8l-4.4 4.4 2.2 2.2 1.8-1.8 1.4 1.4"/><path d="M10.2 10 12.4 7.8M8.2 12l3.4 3.4M11.4 14.2l2 2"/>'
+    people2: '<path d="M4.4 18.6a7.6 7.6 0 0 1 15.2 0"/><circle cx="12" cy="7.4" r="3.4"/>'
   };
 
   /* 채워야 하는 아이콘 — 선 대신 면 */
@@ -215,7 +222,7 @@ window.OOGIcons = (function () {
    */
   function svg(name, opts) {
     opts = opts || {};
-    const body = PATHS[name] || PATHS.dot;
+    const body = PATHS[name] || UNUSED[name] || PATHS.dot;
     const solid = opts.filled === true || (SOLID[name] && opts.filled !== false && name === 'heartFilled');
     const cls = 'oo-ic' + (opts.cls ? ' ' + opts.cls : '');
     const size = opts.size || '1em';
