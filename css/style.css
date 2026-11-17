@@ -18837,3 +18837,76 @@ img[loading="lazy"] { content-visibility: auto; }
   color: #E2E8F0;
   text-align: left;
 }
+
+/* 알림 종류 6개는 2열로 — 설정 첫 화면에서 아래 묶음도 보이게 */
+.drawer-profile .notif-cat-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.drawer-profile .notif-cat-item { min-height: 48px; padding: 4px 6px; gap: 6px; }
+.drawer-profile .notif-cat-emoji { width: 20px; height: 20px; flex: 0 0 20px; }
+.drawer-profile .notif-cat-main { min-width: 0; }
+.drawer-profile .notif-cat-label { font-size: 12px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drawer-profile .notif-cat-preview-btn { display: none !important; }
+.drawer-profile .notif-exception-row { display: none !important; }
+
+/* 설정 › 알림 — 한 줄 목록으로 되돌리고, 시험용 도구는 접는다 */
+.drawer-profile .notif-cat-list {
+  display: block;
+  grid-template-columns: none;
+}
+.drawer-profile .notif-cat-item { min-height: 48px; margin-bottom: 2px; }
+.drawer-profile .notif-cat-label { font-size: var(--fs-helper) !important; }
+.drawer-profile .notif-sim,
+.drawer-profile .notif-sim-list,
+.drawer-profile .notif-sim-note,
+.drawer-profile .notif-test-btn,
+.drawer-profile .notif-test-result,
+.drawer-profile .notif-cat-preview-btn { display: none !important; }
+.drawer-profile .notif-switch { flex: 0 0 44px; min-width: 44px !important; }
+
+/* 설정 › 알림 — 기본은 한 줄 요약, '자세히'에서 펼친다 */
+.drawer-profile .notif-expand-btn {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+.drawer-profile .notif-expand-btn span:first-child { flex: 1 1 auto; text-align: left; }
+.drawer-profile .notif-expand-chevron { display: inline-flex; color: var(--text-muted); transition: transform var(--dur-fast) ease; }
+.drawer-profile .notif-expanded .notif-expand-chevron { transform: rotate(180deg); }
+.drawer-profile #notif-settings-body:not(.notif-expanded) > *:not(#notif-expand-btn) { display: none !important; }
+.drawer-profile .notif-sim-row { display: none !important; }
+
+/* 다크 — 모임 표지·배지가 검게 죽지 않게 초록 톤을 남긴다 */
+:root[data-theme="dark"] .gallery-cover.is-plain,
+:root[data-theme="dark"] .gallery-card .gallery-cover {
+  background: linear-gradient(135deg, #1B3B31 0%, #14312A 100%) !important;
+}
+:root[data-theme="dark"] .gallery-cover-emoji {
+  background: rgba(52, 211, 153, 0.14);
+  color: #6EE7B7;
+  box-shadow: var(--sh-1);
+}
+:root[data-theme="dark"] .gallery-leader {
+  background: rgba(52, 211, 153, 0.2);
+  color: #A7F3D0;
+  border: 1px solid rgba(110, 231, 183, 0.35);
+}
+:root[data-theme="dark"] .gallery-sort-btn {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-sub);
+}
+:root[data-theme="dark"] .gallery-sort-btn.active {
+  background: #17332B;
+  color: #6EE7B7;
+}
+:root[data-theme="dark"] .gallery-leader { color: #D1FAE5 !important; background: rgba(16, 185, 129, 0.28) !important; }

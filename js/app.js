@@ -9082,6 +9082,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const categories = store.getNotificationCategories();
 
     el.notifSettingsBody.innerHTML = `
+      <button class="notif-expand-btn" id="notif-expand-btn" type="button" aria-expanded="false">
+        <span>알림 설정 자세히</span>
+        <span class="notif-expand-chevron" aria-hidden="true">${ic('chevronDown')}</span>
+      </button>
       <div class="notif-row">
         <div class="notif-row-main">
           <span class="notif-row-label">푸시 알림</span>
@@ -12044,6 +12048,15 @@ document.addEventListener('DOMContentLoaded', () => {
     el.navButtons.forEach((btn) => btn.addEventListener('click', () => top.classList.remove('is-tucked')));
   }
 
+  /* 설정 › 알림은 기본으로 접어 두고, '자세히'를 누르면 펼친다(iOS 하위 화면처럼). */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#notif-expand-btn');
+    if (!btn) return;
+    const shell = btn.closest('#notif-settings-body');
+    const on = shell.classList.toggle('notif-expanded');
+    btn.setAttribute('aria-expanded', String(on));
+  });
+
   /* ==========================================================================
    * Sprint 28.5 — 홈 · 디엠 · 프로필의 새 조각
    * --------------------------------------------------------------------------
@@ -12239,6 +12252,18 @@ document.addEventListener('DOMContentLoaded', () => {
       ${c.hobbies.slice(0, 3).map((h) => `<span class="common-chip">${ic('sparkle')} 공통 취미 · ${escapeHtml(h)}</span>`).join('')}
     </div>`;
   }
+
+  /* Sprint 28.5 — 설정은 iOS 목록 순서(알림 → 비밀앨범 → 화면 설정 → 계정 → …)로
+     DOM 자체를 옮긴다. 화면 순서와 읽는 순서를 같게 하기 위해서다. */
+  (function reorderSettingsSections() {
+    const body = document.getElementById('profile-drawer-body');
+    if (!body) return;
+    const order = ['alerts', 'profile', 'display', 'account', 'groups', 'talk', 'data'];
+    order.forEach((key) => {
+      const sec = body.querySelector(`.drawer-section[data-acc="${key}"]`);
+      if (sec) body.appendChild(sec);
+    });
+  })();
 
   /* ---------------------------------------------- 이벤트 배선 */
   el.headerHomeBtn && el.headerHomeBtn.addEventListener('click', goHomeTop);
