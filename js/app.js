@@ -1535,9 +1535,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function runClearSampleData() {
     const res = store.clearSampleData();
     closeAllModals();
-    if (res.before && res.before.counts.groups && (store.currentUser.joinedGroupIds || []).length === 0) {
+    /* 예시 모임 안을 보고 있었다면 그 자리를 정리한다(없는 모임에 머물지 않게). */
+    if (ui.groupSpaceId && !store.isGroupJoined(ui.groupSpaceId)) {
       ui.groupSpaceId = null;
-      if (ui.activeTab === 'tab-home') renderHome();
+      if (typeof syncNavMode === 'function') syncNavMode();
     }
     renderHome();
     renderExplore();
