@@ -759,6 +759,17 @@ const NEARBY_KM = 5;
 const EXPLORE_PUBLISH_HOURS = 2;
 const ALBUM_MAX = 4;
 
+/* ---------------------------------------------------------------------------
+ * Sprint 26.5 — 앨범 사진 업로드 스펙 (11/17 사용자: "일단은 720으로하자 추후 화질은 높일거야")
+ * -------------------------------------------------------------------------
+ * 화질을 올릴 때는 **아래 두 값만** 바꾼다. 앱(app.js)도 서버 경계(api.js)도 이 값을 읽는다.
+ *   · maxDimension — 긴 변 기준 최대 픽셀. 1440으로 올리면 저장 용량이 약 4배가 된다.
+ *   · jpegQuality  — 0~1. 0.9 이상은 눈에 잘 띄지 않고 용량만 는다.
+ * ------------------------------------------------------------------------- */
+const ALBUM_MAX_DIMENSION = 720;
+const ALBUM_JPEG_QUALITY = 0.84;   // 720px · 저장 용량 보호(localStorage 4장×2종)
+const ALBUM_UPLOAD_SPEC = { maxDimension: ALBUM_MAX_DIMENSION, jpegQuality: ALBUM_JPEG_QUALITY, max: ALBUM_MAX };
+
 /** 만남 스타일 — 글을 올릴 때 하나 고르면 카드에 그대로 붙는다(선택). */
 const EXPLORE_MEET_STYLES = [
   { id: 'now', name: '지금 번개', icon: 'sparkle', desc: '바로 만나요' },
@@ -9653,6 +9664,16 @@ class Store {
     return Promise.resolve().then(() => this[fn](...args));
   }
 
+  /** Sprint 26.5 — 앨범 업로드 스펙(화질·장수). 화면은 이 값 하나만 본다. */
+  getAlbumUploadSpec() {
+    return {
+      maxDimension: ALBUM_MAX_DIMENSION,
+      jpegQuality: ALBUM_JPEG_QUALITY,
+      max: ALBUM_MAX,
+      mime: 'image/jpeg'
+    };
+  }
+
   getGroupStoriesAsync(groupId, options) { return this.readAsync('stories', groupId, options); }
   getStoryRingsAsync(groupId, options) { return this.readAsync('storyRings', groupId, options); }
   getDmInboxAsync(options) { return this.readAsync('dmInbox', options); }
@@ -9680,3 +9701,5 @@ function oogTimeAgo(isoString) {
 
 window.appStore = new Store();
 window.oogTimeAgo = oogTimeAgo;
+/* Sprint 26.5 — 앨범 업로드 스펙을 밖(api.js·번들·테스트)에서도 같은 값으로 읽게 한다. */
+window.OOG_ALBUM_SPEC = ALBUM_UPLOAD_SPEC;

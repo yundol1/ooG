@@ -271,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     albumViewerImg: $('#album-viewer-img'),
     albumViewerCount: $('#album-viewer-count'),
     albumViewerHint: $('#album-viewer-hint'),
+    albumViewerMenu: $('#album-viewer-menu'),
     albumViewerPrev: $('#btn-album-viewer-prev'),
     albumViewerNext: $('#btn-album-viewer-next'),
     albumViewerReplace: $('#btn-album-viewer-replace'),
@@ -316,6 +317,11 @@ document.addEventListener('DOMContentLoaded', () => {
     profileAvatarImg: $('#profile-avatar-img'),
     menuStoryArchiveCount: $('#menu-story-archive-count'),
     menuPhotoState: $('#menu-photo-state'),
+    /* Sprint 26.5 — 설정 아코디언의 요약 값 */
+    menuAlbumsState: $('#menu-albums-state'),
+    menuProfileStatusVal: $('#menu-profile-status-val'),
+    accMetaDisplay: $('#acc-meta-display'),
+    accMetaAlerts: $('#acc-meta-alerts'),
     profilePhotoInput: $('#profile-photo-input'),
     groupSpace: $('#group-space'),
     groupSpaceName: $('#group-space-name'),
@@ -646,8 +652,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** 사진 파일 → 최대 max(기본 256)px JPEG Data URL (저장 용량·속도 고려).
-   *  Sprint 17 — 게시물·스토리 사진은 1080px, 프로필 사진은 256px로 줄인다. */
-  function readImageFile(file, onDone, max = 256) {
+   *  Sprint 17 — 게시물·스토리 사진은 1080px, 프로필 사진은 256px로 줄인다.
+   *  Sprint 26.5 — 앨범은 store 의 업로드 스펙(720px · 0.84)을 그대로 따른다. */
+  function readImageFile(file, onDone, max = 256, quality = 0.84) {
     if (!file) return;
     if (!/^image\//.test(file.type || '')) {
       showToast('이미지 파일만 올릴 수 있어요', 'warning');
@@ -664,13 +671,24 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.width = w;
         canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        onDone(canvas.toDataURL('image/jpeg', 0.84));
+        onDone(canvas.toDataURL('image/jpeg', quality));
       };
       img.onerror = () => showToast('사진을 읽지 못했어요', 'warning');
       img.src = reader.result;
     };
     reader.onerror = () => showToast('사진을 읽지 못했어요', 'warning');
     reader.readAsDataURL(file);
+  }
+
+  /** Sprint 26.5 — 앨범 사진의 업로드 스펙(화질을 올릴 때 store 한 곳만 고치면 된다). */
+  function albumUploadSpec() {
+    const fallback = { maxDimension: 720, jpegQuality: 0.84, max: 4 };
+    try {
+      const spec = store.getAlbumUploadSpec ? store.getAlbumUploadSpec() : null;
+      return spec && spec.maxDimension ? spec : fallback;
+    } catch (e) {
+      return fallback;
+    }
   }
 
   /* ------------------------------------------------------------------
@@ -814,12 +832,9 @@ document.addEventListener('DOMContentLoaded', () => {
     'reset-email': '비밀번호 찾기', 'reset-code': '인증', 'reset-password': '새 비밀번호'
   };
 
-  /** 질문 위의 작은 표시 — "3 / 7 · 비밀번호". */
+  /** 질문 위의 작은 표시 — 지금 무엇을 묻는지 한 단어로만(진행은 위 막대가 보여준다). */
   function obKicker(stepId) {
-    const flow = obFlow();
-    const i = Math.max(1, flow.indexOf(stepId) + 1);
-    return `<p class="ob-kicker"><span class="ob-kicker-num">${i} / ${flow.length}</span>
-      <span class="ob-kicker-label">${escapeHtml(OB_KICKERS[stepId] || '')}</span></p>`;
+    return `<p class="ob-kicker"><span class="ob-kicker-label">${escapeHtml(OB_KICKERS[stepId] || '')}</span></p>`;
   }
 
   /** 모의 메일함 — 실제 SMTP 가 없으니 인증번호를 화면에서 보여줄다(숨기지 않는다). */
@@ -857,18 +872,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ------------------------------------------------------------------
-   * Sprint 23 — 스토리텔링 문구 먼저 → 입력란 스프링 등장
+   * Sprint 23 → 26.5 — 스토리텔링 문구 먼저 → 입력란 등장 (읽는 호흡으로)
    * ------------------------------------------------------------------
-   * 11/16 23:47 사용자: "각 단계가 열릴 때 먼저 질문/내레이션 문구만 출력하고,
-   * 문구 출력이 끝나면(약 700~950ms) 아래 입력란·버튼이 스프링으로 딱 등장.
-   * 문구 영역을 탭하면 기다리지 않고 즉시 스킵."
+   * 11/16 23:47 사용자: "먼저 질문/내레이션 문구만 출력하고, 문구가 끝나면
+   * 아래 입력란·버튼이 스프링으로 딱 등장. 문구 영역을 탭하면 즉시 스킵."
+   * 11/17 08:05 사용자: "스토리텔링의 글이 너무 빨리 나와 천천히 나와야지"
    *
-   *  · 문구(제목)는 한 글자씩 찍히고, 설명은 그다음에 떠오른다.
-   *  · 그동안 입력란·선택 카드·다음 버튼은 hidden 이다.
+   *  · 제목은 한 글자씩, 쉼표·마침표·줄바꿈에서 사람이 숨 쉬는 만큼 멈춘다.
+   *  · 제목이 끝나면 한 숨(0.48초) 뒤 설명이 떠오르고, **설명을 읽을 만큼**
+   *    (글자수 × 30ms, 0.9~2.4초) 기다린 뒤에야 입력란이 나타난다.
+   *  · 문구(제목·설명·힌트)를 탭하면 기다리지 않고 바로 답이 나온다.
    *  · prefers-reduced-motion · 자동 테스트(webdriver) 에서는 기다리지 않고 바로 보여준다.
    *    (?narr=1 로 강제, ?narr=0 으로 끔 · window.oog.setNarration)
    * ---------------------------------------------------------------- */
-  const NARRATION_TIMING = { title: 430, desc: 220, reveal: 780 };
+  const NARRATION_TIMING = {
+    char: 92,          // 한 글자 (약 10.9자/초 · 읽어 주는 속도)
+    brHold: 300,       // 줄바꿈에서 한 숨
+    commaHold: 170,    // 쉼표
+    periodHold: 310,   // 마침표 · 물음표
+    breath: 480,       // 제목 → 설명
+    descFade: 560,     // 설명이 떠오르는 시간
+    descRead: 30,      // 설명 한 글자를 읽는 시간
+    descMin: 900,
+    descMax: 2400,
+    hintDelay: 1500    // '문구를 탭하면' 힌트가 나타나는 시점
+  };
 
   function narrationEnabled() {
     if (!ui.narration || ui.narration.enabled === false) return false;
@@ -888,91 +916,166 @@ document.addEventListener('DOMContentLoaded', () => {
     return ui.narration || (ui.narration = { enabled: true, force: null });
   }
 
-  /** 제목을 한 글자씩 찍는다. 반환값을 부르면 남은 글자가 즉시 채워진다. */
-  function typeNarrationTitle(node, totalMs) {
-    if (!node) return () => {};
+  /** 제목을 한 글자씩 찍는다 — 쉼표·마침표·줄바꿈에서 잠깐 멈춘다.
+   *  반환값 finish(true) 는 남은 글자를 채우되 다음 단계는 부르지 않는다(스킵). */
+  function typeNarrationTitle(node, onDone) {
+    if (!node) { if (onDone) onDone(); return { finish: () => {}, chars: 0 }; }
     const raw = node.innerHTML;
     const tokens = raw.match(/<br\s*\/?>|&[a-zA-Z#0-9]+;|[\s\S]/g) || [];
     node.innerHTML = tokens.map((t, i) => (/^<br/i.test(t)
       ? '<br>'
       : `<span class="ob-type-char" data-i="${i}">${t === ' ' ? '&nbsp;' : t}</span>`)).join('');
     const chars = Array.from(node.querySelectorAll('.ob-type-char'));
-    const per = Math.max(14, Math.min(46, Math.round(totalMs / Math.max(1, chars.length))));
     let i = 0;
-    const timer = setInterval(() => {
-      if (i >= chars.length) { clearInterval(timer); return; }
+    let timer = null;
+    let typed = false;
+    const finish = (silent) => {
+      if (timer) { clearTimeout(timer); timer = null; }
+      chars.forEach((c) => c.classList.add('on'));
+      if (!typed) {
+        typed = true;
+        if (!silent && onDone) onDone();
+      }
+    };
+    const tick = () => {
+      if (i >= chars.length) { finish(); return; }
+      const token = tokens[i];
       chars[i].classList.add('on');
       i += 1;
-    }, per);
-    ui.narrationTimers = (ui.narrationTimers || []).concat(timer);
-    return () => { chars.forEach((c) => c.classList.add('on')); clearInterval(timer); };
+      let wait = NARRATION_TIMING.char;
+      if (/^<br/i.test(token)) wait = NARRATION_TIMING.brHold;
+      else if (/^[,，·、]$/.test(token)) wait = NARRATION_TIMING.commaHold;
+      else if (/^[.!?…]$/.test(token)) wait = NARRATION_TIMING.periodHold;
+      timer = setTimeout(() => {
+        timer = null;
+        if (i >= chars.length) finish();
+        else tick();
+      }, wait);
+      ui.narrationTimers = (ui.narrationTimers || []).concat(timer);
+    };
+    tick();
+    return { finish, chars: chars.length };
   }
 
-  /** 온보딩 단계 하나에 내레이션을 건다 — 답(입력란·버튼)은 문구가 끝나야 나타난다. */
-  function applyOnboardingNarration(stepId) {
-    const step = el.onboardingBody && el.onboardingBody.querySelector('.ob-step');
-    if (!step) return;
-    const hero = step.querySelector('.ob-hero');
-    clearNarrationTimers();
+  /**
+   * 내레이션 한 번 — 제목 타이핑 → 한 숨 → 설명 등장 → 읽을 만큼 기다림 → 답 등장.
+   *  cfg { titleNode, descNode, hintNode, onStart, onDescIn, onReveal, hold }
+   *  반환값: 즉시 끝내는 함수(탭 스킵).
+   */
+  function playNarration(cfg) {
     const st = narrationState();
-    st.active = false; st.done = true; st.step = stepId; st.answerShown = true;
-    if (!hero) return;
+    clearNarrationTimers();
+    const reveal = () => {
+      if (st.done) return;
+      clearNarrationTimers();
+      st.active = false; st.done = true; st.answerShown = true;
+      if (cfg.onReveal) cfg.onReveal();
+    };
+    if (!narrationEnabled()) {
+      if (cfg.onReveal) cfg.onReveal();
+      return reveal;
+    }
+    const after = (ms, fn) => {
+      const t = setTimeout(fn, ms);
+      ui.narrationTimers = (ui.narrationTimers || []).concat(t);
+      return t;
+    };
+    st.active = true; st.done = false; st.answerShown = false;
+    if (cfg.onStart) cfg.onStart();
+    const descChars = cfg.descNode ? String(cfg.descNode.textContent || '').replace(/\s/g, '').length : 0;
+    const descHold = Math.max(NARRATION_TIMING.descMin,
+      Math.min(NARRATION_TIMING.descMax, Math.round(descChars * NARRATION_TIMING.descRead)));
+    const typing = typeNarrationTitle(cfg.titleNode, () => {
+      after(NARRATION_TIMING.breath, () => {
+        if (st.done) return;
+        if (cfg.onDescIn) cfg.onDescIn();
+        after(cfg.hold != null ? cfg.hold : descHold + NARRATION_TIMING.descFade, reveal);
+      });
+    });
+    if (cfg.hintNode) {
+      after(NARRATION_TIMING.hintDelay, () => {
+        if (st.done) return;
+        cfg.hintNode.classList.add('is-on');
+      });
+    }
+    ui.narrationFinishTyping = () => typing.finish(true);
+    ui.narrationReveal = () => { typing.finish(true); reveal(); };
+    return ui.narrationReveal;
+  }
 
-    /* 문구 뒤의 모든 것(입력란·오류·버튼)을 하나의 '답' 블록으로 묶는다 */
+  /** 문구 뒤의 모든 것(입력란·안내·버튼)을 하나의 '답' 카드로 묶는다. */
+  function wrapOnboardingAnswer(step) {
+    if (!step) return null;
+    const existing = step.querySelector('.ob-answer');
+    if (existing) return existing;
+    const hero = step.querySelector('.ob-hero');
+    if (!hero) return null;
     const answer = document.createElement('div');
     answer.className = 'ob-answer';
     let node = hero.nextSibling;
     while (node) { const next = node.nextSibling; answer.appendChild(node); node = next; }
     step.appendChild(answer);
+    return answer;
+  }
 
-    const hint = document.createElement('p');
-    hint.className = 'ob-skip-hint';
-    hint.textContent = '문구를 누르면 바로 시작해요';
-    hero.parentNode.insertBefore(hint, answer);
+  /** 온보딩 단계 하나에 내레이션을 건다 — 답(입력란·버튼)은 문구를 다 읽은 뒤 나타난다. */
+  function applyOnboardingNarration(stepId) {
+    const step = el.onboardingBody && el.onboardingBody.querySelector('.ob-step');
+    if (!step) return;
+    const hero = step.querySelector('.ob-hero');
+    const answer = wrapOnboardingAnswer(step);
+    clearNarrationTimers();
+    const st = narrationState();
+    st.active = false; st.done = true; st.step = stepId; st.answerShown = true;
+    if (!hero || !answer) return;
 
+    let hint = hero.querySelector('.ob-skip-hint');
+    if (!hint) {
+      hint = document.createElement('p');
+      hint.className = 'ob-skip-hint';
+      hint.innerHTML = `<span class="ob-skip-line" aria-hidden="true"></span><span>문구를 탭하면 바로 시작해요</span>`;
+      hero.appendChild(hint);
+    }
+    hint.classList.remove('is-on');
     const titleNode = hero.querySelector('.ob-title');
+    const descNode = hero.querySelector('.ob-desc');
+
     const reveal = () => {
-      if (st.done) return;
-      clearNarrationTimers();
       step.classList.remove('is-narrating');
       step.classList.add('narr-done');
       answer.hidden = false;
       answer.classList.add('is-arriving');
-      st.active = false; st.done = true; st.answerShown = true;
+      setTimeout(() => answer.classList.remove('is-arriving'), 560);
     };
 
+    /* 동작 줄이기·자동 테스트 — 기다림 없이 답을 보여준다(문구는 그대로 남는다). */
     if (!narrationEnabled()) {
-      /* 동작 줄이기·자동 테스트 — 기다림 없이 답을 보여준다(문구는 그대로 남는다). */
       step.classList.add('narr-done');
+      answer.hidden = false;
       hint.remove();
       return;
     }
 
-    st.active = true; st.done = false; st.answerShown = false;
     step.classList.add('is-narrating');
-    step.classList.remove('narr-done');
+    step.classList.remove('narr-done', 'narr-desc-in');
     answer.hidden = true;
-    ui.narrationReveal = reveal;
-
-    const finishTyping = typeNarrationTitle(titleNode, NARRATION_TIMING.title);
-    ui.narrationTimers.push(setTimeout(() => {
-      step.classList.add('narr-desc-in');
-    }, NARRATION_TIMING.title - 60));
-    ui.narrationTimers.push(setTimeout(() => {
-      finishTyping();
-      reveal();
-    }, NARRATION_TIMING.reveal));
+    playNarration({
+      titleNode,
+      descNode,
+      hintNode: hint,
+      onStart: () => { answer.hidden = true; },
+      onDescIn: () => step.classList.add('narr-desc-in'),
+      onReveal: reveal
+    });
 
     /* 문구 영역 탭 → 즉시 완결 */
     const skip = (e) => {
       if (!st.active) return;
       if (e && e.target.closest('.ob-answer')) return;
-      e && e.preventDefault();
-      if (typeof finishTyping === 'function') finishTyping();
-      reveal();
+      if (e) e.preventDefault();
+      if (typeof ui.narrationReveal === 'function') ui.narrationReveal();
     };
     hero.addEventListener('click', skip);
-    hint.addEventListener('click', skip);
   }
 
   function renderOnboarding() {
@@ -1178,7 +1281,11 @@ document.addEventListener('DOMContentLoaded', () => {
     el.onboardingBody.className = `onboarding-body ob-step-${ui.obDir}`;
     el.onboardingBody.dataset.obMode = ui.onboardingMode;
     el.onboardingBody.innerHTML = `<div class="ob-step" data-ob-step="${stepId}" data-ob-mode="${ui.onboardingMode}">${body}</div>`;
-    /* Sprint 23 — 문구가 먼저, 입력란은 문구가 끝난 뒤(로그인·재설정 화면은 바로).
+    /* Sprint 26.5 — 문구(배경 위 글자)와 답(입력란 카드)을 늘 나눠 둔다.
+       내레이션이 꺼진 화면(로그인·동작 줄이기)에서도 답은 같은 카드로 보인다. */
+    wrapOnboardingAnswer(el.onboardingBody.querySelector('.ob-step'));
+    if (loginMode) el.onboardingBody.querySelector('.ob-step').classList.add('narr-done');
+    /* Sprint 23 — 문구가 먼저, 입력란은 문구를 다 읽은 뒤(로그인·재설정 화면은 바로).
        같은 단계의 재렌더(사진 미리보기 등)에서는 다시 가리지 않는다. */
     const narrKey = `${ui.onboardingMode}:${stepId}`;
     if (!loginMode && ui.obNarrKey !== narrKey) {
@@ -1914,22 +2021,25 @@ document.addEventListener('DOMContentLoaded', () => {
       query: s.query, categoryId: s.categoryId, sort: s.sort, limit: s.limit
     });
     const cat = store.getGroupBrowseCategories().find((c) => c.id === s.categoryId);
+    if (el.btnHomeBrowseNew) el.btnHomeBrowseNew.hidden = res.total === 0 && !s.query && s.categoryId === 'all';
     if (el.homeBrowseSub) {
       el.homeBrowseSub.textContent = res.total
         ? `${s.query ? `'${s.query}' · ` : ''}${cat && cat.id !== 'all' ? `${cat.name} · ` : ''}모임 ${res.total}개`
         : '아직 둘러볼 모임이 없어요';
     }
     if (!res.items.length) {
+      const filtering = !!(s.query || s.categoryId !== 'all');
+      /* Sprint 26.5 — 세상이 비었을 때는 위 '내 그룹' 카드가 이미 모임 만들기를 권한다.
+         여기서 또 버튼을 두면 같은 행동이 세 번 반복되므로, 조건에 걸린 0건일 때만 버튼을 둔다. */
       el.homeBrowseGrid.innerHTML = `
         <div class="home-browse-empty">
-          <p class="home-browse-empty-title">${s.query || s.categoryId !== 'all' ? '조건에 맞는 모임이 없어요' : '아직 모임이 없어요'}</p>
-          <p class="home-browse-empty-desc">${s.query || s.categoryId !== 'all'
+          <p class="home-browse-empty-title">${filtering ? '조건에 맞는 모임이 없어요' : '아직 둘러볼 모임이 없어요'}</p>
+          <p class="home-browse-empty-desc">${filtering
             ? '검색어를 짧게 바꾸거나 다른 분야를 골라보세요.'
-            : '첫 모임을 만들면 이 자리에 보여요.'}</p>
-          <div class="home-browse-empty-actions">
-            <button class="btn-primary" data-browse-new="1" type="button">모임 만들기</button>
-            ${s.query || s.categoryId !== 'all' ? '<button class="btn-secondary" data-browse-reset="1" type="button">조건 초기화</button>' : ''}
-          </div>
+            : '모임이 생기면 이 자리에 보여요.'}</p>
+          ${filtering ? `<div class="home-browse-empty-actions">
+            <button class="btn-secondary" data-browse-reset="1" type="button">조건 초기화</button>
+          </div>` : ''}
         </div>`;
     } else {
       el.homeBrowseGrid.innerHTML = res.items.map((item) => groupTileHTML(item)).join('');
@@ -2000,7 +2110,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.btnHomeBrowseNew) el.btnHomeBrowseNew.addEventListener('click', () => openGroupCreate());
     if (el.homeBrowseGrid) {
       el.homeBrowseGrid.addEventListener('click', (e) => {
-        if (e.target.closest('[data-browse-new]')) { openGroupCreate(); return; }
         if (e.target.closest('[data-browse-reset]')) {
           s.categoryId = 'all'; s.query = ''; s.limit = HOME_BROWSE_PAGE;
           if (el.homeBrowseSearch) el.homeBrowseSearch.value = '';
@@ -2171,10 +2280,12 @@ document.addEventListener('DOMContentLoaded', () => {
     bubble.classList.remove('above', 'below');
     el.spotlight.classList.toggle('is-center', !rect);
     if (!rect) {
+      /* Sprint 26.5 — 가운데 정렬 대신 위쪽에 고정한다. 문구가 다 찍히고 답이 나타날 때
+         블록이 위아래로 흔들리지 않고 아래로만 자란다(읽는 순서가 눈에 남는다). */
       bubble.style.left = '50%';
-      bubble.style.top = '50%';
-      bubble.style.transform = 'translate(-50%, -50%)';
-      bubble.style.maxHeight = `${Math.round(vh * 0.82)}px`;
+      bubble.style.top = `${Math.max(56, Math.round(vh * 0.15))}px`;
+      bubble.style.transform = 'translateX(-50%)';
+      bubble.style.maxHeight = `${Math.round(vh * 0.78)}px`;
       return;
     }
     const margin = 12;
@@ -2197,50 +2308,49 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function applyGuideNarration(step) {
     if (!el.spotlightBubble) return;
-    clearNarrationTimers();
     const st = narrationState();
-    const taste = step && ['taste-category', 'taste-hobby', 'taste-goal'].includes(step.id);
     const body = el.spotlightBody;
     const titleNode = el.spotlightTitle;
+    const descNode = el.spotlightDesc;
     const bubble = el.spotlightBubble;
-    bubble.classList.remove('is-narrating', 'narr-done');
+    const key = `guide:${step ? step.id : ''}`;
+    /* 같은 단계를 다시 그린 것(취미 하나를 골랐을 때) — 진행 중인 연출은 건드리지 않는다. */
+    if (ui.guideNarrKey === key && st.active) return;
+    clearNarrationTimers();
+    bubble.classList.remove('is-narrating', 'narr-done', 'narr-desc-in');
     if (titleNode && titleNode.dataset.narrTitle) {
       titleNode.textContent = titleNode.dataset.narrTitle;
       delete titleNode.dataset.narrTitle;
     }
     st.active = false; st.done = true; st.answerShown = true; st.step = step ? step.id : null;
     if (body && step && step.body) body.hidden = false;
-    if (!taste || !narrationEnabled()) return;
+    if (!step || !narrationEnabled()) return;
 
-    const key = `guide:${step.id}`;
-    if (ui.guideNarrKey === key) return;
     ui.guideNarrKey = key;
-
-    st.active = true; st.done = false; st.answerShown = false;
     bubble.classList.add('is-narrating');
     if (body) body.hidden = true;
-    if (titleNode) {
-      titleNode.dataset.narrTitle = titleNode.textContent;
-      typeNarrationTitle(titleNode, NARRATION_TIMING.title);
-    }
-    const reveal = () => {
-      if (st.done) return;
-      clearNarrationTimers();
-      bubble.classList.remove('is-narrating');
-      bubble.classList.add('narr-done');
-      if (titleNode && titleNode.dataset.narrTitle) {
-        titleNode.textContent = titleNode.dataset.narrTitle;
-        delete titleNode.dataset.narrTitle;
+    if (titleNode) titleNode.dataset.narrTitle = titleNode.textContent;
+
+    playNarration({
+      titleNode,
+      descNode,
+      onStart: () => { if (body) body.hidden = true; },
+      onDescIn: () => bubble.classList.add('narr-desc-in'),
+      onReveal: () => {
+        bubble.classList.remove('is-narrating');
+        bubble.classList.add('narr-done');
+        if (titleNode && titleNode.dataset.narrTitle) {
+          titleNode.textContent = titleNode.dataset.narrTitle;
+          delete titleNode.dataset.narrTitle;
+        }
+        if (body && step && step.body) {
+          body.hidden = false;
+          body.classList.add('is-arriving');
+          setTimeout(() => body.classList.remove('is-arriving'), 560);
+        }
       }
-      if (body && step && step.body) {
-        body.hidden = false;
-        body.classList.add('is-arriving');
-        setTimeout(() => body.classList.remove('is-arriving'), 520);
-      }
-      st.active = false; st.done = true; st.answerShown = true;
-    };
-    ui.narrationReveal = reveal;
-    ui.narrationTimers.push(setTimeout(reveal, NARRATION_TIMING.reveal));
+    });
+
     if (!bubble.dataset.narrBound) {
       bubble.dataset.narrBound = '1';
       bubble.addEventListener('click', (e) => {
@@ -3647,12 +3757,88 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** 내정보 사이드바 — 계정·활동·알림·설치·계정 정리. */
+  /* ==========================================================================
+   * Sprint 26.5 — 설정 사이드바: 카테고리별 접기/펼치기
+   * ------------------------------------------------------------------------
+   * 11/17 사용자: "사이드바에 있는 설정들은 접고 접을 수 있게해줘 다 펼쳐져있으니
+   * 너무 많아보여 … 이반시티나 잭디 그런걸 확인해줘"
+   *  · 한 번에 한 묶음만 펼친다(다른 묶음을 열면 앞의 것이 접힌다).
+   *  · 처음에는 '계정 및 보안' 하나만 열려 있어, 사이드바가 짧고 읽기 쉽다.
+   *  · 접힌 묶음은 hidden 이라 화면 낭독기·Tab 순서에서도 빠진다.
+   * ======================================================================== */
+  const SETTINGS_GROUPS = ['account', 'profile', 'talk', 'alerts', 'display', 'data'];
+
+  function settingsSection(key) {
+    return el.profileDrawer ? el.profileDrawer.querySelector(`.drawer-section[data-acc="${key}"]`) : null;
+  }
+
+  function setSettingsGroup(key, open) {
+    const sec = settingsSection(key);
+    if (!sec) return { ok: false, reason: 'not_found', key };
+    const head = sec.querySelector('.acc-head');
+    const body = sec.querySelector('.acc-body');
+    const next = open == null ? !sec.classList.contains('is-open') : !!open;
+    sec.classList.toggle('is-open', next);
+    if (head) head.setAttribute('aria-expanded', String(next));
+    if (body) {
+      body.hidden = !next;
+      body.classList.remove('is-opening');
+      if (next) {
+        /* 펼칠 때만 짧게 떠오르게(접을 때는 즉시) */
+        void body.offsetHeight;
+        body.classList.add('is-opening');
+      }
+    }
+    return { ok: true, key, open: next };
+  }
+
+  /** 테스트·딥링크용 — 사이드바를 열고 그 묶음을 펼친다. */
+  function openSettingsGroup(key) {
+    if (ui.drawerOpen !== 'profile') openDrawer('profile');
+    SETTINGS_GROUPS.forEach((k) => { if (k !== key) setSettingsGroup(k, false); });
+    return setSettingsGroup(key, true);
+  }
+
+  function getSettingsState() {
+    return {
+      open: ui.drawerOpen,
+      groups: SETTINGS_GROUPS.map((key) => {
+        const sec = settingsSection(key);
+        return { key, open: !!(sec && sec.classList.contains('is-open')) };
+      })
+    };
+  }
+
+  /** 아코디언 헤더의 요약 — 펼치지 않아도 지금 상태가 보이게. */
+  function renderSettingsSummary() {
+    try {
+      const albums = store.getAlbumSummary();
+      if (el.menuAlbumsState) {
+        el.menuAlbumsState.textContent = `공개 ${albums.public.count}/${ALBUM_MAX} · 비밀 ${albums.secret.count}/${ALBUM_MAX}`;
+      }
+      const pub = store.getMyExplorePublishState ? store.getMyExplorePublishState() : { active: false };
+      if (el.menuProfileStatusVal) {
+        el.menuProfileStatusVal.textContent = pub.active
+          ? `${pub.meetStyleLabel || '올림'} · ${pub.remainingLabel}`
+          : '내려감';
+      }
+    } catch (e) { /* 값이 아직 없을 때는 요약을 건너뛴다 */ }
+    if (el.accMetaDisplay) el.accMetaDisplay.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '다크' : '라이트';
+    if (el.accMetaAlerts) {
+      const ns = store.notificationSettings || {};
+      const channels = ns.channels || {};
+      const on = Object.keys(channels).filter((k) => channels[k]).length;
+      el.accMetaAlerts.textContent = on ? `켜짐 ${on}` : '꺼짐';
+    }
+  }
+
   function renderProfileDrawer() {
     const me = store.currentUser;
     if (el.profileDrawerName) el.profileDrawerName.textContent = me.nickname || '내정보';
     if (el.profileDrawerMeta) {
-      el.profileDrawerMeta.textContent = [me.handle, me.location].filter(Boolean).join(' · ') || '내 설정과 활동';
+      el.profileDrawerMeta.textContent = [me.handle, me.location].filter(Boolean).join(' · ') || '내 설정';
     }
+    renderSettingsSummary();
     if (el.profileDrawerAvatar) {
       el.profileDrawerAvatar.innerHTML = me.photoUrl
         ? `<img src="${escapeHtml(me.photoUrl)}" alt="">`
@@ -4100,6 +4286,25 @@ document.addEventListener('DOMContentLoaded', () => {
     el.profileDrawer.addEventListener('click', (e) => {
       if (e.target.closest('.menu-item')) closeDrawer({ silent: true });
     });
+    /* Sprint 26.5 — 아코디언 헤더: 한 번에 한 묶음만 펼친다. */
+    el.profileDrawer.querySelectorAll('.drawer-section[data-acc] .acc-head').forEach((head) => {
+      head.addEventListener('click', () => {
+        const sec = head.closest('.drawer-section');
+        const key = sec && sec.dataset.acc;
+        if (!key) return;
+        const willOpen = !sec.classList.contains('is-open');
+        if (willOpen) SETTINGS_GROUPS.forEach((k) => { if (k !== key) setSettingsGroup(k, false); });
+        setSettingsGroup(key, willOpen);
+      });
+    });
+    /* 헤더를 키보드(Enter·Space)로도 — button 이라 기본 동작이지만, 포커스 이동을 보장 */
+    el.profileDrawer.querySelectorAll('.acc-head').forEach((head) => {
+      head.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        head.click();
+      });
+    });
   }
 
   /* 모임 사이드바 안의 동작들 */
@@ -4390,6 +4595,14 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btn-publish-cancel') && $('#btn-publish-cancel').addEventListener('click', () => closeModal(el.publishModal));
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-explore-profile-publish]')) openPublishSheet();
+  });
+  /* Sprint 26.5 — 프로필 올리기 줄의 글자도 버튼처럼(키보드 Enter·Space) */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const row = e.target.closest('[data-explore-profile-publish]');
+    if (!row) return;
+    e.preventDefault();
+    openPublishSheet();
   });
 
   /* 쪽지 보내기 */
@@ -5796,13 +6009,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const exploreSection = document.getElementById('tab-explore');
       if (exploreSection) exploreSection.classList.toggle('is-field-empty', fieldEmpty);
       if (fieldEmpty && !ui.exploreQuery && !radiusOn && !ageOn && (!activeFilter || activeFilter.id === 'all')) {
+        /* Sprint 26.5 — 첫 화면은 '첫 글' 하나로 모은다. 위의 프로필 올리기 스위치는
+           이때 접히므로(CSS .is-field-empty), 같은 행동을 두 곳에서 권하지 않는다. */
         el.exploreMasonry.innerHTML = `
           <div class="empty-state explore-empty is-field-empty">
-            <p class="empty-title">아직 아무도 없어요</p>
-            <p class="empty-desc">우리 동네에 첫 글을 남기면 만날 사람이 생겨요.<br>올린 내 프로필은 두 시간 동안 보여요.</p>
-            <div class="empty-actions btn-pair">
-              <button class="btn-secondary" data-explore-profile-publish="1" type="button">내 프로필 올리기</button>
-              <button class="btn-primary" data-explore-compose-here="1" type="button">첫 글 쓰기</button>
+            <p class="empty-kicker">비어 있는 우리 동네</p>
+            <p class="empty-title">첫 글을 남겨 볼까요?</p>
+            <p class="empty-desc">동네 인사나 지금 만나고 싶은 이야기를 한 줄 남기면<br>이 자리에서 사람들이 보이기 시작해요.</p>
+            <div class="empty-actions">
+              <button class="btn-primary empty-primary" data-explore-compose-here="1" type="button">첫 글 쓰기</button>
             </div>
           </div>`;
         ui.exploreRendered = true;
@@ -7700,6 +7915,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key !== 'Enter' || e.isComposing) return;
     e.preventDefault();
     sendChatMessage();
+  });
+
+  /* Sprint 26.5 — 새 설정 행: 앨범 · 2시간 프로필 상태 */
+  const menuMyAlbums = $('#menu-my-albums');
+  menuMyAlbums && menuMyAlbums.addEventListener('click', () => {
+    switchTab('tab-profile');
+    const block = document.querySelector('#tab-myprofile .album-block');
+    if (block) block.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+  });
+  const menuProfileStatus = $('#menu-profile-status');
+  menuProfileStatus && menuProfileStatus.addEventListener('click', () => {
+    switchTab('tab-explore');
+    setTimeout(openPublishSheet, 120);
   });
 
   const menuOpenChat = $('#menu-open-chat');
@@ -10524,9 +10752,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const headerNotif = $('#btn-header-notif');
   headerNotif && headerNotif.addEventListener('click', openNotificationCenter);
 
-  /* 프로필 탭 메뉴 · 탐색 상단 버튼 모두 같은 모임 개설 폼을 연다 */
-  const createGroupBtn = $('#btn-open-create-group');
-  createGroupBtn && createGroupBtn.addEventListener('click', openGroupCreate);
+  /* 홈의 '모임 만들기'(#btn-home-browse-new · 갤러리 타일)가 같은 모임 개설 폼을 연다.
+     Sprint 26.5 — 설정 사이드바의 중복 '새 모임 만들기' 항목은 없앴다. */
 
   /* --- 저장 실패(용량 초과 등) 안내 --- */
   window.addEventListener('oog:storage-error', () => {
@@ -10763,7 +10990,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 내 프로필 탭: 공개 사진 4칸 · 비밀앨범 4칸(앨범/카메라).
    *  · 1:1 대화방: 비밀앨범 공개/해제 · 공개 전에는 잠금.
    * ======================================================================== */
-  const ALBUM_MAX = 4;
+  const ALBUM_MAX = albumUploadSpec().max;   // Sprint 26.5 — store 업로드 스펙 한 곳에서
 
   /** 저장된 값을 화면에 반영한다(부팅·토글 공용). */
   function applyThemeDom(dark) {
@@ -10888,7 +11115,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = store.addMyAlbumPhoto(kind, url);
       if (!res.ok) { fail(res.reason); return; }
       done();
-    }, 720);
+    }, albumUploadSpec().maxDimension, albumUploadSpec().jpegQuality);
   }
 
   function openAlbumPicker(kind, camera) {
@@ -10943,7 +11170,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const single = photos.length < 2;
     if (el.albumViewerPrev) el.albumViewerPrev.disabled = single;
     if (el.albumViewerNext) el.albumViewerNext.disabled = single;
-    if (el.albumViewerHint) el.albumViewerHint.textContent = single ? '' : '좌우로 넘기거나 화살표로 넘겨 보세요';
+    /* Sprint 26.5 — 길게 누르기 메뉴를 알리는 한 줄(버튼은 보조용으로 남긴다). */
+    if (el.albumViewerHint) {
+      el.albumViewerHint.textContent = single
+        ? '사진을 길게 누르면 바꾸기·지우기가 열려요'
+        : '좌우로 넘기기 · 길게 누르면 바꾸기·지우기';
+    }
   }
 
   function openAlbumViewer(kind, index, from) {
@@ -10954,6 +11186,7 @@ document.addEventListener('DOMContentLoaded', () => {
     albumViewer.index = Number.isFinite(Number(index)) ? Number(index) : 0;
     albumViewer.from = from || 'profile';
     albumViewer.open = true;
+    closeAlbumViewerMenu();
     el.albumViewer.hidden = false;
     el.albumViewer.classList.add('is-open');
     document.body.classList.add('is-album-viewing');
@@ -10965,6 +11198,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function closeAlbumViewer() {
     if (!el.albumViewer || !albumViewer.open) return { open: false };
+    closeAlbumViewerMenu();
     albumViewer.open = false;
     el.albumViewer.hidden = true;
     el.albumViewer.classList.remove('is-open');
@@ -10975,6 +11209,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function stepAlbumViewer(delta) {
+    closeAlbumViewerMenu();
     const photos = albumViewerPhotos(albumViewer.kind);
     if (photos.length < 2) return { index: albumViewer.index };
     albumViewer.index = (albumViewer.index + delta + photos.length) % photos.length;
@@ -11008,7 +11243,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = store.replaceMyAlbumPhoto(kind, photo.id, url);
       if (!res.ok) { showToast('사진을 바꾸지 못했어요', 'warning'); return; }
       apply();
-    }, 720);
+    }, albumUploadSpec().maxDimension, albumUploadSpec().jpegQuality);
     return { ok: true };
   }
 
@@ -11043,7 +11278,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.albumViewerClose && el.albumViewerClose.addEventListener('click', () => closeAlbumViewer());
   el.albumViewer && el.albumViewer.addEventListener('click', (e) => {
-    if (e.target.closest('[data-album-viewer-close]')) { closeAlbumViewer(); return; }
+    if (e.target.closest('[data-album-viewer-close]')) { closeAlbumViewerMenu(); closeAlbumViewer(); return; }
+    const menuItem = e.target.closest('[data-viewer-menu]');
+    if (menuItem) {
+      closeAlbumViewerMenu();
+      if (menuItem.dataset.viewerMenu === 'delete') deleteAlbumViewerPhoto();
+      else openAlbumPicker(albumViewer.kind, false);
+      return;
+    }
+    /* 메뉴 밖을 누르면 메뉴부터 닫는다 */
+    closeAlbumViewerMenu();
     const prev = e.target.closest('#btn-album-viewer-prev');
     if (prev) { stepAlbumViewer(-1); return; }
     const next = e.target.closest('#btn-album-viewer-next');
@@ -11075,10 +11319,96 @@ document.addEventListener('DOMContentLoaded', () => {
     }, { passive: true });
   })();
 
+  /* ---------------------------------------- Sprint 26.5 · 길게 눌러 사진 메뉴
+   * 11/17 사용자: "길게눌러 메뉴가 나오도록" (Sprint 25 질문 1 답변)
+   *  · 사진을 약 450ms 누르고 있으면 그 자리에 '사진 바꾸기 / 사진 지우기'가 뜬다.
+   *  · 데스크톱은 우클릭(컨텍스트 메뉴)도 같은 메뉴를 연다.
+   *  · 하단 버튼은 키보드·보조기기용으로 그대로 둔다(같은 동작).
+   * ====================================================================== */
+  const ALBUM_LONG_PRESS_MS = 450;
+
+  function albumViewerMenuOpen() {
+    return !!(el.albumViewerMenu && !el.albumViewerMenu.hidden);
+  }
+
+  function openAlbumViewerMenu(x, y) {
+    const menu = el.albumViewerMenu;
+    if (!menu || !albumViewer.open) return { open: false };
+    menu.hidden = false;
+    menu.classList.add('is-open');
+    const vw = window.innerWidth || 390;
+    const vh = window.innerHeight || 844;
+    const mw = menu.offsetWidth || 178;
+    const mh = menu.offsetHeight || 108;
+    const left = Math.max(10, Math.min(vw - mw - 10, (x || vw / 2) - mw / 2));
+    const top = Math.max(10, Math.min(vh - mh - 10, (y || vh / 2) + 8));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    /* 메뉴 자체에 포커스(테두리 없음) — Tab 으로 항목을 고를 수 있고, 터치에서도 선택 표시가 남지 않는다. */
+    if (typeof menu.focus === 'function') {
+      try { menu.focus({ preventScroll: true }); } catch (err) { /* 구형 */ }
+    }
+    return { open: true, left, top };
+  }
+
+  function closeAlbumViewerMenu() {
+    const menu = el.albumViewerMenu;
+    if (!menu || menu.hidden) return { open: false };
+    menu.hidden = true;
+    menu.classList.remove('is-open');
+    return { open: false };
+  }
+
+  (function wireAlbumViewerLongPress() {
+    const frame = el.albumViewer && el.albumViewer.querySelector('.album-viewer-frame');
+    if (!frame) return;
+    let timer = null;
+    let startX = 0, startY = 0;
+    let fired = false;
+    const cancel = () => {
+      if (timer) { clearTimeout(timer); timer = null; }
+    };
+    frame.addEventListener('pointerdown', (e) => {
+      if (!albumViewer.open) return;
+      if (e.button != null && e.button !== 0) return;   // 오른쪽·가운데 버튼은 contextmenu 담당
+      if (e.target.closest('button')) return;           // 화살표·닫기 버튼 위에서는 길게 누르기 없음
+      startX = e.clientX; startY = e.clientY;
+      fired = false;
+      cancel();
+      timer = setTimeout(() => {
+        timer = null;
+        fired = true;
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8);
+        openAlbumViewerMenu(e.clientX, e.clientY);
+      }, ALBUM_LONG_PRESS_MS);
+    });
+    frame.addEventListener('pointermove', (e) => {
+      if (!timer) return;
+      if (Math.abs(e.clientX - startX) > 12 || Math.abs(e.clientY - startY) > 12) cancel();
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => frame.addEventListener(type, cancel));
+    frame.addEventListener('contextmenu', (e) => {
+      if (!albumViewer.open) return;
+      e.preventDefault();
+      cancel();
+      openAlbumViewerMenu(e.clientX, e.clientY);
+    });
+    /* 길게 눌러 메뉴를 연 뒤 손을 떼면 그 클릭이 뒤쪽으로 새지 않게 */
+    frame.addEventListener('click', (e) => {
+      if (!fired) return;
+      fired = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+  })();
+
   document.addEventListener('keydown', (e) => {
     if (!albumViewer.open) return;
-    if (e.key === 'Escape') { e.preventDefault(); closeAlbumViewer(); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); stepAlbumViewer(-1); }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (albumViewerMenuOpen()) { closeAlbumViewerMenu(); return; }
+      closeAlbumViewer();
+    } else if (e.key === 'ArrowLeft') { e.preventDefault(); stepAlbumViewer(-1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); stepAlbumViewer(1); }
   });
 
@@ -11421,6 +11751,20 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 18 — 사이드바(모임 멤버·설정 / 내정보 설정) */
     openDrawer, closeDrawer, renderGroupDrawer, renderProfileDrawer,
     getDrawerState: () => ({ open: ui.drawerOpen }),
+    /* Sprint 26.5 — 설정 아코디언 · 라이트박스 길게 누르기 메뉴 */
+    openSettingsGroup: (key) => openSettingsGroup(key),
+    setSettingsGroup: (key, open) => setSettingsGroup(key, open),
+    getSettingsState: () => getSettingsState(),
+    openAlbumViewerMenu: (x, y) => openAlbumViewerMenu(x, y),
+    closeAlbumViewerMenu: () => closeAlbumViewerMenu(),
+    getAlbumViewerMenuState: () => ({
+      open: albumViewerMenuOpen(),
+      items: el.albumViewerMenu
+        ? [...el.albumViewerMenu.querySelectorAll('.avm-item')].map((b) => b.textContent.trim())
+        : [],
+      left: el.albumViewerMenu ? el.albumViewerMenu.style.left : '',
+      top: el.albumViewerMenu ? el.albumViewerMenu.style.top : ''
+    }),
     /* Sprint 21 — 점토 아이콘 · 취미 분류 · 추천 모임 · 스포트라이트 가이드 */
     renderHomeRecommend,
     /* Sprint 22 — 홈 '모임 둘러보기'(탐색에서 옮겨온 모임 목록). 테스트·미리보기가 한 번에 펼친다. */

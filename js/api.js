@@ -44,6 +44,18 @@
   const LOG_LIMIT = 60;
   const QUEUE_LIMIT = 50;
 
+  /* ------------------------------------------------------------------
+   * Sprint 26.5 — 앨범 업로드 스펙 (store.js 의 OOG_ALBUM_SPEC 과 같은 값)
+   *  · 화질을 올릴 때 store.js 의 두 값만 바꾸면 이 경계도 같이 따라간다.
+   *  · 여기서는 서버가 받을 상한(장당 data URL 길이)도 함께 정한다.
+   * ------------------------------------------------------------------ */
+  const ALBUM_SPEC = (global && global.OOG_ALBUM_SPEC) || { maxDimension: 720, jpegQuality: 0.84, max: 4 };
+  const ALBUM_MAX_DIMENSION = ALBUM_SPEC.maxDimension;
+  const ALBUM_JPEG_QUALITY = ALBUM_SPEC.jpegQuality;
+  /* 720px JPEG 는 보통 80~180KB → data URL 로 250KB 안팎. 화질을 1080·1440으로 올려도
+     6MB 를 넘지 않으므로, 그 위는 서버가 아니라 잘못된 입력으로 본다. */
+  const ALBUM_DATAURL_MAX = 6 * 1024 * 1024;
+
   /* ------------------------------------------------------------------ 오류 */
   class ApiError extends Error {
     constructor(code, message, meta) {
@@ -149,7 +161,7 @@
       method: 'POST', mutate: true,
       params: {
         kind: { type: 'string', required: true, enum: ['public', 'secret'] },
-        dataUrl: { type: 'string', required: true, pattern: '^data:image/' }
+        dataUrl: { type: 'string', required: true, pattern: '^data:image/', max: ALBUM_DATAURL_MAX }
       },
       response: ['ok', 'photo', 'photos'],
       local: (store, p) => {
@@ -176,7 +188,7 @@
       params: {
         kind: { type: 'string', required: true, enum: ['public', 'secret'] },
         photoId: { type: 'string', required: true },
-        dataUrl: { type: 'string', required: true, pattern: '^data:image/' }
+        dataUrl: { type: 'string', required: true, pattern: '^data:image/', max: ALBUM_DATAURL_MAX }
       },
       response: ['ok', 'photo', 'index'],
       local: (store, p) => {
@@ -626,7 +638,8 @@
         contract: CONTRACT, adapter: adapterRef.adapter.id, mode,
         online: isOnline(), queue: queue.length, requests: log.length,
         lastOk: (log.find((l) => l.ok) || {}).at || null,
-        lastError: (log.find((l) => !l.ok) || {}).code || null
+        lastError: (log.find((l) => !l.ok) || {}).code || null,
+        albumSpec: { maxDimension: ALBUM_MAX_DIMENSION, jpegQuality: ALBUM_JPEG_QUALITY, maxDataUrl: ALBUM_DATAURL_MAX }
       }),
       /* 내부(테스트·디버그) */
       _endpoints: ENDPOINTS
@@ -668,12 +681,12 @@
     }
 
     global.OOGAPI = client;
-    global.OOGApi = { ApiError, ENDPOINTS, createClient, createLocalAdapter, createHttpAdapter, attach, validateParams, normalizeResponse, CONTRACT };
+    global.OOGApi = { ApiError, ENDPOINTS, createClient, createLocalAdapter, createHttpAdapter, attach, validateParams, normalizeResponse, CONTRACT, ALBUM_MAX_DIMENSION, ALBUM_JPEG_QUALITY };
     return client;
   }
 
   /* ------------------------------------------------------------------ 시작 */
-  const namespace = { ApiError, ENDPOINTS, createClient, createLocalAdapter, createHttpAdapter, attach, validateParams, normalizeResponse, CONTRACT };
+  const namespace = { ApiError, ENDPOINTS, createClient, createLocalAdapter, createHttpAdapter, attach, validateParams, normalizeResponse, CONTRACT, ALBUM_MAX_DIMENSION, ALBUM_JPEG_QUALITY };
   global.OOGApi = Object.assign(global.OOGApi || {}, namespace);
 
   if (typeof document !== 'undefined' && global.appStore) {

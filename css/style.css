@@ -16936,3 +16936,381 @@ body.is-album-viewing { overflow: hidden; }
 .explore-sub-chip { font-weight: 680; }
 #btn-secret-album-share { font-weight: 680; }
 .age-range-foot { font-weight: 640; }
+
+
+/* ==========================================================================
+ * 27. Sprint 26.5 — 스토리텔링은 배경 위 글자만 · 읽는 호흡 · 설정 아코디언
+ * ------------------------------------------------------------------------
+ * 11/17 08:05 사용자: "스토리텔링의 글이 너무 빨리 나와 천천히 나와야지
+ * 또한 스토리텔링의 글이 무조건 박스안에 있어야하나? 그냥 글자만 나오면안돼?"
+ *  · 회원가입·취향 질문의 문구는 흰 카드/말풍선 안이 아니라 배경 위에 바로 놓는다.
+ *  · 답(입력란·선택 카드·버튼)만 점토 카드로 묶어 '문구 → 답' 순서가 눈에 보이게.
+ * ========================================================================== */
+
+/* ---------------------------------------------- 27-1. 회원가입 — 문구는 배경 위 */
+.onboarding-body {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.onboarding-panel { padding: 22px 22px 30px; gap: 16px; }
+.ob-step { gap: 16px; }
+
+.ob-hero {
+  gap: 10px;
+  margin-top: 6px;
+  padding: 0 2px;
+}
+.ob-title {
+  font-size: 30px;
+  line-height: 1.3;
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  color: var(--text-strong);
+  word-break: keep-all;
+  text-wrap: balance;
+}
+.ob-desc {
+  max-width: 30ch;
+  font-size: 14px;
+  line-height: 1.72;
+  letter-spacing: -0.01em;
+  color: var(--text-sub);
+  word-break: keep-all;
+}
+.ob-desc b { color: var(--text-strong); font-weight: 680; }
+
+/* 단계 표시 — 알약 대신 얇은 글자(진행 막대와 겹치지 않게) */
+.ob-kicker { gap: 8px; align-items: baseline; padding: 0 2px; }
+.ob-kicker-label::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  margin-right: 7px;
+  border-radius: 2px;
+  background: var(--green);
+  vertical-align: 3px;
+}
+.ob-kicker-num {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--green-deep);
+  font-variant-numeric: tabular-nums;
+}
+.ob-kicker-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--text-sub);
+}
+
+/* 답 — 입력란·안내·버튼만 한 장의 점토 카드로 */
+.ob-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+  padding: 16px 16px 14px;
+  border-radius: 24px;
+  background: var(--clay-white);
+  box-shadow: var(--clay-out), var(--clay-light);
+}
+.ob-answer .ob-actions { margin-top: 0; padding-top: 2px; }
+.ob-answer .ob-field + .ob-note { margin-top: -4px; }
+.ob-answer .ob-mailcard { margin: 0; }
+
+/* 문구를 탭하면 넘어간다는 힌트 — 잠시 뒤 얇게 떠오른다 */
+.ob-skip-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  color: var(--text-sub);
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.ob-skip-hint.is-on { opacity: 1; transform: none; }
+.ob-skip-line {
+  width: 16px;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  opacity: 0.5;
+}
+.ob-step.narr-done .ob-skip-hint { display: none; }
+
+/* 제목이 찍히는 동안 설명은 숨김 — 다 찍히면 떠오른다 */
+.ob-step.is-narrating .ob-desc { opacity: 0; transform: translateY(4px); }
+.ob-step.narr-desc-in .ob-desc { opacity: 1; transform: none; transition: opacity 0.56s ease, transform 0.56s ease; }
+
+/* ---------------------------------------------- 27-2. 가이드 — 어두운 배경 위 글자 */
+.spotlight-bubble {
+  display: flex;
+  flex-direction: column;
+  width: min(360px, calc(100vw - 28px));
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+  max-height: 86vh;
+}
+/* 글자가 앱 화면과 섞이지 않게 스크림을 조금 더 깊게(같은 색, 진하기만) */
+.spotlight.is-center::before { background: rgba(9, 33, 26, 0.76); }
+.spotlight-hole { box-shadow: 0 0 0 240vw rgba(9, 33, 26, 0.76), 0 0 0 2px rgba(255, 255, 255, 0.85) inset; }
+.spotlight-bubble:focus,
+.spotlight-bubble:focus-visible { outline: none !important; box-shadow: none !important; }
+.spotlight-bubble.above::after,
+.spotlight-bubble.below::after { display: none; }
+.spotlight-top { margin-bottom: 10px; }
+.spotlight-step {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ECFBF3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.spotlight-skip { color: rgba(255, 255, 255, 0.84); }
+.spotlight-title {
+  color: #FFFFFF;
+  font-size: 22px;
+  line-height: 1.34;
+  font-weight: 740;
+  letter-spacing: -0.04em;
+  word-break: keep-all;
+  text-shadow: 0 2px 10px rgba(4, 20, 14, 0.45);
+}
+.spotlight-desc {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  line-height: 1.66;
+  word-break: keep-all;
+  text-shadow: 0 1px 8px rgba(4, 20, 14, 0.4);
+}
+.spotlight-bubble.is-narrating .spotlight-desc { opacity: 0; transform: translateY(4px); }
+.spotlight-bubble.narr-desc-in .spotlight-desc { opacity: 1; transform: none; transition: opacity 0.56s ease, transform 0.56s ease; }
+
+/* 답(취향 카드)만 점토 표면 위에 — 문구와 섞이지 않게 */
+.spotlight-body {
+  flex: 0 1 auto;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 22px;
+  background: var(--clay-cream, #FFFDF7);
+  box-shadow: 0 22px 44px -22px rgba(4, 40, 30, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  max-height: 46vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+.spotlight-body::-webkit-scrollbar { width: 0; height: 0; }
+.spotlight-actions { margin-top: 14px; }
+.spotlight-prev {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ECFBF3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+.spotlight-next { box-shadow: 0 14px 24px -14px rgba(4, 60, 44, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.26); }
+
+/* ---------------------------------------------- 27-3. 다크 */
+html[data-theme="dark"] .onboarding {
+  background-color: var(--clay-page);
+  background-image:
+    radial-gradient(110% 58% at 50% -8%, rgba(52, 211, 153, 0.12) 0%, rgba(52, 211, 153, 0) 62%),
+    radial-gradient(80% 54% at 100% 102%, rgba(16, 185, 129, 0.10) 0%, rgba(16, 185, 129, 0) 60%);
+}
+html[data-theme="dark"] .onboarding-panel { background: transparent; }
+html[data-theme="dark"] .ob-answer { background: var(--clay-white); box-shadow: var(--clay-out), var(--clay-light); }
+html[data-theme="dark"] .spotlight-bubble { background: transparent; color: #F6FCF9; }
+html[data-theme="dark"] .spotlight-title { color: #FFFFFF; }
+html[data-theme="dark"] .spotlight-desc { color: rgba(255, 255, 255, 0.87); }
+html[data-theme="dark"] .spotlight-body { background: var(--clay-cream); box-shadow: 0 22px 44px -22px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(203, 236, 224, 0.08); }
+
+/* ---------------------------------------------- 27-4. 라이트박스 길게 누르기 메뉴 */
+.album-viewer-img,
+.album-viewer-frame {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.album-viewer-menu {
+  position: absolute;
+  z-index: 6;
+  min-width: 178px;
+  padding: 6px;
+  border-radius: 18px;
+  background: rgba(18, 26, 22, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 48px -20px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px) saturate(1.1);
+  transform-origin: top center;
+  animation: avmIn 0.18s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both;
+}
+.album-viewer-menu[hidden] { display: none; }
+@keyframes avmIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.avm-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  height: 44px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 13px;
+  background: none;
+  color: #F1F6F3;
+  font-size: 13.5px;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  text-align: left;
+}
+.avm-item + .avm-item { margin-top: 2px; }
+.avm-item:active,
+.avm-item.is-active { background: rgba(255, 255, 255, 0.1); }
+.avm-item.is-danger { color: #FCA5A5; }
+.avm-item:focus-visible { outline: 2px solid #6EE7B7; outline-offset: -2px; }
+.avm-icon { display: inline-grid; place-items: center; color: inherit; }
+.avm-icon .oo-ic { width: 15px; height: 15px; }
+
+/* 길게 누르기 메뉴 — 포커스는 메뉴에만(터치에서 선택 테두리가 남지 않게) */
+.album-viewer-menu:focus { outline: none; }
+/* 하단 버튼은 보조용 — 메뉴와 같은 동작이라 한 단계 조용하게 */
+.album-viewer-foot { gap: 8px; }
+.album-viewer-act {
+  min-height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(241, 246, 243, 0.9);
+  font-size: 12.5px;
+  font-weight: 620;
+}
+.album-viewer-act.is-danger {
+  border-color: rgba(248, 113, 113, 0.26);
+  background: rgba(248, 113, 113, 0.08);
+  color: #FCA5A5;
+}
+
+/* ---------------------------------------------- 27-5. 첫 화면 빈 상태 — 첫 글 하나로 */
+#tab-explore.is-field-empty .explore-profile-publish { display: none; }
+#tab-explore.is-field-empty .empty-state.is-field-empty {
+  padding: 52px 16px 40px;
+  gap: 8px;
+}
+.empty-kicker {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--green-dark);
+  text-transform: uppercase;
+}
+#tab-explore.is-field-empty .empty-title { font-size: 19px; letter-spacing: -0.03em; }
+#tab-explore.is-field-empty .empty-desc {
+  max-width: 268px;
+  margin: 0 auto;
+  font-size: 12.5px;
+  font-weight: 560;
+  line-height: 1.68;
+  word-break: keep-all;
+}
+#tab-explore.is-field-empty .empty-actions { margin-top: 18px; }
+.empty-primary { min-width: 176px; height: 46px; padding: 0 22px; border-radius: 16px; }
+html[data-theme="dark"] .empty-kicker { color: #6EE7B7; }
+
+/* ---------------------------------------------- 27-6. 설정 사이드바 아코디언 */
+#profile-drawer .drawer-section.acc {
+  padding: 0;
+  border-radius: 20px;
+  background: var(--clay-white);
+  box-shadow: var(--clay-soft), var(--clay-light-soft);
+  border-top: 0;
+  overflow: hidden;
+}
+#profile-drawer .drawer-section.acc + .drawer-section.acc { margin-top: 8px; border-top: 0; }
+#profile-drawer .drawer-section.acc .drawer-section-title { margin: 0; padding: 0; }
+.acc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 14px;
+  border: none;
+  background: none;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+.acc-head:active { background: var(--bg-subtle); }
+.acc-head:focus-visible { outline: 2px solid var(--green); outline-offset: -3px; }
+.acc-label { flex: 0 0 auto; }
+.acc-meta {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+.acc-chevron {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  color: var(--text-muted);
+  transition: transform 0.24s var(--spring-soft), color 0.18s ease;
+}
+.acc-chevron .oo-ic { width: 15px; height: 15px; stroke-width: 2.4; }
+.drawer-section.is-open .acc-chevron { transform: rotate(180deg); color: var(--green-dark); }
+.drawer-section.is-open .acc-head { border-bottom: 1px solid var(--border-soft); }
+.acc-body { padding: 8px; }
+.acc-body.is-opening { animation: accBodyIn 0.22s ease both; }
+@keyframes accBodyIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.acc-body .settings-menu-list {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 14px;
+}
+.acc-body .menu-item { padding: 12px 10px; border-bottom: 0; border-radius: 12px; font-size: 12.5px; font-weight: 560; }
+.acc-body .menu-item + .menu-item { margin-top: 1px; }
+.acc-body .menu-item:last-child { border-bottom: 0; }
+.acc-body .notif-settings-card,
+.acc-body .pwa-card { margin: 0; box-shadow: none; border: 0; background: transparent; padding: 6px 10px 10px; }
+.acc-body .notif-settings-card + .pwa-card { border-top: 1px solid var(--border-soft); padding-top: 12px; }
+
+html[data-theme="dark"] #profile-drawer .drawer-section.acc { background: var(--clay-white); box-shadow: var(--clay-soft), var(--clay-light-soft); }
+html[data-theme="dark"] .acc-head { color: var(--text-strong); }
+html[data-theme="dark"] .acc-head:active { background: var(--bg-subtle); }
+html[data-theme="dark"] .acc-chevron { color: var(--text-muted); }
+.acc-body .menu-item.is-switch .menu-val { margin-left: auto; padding-right: 10px; }
+.acc-body .menu-item.is-switch .switch-toggle { flex: 0 0 auto; }
+.acc-body .menu-item { justify-content: flex-start; }
+.acc-body .menu-item .menu-val { margin-left: auto; text-align: right; }
+/* 프로필 올리기 줄의 글자도 누를 수 있는 자리임을 알린다(스위치는 그대로) */
+.explore-profile-publish .epp-text { cursor: pointer; }
+.explore-profile-publish .epp-text:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 8px; }
+html[data-theme="dark"] .onboarding-body { background: transparent; box-shadow: none; }

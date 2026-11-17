@@ -340,7 +340,7 @@
 
         <!-- Sprint 16 — 내 프로필을 탐색에 올리기 (누구나 사람 카드로) -->
         <div class="explore-profile-publish" id="explore-profile-publish">
-          <span class="epp-text">
+          <span class="epp-text" data-explore-profile-publish="1" role="button" tabindex="0">
             <span class="epp-title">탐색에 내 프로필 올리기</span>
             <span class="epp-desc" id="epp-desc"></span>
           </span>
@@ -1260,6 +1260,15 @@
           <button class="album-viewer-act is-danger" id="btn-album-viewer-delete" type="button">지우기</button>
         </div>
       </div>
+      <!-- Sprint 26.5 — 사진을 길게 누르면(또는 우클릭) 그 자리에서 열리는 메뉴 -->
+      <div class="album-viewer-menu" id="album-viewer-menu" role="menu" aria-label="사진 메뉴" tabindex="-1" hidden>
+        <button class="avm-item" data-viewer-menu="replace" role="menuitem" type="button">
+          <span class="avm-icon" data-oog-icon="image" aria-hidden="true"></span>사진 바꾸기
+        </button>
+        <button class="avm-item is-danger" data-viewer-menu="delete" role="menuitem" type="button">
+          <span class="avm-icon" data-oog-icon="trash" aria-hidden="true"></span>사진 지우기
+        </button>
+      </div>
     </div>
 
     <!-- ==================== Sprint 17. 확인 시트(로그아웃 · 데이터 초기화) ==================== -->
@@ -1306,100 +1315,156 @@
           <button class="drawer-close" data-drawer-close="1" type="button" aria-label="사이드바 닫기">&times;</button>
         </header>
         <div class="drawer-body" id="profile-drawer-body">
-          <section class="drawer-section" aria-labelledby="drawer-profile-account-title">
-            <h3 class="drawer-section-title" id="drawer-profile-account-title">내 계정</h3>
-            <div class="settings-menu-list">
-              <div class="menu-item" id="menu-edit-profile" role="button" tabindex="0">
-                <span class="menu-label">프로필 수정</span>
-                <span class="menu-val">닉네임 · 소개</span>
-              </div>
-              <div class="menu-item" id="menu-edit-photo" role="button" tabindex="0">
-                <span class="menu-label">프로필 사진 등록·변경</span>
-                <span class="menu-val" id="menu-photo-state">기본 아바타</span>
-              </div>
-              <div class="menu-item" id="menu-joined-manage" role="button" tabindex="0">
-                <span class="menu-label">가입한 소모임 관리</span>
-                <span class="menu-val" id="menu-joined-count">0개</span>
-              </div>
-              <div class="menu-item" id="menu-my-applications" role="button" tabindex="0">
-                <span class="menu-label">내 모임 가입 신청</span>
-                <span class="menu-val" id="menu-my-applications-count">0건</span>
-              </div>
-              <div class="menu-item" id="btn-open-create-group" role="button" tabindex="0">
-                <span class="menu-label">새 모임 만들기</span>
-                <span class="menu-val">바로 시작</span>
-              </div>
-            </div>
-          </section>
-
-          <section class="drawer-section" aria-labelledby="drawer-profile-activity-title">
-            <h3 class="drawer-section-title" id="drawer-profile-activity-title">활동</h3>
-            <div class="settings-menu-list">
-              <div class="menu-item" id="menu-open-chat" role="button" tabindex="0">
-                <span class="menu-label">1:1 대화방</span>
-                <span class="menu-val" id="menu-chat-count">0개</span>
-              </div>
-              <div class="menu-item" id="menu-activity-log" role="button" tabindex="0">
-                <span class="menu-label">내 활동 로그</span>
-                <span class="menu-val" id="menu-activity-count">0건</span>
-              </div>
-              <div class="menu-item" id="menu-liked-people" role="button" tabindex="0">
-                <span class="menu-label">내가 좋아요한 취미친구</span>
-                <span class="menu-val" id="menu-liked-count">0명</span>
-              </div>
-              <div class="menu-item" id="menu-story-archive" role="button" tabindex="0">
-                <span class="menu-label">스토리 보관함</span>
-                <span class="menu-val" id="menu-story-archive-count">0개</span>
-              </div>
-              <div class="menu-item">
-                <span class="menu-label">프라이버시 &amp; 사진 공개 범위</span>
-                <span class="menu-val">그룹 전용</span>
+          <!-- Sprint 26.5 — 설정은 카테고리별 접기/펼치기(기본: 계정 하나만 펼침).
+               잭디·이반시티처럼 꼭 쓰는 항목만 남기고, 같은 행동을 두 번 권하지 않는다. -->
+          <section class="drawer-section acc is-open" data-acc="account">
+            <h3 class="drawer-section-title">
+              <button class="acc-head" id="acc-head-account" type="button" aria-expanded="true" aria-controls="acc-body-account">
+                <span class="acc-label">계정 및 보안</span>
+                <span class="acc-meta">프로필 · 로그인</span>
+                <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
+              </button>
+            </h3>
+            <div class="acc-body" id="acc-body-account" role="region" aria-labelledby="acc-head-account">
+              <div class="settings-menu-list">
+                <div class="menu-item" id="menu-edit-profile" role="button" tabindex="0">
+                  <span class="menu-label">프로필 수정</span>
+                  <span class="menu-val">닉네임 · 소개</span>
+                </div>
+                <div class="menu-item" id="menu-edit-photo" role="button" tabindex="0">
+                  <span class="menu-label">프로필 사진 등록·변경</span>
+                  <span class="menu-val" id="menu-photo-state">기본 아바타</span>
+                </div>
+                <div class="menu-item" id="menu-logout" role="button" tabindex="0">
+                  <span class="menu-label">로그아웃</span>
+                  <span class="menu-val" id="menu-logout-state">다시 로그인</span>
+                </div>
               </div>
             </div>
           </section>
 
-          <section class="drawer-section" aria-labelledby="drawer-profile-notif-title">
-            <h3 class="drawer-section-title" id="drawer-profile-notif-title">알림 · 설치</h3>
-            <!-- ===== 알림 설정 (Sprint 4.5) ===== -->
-            <section class="notif-settings-card" aria-labelledby="notif-settings-title">
-              <div class="notif-settings-head">
-                <h4 class="notif-settings-title" id="notif-settings-title">알림 설정</h4>
-                <span class="notif-settings-state" id="notif-permission-state">권한 확인 중</span>
-              </div>
-              <div id="notif-settings-body"><!-- JS --></div>
-            </section>
-            <!-- ===== PWA · 홈 화면에 추가 (Sprint 5) ===== -->
-            <section class="pwa-card" id="pwa-card" aria-labelledby="pwa-card-title" hidden>
-              <div class="pwa-card-head">
-                <h4 class="pwa-card-title" id="pwa-card-title"><span>홈 화면에 ooG 추가</span></h4>
-                <span class="pwa-card-state" id="pwa-card-state">확인 중</span>
-              </div>
-              <p class="pwa-card-desc" id="pwa-card-desc">홈 화면에 추가하면 앱처럼 열려요.</p>
-              <div class="pwa-card-actions" id="pwa-card-actions"><!-- JS --></div>
-            </section>
-          </section>
-
-          <section class="drawer-section" aria-labelledby="drawer-profile-display-title">
-            <h3 class="drawer-section-title" id="drawer-profile-display-title">화면</h3>
-            <div class="settings-menu-list">
-              <div class="menu-item is-switch" id="menu-dark-mode" role="switch" tabindex="0" aria-checked="false">
-                <span class="menu-label">다크모드</span>
-                <span class="menu-val" id="menu-dark-mode-state">꺼짐</span>
-                <span class="switch-toggle" aria-hidden="true"><span class="switch-knob"></span></span>
+          <section class="drawer-section acc" data-acc="profile">
+            <h3 class="drawer-section-title">
+              <button class="acc-head" id="acc-head-profile" type="button" aria-expanded="false" aria-controls="acc-body-profile">
+                <span class="acc-label">프로필 및 공개</span>
+                <span class="acc-meta">앨범 · 2시간 상태</span>
+                <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
+              </button>
+            </h3>
+            <div class="acc-body" id="acc-body-profile" role="region" aria-labelledby="acc-head-profile" hidden>
+              <div class="settings-menu-list">
+                <div class="menu-item" id="menu-my-albums" role="button" tabindex="0">
+                  <span class="menu-label">공개 · 비밀 앨범</span>
+                  <span class="menu-val" id="menu-albums-state">0 / 4 · 0 / 4</span>
+                </div>
+                <div class="menu-item" id="menu-profile-status" role="button" tabindex="0">
+                  <span class="menu-label">2시간 프로필 상태</span>
+                  <span class="menu-val" id="menu-profile-status-val">내려감</span>
+                </div>
+                <div class="menu-item" id="menu-liked-people" role="button" tabindex="0">
+                  <span class="menu-label">내가 좋아요한 취미친구</span>
+                  <span class="menu-val" id="menu-liked-count">0명</span>
+                </div>
+                <div class="menu-item" id="menu-joined-manage" role="button" tabindex="0">
+                  <span class="menu-label">가입한 소모임 관리</span>
+                  <span class="menu-val" id="menu-joined-count">0개</span>
+                </div>
+                <div class="menu-item" id="menu-my-applications" role="button" tabindex="0">
+                  <span class="menu-label">내 모임 가입 신청</span>
+                  <span class="menu-val" id="menu-my-applications-count">0건</span>
+                </div>
               </div>
             </div>
           </section>
 
-          <section class="drawer-section" aria-labelledby="drawer-profile-danger-title">
-            <h3 class="drawer-section-title" id="drawer-profile-danger-title">계정</h3>
-            <div class="settings-menu-list">
-              <div class="menu-item" id="menu-logout" role="button" tabindex="0">
-                <span class="menu-label">로그아웃</span>
-                <span class="menu-val">다시 로그인</span>
+          <section class="drawer-section acc" data-acc="talk">
+            <h3 class="drawer-section-title">
+              <button class="acc-head" id="acc-head-talk" type="button" aria-expanded="false" aria-controls="acc-body-talk">
+                <span class="acc-label">대화 및 스토리</span>
+                <span class="acc-meta">디엠 · 보관함</span>
+                <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
+              </button>
+            </h3>
+            <div class="acc-body" id="acc-body-talk" role="region" aria-labelledby="acc-head-talk" hidden>
+              <div class="settings-menu-list">
+                <div class="menu-item" id="menu-open-chat" role="button" tabindex="0">
+                  <span class="menu-label">1:1 대화방</span>
+                  <span class="menu-val" id="menu-chat-count">0개</span>
+                </div>
+                <div class="menu-item" id="menu-story-archive" role="button" tabindex="0">
+                  <span class="menu-label">스토리 보관함</span>
+                  <span class="menu-val" id="menu-story-archive-count">0개</span>
+                </div>
               </div>
-              <div class="menu-item danger" id="menu-reset-data" role="button" tabindex="0">
-                <span class="menu-label">데이터 초기화 (처음부터 다시)</span>
-                <span class="menu-val">회원가입부터</span>
+            </div>
+          </section>
+
+          <section class="drawer-section acc" data-acc="alerts">
+            <h3 class="drawer-section-title">
+              <button class="acc-head" id="acc-head-alerts" type="button" aria-expanded="false" aria-controls="acc-body-alerts">
+                <span class="acc-label">알림</span>
+                <span class="acc-meta" id="acc-meta-alerts">켜짐</span>
+                <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
+              </button>
+            </h3>
+            <div class="acc-body" id="acc-body-alerts" role="region" aria-labelledby="acc-head-alerts" hidden>
+              <!-- ===== 알림 설정 (Sprint 4.5) ===== -->
+              <section class="notif-settings-card" aria-labelledby="notif-settings-title">
+                <div class="notif-settings-head">
+                  <h4 class="notif-settings-title" id="notif-settings-title">알림 설정</h4>
+                  <span class="notif-settings-state" id="notif-permission-state">권한 확인 중</span>
+                </div>
+                <div id="notif-settings-body"><!-- JS --></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="drawer-section acc" data-acc="display">
+            <h3 class="drawer-section-title">
+              <button class="acc-head" id="acc-head-display" type="button" aria-expanded="false" aria-controls="acc-body-display">
+                <span class="acc-label">화면 및 앱</span>
+                <span class="acc-meta" id="acc-meta-display">라이트</span>
+                <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
+              </button>
+            </h3>
+            <div class="acc-body" id="acc-body-display" role="region" aria-labelledby="acc-head-display" hidden>
+              <div class="settings-menu-list">
+                <div class="menu-item is-switch" id="menu-dark-mode" role="switch" tabindex="0" aria-checked="false">
+                  <span class="menu-label">다크모드</span>
+                  <span class="menu-val" id="menu-dark-mode-state">꺼짐</span>
+                  <span class="switch-toggle" aria-hidden="true"><span class="switch-knob"></span></span>
+                </div>
+              </div>
+              <!-- ===== PWA · 홈 화면에 추가 (Sprint 5) ===== -->
+              <section class="pwa-card" id="pwa-card" aria-labelledby="pwa-card-title" hidden>
+                <div class="pwa-card-head">
+                  <h4 class="pwa-card-title" id="pwa-card-title"><span>홈 화면에 ooG 추가</span></h4>
+                  <span class="pwa-card-state" id="pwa-card-state">확인 중</span>
+                </div>
+                <p class="pwa-card-desc" id="pwa-card-desc">홈 화면에 추가하면 앱처럼 열려요.</p>
+                <div class="pwa-card-actions" id="pwa-card-actions"><!-- JS --></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="drawer-section acc" data-acc="data">
+            <h3 class="drawer-section-title">
+              <button class="acc-head" id="acc-head-data" type="button" aria-expanded="false" aria-controls="acc-body-data">
+                <span class="acc-label">데이터 관리</span>
+                <span class="acc-meta">기록 · 초기화</span>
+                <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
+              </button>
+            </h3>
+            <div class="acc-body" id="acc-body-data" role="region" aria-labelledby="acc-head-data" hidden>
+              <div class="settings-menu-list">
+                <div class="menu-item" id="menu-activity-log" role="button" tabindex="0">
+                  <span class="menu-label">내 활동 기록</span>
+                  <span class="menu-val" id="menu-activity-count">0건</span>
+                </div>
+                <div class="menu-item danger" id="menu-reset-data" role="button" tabindex="0">
+                  <span class="menu-label">데이터 초기화</span>
+                  <span class="menu-val">회원가입부터</span>
+                </div>
               </div>
             </div>
           </section>
