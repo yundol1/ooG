@@ -11402,6 +11402,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }, true);
   })();
 
+  /* 메뉴 안에서는 ↑↓·Home·End 로 항목을 옮긴다(role=menu 규칙). */
+  el.albumViewerMenu && el.albumViewerMenu.addEventListener('keydown', (e) => {
+    const items = [...el.albumViewerMenu.querySelectorAll('.avm-item')];
+    if (!items.length) return;
+    const index = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      const next = index < 0 ? (step > 0 ? 0 : items.length - 1) : (index + step + items.length) % items.length;
+      items[next].focus();
+    } else if (e.key === 'Home') { e.preventDefault(); items[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); items[items.length - 1].focus(); }
+  });
+
   document.addEventListener('keydown', (e) => {
     if (!albumViewer.open) return;
     if (e.key === 'Escape') {
