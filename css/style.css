@@ -18910,3 +18910,36 @@ img[loading="lazy"] { content-visibility: auto; }
   color: #6EE7B7;
 }
 :root[data-theme="dark"] .gallery-leader { color: #D1FAE5 !important; background: rgba(16, 185, 129, 0.28) !important; }
+
+/* 하단 탭 뱃지 — 아이콘 위가 아니라 오른쪽 위 모서리에 */
+.nav-badge {
+  top: 2px;
+  right: 50%;
+  transform: translateX(20px);
+  min-width: 18px;
+  height: 18px;
+  line-height: 14px;
+  font-size: 11px;
+  background: #B91C1C;
+  border: 2px solid var(--bg-app);
+}
+
+/* 다크 — 모임 단체방 아바타·안 읽음 수가 회색으로 죽지 않게 */
+:root[data-theme="dark"] .chat-group-emoji {
+  background-image: none !important;
+  background-color: #1B3B31 !important;
+  color: #6EE7B7 !important;
+  border: 1px solid rgba(110, 231, 183, 0.28);
+}
+.chat-group-count {
+  background: var(--green-solid);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+}
