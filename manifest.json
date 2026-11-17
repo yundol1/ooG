@@ -1,5 +1,5 @@
 {
-  "name": "ooG - 우리들의 취미 그룹",
+  "name": "ooG - 우리들의 취미 모임",
   "short_name": "ooG",
   "description": "취미로 이어지는 사람과 모임. 2열 메이슨리 탐색 피드에서 취미친구와 소모임을 한 번에 만나고, 모임 인증은 모임원에게만 공개됩니다.",
   "lang": "ko",
@@ -9,7 +9,7 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
-  "theme_color": "#10B981",
+  "theme_color": "#FFFFFF",
   "background_color": "#FFFFFF",
   "categories": ["social", "lifestyle"],
   "icons": [

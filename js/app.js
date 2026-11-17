@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const store = window.appStore;
   /* Sprint 20 — 이모지 대신 **우그가 직접 그린 아이콘**. 화면의 모든 아이콘은 이 두 함수로만 그린다. */
   const ic = (name, opts) => window.OOGIcons.render(name, opts);
+  /* Sprint R4 — 모임 카드 표지는 대분류 7종의 **단색 문양**을 쓴다(색조 → 문양 이름).
+     세부 취미 아이콘은 목록·칩·메타 줄에 그대로 남는다. */
+  const coverIc = (tone) => ic(window.OOGIcons.emblemName(tone));
   /* 정적 마크업(index.html)의 [data-oog-icon] 도 같은 아이콘으로 채운다 — HTML 에 이모지를 두지 않기 위함. */
   function hydrateIcons(root) {
     (root || document).querySelectorAll('[data-oog-icon]').forEach((node) => {
@@ -159,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
     publishEditing: false,
     secretAlbumPartnerId: null,
     dmView: 'recent',            // 'recent' | 'group'
-    dmUnreadOnly: false,         // 안 읽은 대화만
     dmSent: null,                // 방금 쪽지를 보낸 상대 {partnerId, name, roomId}
     confirmAction: null,         // 확인 시트에서 실행할 동작
 
@@ -280,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
     albumViewerClose: $('#btn-album-viewer-close'),
     headerHomeBtn: $('#btn-header-home'),
     dmViewSeg: $('#dm-view-seg'),
-    dmUnreadToggle: $('#dm-unread-toggle'),
     dmSentBanner: $('#dm-sent-banner'),
     /* Sprint 17 — 게시물·스토리·오픈 글 사진(앨범/카메라) */
     composerPhotoPreview: $('#composer-photo-preview'),
@@ -521,9 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnOpenChatRoom: $('#btn-open-chat-room'),
     btnKeepSwiping: $('#btn-keep-swiping'),
     chatRooms: $('#chat-rooms-container'),
-    chatRoomCount: $('#chat-room-count'),
     menuChatCount: $('#menu-chat-count'),
-    navChatBadge: $('#nav-chat-badge'),
     /* Sprint 4 — 무한 스크롤 · 게시글 · 대화방 · 폼 */
     exploreLoader: $('#explore-loader'),
     exploreSentinel: $('#explore-sentinel'),
@@ -649,7 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         header.textContent = text;
         header.classList.remove('has-photo');
-        header.style.background = u.avatarGradient || SIGNUP_FALLBACK_GRADIENT;
+        /* R3 — 사진이 없을 때의 기본 아바타는 초록 그라디언트가 아니라 중립 면.
+           (초록은 행동·선택의 색으로 남기고, 사람 얼굴 자리는 조용히 둔다) */
+        header.style.background = 'var(--bg-soft)';
       }
     }
     if (el.profileAvatarLetter) {
@@ -2065,17 +2066,18 @@ document.addEventListener('DOMContentLoaded', () => {
   function galleryCardHTML(item) {
     const grp = item.group;
     const coverPhotos = (item.coverPhotos || []).filter(Boolean);
+    /* Sprint 21 — 사진이 없으면 취미 대분류 색조(운동=그린 · 게임=보라 …)로 표지를 구분한다.
+       R4 — 그 표지의 문양은 대분류 7종의 단색 문양이다. */
+    const tone = store.getHobbyTone(grp.hobbyId || grp.category);
     const cover = coverPhotos.length
       ? `<span class="gallery-cover-photos">${coverPhotos.map((url, i) =>
           `<span class="gallery-cover-photo"><img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async"></span>`).join('')}</span>`
-      : `<span class="gallery-cover-emoji" aria-hidden="true">${ic(grp.icon)}</span>`;
+      : `<span class="gallery-cover-emoji" aria-hidden="true">${coverIc(tone)}</span>`;
     const next = item.nextEvent;
-    /* Sprint 21 — 사진이 없으면 취미 대분류 색조(운동=그린 · 게임=보라 …)로 표지를 구분한다. */
-    const tone = store.getHobbyTone(grp.hobbyId || grp.category);
     return `
       <article class="gallery-card tone-${escapeHtml(tone)}" data-open-group="${grp.id}" role="button" tabindex="0"
                aria-label="${escapeHtml(grp.name)} 모임 열기">
-        <div class="gallery-cover${coverPhotos.length ? '' : ' is-plain'}"${coverPhotos.length ? ` style="background:${grp.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}"` : ''}>
+        <div class="gallery-cover${coverPhotos.length ? '' : ' is-plain'}">
           ${cover}
           <span class="gallery-cover-veil" aria-hidden="true"></span>
           ${item.storyCount && SHOW_STORIES ? `<span class="gallery-story-badge">스토리 ${item.storyCount}</span>` : ''}
@@ -2116,7 +2118,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="recommend-cover">
           ${g.photoUrl
             ? `<img class="recommend-photo" src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span class="recommend-clay" aria-hidden="true">${ic(icon)}</span>`}
+            : `<span class="recommend-clay" aria-hidden="true">${coverIc(item.tone)}</span>`}
           <span class="recommend-hobby">${ic(icon)} ${escapeHtml(item.hobbyName)}</span>
         </div>
         <div class="recommend-body">
@@ -2655,7 +2657,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cats = store.getHobbyCategories();
     return `
       <div class="guide-cats guide-cats-cards" role="group" aria-label="취미 대분류">
-        ${cats.map((c) => `<button class="guide-cat-card ${c.id === g.category ? 'on' : ''}" data-guide-cat="${c.id}"
+        ${cats.map((c) => `<button class="guide-cat-card tone-${escapeHtml(c.tone)} ${c.id === g.category ? 'on' : ''}" data-guide-cat="${c.id}"
             type="button" aria-pressed="${c.id === g.category}">
             <span class="guide-cat-icon" aria-hidden="true">${ic(c.icon)}</span>
             <span class="guide-cat-name">${escapeHtml(c.name)}</span>
@@ -3383,9 +3385,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const info = store.getHomeGroups().find((g) => g.id === grp.id) || {};
     const next = info.nextEvent;
     const chat = info.chat || { count: 0 };
+    /* R3 — 표지 색은 .tone-* 클래스(CSS --cat-* 토큰)가 정한다. 인라인 style 은 두지 않는다. */
+    const heroTone = store.getHobbyTone(grp.hobbyId || grp.category);
     el.homeHero.innerHTML = `
-      <div class="home-hero-cover${info.photoCount ? '' : ' is-plain'}"${info.photoCount ? ` style="background:${grp.coverGradient || 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)'}"` : ''}>
-        <span class="home-hero-emoji" aria-hidden="true">${ic(grp.icon)}</span>
+      <div class="home-hero-cover tone-${escapeHtml(heroTone)}${info.photoCount ? '' : ' is-plain'}">
+        <span class="home-hero-emoji" aria-hidden="true">${coverIc(heroTone)}</span>
         <span class="home-hero-shade" aria-hidden="true"></span>
         <div class="home-hero-text">
           <span class="home-hero-kicker">${ic(grp.icon)} ${escapeHtml(grp.categoryName)} · ${escapeHtml(grp.location)}</span>
@@ -3623,7 +3627,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     ui.openGroupChatId = groupId;
     el.groupChatAvatar.innerHTML = ic(grp.icon);
-    el.groupChatAvatar.style.background = grp.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)';
+    /* R3 — 인라인 그라디언트 대신 대분류 색 토큰(--cat-N-soft) 이름을 넣는다 */
+    el.groupChatAvatar.style.background = store.getHobbyToneColors(grp.hobbyId || grp.category).from;
     el.groupChatName.textContent = grp.name;
     el.groupChatSub.textContent = `멤버 ${grp.memberCount}명 · 단체 채팅`;
     if (el.groupChatInput) el.groupChatInput.value = '';
@@ -3717,11 +3722,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return tb - ta;
       });
     if (el.chatGroupCount) el.chatGroupCount.textContent = `${groups.length}곳`;
-    const shownGroups = ui.dmUnreadOnly ? groups.filter((g) => (g.chat.unread || 0) > 0) : groups;
-    el.chatGroupRooms.innerHTML = shownGroups.map(({ group, chat, nextEvent }) => `
+    el.chatGroupRooms.innerHTML = groups.map(({ group, chat, nextEvent }) => `
       <article class="chat-group-item" data-home-chat="${group.id}" role="button" tabindex="0"
                aria-label="${escapeHtml(group.name)} 단체 채팅방 열기">
-        <span class="chat-group-emoji" style="background:${group.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}">${escapeHtml((group.name || '?').charAt(0))}</span>
+        <span class="chat-group-emoji tone-${escapeHtml(store.getHobbyTone(group.hobbyId || group.category))}">${escapeHtml((group.name || '?').charAt(0))}</span>
         <span class="chat-group-body">
           <span class="chat-group-name-row">
             <span class="chat-group-name">${escapeHtml(group.name)}</span>
@@ -4113,7 +4117,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.profileDrawerAvatar.innerHTML = me.photoUrl
         ? `<img src="${escapeHtml(me.photoUrl)}" alt="">`
         : escapeHtml(me.avatarText || (me.nickname || '·').charAt(0));
-      el.profileDrawerAvatar.style.background = me.photoUrl ? 'transparent' : (me.avatarGradient || '');
+      el.profileDrawerAvatar.style.background = me.photoUrl ? 'transparent' : 'var(--bg-soft)';
     }
     updateBadges();
     renderNotificationSettings();
@@ -4901,10 +4905,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderChatRooms();
     });
   }
-  el.dmUnreadToggle && el.dmUnreadToggle.addEventListener('click', () => {
-    ui.dmUnreadOnly = !ui.dmUnreadOnly;
-    renderChatRooms();
-  });
   if (el.dmSentBanner) {
     el.dmSentBanner.addEventListener('click', (e) => {
       if (e.target.closest('[data-dm-sent-close]')) { ui.dmSent = null; renderDmSentBanner(); return; }
@@ -5842,18 +5842,18 @@ document.addEventListener('DOMContentLoaded', () => {
       : joinState === 'pending' ? `${ic('hourglass')} 승인 대기`
         : (store.isGroupFull(g.id) ? '정원 마감'
           : (store.getGroupJoinMode(g) === 'approval' ? '가입 신청' : '참여하기'));
-    /* Sprint 21 — 사진 없는 모임 표지는 취미 대분류 색조로 (한눈에 모임 성격이 드러나게) */
+    /* Sprint 21 — 사진 없는 모임 표지는 취미 대분류 색조로 (한눈에 모임 성격이 드러나게).
+       R3 — 색은 인라인 style 이 아니라 .tone-* 클래스가 CSS 토큰(--cat-N)으로 칠한다. */
     const tone = store.getHobbyTone(g.hobbyId || g.category);
-    const coverBg = g.photoUrl ? null : store.getHobbyCoverGradient(g.hobbyId || g.category);
     return `
       <article class="masonry-card group-tile tone-${escapeHtml(tone)} ratio-${item.ratio}"
                data-group-id="${g.id}" data-card-type="group" role="button" tabindex="0"
                data-age-limit="${escapeHtml(g.ageLimit || 'all')}"
                aria-label="${escapeHtml(g.name)} 소모임 상세 보기${ageBadge ? ` · ${escapeHtml(ageBadge.text)} 가입` : ''}">
-        <div class="group-tile-cover"${coverBg ? ` style="background:${coverBg}"` : ''}>
+        <div class="group-tile-cover">
           ${g.photoUrl
             ? `<img class="group-tile-photo" src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span class="group-tile-emoji" aria-hidden="true">${ic(g.icon || 'dot')}</span>`}
+            : `<span class="group-tile-emoji" aria-hidden="true">${coverIc(tone)}</span>`}
           <span class="group-tile-badge">소모임</span>
           ${ageBadge
             ? `<span class="group-age-badge age-${escapeHtml(ageBadge.tone)} ${ageEligible ? '' : 'is-blocked'}"
@@ -5955,7 +5955,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     aria-pressed="${p.likedByMe}" aria-label="게시글 좋아요" type="button">
               ${HEART_SVG(p.likedByMe)}<span>${fmtCount(p.likes)}</span>
             </button>
-            <span class="post-stat">${COMMENT_SVG} ${p.comments.length}</span>
+            <span class="post-stat">${COMMENT_SVG()} ${p.comments.length}</span>
             <span class="post-group">${escapeHtml(p.groupName || regionName)}</span>
             <span class="post-time" data-created="${p.createdAt}">${timeAgo(p.createdAt)}</span>
           </div>
@@ -7365,13 +7365,11 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ==========================================================================
    * 4. 프라이빗 피드 (인스타그램형)
    * ======================================================================== */
-  const HEART_SVG = (filled) => filled
-    ? `<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
-
-  const COMMENT_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`;
-  const SEND_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
-  const BOOKMARK_SVG = (filled) => `<svg viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>`;
+  /* R4 — 카드 액션도 같은 아이콘 세트(2px 선)로. 좋아요·북마크만 활성에서 채운다. */
+  const HEART_SVG = (filled) => ic('heart', filled ? { filled: true } : undefined);
+  const COMMENT_SVG = () => ic('comment');
+  const SEND_SVG = () => ic('send');
+  const BOOKMARK_SVG = (filled) => ic('bookmark', filled ? { filled: true } : undefined);
 
   function renderFeedChips() {
     if (!el.feedChips) return;
@@ -7472,8 +7470,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="feed-action like ${post.likedByMe ? 'liked' : ''}" data-action="like" aria-label="좋아요" aria-pressed="${post.likedByMe}">
               <span class="heart-wrap">${HEART_SVG(post.likedByMe)}</span>
             </button>
-            <button class="feed-action" data-action="comment" aria-label="댓글">${COMMENT_SVG}</button>
-            <button class="feed-action" data-action="share" aria-label="공유">${SEND_SVG}</button>
+            <button class="feed-action" data-action="comment" aria-label="댓글">${COMMENT_SVG()}</button>
+            <button class="feed-action" data-action="share" aria-label="공유">${SEND_SVG()}</button>
           </div>
           <button class="feed-action bookmark ${post.bookmarkedByMe ? 'saved' : ''}" data-action="bookmark" aria-label="북마크">
             ${BOOKMARK_SVG(post.bookmarkedByMe)}
@@ -7966,12 +7964,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const scopeGroup = inGroup ? store.getGroup(ui.groupSpaceId) : null;
     renderChatGroupRooms();
     const allRooms = store.state.chatRooms;
-    /* 모임 안에서는 그 모임에서 시작한 1:1 방만 보인다. Sprint 17 — 안 읽은 것만 필터. */
+    /* 모임 안에서는 그 모임에서 시작한 1:1 방만 보인다. (Sprint 29 — '안 읽은 대화만' 필터 제거) */
     const roomsAll = inGroup
       ? allRooms.filter((r) => store.getChatRoomGroupId(r.id) === ui.groupSpaceId)
       : allRooms;
-    const rooms = ui.dmUnreadOnly ? roomsAll.filter((r) => (r.unreadCount || 0) > 0) : roomsAll;
-    /* Sprint 17 — 모임별/최근순 전환 · 안 읽은 대화만 */
+    const rooms = roomsAll;
+    /* Sprint 17 — 모임별/최근순 전환 */
     if (el.dmViewSeg) {
       el.dmViewSeg.innerHTML = [
         { id: 'recent', label: '최근순' },
@@ -7979,10 +7977,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ].map((o) => `<button class="dm-view-btn ${ui.dmView === o.id ? 'active' : ''}" data-dm-view="${o.id}"
         type="button" aria-pressed="${ui.dmView === o.id}">${o.label}</button>`).join('');
       el.dmViewSeg.hidden = inGroup;
-    }
-    if (el.dmUnreadToggle) {
-      el.dmUnreadToggle.setAttribute('aria-pressed', String(ui.dmUnreadOnly));
-      el.dmUnreadToggle.classList.toggle('on', ui.dmUnreadOnly);
     }
     renderDmSentBanner();
     renderDmRequests();
@@ -7996,7 +7990,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.dmSub) {
       el.dmSub.textContent = inGroup ? '이 모임의 전체방과 1:1 대화' : '';
     }
-    if (el.chatRoomCount) el.chatRoomCount.textContent = String(rooms.length);
     if (el.chatDmCount) el.chatDmCount.textContent = `${rooms.length}명`;
     if (el.menuChatCount) el.menuChatCount.textContent = `${allRooms.length}개`;
 
@@ -8015,10 +8008,8 @@ document.addEventListener('DOMContentLoaded', () => {
       el.chatRooms.innerHTML = `
         <div class="empty-state chat-empty">
           ${emptyArt('chat')}
-          <p class="empty-title">${ui.dmUnreadOnly ? '안 읽은 대화가 없어요' : '아직 대화방이 없어요'}</p>
-          <p class="empty-desc">${ui.dmUnreadOnly
-            ? '모든 대화를 다 읽었어요. 탐색에서 새 사람에게 인사해 보세요.'
-            : '탐색에서 마음에 드는 사람에게 바로 쪽지를 보내보세요.<br>보낸 쪽지는 이곳에 바로 올라옵니다.'}</p>
+          <p class="empty-title">아직 대화방이 없어요</p>
+          <p class="empty-desc">탐색에서 마음에 드는 사람에게 바로 쪽지를 보내보세요.<br>보낸 쪽지는 이곳에 바로 올라옵니다.</p>
           <div class="empty-actions">
             <button class="btn-primary" data-go-match="1">취미친구 보러 가기</button>
           </div>
@@ -8082,7 +8073,6 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="chat-last-msg">${escapeHtml(room.lastMessage || '')}</p>
           <span class="chat-hobby">${escapeHtml(room.partnerHobby || '')}</span>
         </div>
-        ${room.unreadCount > 0 ? `<span class="unread-badge">${room.unreadCount}</span>` : ''}
       </article>`;
     };
 
@@ -8093,7 +8083,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (grouped) {
       const sections = store.getDmInboxSections();
       sections.sections.forEach((section) => {
-        const list = ui.dmUnreadOnly ? section.directs.filter((r) => r.unread > 0) : section.directs;
+        const list = section.directs;
         if (!list.length) return;
         chunks.push(`<div class="chat-day-head dm-group-head">
           <span>${section.group ? escapeHtml(section.group.name) : '모임 밖 대화'}</span>
@@ -8102,7 +8092,7 @@ document.addEventListener('DOMContentLoaded', () => {
         list.forEach((it) => chunks.push(itemHtml(it.room)));
       });
       if (!chunks.length) {
-        chunks.push('<p class="board-empty">안 읽은 1:1 대화가 없어요.</p>');
+        chunks.push('<p class="board-empty">아직 1:1 대화가 없어요.</p>');
       }
       el.chatRooms.innerHTML = chunks.join('');
       return;
@@ -9183,6 +9173,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = store.notificationSettings;
     const show = supportsNotifications() && s.permission !== 'granted' && !s.promptDismissed;
     el.pushPermissionBanner.hidden = !show;
+    /* R2 — 홈에는 안내 배너를 한 번에 하나만 둔다(권한 안내가 먼저, 그다음 사진 안내). */
+    renderHomePhotoGuide();
   }
 
   /**
@@ -10820,7 +10812,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ? groups.slice(0, 8).map((g) => `
         <button class="profile-group-chip" data-profile-group="${g.id}" type="button"
                 aria-label="${escapeHtml(g.name)} 모임 상세 보기">
-          <span class="profile-group-cover" style="background:${g.coverGradient || 'linear-gradient(135deg,#ECFDF5,#D1FAE5)'}">${g.photoUrl
+          <span class="profile-group-cover tone-${escapeHtml(store.getHobbyTone(g.hobbyId || g.category))}">${g.photoUrl
             ? `<img src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
             : `<span aria-hidden="true">${ic(g.icon || 'dot')}</span>`}</span>
           <span class="profile-group-text">
@@ -10919,12 +10911,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.menuMyApplicationsCount) {
       el.menuMyApplicationsCount.textContent = `${store.getMyPendingApplicationCount()}건`;
     }
-    /* 채팅 미읽음 배지 */
-    const unread = store.getUnreadChatCount();
-    if (el.navChatBadge) {
-      el.navChatBadge.textContent = String(unread);
-      el.navChatBadge.classList.toggle('hide', unread === 0);
-    }
+    /* Sprint 29 — 안 읽은 대화 배지 없음(디엠 탭 숫자 배지 제거). 헤더 알림 점만 남긴다. */
     /* 헤더 알림 점 — 읽지 않은 알림·모임장 대기 신청 */
     const unreadNotif = store.getUnreadNotificationCount();
     if (el.notifDot) el.notifDot.classList.toggle('hide', unreadNotif === 0);
@@ -11420,9 +11407,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function applyThemeDom(dark) {
     const on = !!dark;
     document.documentElement.setAttribute('data-theme', on ? 'dark' : 'light');
-    document.body.classList.toggle('theme-dark', on);
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute('content', on ? '#10161B' : '#10B981');
+    /* R3 — body.theme-dark 클래스는 CSS 규칙이 없어진 죽은 훅이라 더 이상 붙이지 않는다.
+       테마는 html 의 data-theme 하나로만 판단한다. */
+    /* R1 — 브라우저 크롬 색은 표면과 같게(라이트 #FFFFFF · 다크 #0D1117). head 의 media 메타도 함께 맞춘다. */
+    const themeMetas = document.querySelectorAll('meta[name="theme-color"]');
+    themeMetas.forEach((m) => {
+      m.removeAttribute('media');
+      m.setAttribute('content', on ? '#0D1117' : '#FFFFFF');
+    });
     if (el.menuDarkMode) {
       el.menuDarkMode.setAttribute('aria-checked', String(on));
       el.menuDarkMode.classList.toggle('on', on);
@@ -12068,7 +12060,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderHomePhotoGuide() {
     if (!el.homePhotoGuide) return;
     const u = store.currentUser || {};
-    const need = !u.photoUrl && store.isSignedIn() && !isGroupMode();
+    /* R2 — 홈 안내 배너는 우선순위 하나만: 권한 안내가 떠 있으면 사진 안내는 숨긴다. */
+    const pushPromptOn = !!(el.pushPermissionBanner && !el.pushPermissionBanner.hidden);
+    const need = !u.photoUrl && store.isSignedIn() && !isGroupMode() && !pushPromptOn;
     el.homePhotoGuide.hidden = !need;
   }
 
@@ -12098,7 +12092,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = new Date(t);
         const days = ['일', '월', '화', '수', '목', '금', '토'];
         const label = `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]}) ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-        return `<button class="home-week-card" data-home-week-event="${escapeHtml(ev.id)}" data-home-week-group="${escapeHtml(group.id)}" type="button">
+        return `<button class="home-week-card tone-${escapeHtml(store.getHobbyTone(group.hobbyId || group.category))}" data-home-week-event="${escapeHtml(ev.id)}" data-home-week-group="${escapeHtml(group.id)}" type="button">
           <span class="hw-day">${escapeHtml(label)}</span>
           <span class="hw-title">${escapeHtml(ev.title || '모임 일정')}</span>
           <span class="hw-group">${escapeHtml(group.name)}</span>
@@ -12113,7 +12107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (titleEl) titleEl.textContent = '이번 주엔 일정이 없어요 · 추천 모임';
     if (el.homeWeekSub) el.homeWeekSub.textContent = '가볍게 둘러보기';
     el.homeWeekRail.innerHTML = recs.map((it) => `
-      <button class="home-week-card" data-home-week-group="${escapeHtml(it.group.id)}" type="button">
+      <button class="home-week-card tone-${escapeHtml(it.tone || store.getHobbyTone(it.group.hobbyId || it.group.category))}" data-home-week-group="${escapeHtml(it.group.id)}" type="button">
         <span class="hw-day">추천</span>
         <span class="hw-title">${escapeHtml(it.group.name)}</span>
         <span class="hw-group">${escapeHtml(it.reason || it.group.location || '')}</span>
@@ -12554,8 +12548,7 @@ document.addEventListener('DOMContentLoaded', () => {
     splash,
     getSplashState: () => splash.getState(),
     setDmView: (v) => { ui.dmView = v === 'group' ? 'group' : 'recent'; renderChatRooms(); },
-    setDmUnreadOnly: (on) => { ui.dmUnreadOnly = !!on; renderChatRooms(); },
-    getDmViewState: () => ({ view: ui.dmView, unreadOnly: ui.dmUnreadOnly, sent: ui.dmSent }),
+    getDmViewState: () => ({ view: ui.dmView, sent: ui.dmSent }),
     /* Sprint 23 — 지역 게시판 · 통합 모임 찾기 · 스토리텔링 문구 연출 · 탭바 자동 숨김 */
     renderExploreCompose, postStyleLabel, postRegionLabel,
     getRegionState: () => ({

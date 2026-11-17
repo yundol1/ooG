@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <!-- Sprint 28.5 — 핀치 확대를 막지 않는다(접근성). maximum-scale·user-scalable 제거. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#047857">
+  <!-- R1 — 브라우저 크롬 색은 바탕색과 같게: 라이트 #FFFFFF · 다크 #0D1117 -->
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0D1117" media="(prefers-color-scheme: dark)">
   <!-- Sprint 24 — 다크모드는 첫 페인트 전에 붙인다(밝은 화면이 번쩍이지 않게). 저장 상태에서 읽는다. -->
   <script>
     (function () {
@@ -15,12 +17,12 @@
         var savedChoice = saved && saved.settings ? saved.settings.darkMode : null;
         var systemDark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
         var dark = savedChoice === true || (savedChoice !== false && systemDark);
-        if (dark) {
-          document.documentElement.setAttribute('data-theme', 'dark');
-          var m = document.querySelector('meta[name="theme-color"]');
-          if (m) m.setAttribute('content', '#10161B');
-        } else {
-          document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        /* R1 — 앱 안에서 고른 테마가 기기 설정보다 우선한다. 첫 페인트 전에 메타도 맞춘다. */
+        var metas = document.querySelectorAll('meta[name="theme-color"]');
+        for (var i = 0; i < metas.length; i++) {
+          metas[i].removeAttribute('media');
+          metas[i].setAttribute('content', dark ? '#0D1117' : '#FFFFFF');
         }
       } catch (e) { /* 저장소를 못 읽어도 라이트로 연다 */ }
     })();
@@ -97,10 +99,10 @@
           <span class="header-avatar" id="header-avatar">루</span>
         </button>
         <button class="icon-btn" id="btn-header-search" aria-label="검색">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span class="oo-icon-20" aria-hidden="true" data-oog-icon="search"></span>
         </button>
         <button class="icon-btn" id="btn-header-notif" aria-label="알림">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span class="oo-icon-20" aria-hidden="true" data-oog-icon="bell"></span>
           <span class="notif-dot" id="notif-dot"></span>
         </button>
       </div>
@@ -117,7 +119,8 @@
 
     <!-- ==================== 푸시 알림 권한 안내 배너 (Sprint 4.5) ==================== -->
     <div class="push-permission-banner" id="push-permission-banner" hidden>
-            <div class="ppb-text">
+      <span class="ppb-icon" aria-hidden="true" data-oog-icon="bell"></span>
+      <div class="ppb-text">
         <strong class="ppb-title">앱을 꺼도 새 메시지 알림 받기</strong>
         <span class="ppb-desc">새 메시지·반응을 알려드려요</span>
       </div>
@@ -221,7 +224,7 @@
         <div class="group-space" id="group-space">
           <div class="group-topbar">
             <button class="group-back" data-group-back="1" type="button" aria-label="내 모임 갤러리로 돌아가기">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"></path></svg>
+              <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
             </button>
             <div class="group-topbar-text">
               <h2 class="group-topbar-name" id="group-space-name">모임</h2>
@@ -229,7 +232,7 @@
             </div>
             <button class="group-topbar-act group-topbar-menu" id="btn-group-drawer" type="button"
                     aria-label="모임 메뉴 열기(멤버·설정)" aria-controls="group-drawer" aria-expanded="false">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+              <span class="oo-icon-20" aria-hidden="true" data-oog-icon="menu"></span>
             </button>
           </div>
 
@@ -267,7 +270,7 @@
       <section class="tab-view" id="tab-board">
         <div class="board-topbar">
           <button class="group-back" data-group-back="1" type="button" aria-label="내 모임 갤러리로 돌아가기">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"></path></svg>
+            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
           </button>
           <div class="group-topbar-text">
             <h2 class="group-topbar-name" id="board-space-name">모임게시판</h2>
@@ -275,7 +278,7 @@
           </div>
           <button class="group-topbar-act" id="btn-board-drawer" type="button"
                   aria-label="모임 메뉴 열기(멤버·설정)" aria-controls="group-drawer" aria-expanded="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="menu"></span>
           </button>
           <button class="group-topbar-act" id="btn-board-write" type="button">글쓰기</button>
         </div>
@@ -326,7 +329,7 @@
       <section class="tab-view" id="tab-explore">
         <div class="explore-top">
           <div class="explore-search">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <span class="oo-icon-17" aria-hidden="true" data-oog-icon="search"></span>
             <input type="search" id="explore-search-input" aria-label="동네나 닉네임 검색" placeholder="동네나 닉네임으로 찾기" autocomplete="off">
             <button class="explore-search-clear hide" id="explore-search-clear" aria-label="검색어 지우기">&times;</button>
           </div>
@@ -415,7 +418,6 @@
             <h2 class="chat-title" id="dm-title">전체 디엠함</h2>
             <p class="chat-sub" id="dm-sub"></p>
           </div>
-          <span class="chat-count-badge" id="chat-room-count">0</span>
         </div>
 
         <!-- Sprint 16 — 모임 안에 들어와 있을 때는 그 모임 대화만 보여준다 -->
@@ -424,10 +426,9 @@
           <button class="dm-scope-all" id="btn-dm-scope-all" type="button">전체 디엠함 보기</button>
         </div>
 
-        <!-- Sprint 17 — 모임별/최근순 전환 · 읽지 않은 대화만 -->
+        <!-- Sprint 17 — 모임별/최근순 전환 (Sprint 29 — '안 읽은 대화' 필터는 없앴다) -->
         <div class="dm-controls">
           <div class="dm-view-seg" id="dm-view-seg" role="group" aria-label="디엠함 정렬"><!-- JS --></div>
-          <button class="dm-unread-toggle" id="dm-unread-toggle" type="button" aria-pressed="false">안 읽은 대화만</button>
         </div>
         <!-- Sprint 17 — 쪽지를 보낸 직후 상대 프로필로 바로 이동 -->
         <div class="dm-sent-banner" id="dm-sent-banner" hidden></div>
@@ -471,7 +472,7 @@
           </div>
           <button class="profile-menu-btn" id="btn-profile-drawer" type="button"
                   aria-label="내정보 메뉴 열기(설정)" aria-controls="profile-drawer" aria-expanded="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="menu"></span>
           </button>
         </div>
         <!-- Sprint 16 — 모임 안에서 본 내정보: 어느 모임의 내정보인지 한 줄로 -->
@@ -594,7 +595,7 @@
 
     <!-- ==================== 플로팅 글쓰기 버튼 (홈 · 그 모임에 사진 올리기) ==================== -->
     <button class="fab-write" id="fab-write" aria-label="새 게시물 작성">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      <span class="oo-icon-24" aria-hidden="true" data-oog-icon="plus"></span>
       <span class="fab-label">사진 올리기</span>
     </button>
 
@@ -1195,7 +1196,7 @@
       <div class="chat-room-inner">
         <header class="chat-room-head">
           <button class="chat-back-btn" id="btn-group-chat-back" aria-label="뒤로 가기">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
           </button>
           <div class="chat-partner-info">
             <div class="chat-partner-avatar group-chat-avatar" id="group-chat-avatar"></div>
@@ -1212,7 +1213,7 @@
         <form class="chat-input-bar" id="group-chat-form">
           <input type="text" class="chat-input" id="group-chat-input" placeholder="모임원에게 한마디" maxlength="500" autocomplete="off" aria-label="단체 채팅 입력">
           <button type="submit" class="chat-send-btn" aria-label="메시지 보내기">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <span class="oo-icon-18" aria-hidden="true" data-oog-icon="send"></span>
           </button>
         </form>
       </div>
@@ -1223,7 +1224,7 @@
       <div class="chat-room-inner">
         <header class="chat-room-head">
           <button class="chat-back-btn" id="btn-chat-back" aria-label="뒤로 가기">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
           </button>
           <div class="chat-partner-info">
             <div class="chat-partner-avatar" id="chat-room-avatar">?</div>
@@ -1243,7 +1244,7 @@
         <form class="chat-input-bar" id="chat-form">
           <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요" maxlength="500" autocomplete="off" aria-label="메시지 입력">
           <button type="submit" class="chat-send-btn" id="btn-chat-send" aria-label="메시지 보내기">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            <span class="oo-icon-18" aria-hidden="true" data-oog-icon="send"></span>
           </button>
         </form>
       </div>
@@ -1631,7 +1632,8 @@
       <span class="nav-indicator" id="nav-indicator" aria-hidden="true"></span>
       <button class="nav-tab-item active" data-tab="tab-home" role="tab" aria-selected="true" aria-controls="tab-home" aria-label="홈 — 내 모임 갤러리">
         <span class="tab-icon">
-          <span data-oog-icon="grid"></span>
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="grid"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="gridFill"></span>
         </span>
         <span class="tab-label">홈</span>
         <span class="nav-badge hide" id="nav-home-badge">0</span>
@@ -1639,23 +1641,25 @@
 
       <button class="nav-tab-item" data-tab="tab-explore" role="tab" aria-selected="false" aria-controls="tab-explore" aria-label="탐색 — 사람과 모임, 오픈 글">
         <span class="tab-icon">
-          <span data-oog-icon="search"></span>
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="search"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="searchFill"></span>
         </span>
         <span class="tab-label">탐색</span>
       </button>
 
       <button class="nav-tab-item" data-tab="tab-chat" role="tab" aria-selected="false" aria-controls="tab-chat" aria-label="전체 디엠함 — 모든 모임 단체방과 1:1 대화">
         <span class="tab-icon">
-          <span data-oog-icon="chat"></span>
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="chat"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="chatFill"></span>
         </span>
         <span class="tab-label">전체 디엠함</span>
-        <span class="nav-badge hide" id="nav-chat-badge">0</span>
       </button>
 
       <!-- Sprint 24 — 바깥 4탭의 마지막: 내 프로필 -->
       <button class="nav-tab-item" data-tab="tab-myprofile" role="tab" aria-selected="false" aria-controls="tab-myprofile" aria-label="내 프로필 — 공개 사진과 비밀앨범">
         <span class="tab-icon">
-          <span data-oog-icon="person"></span>
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="person"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="personFill"></span>
         </span>
         <span class="tab-label">내 프로필</span>
       </button>
@@ -1667,28 +1671,32 @@
       <span class="nav-indicator" id="nav-indicator-group" aria-hidden="true"></span>
       <button class="nav-tab-item active" data-tab="tab-home" role="tab" aria-selected="true" aria-controls="tab-home" aria-label="피드 — 이 모임 피드">
         <span class="tab-icon">
-          <span data-oog-icon="home"></span>
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="home"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="homeFill"></span>
         </span>
         <span class="tab-label">피드</span>
       </button>
 
       <button class="nav-tab-item" data-tab="tab-board" role="tab" aria-selected="false" aria-controls="tab-board" aria-label="게시판 — 공지·일정·자유/후기 글">
         <span class="tab-icon">
-          <span data-oog-icon="note"></span>
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="note"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="noteFill"></span>
         </span>
         <span class="tab-label">게시판</span>
       </button>
 
       <button class="nav-tab-item" data-tab="tab-chat" role="tab" aria-selected="false" aria-controls="tab-chat" aria-label="디엠 — 이 모임 대화">
         <span class="tab-icon">
-          <span data-oog-icon="chat"></span>
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="chat"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="chatFill"></span>
         </span>
         <span class="tab-label">디엠</span>
       </button>
 
       <button class="nav-tab-item" data-tab="tab-profile" role="tab" aria-selected="false" aria-controls="tab-profile" aria-label="내정보 — 내 피드와 설정">
         <span class="tab-icon">
-          <span data-oog-icon="person"></span>
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="person"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="personFill"></span>
         </span>
         <span class="tab-label">내정보</span>
       </button>

@@ -31,38 +31,162 @@
 
 /* ==========================================================================
    01. 디자인 토큰
+   --------------------------------------------------------------------------
+   R1 — 표면·글자·테두리·초록·카테고리는 **아래 두 블록이 유일한 정의처**다.
+   (Sprint 4·19·21·24-10·28.5-1 에 흩어져 있던 같은 토큰 정의는 여기로 모았다.)
+
+   라이트  바탕 #FFFFFF · 구획 #F7F8FA · 카드 #FFFFFF · 테두리 #EEF0F3
+   다크    바탕 #0D1117 · 카드 #161B22 · 떠 있는 요소 #1E242C · 테두리 #2B323C
+   초록    라이트 #047857 · 다크 #34D399
+   카테고리 --cat-1~7 (블루·인디고·바이올렛·로즈·앰버·코랄·스카이, 초록 계열 없음)
    ========================================================================== */
 :root {
-  /* 배경 */
-  --bg-base: #FFFFFF;
-  --bg-app: #FFFFFF;
-  --bg-subtle: #F8FAFC;
-  --bg-soft: #F1F5F9;
-  --bg-glass: rgba(255, 255, 255, 0.94);
+  /* 바탕 · 표면 */
+  --bg-app: #FFFFFF;              /* 바탕 — html · body · .app-container */
+  --bg-base: #FFFFFF;             /* 카드 */
+  --bg-subtle: #F7F8FA;           /* 구획 · 입력 · 칩 */
+  --bg-soft: #F3F5F7;             /* 한 단계 진한 구획 · hover */
+  --bg-elevated: #FFFFFF;         /* 떠 있는 요소(시트·메뉴·팝오버) — 라이트는 그림자가 띄운다 */
+  --bg-glass: rgba(255, 255, 255, 0.88);   /* 헤더 · 탭바 */
 
-  /* 텍스트 */
-  --text-strong: #0F172A;
-  --text: #1E293B;
-  --text-sub: #475569;
-  --text-muted: #5F6D80;
+  /* 글자 */
+  --text-strong: #111827;
+  --text: #111827;
+  --text-sub: #4B5563;
+  --text-muted: #5F6D80;   /* R3 — 칩·구획 면(--bg-soft) 위에서도 4.5:1 을 넘기도록 한 단계 진하게 */
 
-  /* 보더 */
-  --border: #E2E8F0;
-  --border-strong: #CBD5E1;
-  --border-soft: #F1F5F9;
+  /* 반경 — 카드 16 · 컨트롤(버튼·입력·시트) 14 */
+  --r-card: 16px;
+  --r-control: 14px;
 
-  /* 키 컬러 : 에메랄드 / 포레스트 그린 */
-  --green: #10B981;
-  --green-hover: #059669;
-  --green-dark: #047857;
+  /* 테두리 */
+  --border: #EEF0F3;
+  --border-strong: #E3E7EC;
+  --border-soft: #F4F5F7;
+
+  /* 초록 */
+  --green: #047857;
+  --green-hover: #036147;
+  --green-dark: #065F46;
   --green-deep: #064E3B;
   --green-soft: #ECFDF5;
   --green-soft-border: #A7F3D0;
   --green-tint: #F0FDF4;
-  --green-grad: linear-gradient(135deg, #059669 0%, #047857 100%);
+  --green-text: #047857;
+  --green-solid: #047857;
+  --green-solid-hover: #036147;
+  --green-deco: #10B981;
+  --green-on: #ECFDF5;
+  --green-grad: linear-gradient(135deg, #047857 0%, #065F46 100%);
   --green-grad-soft: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
 
-  /* 보조 */
+  /* 카테고리 — 대분류 7색 · 중립 (초록 계열 제외) */
+  --cat-1: #2563EB;  --cat-1-soft: #EFF6FF;   /* 블루 */
+  --cat-2: #4F46E5;  --cat-2-soft: #EEF2FF;   /* 인디고 */
+  --cat-3: #9333EA;  --cat-3-soft: #F5F3FF;   /* 바이올렛 (R3 — 인디고와 구분되게 한 단계 보라로) */
+  --cat-4: #E11D48;  --cat-4-soft: #FFF1F2;   /* 로즈 */
+  --cat-5: #B45309;  --cat-5-soft: #FEF3C7;   /* 앰버 */
+  --cat-6: #EA580C;  --cat-6-soft: #FFEDD5;   /* 코랄 */
+  --cat-7: #0891B2;  --cat-7-soft: #ECFEFF;   /* 스카이 */
+  --cat-neutral: #6B7280;  --cat-neutral-soft: var(--bg-soft);   /* 대분류를 모르는 취미 */
+
+  /* 옛 점토 이름 → 새 토큰 별칭 (컴포넌트 규칙은 그대로 두고 값만 한 곳으로 모은다) */
+  --clay-page: var(--bg-app);
+  --clay-page-deep: var(--bg-app);
+  --clay-cream: var(--bg-base);
+  --clay-cream-soft: var(--bg-subtle);
+  --clay-cream-deep: var(--bg-subtle);
+  --clay-white: var(--bg-elevated);
+  --clay-mint: var(--green-soft);
+  --clay-mint-deep: var(--green-soft-border);
+  --clay-edge: var(--border);
+  --clay-edge-soft: var(--border-soft);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  background-color: var(--bg-app);   /* :root = html — 앱 바탕 */
+
+  /* 바탕 · 표면 — 순수 검정(#000000)은 쓰지 않는다.
+     R3 — 다섯 단계가 서로 구분되도록 밝기를 벌렸다(전에는 카드=구획, 시트=hover 로 겹쳤다).
+       앱 #0D1117 < 카드 #161B22 < 입력·구획 #1B222B < 시트 #222A34 < hover #28323D */
+  --bg-app: #0D1117;
+  --bg-base: #161B22;
+  --bg-subtle: #1B222B;
+  --bg-soft: #28323D;
+  --bg-elevated: #222A34;
+  --bg-glass: rgba(13, 17, 23, 0.88);
+
+  /* 글자 */
+  --text-strong: #F3F5F7;
+  --text: #F3F5F7;
+  --text-sub: #A8B1BD;
+  --text-muted: #96A1B0;   /* R3 — --bg-soft(#28323D) 위에서도 4.5:1 */
+
+  /* 테두리 */
+  --border: #2B323C;
+  --border-strong: #3A424E;
+  --border-soft: #232A33;
+
+  /* 초록 */
+  --green: #34D399;
+  --green-hover: #6EE7B7;
+  --green-dark: #6EE7B7;
+  --green-deep: #A7F3D0;
+  --green-soft: #14312A;
+  --green-soft-border: #1F5A47;
+  --green-tint: #0E241D;
+  --green-text: #6EE7B7;
+  --green-solid: #047857;
+  --green-solid-hover: #036147;
+  --green-deco: #34D399;
+  --green-on: #14312A;
+  --green-grad: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  --green-grad-soft: linear-gradient(135deg, #14312A 0%, #1B3B31 100%);
+
+  /* 카테고리 — 다크에서 한 단계 밝게 */
+  --cat-1: #60A5FA;  --cat-1-soft: #12243D;   /* 블루 */
+  --cat-2: #818CF8;  --cat-2-soft: #1A1F3D;   /* 인디고 */
+  --cat-3: #A855F7;  --cat-3-soft: #2A1440;   /* 바이올렛 (R3 — 인디고와 ΔE 41) */
+  --cat-4: #FB7185;  --cat-4-soft: #3A1220;   /* 로즈 */
+  --cat-5: #FBBF24;  --cat-5-soft: #33280F;   /* 앰버 */
+  --cat-6: #FB923C;  --cat-6-soft: #3A1D0E;   /* 코랄 */
+  --cat-7: #22D3EE;  --cat-7-soft: #0E2C33;   /* 스카이 */
+  --cat-neutral: #A8B1BD;  --cat-neutral-soft: #1E242C;
+
+  /* 상태색 */
+  --red: #F87171;
+  --red-soft: #33191C;
+  --amber: #FBBF24;
+  --amber-soft: #33280F;
+
+  /* 점토 그림자 — 24-10 의 3중 그림자를 28.5-18 의 1겹 그림자가 덮는다(마지막 값) */
+  --clay-lift: 0 6px 16px -10px rgba(0, 0, 0, 0.65);
+  --clay-out: 0 2px 6px -3px rgba(0, 0, 0, 0.55);
+  --clay-soft: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --clay-light: inset 0 1px 0 rgba(203, 236, 224, 0.08);
+  --clay-light-soft: inset 0 1px 0 rgba(203, 236, 224, 0.06);
+  --clay-inset: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  --clay-press: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  --clay-green-lift: 0 4px 12px -8px rgba(0, 0, 0, 0.6);
+  --clay-green-in: inset 0 1px 1px rgba(203, 236, 224, 0.08);
+
+  /* 그림자 토큰 */
+  --shadow-xs: 0 2px 4px -2px rgba(0, 0, 0, 0.6);
+  --shadow-sm: var(--clay-soft);
+  --shadow-card: var(--clay-out), var(--clay-light);
+  --shadow-hover: var(--clay-lift), var(--clay-light);
+  --shadow-float: var(--clay-green-lift);
+  --shadow-sheet: 0 -18px 46px -20px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --sh-2: 0 6px 16px -10px rgba(0, 0, 0, 0.66);
+  --sh-3: 0 18px 30px -20px rgba(0, 0, 0, 0.8), 0 8px 14px -10px rgba(0, 0, 0, 0.6), inset 0 2px 1px rgba(203, 236, 224, 0.1);
+  --focus-ring: 0 0 0 3px rgba(110, 231, 183, 0.4);
+}
+
+:root {
+
+  /* 보조 — 상태색(빨강·앰버)은 초록과 별개라 여기 남긴다 */
   --red: #EF4444;
   --red-soft: #FEF2F2;
   --amber: #F59E0B;
@@ -237,7 +361,7 @@ img, svg { display: block; }
   height: 7px;
   background: var(--red);
   border-radius: var(--r-full);
-  border: 1.5px solid #FFFFFF;
+  border: 1.5px solid var(--bg-app);
 }
 
 .notif-dot.hide { display: none; }
@@ -280,7 +404,7 @@ img, svg { display: block; }
 .promo-banner {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 55%, #F0FDF4 100%);
+  background: linear-gradient(135deg, var(--green-soft) 0%, var(--bg-base) 55%, var(--green-tint) 100%);
   border: 1px solid var(--green-soft-border);
   border-radius: var(--r-lg);
   padding: 18px 18px 16px;
@@ -301,7 +425,7 @@ img, svg { display: block; }
 
 .banner-pill {
   display: inline-block;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--green-dark);
   font-size: 11px;
   font-weight: var(--fw-label);
@@ -369,7 +493,7 @@ img, svg { display: block; }
 .search-box svg { color: var(--text-muted); flex: 0 0 auto; }
 
 .search-box:focus-within {
-  background: #FFFFFF;
+  background: var(--bg-elevated);
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 }
@@ -435,7 +559,7 @@ img, svg { display: block; }
   align-items: center;
   gap: 5px;
   padding: 8px 14px;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   color: var(--text-sub);
   font-size: 12.5px;
@@ -514,7 +638,7 @@ img, svg { display: block; }
 }
 
 .group-card {
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 16px;
@@ -634,7 +758,7 @@ img, svg { display: block; }
 
 .btn-join-group {
   flex: 0 0 auto;
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--green-soft-border);
   color: var(--green-dark);
   font-size: 12px;
@@ -755,7 +879,7 @@ img, svg { display: block; }
 }
 
 .feed-subtab.active {
-  background: #FFFFFF;
+  background: var(--bg-elevated);
   color: var(--green-dark);
   box-shadow: var(--shadow-sm);
 }
@@ -781,7 +905,7 @@ img, svg { display: block; }
   align-items: center;
   gap: 5px;
   padding: 7px 12px;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   font-size: 12px;
@@ -813,7 +937,7 @@ img, svg { display: block; }
 }
 
 .feed-chip.active .chip-count {
-  background: #FFFFFF;
+  background: var(--bg-app);
   color: var(--green-dark);
 }
 
@@ -821,7 +945,7 @@ img, svg { display: block; }
 
 /* --- 피드 카드 --- */
 .feed-card {
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   margin-bottom: 16px;
@@ -852,7 +976,7 @@ img, svg { display: block; }
   height: 38px;
   flex: 0 0 38px;
   border-radius: var(--r-full);
-  border: 2px solid #FFFFFF;
+  border: 2px solid var(--bg-base);
   outline: 2px solid var(--green-soft-border);
   color: #FFFFFF;
   font-size: 14px;
@@ -940,7 +1064,7 @@ img, svg { display: block; }
   position: fixed;
   z-index: 140;
   width: 132px;
-  background: #FFFFFF;
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   box-shadow: var(--shadow-hover);
@@ -1067,8 +1191,6 @@ img, svg { display: block; }
   display: block;
   background: var(--bg-soft);
 }
-
-
 
 /* 액션 바 */
 .feed-actions {
@@ -1311,7 +1433,7 @@ img, svg { display: block; }
   z-index: 30;
   padding: 12px 0 3px;
   /* 스크롤해도 카드가 검색창·칩 뒤로 비쳐 보이지 않도록 불투명 화이트 */
-  background: #FFFFFF;
+  background: var(--bg-base);
 }
 
 /* 스티키 영역 아래로는 짧은 페이드만 남겨 카드가 자연스럽게 사라지게 한다 */
@@ -1340,7 +1462,7 @@ img, svg { display: block; }
 }
 
 .explore-search:focus-within {
-  background: #FFFFFF;
+  background: var(--bg-elevated);
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
   color: var(--green-dark);
@@ -1401,7 +1523,7 @@ img, svg { display: block; }
   padding: 0 12px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-size: 12px;
   font-weight: var(--fw-label);
@@ -1640,8 +1762,8 @@ img, svg { display: block; }
 .quick-like:hover { background: rgba(255, 255, 255, 0.3); }
 
 .quick-like.liked {
-  background: #FFFFFF;
-  border-color: #FFFFFF;
+  background: var(--bg-base);
+  border-color: var(--bg-base);
   color: #E11D6B;
   box-shadow: 0 6px 16px -6px rgba(225, 29, 107, 0.55);
 }
@@ -1687,7 +1809,7 @@ img, svg { display: block; }
 
 /* ------------------------------------------------------ 소모임(그룹) 카드 */
 .group-tile {
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
 }
@@ -2161,7 +2283,7 @@ img, svg { display: block; }
   padding: 14px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   font-size: 13px;
   font-weight: var(--fw-strong);
   color: var(--text-sub);
@@ -2214,15 +2336,6 @@ img, svg { display: block; }
   color: var(--text-muted);
 }
 
-.chat-count-badge {
-  font-size: 11px;
-  font-weight: var(--fw-label);
-  color: var(--green-dark);
-  background: var(--green-soft);
-  border: 1px solid var(--green-soft-border);
-  padding: 4px 10px;
-  border-radius: var(--r-full);
-}
 
 #tab-chat .chat-rooms-list { gap: 8px; }
 
@@ -2286,7 +2399,7 @@ img, svg { display: block; }
   display: flex;
   align-items: center;
   gap: 15px;
-  background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%);
+  background: linear-gradient(135deg, var(--bg-base) 0%, var(--green-tint) 100%);
   border: 1px solid var(--green-soft-border);
   border-radius: var(--r-lg);
   padding: 18px;
@@ -2307,7 +2420,7 @@ img, svg { display: block; }
   align-items: center;
   justify-content: center;
   position: relative;
-  outline: 3px solid #FFFFFF;
+  outline: 3px solid var(--bg-base);
   box-shadow: 0 0 0 4px var(--green-soft);
 }
 
@@ -2325,7 +2438,7 @@ img, svg { display: block; }
   width: 13px;
   height: 13px;
   background: var(--green);
-  border: 2.5px solid #FFFFFF;
+  border: 2.5px solid var(--bg-base);
   border-radius: var(--r-full);
 }
 
@@ -2359,7 +2472,7 @@ img, svg { display: block; }
   font-size: 9.5px;
   font-weight: var(--fw-label);
   color: var(--green-dark);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--green-soft-border);
   padding: 2px 6px;
   border-radius: 4px;
@@ -2383,7 +2496,7 @@ img, svg { display: block; }
   font-size: 10.5px;
   font-weight: var(--fw-label);
   color: var(--text-sub);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   padding: 3px 8px;
   border-radius: var(--r-full);
@@ -2392,7 +2505,7 @@ img, svg { display: block; }
 .profile-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   padding: 14px 6px;
@@ -2457,7 +2570,7 @@ img, svg { display: block; }
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   padding: 12px 14px;
@@ -2519,24 +2632,11 @@ img, svg { display: block; }
   text-overflow: ellipsis;
 }
 
-.unread-badge {
-  font-size: 10px;
-  font-weight: var(--fw-label);
-  color: #FFFFFF;
-  background: var(--green-dark);
-  width: 18px;
-  height: 18px;
-  border-radius: var(--r-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 18px;
-}
 
 .settings-menu-list .menu-item[hidden] { display: none; }
 
 .settings-menu-list {
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
   overflow: hidden;
@@ -2558,7 +2658,7 @@ img, svg { display: block; }
 
 .menu-item:last-child { border-bottom: none; }
 .menu-item:hover { background: var(--bg-subtle); }
-.menu-item.highlight-menu { background: linear-gradient(90deg, #F0FDF4 0%, #FFFFFF 70%); }
+.menu-item.highlight-menu { background: linear-gradient(90deg, var(--green-tint) 0%, var(--bg-elevated) 70%); }
 
 .menu-label { font-weight: var(--fw-strong); }
 
@@ -2614,7 +2714,7 @@ img, svg { display: block; }
   max-height: 88vh;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: #FFFFFF;
+  background: var(--bg-elevated);
   border-radius: 26px 26px 0 0;
   box-shadow: var(--shadow-sheet);
   padding: 10px 18px 26px;
@@ -2793,14 +2893,14 @@ img, svg { display: block; }
   font-size: 11.5px;
   font-weight: var(--fw-label);
   color: var(--green-dark);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--green-soft-border);
   padding: 4px 4px 4px 9px;
   border-radius: var(--r-full);
 }
 
 .tag-manager.readonly .managed-tag {
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border-color: var(--border);
   color: var(--text-sub);
   padding: 4px 9px;
@@ -2840,7 +2940,7 @@ img, svg { display: block; }
   min-width: 0;
   height: 38px;
   padding: 0 12px;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   font-size: 12.5px;
@@ -2963,7 +3063,7 @@ img, svg { display: block; }
 .btn-primary-action:active { transform: scale(0.985); }
 
 .btn-primary-action.leave {
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   border: 1px solid var(--border-strong);
   box-shadow: none;
@@ -2989,7 +3089,7 @@ img, svg { display: block; }
   padding: 12px 12px 12px 10px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
 }
 
 .joined-emoji {
@@ -3032,7 +3132,7 @@ img, svg { display: block; }
   padding: 6px 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   white-space: nowrap;
 }
@@ -3069,7 +3169,7 @@ img, svg { display: block; }
   justify-content: space-between;
   padding: 6px 0 12px;
   margin-bottom: 6px;
-  background: linear-gradient(#FFFFFF 78%, rgba(255, 255, 255, 0));
+  background: linear-gradient(var(--bg-elevated) 78%, rgba(255, 255, 255, 0));
 }
 
 .composer-title {
@@ -3129,7 +3229,7 @@ img, svg { display: block; }
   align-items: center;
   gap: 7px;
   padding: 7px 12px 7px 8px;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   text-align: left;
@@ -3148,7 +3248,7 @@ img, svg { display: block; }
   width: 24px;
   height: 24px;
   border-radius: var(--r-full);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border-soft);
   display: flex;
   align-items: center;
@@ -3191,7 +3291,7 @@ img, svg { display: block; }
 
 .tag-pick {
   padding: 7px 12px;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   font-size: 11.5px;
@@ -3299,7 +3399,7 @@ img, svg { display: block; }
 }
 
 .text-input:focus, .text-area:focus {
-  background: #FFFFFF;
+  background: var(--bg-elevated);
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 }
@@ -3338,7 +3438,7 @@ img, svg { display: block; }
   display: flex;
   align-items: center;
   justify-content: center;
-  background: repeating-linear-gradient(45deg, #F1F5F9, #F1F5F9 6px, #E2E8F0 6px, #E2E8F0 12px);
+  background: repeating-linear-gradient(45deg, var(--bg-soft), var(--bg-soft) 6px, var(--bg-soft) 6px, var(--bg-soft) 12px);
 }
 
 .photo-preview.failed .photo-preview-img::after {
@@ -3348,8 +3448,8 @@ img, svg { display: block; }
   height: 20px;
   opacity: 0.45;
   background: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.8' y='4.8' width='16.4' height='14.4' rx='3.2'/%3E%3Ccircle cx='8.8' cy='9.6' r='1.6'/%3E%3Cpath d='M4.4 16.6 9.6 12l3.4 3.2 2.4-2.2 4.2 3.8'/%3E%3C/svg%3E") center / 20px no-repeat;
-          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.8' y='4.8' width='16.4' height='14.4' rx='3.2'/%3E%3Ccircle cx='8.8' cy='9.6' r='1.6'/%3E%3Cpath d='M4.4 16.6 9.6 12l3.4 3.2 2.4-2.2 4.2 3.8'/%3E%3C/svg%3E") center / 20px no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.8' y='4.8' width='16.4' height='14.4' rx='3.2'/%3E%3Ccircle cx='8.8' cy='9.6' r='1.6'/%3E%3Cpath d='M4.4 16.6 9.6 12l3.4 3.2 2.4-2.2 4.2 3.8'/%3E%3C/svg%3E") center / 20px no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.8' y='4.8' width='16.4' height='14.4' rx='3.2'/%3E%3Ccircle cx='8.8' cy='9.6' r='1.6'/%3E%3Cpath d='M4.4 16.6 9.6 12l3.4 3.2 2.4-2.2 4.2 3.8'/%3E%3C/svg%3E") center / 20px no-repeat;
 }
 
 .photo-preview-note {
@@ -3375,7 +3475,7 @@ img, svg { display: block; }
    커뮤니티 글 구조를 그대로 따른다.
    ========================================================================== */
 .post-card {
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-card);
 }
@@ -3550,7 +3650,7 @@ img, svg { display: block; }
 
 .explore-action-btn:active { transform: scale(0.97); }
 .explore-action-btn.ghost {
-  background: #FFFFFF;
+  background: var(--bg-base);
   border-color: var(--border);
   color: var(--text-sub);
 }
@@ -3667,7 +3767,7 @@ img, svg { display: block; }
   gap: 6px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   font-size: 12.5px;
   font-weight: var(--fw-meta);
@@ -3738,7 +3838,7 @@ img, svg { display: block; }
   padding: 5px 12px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   font-size: 11px;
   font-weight: var(--fw-label);
@@ -3755,7 +3855,7 @@ img, svg { display: block; }
   z-index: 190;
   display: flex;
   justify-content: center;
-  background: #FFFFFF;
+  background: var(--bg-app);
 }
 
 .chat-room-overlay[hidden] { display: none; }
@@ -3766,7 +3866,7 @@ img, svg { display: block; }
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #FFFFFF;
+  background: var(--bg-base);
   animation: chatRoomIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -3782,7 +3882,7 @@ img, svg { display: block; }
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--bg-glass);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
 }
@@ -3867,7 +3967,7 @@ img, svg { display: block; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  background: linear-gradient(180deg, var(--bg-app) 0%, var(--bg-soft) 100%);
 }
 
 .chat-day {
@@ -3880,7 +3980,7 @@ img, svg { display: block; }
   padding: 3px 10px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-muted);
   font-size: 10px;
   font-weight: var(--fw-meta);
@@ -3916,7 +4016,7 @@ img, svg { display: block; }
 .chat-msg.them .chat-bubble {
   border: 1px solid var(--border);
   border-bottom-left-radius: 6px;
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text);
   box-shadow: var(--shadow-xs);
 }
@@ -3961,7 +4061,7 @@ img, svg { display: block; }
   gap: 8px;
   padding: 10px 12px;
   border-top: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
 }
 
 .chat-input {
@@ -3978,7 +4078,7 @@ img, svg { display: block; }
 .chat-input:focus {
   outline: none;
   border-color: var(--green);
-  background: #FFFFFF;
+  background: var(--bg-elevated);
 }
 
 .chat-send-btn {
@@ -4049,7 +4149,7 @@ img, svg { display: block; }
   padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex;
   align-items: stretch;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--bg-glass);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   border-top: 1px solid var(--border);
@@ -4109,7 +4209,7 @@ img, svg { display: block; }
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid #FFFFFF;
+  border: 1.5px solid var(--bg-app);
 }
 
 .nav-badge.hide { display: none; }
@@ -4892,7 +4992,7 @@ img, svg { display: block; }
 
 .btn-join-blocked {
   width: 100%;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--bg-soft);
   color: var(--text-sub);
@@ -5405,7 +5505,7 @@ img, svg { display: block; }
   padding: 12px 14px;
   border-radius: var(--r-lg);
   border: 1px solid var(--green-soft-border);
-  background: linear-gradient(160deg, var(--green-tint) 0%, #FFFFFF 62%);
+  background: linear-gradient(160deg, var(--green-tint) 0%, var(--bg-base) 62%);
   box-shadow: var(--shadow-sm);
 }
 
@@ -5457,7 +5557,7 @@ img, svg { display: block; }
 
 .pwa-install-btn:disabled {
   background: var(--border-strong);
-  color: #64748B;
+  color: var(--text-muted);
   cursor: default;
 }
 
@@ -5584,7 +5684,7 @@ p.pwa-steps {
   padding: 0 10px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 11px;
@@ -5702,7 +5802,7 @@ p.pwa-steps {
   padding: 0 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 11px;
@@ -5772,7 +5872,7 @@ p.pwa-steps {
   margin-bottom: 6px;
   border: 1px solid var(--border-soft);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--shadow-xs);
   text-align: left;
   cursor: pointer;
@@ -6012,7 +6112,7 @@ p.pwa-steps {
   padding: 10px 11px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   text-align: left;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.14s ease,
@@ -6040,7 +6140,7 @@ p.pwa-steps {
   font-weight: var(--fw-body);
 }
 
-.region-row.active .region-row-emoji { background: #FFFFFF; }
+.region-row.active .region-row-emoji { background: var(--bg-app); }
 
 .region-row-main {
   flex: 1 1 auto;
@@ -6090,7 +6190,7 @@ p.pwa-steps {
   letter-spacing: -0.1px;
 }
 
-.region-row.active .region-count { background: #FFFFFF; color: var(--green-dark); }
+.region-row.active .region-count { background: var(--bg-app); color: var(--green-dark); }
 
 /* --------------------------------------------- 7-3. 실시간 베스트(실베) 스트립 */
 .hot-strip {
@@ -6100,7 +6200,7 @@ p.pwa-steps {
   border: 1px solid var(--border-soft);
   background:
     radial-gradient(120% 80% at 100% 0%, rgba(16, 185, 129, 0.10) 0%, rgba(255, 255, 255, 0) 62%),
-    linear-gradient(180deg, #FFFFFF 0%, #FBFDFC 100%);
+    linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
   box-shadow: var(--shadow-xs);
 }
 
@@ -6158,7 +6258,7 @@ p.pwa-steps {
   padding: 0 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10.5px;
@@ -6192,7 +6292,7 @@ p.pwa-steps {
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
   overflow: hidden;
   text-align: left;
   cursor: pointer;
@@ -6432,7 +6532,7 @@ p.pwa-steps {
   padding: 0 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10.5px;
@@ -6483,7 +6583,7 @@ p.pwa-steps {
   padding: 0 10px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10.5px;
@@ -6557,10 +6657,10 @@ p.pwa-steps {
   padding: 9px 10px 10px;
   border-radius: var(--r-md);
   border: 1px solid var(--border-soft);
-  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-soft) 100%);
 }
 
-.activity-stat-group.month { background: linear-gradient(180deg, #FFFFFF 0%, #F0FDF4 100%); }
+.activity-stat-group.month { background: linear-gradient(180deg, var(--bg-base) 0%, var(--green-tint) 100%); }
 
 .activity-stat-head {
   display: flex;
@@ -6592,7 +6692,7 @@ p.pwa-steps {
   gap: 1px;
   padding: 6px 2px;
   border-radius: var(--r-sm);
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--border-soft);
 }
 
@@ -6617,7 +6717,7 @@ p.pwa-steps {
   padding: 0 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10px;
@@ -6653,7 +6753,7 @@ p.pwa-steps {
   padding: 0 0 10px;
   border-radius: var(--r-md);
   border: 1px solid var(--border-soft);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   overflow: hidden;
 }
 
@@ -6661,7 +6761,7 @@ p.pwa-steps {
 .skeleton-line {
   display: block;
   border-radius: 8px;
-  background: linear-gradient(90deg, #F1F5F9 0%, #E9EEF5 40%, #F1F5F9 80%);
+  background: linear-gradient(90deg, var(--bg-soft) 0%, var(--bg-soft) 40%, var(--bg-soft) 80%);
   background-size: 220% 100%;
   animation: skeletonShimmer 1.2s ease-in-out infinite;
 }
@@ -6817,7 +6917,7 @@ p.pwa-steps {
   padding: 0 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 11px;
@@ -7001,7 +7101,7 @@ p.pwa-steps {
   padding: 0 8px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-muted);
   font-family: var(--font);
   font-size: 9.5px;
@@ -7058,7 +7158,7 @@ p.pwa-steps {
   gap: 10px;
   padding: 9px 10px;
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
 }
 
@@ -7096,7 +7196,7 @@ p.pwa-steps {
   padding: 0 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10.5px;
@@ -7161,14 +7261,14 @@ p.pwa-steps {
   flex: 0 0 auto;
   padding: 1px 6px;
   border-radius: var(--r-full);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   border: 1px solid var(--border);
   font-size: 9.5px;
   font-weight: var(--fw-label);
   color: var(--text-muted);
 }
 
-.activity-group .activity-item { background: #FFFFFF; }
+.activity-group .activity-item { background: var(--bg-base); }
 
 /* ------------------------------- 8-5. 디자인 3차: 포커스 링 · 미세 인터랙션
  * 칩·카드·시트 항목 어디서든 키보드로 이동하면 같은 초록 링이 보이게 통일했다. */
@@ -7282,7 +7382,7 @@ p.pwa-steps {
 .explore-type-btn:active { transform: scale(0.95); }
 
 .explore-type-btn.active {
-  background: #FFFFFF;
+  background: var(--bg-elevated);
   color: var(--green-dark);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.10), 0 0 0 1px rgba(16, 185, 129, 0.16);
 }
@@ -7297,7 +7397,7 @@ p.pwa-steps {
   padding: 0 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 11px;
@@ -7494,7 +7594,7 @@ p.pwa-steps {
   gap: 8px;
   padding: 10px 2px 2px;
   border-top: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-elevated);
 }
 
 .filter-result {
@@ -7529,7 +7629,7 @@ p.pwa-steps {
 /* ---------------------------------------------- 9-4. 알림 묶음(같은 글의 반응)
  * 같은 글의 좋아요·댓글은 한 줄 + 건수 배지. 펼치지 않아도 규모가 읽힌다. */
 .notif-item.is-merged {
-  background: linear-gradient(180deg, #FFFFFF 0%, #F8FFFC 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
 }
 
 .notif-emoji { position: relative; }
@@ -7610,7 +7710,7 @@ p.pwa-steps {
 
 .activity-export-btn.ghost {
   border-color: var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
 }
 
@@ -7669,7 +7769,7 @@ p.pwa-steps {
   width: 148px;
   height: 104px;
   border-radius: 18px;
-  background: linear-gradient(180deg, #FFFFFF 0%, var(--green-tint) 100%);
+  background: linear-gradient(180deg, var(--bg-soft) 0%, var(--green-tint) 100%);
   border: 1px solid var(--border-soft);
 }
 
@@ -7699,7 +7799,7 @@ p.pwa-steps {
   padding: 0 9px;
   border-radius: var(--r-full);
   border: 1px solid var(--border-soft);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10.5px;
@@ -7729,7 +7829,7 @@ p.pwa-steps {
   padding: 6px 8px;
   border-radius: var(--r-md);
   border: 1px solid var(--border-soft);
-  background: #F8FAFC;
+  background: var(--bg-soft);
   animation: notif-items-in 0.18s ease-out;
 }
 
@@ -7880,7 +7980,7 @@ p.pwa-steps {
 /* ---------------------------------------- 11-2. 알림함 4차 */
 .notif-collapse-all {
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10.5px;
@@ -7903,7 +8003,7 @@ p.pwa-steps {
 
 /* 실베 진입·시스템을 한 칸으로 접은 줄 — 반응 묶음과 색으로 구분한다. */
 .notif-item.is-routine {
-  background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF3 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-subtle) 100%);
   border-color: #FDE9C8;
 }
 
@@ -7932,7 +8032,7 @@ p.pwa-steps {
 .skeleton-card.is-person {
   padding: 0;
   border: 0;
-  background: #E9EEF5;
+  background: var(--bg-soft);
   justify-content: flex-end;
   gap: 6px;
   padding-bottom: 12px;
@@ -7942,7 +8042,7 @@ p.pwa-steps {
   position: absolute;
   inset: 0;
   height: 100%;
-  background: linear-gradient(160deg, #E7EDF5 0%, #DDE6F0 45%, #E9EEF5 100%);
+  background: linear-gradient(160deg, var(--bg-soft) 0%, var(--bg-soft) 45%, var(--bg-soft) 100%);
   background-size: 220% 100%;
 }
 
@@ -7965,7 +8065,7 @@ p.pwa-steps {
   height: 22px;
   margin: 4px 10px 0;
   border-radius: var(--r-full);
-  background: #EFF4F8;
+  background: var(--bg-soft);
 }
 
 .skeleton-head {
@@ -7980,7 +8080,7 @@ p.pwa-steps {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #E9EEF5;
+  background: var(--bg-soft);
 }
 
 .skeleton-card.is-post .skeleton-media.short { height: 42%; }
@@ -8105,8 +8205,6 @@ body {
 .count-badge,
 .nav-badge,
 .rank-badge,
-.unread-badge,
-.chat-count-badge,
 .explore-count,
 .hot-rank,
 .hot-row-rank,
@@ -8177,14 +8275,14 @@ body {
 
 /* 카드 표면의 결 — 모임 카드는 아주 옅은 그린 그라디언트로 사람 카드와 결을 나눈다 */
 .group-tile {
-  background-color: #FFFFFF;
-  background-image: linear-gradient(180deg, #FFFFFF 0%, #FCFEFD 100%);
-  border-color: rgba(15, 23, 42, 0.07);
+  background-color: var(--bg-base);
+  background-image: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
+  border-color: var(--border);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 22px -16px rgba(15, 23, 42, 0.22);
 }
 
 .feed-card {
-  border-color: rgba(15, 23, 42, 0.07);
+  border-color: var(--border);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035), 0 12px 26px -20px rgba(15, 23, 42, 0.25);
 }
 
@@ -8546,7 +8644,7 @@ body {
 }
 
 .post-card.is-text-only {
-  background: linear-gradient(180deg, #FFFFFF 0%, #F8FDFB 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
 }
 
 .post-card.is-text-only .post-caption {
@@ -8558,7 +8656,7 @@ body {
   padding: 8px 9px 9px 10px;
   border-left: 2px solid var(--green-soft-border);
   border-radius: 0 10px 10px 0;
-  background: linear-gradient(135deg, #F7FEFB 0%, #FFFFFF 78%);
+  background: linear-gradient(135deg, var(--bg-base) 0%, var(--bg-base) 78%);
   font-size: 12.5px;
   font-weight: var(--fw-body-soft);
   line-height: 1.55;
@@ -8842,7 +8940,7 @@ body {
   padding: 7px 9px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   box-shadow: var(--shadow-xs);
   scroll-snap-align: start;
   text-align: left;
@@ -8857,7 +8955,8 @@ body {
   flex: 0 0 auto;
   border-radius: 9px;
   overflow: hidden;
-  background: var(--bg-soft);
+  background: var(--tone-from, var(--bg-soft));
+  color: var(--tone-ink, var(--text-sub));
   position: relative;
 }
 
@@ -8907,7 +9006,7 @@ body {
   padding: 8px;
   border-radius: var(--r-md);
   border: 1px solid var(--border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--shadow-xs);
   text-align: left;
   transition: transform var(--dur-quick) var(--ease-out-soft), background var(--dur-quick) ease;
@@ -8997,7 +9096,7 @@ body {
   padding: 13px 14px;
   border-radius: var(--r-md);
   border: 1px dashed var(--border);
-  background: #FCFDFE;
+  background: var(--bg-base);
   color: var(--text-muted);
   font-size: 10.5px;
   font-weight: var(--fw-meta);
@@ -9041,7 +9140,6 @@ body {
 
 .sheet-block { animation: sheetBlockRise 0.3s var(--ease-out-soft) both; }
 
-
 /* ==========================================================================
    Sprint 14 — 홈 = 내 모임 허브 (11/15 14:55 사용자 지시)
    --------------------------------------------------------------------------
@@ -9081,7 +9179,7 @@ body {
   padding: 4px 11px 4px 4px;
   border: 1px solid var(--border);
   border-radius: var(--r-full);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   box-shadow: var(--shadow-xs);
   transition: transform var(--dur-quick) var(--ease-out-soft),
               background var(--dur-quick) ease,
@@ -9114,7 +9212,7 @@ body {
   font-weight: var(--fw-meta);
 }
 
-.home-switch-chip.active .home-switch-emoji { background: #FFFFFF; }
+.home-switch-chip.active .home-switch-emoji { background: var(--bg-app); }
 
 .home-switch-name {
   max-width: 150px;
@@ -9138,7 +9236,7 @@ body {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--shadow-card);
 }
 
@@ -9227,7 +9325,7 @@ body {
   gap: 6px;
   padding: 9px;
   border-top: 1px solid var(--border-soft);
-  background: #FFFFFF;
+  background: var(--bg-base);
 }
 
 .home-hero-btn {
@@ -9267,7 +9365,7 @@ body {
   padding: 22px 16px;
   border: 1px dashed var(--border-strong);
   border-radius: var(--r-lg);
-  background: linear-gradient(180deg, #FFFFFF 0%, #F8FDFB 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
   text-align: center;
 }
 
@@ -9297,7 +9395,7 @@ body {
   padding: 4px 9px;
   border: 1px solid var(--border);
   border-radius: var(--r-full);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10px;
@@ -9330,7 +9428,7 @@ body {
   padding: 12px 13px 11px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--shadow-xs);
 }
 
@@ -9352,7 +9450,7 @@ body {
 
 .event-card.is-joined {
   border-color: var(--green-soft-border);
-  background: linear-gradient(180deg, #FFFFFF 0%, #F7FEFB 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
 }
 
 .event-card.is-past { opacity: 0.72; }
@@ -9447,7 +9545,7 @@ body {
   width: 21px;
   height: 21px;
   margin-left: -5px;
-  border: 2px solid #FFFFFF;
+  border: 2px solid var(--bg-base);
   border-radius: 50%;
   color: #FFFFFF;
   font-size: 9px;
@@ -9484,7 +9582,7 @@ body {
   padding: 5px 4px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10.5px;
@@ -9524,7 +9622,7 @@ body {
   padding: 18px 14px;
   border: 1px dashed var(--border-strong);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
   text-align: center;
 }
 
@@ -9552,7 +9650,7 @@ body {
 }
 
 .home-view-btn.active {
-  background: #FFFFFF;
+  background: var(--bg-elevated);
   color: var(--green-dark);
   font-weight: var(--fw-label);
   box-shadow: var(--shadow-xs);
@@ -9573,7 +9671,7 @@ body {
   padding: 4px 9px;
   border: 1px solid var(--border);
   border-radius: var(--r-full);
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-family: var(--font);
   font-size: 10px;
@@ -9682,7 +9780,7 @@ body {
   justify-content: center;
   gap: 4px;
   border: 1px dashed var(--border-strong);
-  background: #FFFFFF;
+  background: var(--bg-base);
 }
 
 .home-photo-add-icon {
@@ -9707,7 +9805,7 @@ body {
   padding: 20px 14px;
   border: 1px dashed var(--border-strong);
   border-radius: var(--r-md);
-  background: linear-gradient(180deg, #FFFFFF 0%, #F8FDFB 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
   text-align: center;
 }
 
@@ -9717,7 +9815,7 @@ body {
 .home-chat-card {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
 }
@@ -9835,7 +9933,7 @@ body {
   padding: 10px 11px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--shadow-xs);
   cursor: pointer;
   transition: transform var(--dur-quick) var(--ease-out-soft), background var(--dur-quick) ease;
@@ -9851,6 +9949,9 @@ body {
   flex: 0 0 40px;
   border-radius: 13px;
   border: 1px solid var(--border-soft);
+  /* R3 — 모임 아바타 색도 대분류 색조(.tone-*)에서 온다 (인라인 그라디언트 제거) */
+  background: var(--tone-chip, var(--bg-soft));
+  color: var(--tone-ink, var(--text-sub));
   font-size: 18px;
 }
 
@@ -9961,14 +10062,14 @@ body {
 .member-row-wrap {
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--shadow-xs);
   overflow: hidden;
 }
 
 .member-row-wrap.is-open {
   border-color: var(--green-soft-border);
-  background: linear-gradient(180deg, #FFFFFF 0%, #F7FEFB 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
 }
 
 .member-row {
@@ -10168,7 +10269,7 @@ body {
   display: flex;
   align-items: center;
   padding: 8px;
-  background: linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-soft) 100%);
   color: var(--text-muted);
   font-size: 9px;
   font-weight: var(--fw-meta);
@@ -10195,14 +10296,12 @@ body {
 
 .profile-saved-tile .profile-saved-time { font-size: 8.5px; font-weight: var(--fw-meta); }
 
-
-
 /* Sprint 14 — 홈 구획의 빈 클래스(구조 표식)와 게시글 사진 위 문구 */
 .home-feed-block { padding-top: 1px; }
 
 .home-chat-block { padding-bottom: 4px; }
 
-.group-chat-overlay .chat-room-inner { background: #FFFFFF; }
+.group-chat-overlay .chat-room-inner { background: var(--bg-app); }
 
 .post-detail-media-caption {
   margin: -4px 0 8px;
@@ -10239,7 +10338,7 @@ body {
   gap: 8px;
   margin: 0 -2px 10px;
   padding: 8px 2px 9px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(255, 255, 255, 0.94) 78%, rgba(255, 255, 255, 0) 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 78%, rgba(255, 255, 255, 0) 100%);
   backdrop-filter: saturate(140%) blur(10px);
   -webkit-backdrop-filter: saturate(140%) blur(10px);
 }
@@ -10254,7 +10353,7 @@ body {
   padding: 9px 11px;
   border: 1px solid var(--green-soft-border);
   border-radius: var(--r-md);
-  background: linear-gradient(135deg, #F0FDF6 0%, #FFFFFF 70%);
+  background: linear-gradient(135deg, var(--green-tint) 0%, var(--bg-base) 70%);
   text-align: left;
   cursor: pointer;
   transition: transform var(--dur-press) var(--ease-out-soft), border-color var(--dur-quick) var(--ease-out-soft);
@@ -10264,7 +10363,7 @@ body {
 
 .home-notice-line.is-empty {
   border-color: var(--border);
-  background: #FFFFFF;
+  background: var(--bg-soft);
 }
 
 .notice-pin-icon {
@@ -10358,7 +10457,7 @@ body {
   cursor: pointer;
 }
 
-.event-card.is-full { border-color: #FDE68A; background: linear-gradient(180deg, #FFFFFF 0%, #FFFDF5 100%); }
+.event-card.is-full { border-color: #FDE68A; background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-subtle) 100%); }
 
 .event-full-badge { color: #B45309; font-weight: var(--fw-label); }
 
@@ -10368,7 +10467,7 @@ body {
   padding: 8px 12px;
   border: 1px dashed var(--border);
   border-radius: 999px;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   font-size: 11px;
   font-weight: var(--fw-label);
   color: var(--text-sub);
@@ -10401,7 +10500,7 @@ body {
   padding: 3px 8px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   font-size: 10px;
   font-weight: var(--fw-label);
   color: var(--text-sub);
@@ -10454,7 +10553,7 @@ body {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--shadow-xs);
 }
 
@@ -10576,7 +10675,7 @@ body {
   letter-spacing: -0.15px;
 }
 
-.chat-dm-policy.is-on { background: #F0FDF6; color: var(--green-dark); }
+.chat-dm-policy.is-on { background: var(--green-soft); color: var(--green-dark); }
 .chat-dm-policy.is-off { background: #FFF7ED; color: #9A3412; }
 
 .profile-feed-grid {
@@ -10672,7 +10771,7 @@ body {
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: #E2E8F0;
+  background: var(--bg-soft);
   cursor: pointer;
   transition: background var(--dur-quick) var(--ease-out-soft);
 }
@@ -10699,7 +10798,7 @@ body {
   padding: 11px 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-soft);
 }
 
 .privacy-toggle-icon {
@@ -10741,10 +10840,10 @@ body {
   border: 1px solid var(--border);
   border-left: 3px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
 }
 
-.notice-item.is-pinned { border-left-color: var(--green); background: linear-gradient(180deg, #FFFFFF 0%, #F7FEFB 100%); }
+.notice-item.is-pinned { border-left-color: var(--green); background: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%); }
 
 .notice-item-head {
   display: flex;
@@ -10776,7 +10875,7 @@ body {
   padding: 4px 9px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: #FFFFFF;
+  background: var(--bg-base);
   font-size: 10.5px;
   font-weight: var(--fw-label);
   color: var(--text-sub);
@@ -10910,7 +11009,7 @@ body {
   padding: 3px 9px 3px 3px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: #FFFFFF;
+  background: var(--bg-base);
 }
 
 .event-person-avatar {
@@ -10940,7 +11039,7 @@ body {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
-  background: #FFFFFF;
+  background: var(--bg-base);
 }
 
 .ops-role {
@@ -11154,7 +11253,7 @@ body.group-mode #bottom-nav { display: none; }
 .gallery-leader {
   right: 7px;
   color: var(--green-dark);
-  background: rgba(236, 253, 245, 0.92);
+  background: var(--green-soft);
 }
 
 .gallery-body { padding: 9px 10px 11px; }
@@ -11208,7 +11307,7 @@ body.group-mode #bottom-nav { display: none; }
   font-size: 9px;
   font-weight: var(--fw-strong);
   color: #FFFFFF;
-  border: 1.5px solid #FFFFFF;
+  border: 1.5px solid var(--bg-base);
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
 }
 
@@ -11235,7 +11334,7 @@ body.group-mode #bottom-nav { display: none; }
   gap: 8px;
   margin: -16px -16px 10px;
   padding: 9px 12px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--bg-glass);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
   border-bottom: 1px solid var(--border-soft);
@@ -11337,7 +11436,7 @@ body.group-mode #bottom-nav { display: none; }
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 2px solid #FFFFFF;
+  border: 2px solid var(--bg-app);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -11392,7 +11491,7 @@ body.group-mode #bottom-nav { display: none; }
   overflow: hidden;
 }
 
-.story-seg > span { display: block; height: 100%; width: 0; background: #FFFFFF; }
+.story-seg > span { display: block; height: 100%; width: 0; background: var(--bg-soft); }
 .story-seg.done > span { width: 100%; }
 .story-seg.on > span { width: 100%; animation: storyFill 6s linear both; }
 
@@ -11568,7 +11667,7 @@ body.group-mode #bottom-nav { display: none; }
 
 .board-notice-pin {
   color: var(--green-dark);
-  background: #FFFFFF;
+  background: var(--bg-base);
   border: 1px solid var(--green-soft-border);
   border-radius: var(--r-full);
   padding: 1px 6px;
@@ -11815,7 +11914,7 @@ body.group-mode #bottom-nav { display: none; }
   right: 48px;
   bottom: 13px;
   border: 1px solid rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-base);
   color: var(--green-dark);
   font-size: 10px;
   font-weight: var(--fw-label);
@@ -11844,7 +11943,7 @@ body.group-mode #bottom-nav { display: none; }
 .dm-scope-all {
   flex: 0 0 auto;
   border: 1px solid var(--green-soft-border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--green-dark);
   font-size: 10px;
   font-weight: var(--fw-label);
@@ -11878,14 +11977,13 @@ body.group-mode #bottom-nav { display: none; }
 .pgc-back {
   flex: 0 0 auto;
   border: 1px solid var(--green-soft-border);
-  background: #FFFFFF;
+  background: var(--bg-base);
   color: var(--green-dark);
   font-size: 10px;
   font-weight: var(--fw-label);
   padding: 4px 9px;
   border-radius: var(--r-full);
 }
-
 
 /* 16-8. 이름만 쓰이던 클래스 보완 */
 .group-gallery { display: block; }
@@ -11967,7 +12065,7 @@ body.group-mode #bottom-nav { display: none; }
   padding: 6px 10px;
   border: none;
   border-radius: 999px;
-  background: var(--clay-cream, #FFFDF7);
+  background: var(--clay-cream);
   color: var(--green-deep, #065F46);
   font-size: 10.5px;
   font-weight: var(--fw-label);
@@ -12019,7 +12117,6 @@ body.group-mode #bottom-nav { display: none; }
 
 /* 글 카드의 동네·만남 스타일 */
 
-
 .post-region,
 .post-style {
   display: inline-flex;
@@ -12065,7 +12162,7 @@ body.group-mode #bottom-nav { display: none; }
   margin: 20px 0 6px;
   padding: 16px 14px 14px;
   border-radius: 26px;
-  background: var(--clay-cream, #FFFDF7);
+  background: var(--clay-cream);
   box-shadow: var(--clay-soft, 0 10px 24px -18px rgba(20, 66, 50, 0.5)),
               inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
@@ -12167,7 +12264,6 @@ body.group-mode #bottom-nav { display: none; }
 .ob-step.narr-done .ob-skip-hint { display: none; }
 .guide-q-answer.is-arriving { animation: obAnswerIn 0.5s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both; }
 .guide-step.is-narrating .guide-pick-wrap { visibility: hidden; }
-
 
 /* ==========================================================================
  * 23-4. Sprint 23 — 하단 탭바 자동 숨김 (움직임이 없으면 내려가고 움직이면 올라온다)
@@ -12320,7 +12416,6 @@ body.group-mode #bottom-nav { display: none; }
   .home-recommend-grid { scroll-behavior: auto; }
 }
 
-
 /* <strong>·<b> 기본값은 부모 굵기에 상대(bolder)라 700 위에서 900 이 된다.
    강조는 680 으로 고정해 제목(700)보다 진해지지 않게 한다. */
 strong,
@@ -12358,9 +12453,9 @@ b {
   justify-content: center;
   align-items: stretch;
   background:
-    radial-gradient(120% 70% at 15% 0%, #ECFDF5 0%, rgba(236, 253, 245, 0) 58%),
-    radial-gradient(90% 60% at 100% 100%, #F0FDF4 0%, rgba(240, 253, 244, 0) 60%),
-    #FFFFFF;
+    radial-gradient(120% 70% at 15% 0%, var(--green-soft) 0%, rgba(236, 253, 245, 0) 58%),
+    radial-gradient(90% 60% at 100% 100%, var(--green-tint) 0%, rgba(240, 253, 244, 0) 60%),
+    var(--bg-app);
   overflow-y: auto;
 }
 .onboarding[hidden] { display: none; }
@@ -12516,7 +12611,7 @@ select.ob-input { appearance: none; -webkit-appearance: none; }
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 2px solid #FFFFFF;
+  border: 2px solid var(--bg-base);
   box-shadow: 0 0 0 1px var(--border);
   transition: transform 140ms ease, box-shadow 140ms ease;
 }
@@ -12588,7 +12683,7 @@ select.ob-input { appearance: none; -webkit-appearance: none; }
   padding: 18px 14px;
   border-radius: var(--r-lg);
   border: 1.5px dashed var(--green-soft-border);
-  background: linear-gradient(160deg, #F8FFFB 0%, #FFFFFF 100%);
+  background: linear-gradient(160deg, var(--bg-base) 0%, var(--bg-base) 100%);
   color: var(--green-deep);
   text-align: center;
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
@@ -12949,22 +13044,6 @@ select.ob-input { appearance: none; -webkit-appearance: none; }
   transition: background 160ms ease, color 160ms ease;
 }
 .dm-view-btn.active { background: var(--bg-base); color: var(--green-deep); box-shadow: var(--shadow-xs); }
-.dm-unread-toggle {
-  margin-left: auto;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: var(--r-full);
-  border: 1px solid var(--border);
-  background: var(--bg-base);
-  font-size: 11.5px;
-  font-weight: 620;
-  color: var(--text-sub);
-}
-.dm-unread-toggle.on {
-  background: var(--green-soft);
-  border-color: var(--green-soft-border);
-  color: var(--green-deep);
-}
 .dm-sent-banner {
   display: flex;
   align-items: center;
@@ -13012,7 +13091,6 @@ select.ob-input { appearance: none; -webkit-appearance: none; }
 .btn-primary.danger { background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%); box-shadow: 0 8px 18px -8px rgba(185, 28, 28, 0.5); }
 .menu-item.danger .menu-label { color: #B91C1C; }
 .menu-item.danger .menu-val { color: #DC2626; }
-
 
 /* Sprint 17 — 보관함/표지/읽음 시트의 바깥 상자 */
 .archive-sheet,
@@ -13409,9 +13487,14 @@ body.drawer-open { overflow: hidden; }
 .group-tile-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
 .group-tile-emoji {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: grid;
   place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 20px;
   font-size: 34px;
   opacity: 0.9;
 }
@@ -13510,19 +13593,9 @@ body.drawer-open { overflow: hidden; }
  *  글자색(--text*)은 손대지 않으므로 기존 WCAG 명도 대비는 그대로 지켜진다.
  * ========================================================================== */
 
-/* ---------------------------------------- 19-1. 클레이 토큰 */
+/* ---------------------------------------- 19-1. 클레이 토큰 (표면 색은 R1 블록) */
 :root {
-  /* 표면 — 흰색 대신 살짝 따뜻한 크림 */
-  --clay-page: #F2E7D3;
-  --clay-page-deep: #EFE5D5;
-  --clay-cream: #FFFDF7;
-  --clay-cream-soft: #FBF5EA;
-  --clay-cream-deep: #F6EEE2;
-  --clay-white: #FFFFFF;
-  --clay-mint: #E8F8F0;
-  --clay-mint-deep: #D6F2E4;
-  --clay-edge: rgba(15, 74, 55, 0.075);
-  --clay-edge-soft: rgba(15, 74, 55, 0.045);
+  /* 점토 표면 이름은 R1 블록의 별칭이 갖는다 — 여기서는 결(그림자·반경·이징)만 남긴다 */
 
   /* 3중 클레이 그림자 */
   --clay-lift: 0 22px 40px -18px rgba(20, 66, 50, 0.42), 0 10px 20px -12px rgba(20, 66, 50, 0.2);
@@ -13557,27 +13630,14 @@ body.drawer-open { overflow: hidden; }
   --shadow-float: var(--clay-green-lift);
   --shadow-sheet: 0 -18px 46px -22px rgba(20, 66, 50, 0.34), inset 0 2px 0 rgba(255, 255, 255, 0.95);
 
-  /* 표면 색 — 크림. 글자색은 그대로라 대비는 오히려 더 좋아진다 */
-  --bg-base: var(--clay-cream);
-  --bg-app: #F9F1E1;
-  --bg-subtle: var(--clay-cream-soft);
-  --bg-soft: var(--clay-page);
-  --bg-glass: rgba(255, 253, 247, 0.88);
-  --border: var(--clay-edge);
-  --border-strong: rgba(15, 74, 55, 0.15);
-  --border-soft: var(--clay-edge-soft);
 }
 
 /* ---------------------------------------- 19-2. 셸 */
-html { background: var(--clay-page); }
+/* R1 — 바탕은 html · body · 앱 액자가 모두 --bg-app 한 값. 크림/민트 radial 은 걷어냈다. */
+html { background: var(--bg-app); }
 
 body {
-  background-color: var(--clay-page);
-  background-image:
-    radial-gradient(120% 62% at 50% -12%, #FFFDF7 0%, rgba(255, 253, 247, 0) 62%),
-    radial-gradient(92% 54% at 102% 2%, rgba(16, 185, 129, 0.11) 0%, rgba(16, 185, 129, 0) 58%),
-    radial-gradient(84% 62% at -2% 102%, rgba(16, 185, 129, 0.09) 0%, rgba(16, 185, 129, 0) 62%);
-  background-attachment: fixed;
+  background: var(--bg-app);
 }
 
 .app-container {
@@ -13593,13 +13653,13 @@ body {
     min-height: 0;
     border-radius: 38px;
     overflow: hidden;
-    box-shadow: var(--clay-lift), 0 44px 90px -54px rgba(20, 66, 50, 0.6), 0 0 0 10px rgba(255, 253, 247, 0.72);
+    box-shadow: var(--clay-lift), 0 44px 90px -54px rgba(20, 66, 50, 0.6), 0 0 0 10px rgba(255, 255, 255, 0.72);
   }
 }
 
 .app-header {
   background: var(--bg-glass);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid var(--border);
   box-shadow: 0 12px 24px -24px rgba(20, 66, 50, 0.6);
 }
 
@@ -13640,11 +13700,7 @@ body {
   animation: fadeUp 0.34s var(--spring-soft) both;
 }
 
-.bottom-nav-bar {
-  background: rgba(255, 252, 245, 0.94);
-  border-top: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 -16px 32px -26px rgba(20, 66, 50, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.92);
-}
+/* R1 — 탭바 배경은 28.5-6 의 var(--bg-glass) 한 곳에서만 정한다(여기서 덮지 않는다) */
 
 .nav-tab-item .tab-icon { border-radius: var(--r-full); }
 
@@ -13726,15 +13782,15 @@ body {
 .gallery-new {
   border: 2px dashed rgba(16, 185, 129, 0.28);
   border-radius: 24px;
-  background: linear-gradient(180deg, #FFFEFB 0%, var(--clay-mint) 100%);
+  background: linear-gradient(180deg, var(--bg-base) 0%, var(--clay-mint) 100%);
   box-shadow: var(--clay-soft), var(--clay-light-soft);
   transition: transform var(--dur-press) var(--spring), box-shadow var(--dur-quick) ease;
 }
 
 /* 모임 카드 — 흰 점토 판 (기존 화이트 베이스 유지) */
 .group-tile {
-  background-color: #FFFFFF;
-  background-image: linear-gradient(180deg, #FFFFFF 0%, #FFFCF5 100%);
+  background-color: var(--bg-base);
+  background-image: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-subtle) 100%);
   border-color: var(--clay-edge-soft);
   box-shadow: var(--clay-out), var(--clay-light);
 }
@@ -13787,14 +13843,14 @@ body {
 /* 글 카드 · 피드 카드 — 종이 대신 점토 */
 .post-card,
 .feed-card {
-  background-color: #FFFFFF;
-  background-image: linear-gradient(180deg, #FFFFFF 0%, #FFFDF6 100%);
+  background-color: var(--bg-base);
+  background-image: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-subtle) 100%);
   border-color: var(--clay-edge-soft);
   box-shadow: var(--clay-out), var(--clay-light);
 }
 
 .post-card.is-text-only {
-  background-image: linear-gradient(180deg, #FFFFFF 0%, #F7FDFA 100%);
+  background-image: linear-gradient(180deg, var(--bg-base) 0%, var(--bg-base) 100%);
 }
 
 .post-tag,
@@ -13967,7 +14023,6 @@ body {
 .board-notice-pin,
 .detail-btn,
 .sheet-btn,
-.dm-unread-toggle,
 .notif-unread-toggle,
 .member-chip,
 .spec-chip {
@@ -14043,17 +14098,13 @@ body {
 .group-tile-crown,
 .count-badge,
 .nav-badge,
-.chat-count-badge,
-.unread-badge,
 .explore-filter-badge,
 .rank-badge {
   border-radius: var(--r-full);
 }
 
 .count-badge,
-.explore-filter-badge,
-.chat-count-badge,
-.unread-badge {
+.explore-filter-badge {
   box-shadow: 0 4px 9px -5px rgba(4, 120, 87, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
@@ -14161,9 +14212,9 @@ body {
 
 /* 온보딩 — 첫 점토 화면 */
 .onboarding {
-  background-color: var(--clay-page);
+  background-color: var(--bg-app);
   background-image:
-    radial-gradient(110% 60% at 50% -10%, #FFFDF7 0%, rgba(255, 253, 247, 0) 60%),
+    radial-gradient(110% 60% at 50% -10%, var(--bg-base) 0%, rgba(255, 255, 255, 0) 60%),
     radial-gradient(80% 60% at 100% 100%, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0) 62%);
 }
 
@@ -14174,7 +14225,7 @@ body {
   place-items: center;
   padding: 8px 16px;
   border-radius: var(--r-full);
-  background: linear-gradient(160deg, #FFFFFF 0%, #EAFBF3 100%);
+  background: linear-gradient(160deg, var(--bg-base) 0%, var(--green-tint) 100%);
   box-shadow: var(--clay-soft), var(--clay-light);
   letter-spacing: -1px;
 }
@@ -14407,9 +14458,9 @@ body {
 .notif-switch.on .notif-switch-knob { box-shadow: var(--clay-green-in); }
 
 /* ============================================================================
-   Sprint 20 — 우그 커스텀 아이콘 (이모지 대신 직접 그린 선)
+   우그 커스텀 아이콘 (이모지 대신 직접 그린 선) · Sprint 20 → R4 에서 2px 로 통일
    ----------------------------------------------------------------------------
-   · 24×24 격자 · 1.9px 선 · 둥근 끝 — 어떤 크기로 줄여도 형태가 유지된다.
+   · 24×24 격자 · **2px 선** · 둥근 끝 — 어떤 크기로 줄여도 형태가 유지된다.
    · 크기는 1em: 글자 크기를 그대로 따라가므로 라벨·칩·버튼 안에서 정렬이 틀어지지 않는다.
    · 색은 currentColor: 크림·화이트·민트·그린 버튼 어디에 놓아도 톤이 맞는다.
    ========================================================================== */
@@ -14507,10 +14558,10 @@ body {
 .notif-expand-caret .oo-ic { width: 10px; height: 10px; stroke-width: 2.4; }
 .hot-move .oo-ic { width: 9px; height: 9px; stroke-width: 2.8; vertical-align: -0.08em; margin-right: 1px; }
 
-/* Sprint 20 — 표지·히어로 위의 아이콘 톤: 크림 위에서 진한 초록 워터마크로 통일 */
-.gallery-cover-emoji { color: var(--green-deep); opacity: 0.62; }
-.group-tile-emoji { color: var(--green-deep); opacity: 0.5; }
-.home-hero-emoji { color: var(--green-deep); opacity: 0.16; }
+/* Sprint 20 — 표지·히어로 위의 아이콘 톤 (R3: 대분류 색조를 따른다) */
+.gallery-cover-emoji { color: var(--tone-ink, var(--green-deep)); opacity: 0.62; }
+.group-tile-emoji { color: var(--tone-ink, var(--green-deep)); opacity: 0.5; }
+.home-hero-emoji { color: var(--tone-ink, var(--green-deep)); opacity: 0.16; }
 
 /* Sprint 20 — 온보딩 카드 안쪽 여백: 글자가 카드 테두리에 붙어 잘린 것처럼 보이던 문제 */
 .onboarding-body {
@@ -14558,22 +14609,18 @@ img[hidden] { display: none !important; }
 }
 .activity-range, .activity-view { gap: 5px; }
 
-/* Sprint 20 — 하단 탭 아이콘도 같은 선 두께(1.9)의 우그 아이콘으로 */
+/* 하단 탭 아이콘도 같은 선 두께(2px)의 우그 아이콘으로 */
 .tab-icon .oo-ic { width: 22px; height: 22px; }
 
-/* Sprint 20 — 사진이 없는 표지는 회색 그라디언트 대신 크림→민트 점토 톤으로 통일 */
-.gallery-cover.is-plain {
-  background: linear-gradient(152deg, #FFFDF7 0%, #F0FAF4 46%, #D8F1E5 100%);
-}
-.home-hero-cover.is-plain {
-  background: linear-gradient(150deg, #FFFDF7 0%, #EBF9F2 56%, #D2EFE0 100%);
-}
+/* Sprint 20 — 사진이 없는 표지의 색은 21-2 의 대분류 색조(--cat-*)가 정한다.
+   (크림→민트 한 가지로 고정하던 규칙은 R3 에서 걷어냈다 — 다크에서 모든 표지가
+    같은 초록이 되어 대분류를 구분할 수 없던 원인이었다.) */
 
-/* 사진이 없는 표지에는 사진 위 글자를 위한 어두운 베일이 필요 없다 — 민트 톤이 그대로 보이게 */
+/* 사진이 없는 표지에는 사진 위 글자를 위한 어두운 베일이 필요 없다 — 색조가 그대로 보이게 */
 .gallery-cover.is-plain .gallery-cover-veil { display: none; }
 .home-hero-cover.is-plain .home-hero-shade { display: none; }
 
-/* 사진 없는 표지의 아이콘은 점토 타일 위에 올려 브랜드 마크처럼 (빈 표지가 허전하지 않게) */
+/* 사진 없는 표지의 아이콘은 색조 위에 올려 브랜드 마크처럼 (빈 표지가 허전하지 않게) */
 .gallery-cover-emoji {
   position: absolute;
   left: 50%;
@@ -14584,9 +14631,9 @@ img[hidden] { display: none !important; }
   width: 66px;
   height: 66px;
   border-radius: 24px;
-  background: rgba(255, 253, 247, 0.82);
+  background: var(--bg-base);
   box-shadow: var(--clay-soft), var(--clay-light);
-  color: var(--green-deep);
+  color: var(--tone-ink, var(--green-deep));
   opacity: 1;
 }
 .gallery-cover-emoji .oo-ic { width: 32px; height: 32px; }
@@ -14626,65 +14673,66 @@ img[hidden] { display: none !important; }
   padding-bottom: 24px;
 }
 
-/* ---------------------------------------- 21-1. 점토 아이콘 (면 · 광택) */
-.oo-ic-clay { overflow: visible; }
-.oo-ic-clay .oo-clay-body { paint-order: stroke fill; }
-/* 배지·타일 위에서는 점토가 조금 더 도드라지게 (바깥 그림자는 표면이 만든다) */
-.oo-icbadge .oo-ic-clay,
-.gallery-cover-emoji .oo-ic-clay,
-.group-tile-emoji .oo-ic-clay,
-.recommend-clay .oo-ic-clay,
-.home-hero-emoji .oo-ic-clay {
-  filter: drop-shadow(0 2px 1.5px rgba(6, 58, 42, 0.18));
-}
+/* ---------------------------------------- 21-1. 점토 아이콘 → R4 에서 2px 선으로 교체
+   Sprint 21 의 클레이 3겹(그늘·몸통·광택)은 R4 에서 걷어냈다. 아이콘은 이제
+   js/icons.js 가 만드는 **2px 둥근 선 한 겹**이라, 여기서 따로 그릴 층이 없다.
+   (활성 상태의 채움은 .tab-ic-fill · oo-ic.is-solid 가 맡는다.) */
 
 /* ---------------------------------------- 21-2. 취미 대분류 색조 (점토 표지) */
-:root {
-  --tone-green-from: #EAF9F1;  --tone-green-to: #CBEDDA;  --tone-green-ink: #065F46;  --tone-green-chip: #D7F2E4;
-  --tone-violet-from: #F4EEFE; --tone-violet-to: #DCD2FB; --tone-violet-ink: #4C1D95; --tone-violet-chip: #E7DDFD;
-  --tone-teal-from: #E8F6F8;   --tone-teal-to: #C9E8EE;   --tone-teal-ink: #0F525F;   --tone-teal-chip: #D6EEF2;
-  --tone-amber-from: #FFF5E6;  --tone-amber-to: #FBE1BA;  --tone-amber-ink: #8A4708;  --tone-amber-chip: #FCEBCF;
-  --tone-sky-from: #EAF4FE;    --tone-sky-to: #CFE4FA;    --tone-sky-ink: #0F4C75;    --tone-sky-chip: #DCEDFC;
-  --tone-coral-from: #FFF0EA;  --tone-coral-to: #FBD8CB;  --tone-coral-ink: #8A3418;  --tone-coral-chip: #FCE2D8;
-  --tone-mint-from: #EFFAF3;   --tone-mint-to: #D2EFE0;   --tone-mint-ink: #14532D;   --tone-mint-chip: #DEF4E8;
-}
+/*  대분류 하나 = 카테고리 토큰 하나. 색의 정의는 맨 위 R1 토큰 블록
+    (--cat-1~7 · --cat-1-soft~7-soft · --cat-neutral) 뿐이고, 여기서는 이름만 이어 준다.
+    순서는 HOBBY_TAXONOMY 그대로 — 운동 1 · 게임 2 · 독서 3 · 맛집 4 · 여행 5 · 문화 6 · 일상 7.
+    클래스 이름(tone-green 등)은 옛 취미 색조 이름을 그대로 쓰는 별칭이다. */
+.tone-green   { --tone-from: var(--cat-1-soft); --tone-ink: var(--cat-1); --tone-chip: var(--cat-1-soft); }
+.tone-violet  { --tone-from: var(--cat-2-soft); --tone-ink: var(--cat-2); --tone-chip: var(--cat-2-soft); }
+.tone-teal    { --tone-from: var(--cat-3-soft); --tone-ink: var(--cat-3); --tone-chip: var(--cat-3-soft); }
+.tone-amber   { --tone-from: var(--cat-4-soft); --tone-ink: var(--cat-4); --tone-chip: var(--cat-4-soft); }
+.tone-sky     { --tone-from: var(--cat-5-soft); --tone-ink: var(--cat-5); --tone-chip: var(--cat-5-soft); }
+.tone-coral   { --tone-from: var(--cat-6-soft); --tone-ink: var(--cat-6); --tone-chip: var(--cat-6-soft); }
+.tone-mint    { --tone-from: var(--cat-7-soft); --tone-ink: var(--cat-7); --tone-chip: var(--cat-7-soft); }
+/* 대분류를 모르는 취미(목록에 없는 id) — 초록이 아니라 중립 회색 */
+.tone-neutral { --tone-from: var(--cat-neutral-soft); --tone-ink: var(--cat-neutral); --tone-chip: var(--cat-neutral-soft); }
 
-.tone-green { --tone-from: var(--tone-green-from); --tone-to: var(--tone-green-to); --tone-ink: var(--tone-green-ink); --tone-chip: var(--tone-green-chip); }
-.tone-violet { --tone-from: var(--tone-violet-from); --tone-to: var(--tone-violet-to); --tone-ink: var(--tone-violet-ink); --tone-chip: var(--tone-violet-chip); }
-.tone-teal { --tone-from: var(--tone-teal-from); --tone-to: var(--tone-teal-to); --tone-ink: var(--tone-teal-ink); --tone-chip: var(--tone-teal-chip); }
-.tone-amber { --tone-from: var(--tone-amber-from); --tone-to: var(--tone-amber-to); --tone-ink: var(--tone-amber-ink); --tone-chip: var(--tone-amber-chip); }
-.tone-sky { --tone-from: var(--tone-sky-from); --tone-to: var(--tone-sky-to); --tone-ink: var(--tone-sky-ink); --tone-chip: var(--tone-sky-chip); }
-.tone-coral { --tone-from: var(--tone-coral-from); --tone-to: var(--tone-coral-to); --tone-ink: var(--tone-coral-ink); --tone-chip: var(--tone-coral-chip); }
-.tone-mint { --tone-from: var(--tone-mint-from); --tone-to: var(--tone-mint-to); --tone-ink: var(--tone-mint-ink); --tone-chip: var(--tone-mint-chip); }
-
-/* 사진이 없는 표지 = 그 취미의 점토 색조 (운동=그린 · 게임=보라 · 독서=틸 · 맛집=앰버 · 여행=스카이 · 문화=코랄) */
+/* 사진이 없는 표지 = 그 대분류의 색. 라이트·다크가 같은 토큰을 쓰므로 한 값으로 함께 움직인다. */
 .gallery-cover.is-plain,
 .group-tile-cover,
-.recommend-cover {
-  background: linear-gradient(152deg, var(--tone-from, #EAF9F1) 0%, var(--tone-to, #CBEDDA) 100%);
+.recommend-cover,
+.home-hero-cover.is-plain {
+  background: var(--tone-from, var(--bg-soft));
 }
-.gallery-cover.is-plain { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -10px 18px -14px rgba(20, 66, 50, 0.35); }
+@supports (background: color-mix(in srgb, red 10%, white)) {
+  .gallery-cover.is-plain,
+  .group-tile-cover,
+  .recommend-cover,
+  .home-hero-cover.is-plain {
+    background: linear-gradient(152deg,
+      var(--tone-from, var(--bg-soft)) 0%,
+      color-mix(in srgb, var(--tone-ink, var(--cat-neutral)) 38%, var(--bg-base)) 100%);
+  }
+}
+.gallery-cover.is-plain { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -10px 18px -14px rgba(20, 66, 50, 0.22); }
 .gallery-cover.is-plain .gallery-cover-emoji,
 .group-tile-emoji {
-  background: rgba(255, 253, 247, 0.9);
-  color: var(--tone-ink, var(--green-deep));
+  background: var(--bg-base);
+  color: var(--tone-ink, var(--cat-neutral));
+  box-shadow: var(--clay-soft), var(--clay-light);
   opacity: 1;
 }
 .group-tile-tone-dot {
   width: 8px; height: 8px; border-radius: 50%;
-  background: var(--tone-ink, var(--green-dark));
+  background: var(--tone-ink, var(--cat-neutral));
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
   display: inline-block;
   margin-right: 4px;
 }
 /* 취미 칩·카테고리도 같은 색조를 쓴다 */
 .recommend-hobby {
-  background: rgba(255, 253, 247, 0.92);
-  color: var(--tone-ink, var(--green-deep));
+  background: var(--bg-base);
+  color: var(--tone-ink, var(--cat-neutral));
 }
 .hobby-cat.on,
 .guide-cat.on {
-  background: var(--tone-chip, var(--clay-mint));
+  background: var(--tone-chip, var(--green-soft));
   color: var(--tone-ink, var(--green-dark));
 }
 
@@ -14693,7 +14741,7 @@ img[hidden] { display: none !important; }
   margin: 20px 0 6px;
   padding: 16px 14px 14px;
   border-radius: 24px;
-  background: var(--clay-cream, #FFFDF7);
+  background: var(--clay-cream);
   box-shadow: var(--clay-soft, 0 10px 24px -18px rgba(20, 66, 50, 0.5)), var(--clay-light, inset 0 1px 0 rgba(255, 255, 255, 0.9));
 }
 .home-recommend-head-text { min-width: 0; }
@@ -14733,7 +14781,7 @@ img[hidden] { display: none !important; }
   gap: 10px;
 }
 .recommend-card {
-  background: #FFFFFF;
+  background: var(--bg-base);
   border-radius: 18px;
   overflow: hidden;
   box-shadow: var(--clay-soft, 0 8px 18px -14px rgba(20, 66, 50, 0.5)), 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
@@ -14754,7 +14802,7 @@ img[hidden] { display: none !important; }
   place-items: center;
   width: 46px; height: 46px;
   border-radius: 18px;
-  background: rgba(255, 253, 247, 0.9);
+  background: var(--bg-base);
   color: var(--tone-ink, var(--green-deep));
   box-shadow: 0 6px 12px -8px rgba(20, 66, 50, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
@@ -14825,7 +14873,7 @@ img[hidden] { display: none !important; }
   padding: 14px 12px 12px;
   border-radius: 18px;
   text-align: center;
-  background: linear-gradient(160deg, #FFFDF7 0%, #EFFAF3 100%);
+  background: linear-gradient(160deg, var(--bg-base) 0%, var(--green-soft) 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -8px 14px -12px rgba(20, 66, 50, 0.35);
 }
 .home-recommend-more-title { font-size: 12.5px; font-weight: var(--fw-label); color: var(--text-strong); }
@@ -14860,7 +14908,7 @@ img[hidden] { display: none !important; }
   border: none;
   padding: 7px 11px;
   border-radius: 999px;
-  background: var(--clay-cream-soft, #FBF5EA);
+  background: var(--clay-cream-soft);
   color: var(--text-sub);
   font-size: 11px;
   font-weight: var(--fw-label);
@@ -14905,7 +14953,7 @@ img[hidden] { display: none !important; }
   padding: 0 12px;
   border-radius: 12px;
   border: 1.5px solid transparent;
-  background: var(--clay-cream, #FFFDF7);
+  background: var(--clay-cream);
   box-shadow: var(--clay-inset);
   font-size: 13px;
   font-weight: var(--fw-body);
@@ -14915,7 +14963,7 @@ img[hidden] { display: none !important; }
 .hobby-custom-input:focus {
   outline: none;
   border-color: var(--green);
-  background: #FFFFFF;
+  background: var(--bg-elevated);
 }
 .hobby-custom-add {
   flex: 0 0 auto;
@@ -14962,7 +15010,7 @@ img[hidden] { display: none !important; }
   margin: 8px 0 0;
   padding: 8px 10px;
   border-radius: 12px;
-  background: var(--clay-cream-soft, #FBF5EA);
+  background: var(--clay-cream-soft);
   font-size: 10.5px;
   font-weight: var(--fw-meta);
   color: var(--text-muted);
@@ -15009,7 +15057,7 @@ body.spotlight-open { overflow: hidden; }
   overflow-y: auto;
   padding: 16px 16px 14px;
   border-radius: 24px;
-  background: var(--clay-cream, #FFFDF7);
+  background: var(--clay-cream);
   box-shadow: 0 26px 60px -22px rgba(4, 40, 30, 0.62), inset 0 2px 0 rgba(255, 255, 255, 0.95);
   z-index: 2;
   animation: bubblePop 0.3s var(--spring) both;
@@ -15027,7 +15075,7 @@ body.spotlight-open { overflow: hidden; }
   width: 12px;
   height: 12px;
   margin-left: -6px;
-  background: var(--clay-cream, #FFFDF7);
+  background: var(--clay-cream);
   transform: rotate(45deg);
   border-radius: 2px;
 }
@@ -15082,7 +15130,7 @@ body.spotlight-open { overflow: hidden; }
   padding: 12px 16px;
   border: none;
   border-radius: 14px;
-  background: var(--clay-cream-soft, #FBF5EA);
+  background: var(--clay-cream-soft);
   color: var(--text-sub);
   font-size: 12px;
   font-weight: var(--fw-label);
@@ -15119,7 +15167,7 @@ body.spotlight-open { overflow: hidden; }
   border: none;
   padding: 6px 9px;
   border-radius: 999px;
-  background: var(--clay-cream-soft, #FBF5EA);
+  background: var(--clay-cream-soft);
   color: var(--text-sub);
   font-size: 10.5px;
   font-weight: var(--fw-label);
@@ -15156,7 +15204,7 @@ body.spotlight-open { overflow: hidden; }
   border: 1.5px solid transparent;
   padding: 7px 10px;
   border-radius: 999px;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   color: var(--text-sub);
   font-size: 11px;
   font-weight: var(--fw-label);
@@ -15183,7 +15231,7 @@ body.spotlight-open { overflow: hidden; }
   padding: 0 11px;
   border-radius: 12px;
   border: 1.5px solid transparent;
-  background: #FFFFFF;
+  background: var(--bg-soft);
   box-shadow: var(--clay-inset);
   font-size: 12px;
   font-weight: var(--fw-meta);
@@ -15201,13 +15249,6 @@ body.spotlight-open { overflow: hidden; }
   font-size: 11px;
   font-weight: var(--fw-label);
 }
-
-
-/* 점토 아이콘의 층 — 생성되는 <g> 도 CSS 에 이름을 남겨 스타일·점검에서 보이게 한다 */
-.oo-ic-clay .oo-clay-shade { opacity: 1; }
-.oo-ic-clay .oo-clay-lift { opacity: 1; }
-.oo-ic-clay .oo-clay-body { opacity: 1; }
-
 
 /* ==========================================================================
  * Sprint 22 — 스토리텔링 가입 · 이메일 인증 · 홈 모임 둘러보기 · 탐색 상단 정리
@@ -15235,7 +15276,7 @@ body.spotlight-open { overflow: hidden; }
   right: 0;
   bottom: -14px;
   height: 14px;
-  background: linear-gradient(var(--bg-app) 0%, rgba(249, 241, 225, 0) 100%);
+  background: linear-gradient(var(--bg-app) 0%, transparent 100%);
 }
 
 .explore-head { padding: 16px 2px 10px; }
@@ -15566,7 +15607,7 @@ body.spotlight-open { overflow: hidden; }
   padding: 10px 11px;
   border-radius: 14px;
   border: 1.5px solid transparent;
-  background: #FFFFFF;
+  background: var(--bg-base);
   box-shadow: var(--clay-soft), var(--clay-light-soft);
   text-align: left;
 }
@@ -15574,7 +15615,7 @@ body.spotlight-open { overflow: hidden; }
   background: var(--green-soft);
   border-color: var(--green-soft-border, #A7F3D0);
 }
-.guide-cat-card .guide-cat-icon .oo-ic { width: 18px; height: 18px; color: var(--green-dark); }
+.guide-cat-card .guide-cat-icon .oo-ic { width: 18px; height: 18px; color: var(--tone-ink, var(--green-dark)); }
 .guide-cat-card .guide-cat-name { font-size: 11.5px; font-weight: 700; color: var(--text-strong); }
 .guide-cat-card .guide-cat-count { font-size: 9.5px; font-weight: 620; color: var(--text-muted); }
 .guide-cat-card:active { transform: scale(0.96); }
@@ -15595,7 +15636,7 @@ body.spotlight-open { overflow: hidden; }
 
 /* 회원가입 지역 선택 — 기본 화살표를 지운 자리에 우그의 셰브론을 그린다 */
 select.ob-input {
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23047857' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23047857' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   background-size: 15px;
@@ -16170,198 +16211,7 @@ select.ob-input {
 .menu-item.is-switch .switch-toggle { margin-left: 8px; pointer-events: none; }
 .menu-item.is-switch.on .menu-val { color: var(--green-dark); }
 
-/* ==========================================================================
-   24-10. 다크 클레이 팔레트 — [data-theme="dark"]
-   --------------------------------------------------------------------------
-   · 크림(라이트)과 같은 점토 구조를 유지한다: 표면은 딥 슬레이트, 빛은 위에서,
-     그늘은 아래에서. 그림자는 '검정을 더 진하게'가 아니라 '검정을 넓게' 3겹.
-   · 글자색은 다크 표면에서 WCAG 4.5:1 을 넘도록 밝기를 올린다(대비 점검에 조합 추가).
-   ========================================================================== */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-
-  /* 표면 */
-  --clay-page: #0C1116;
-  --clay-page-deep: #0A0F14;
-  --clay-cream: #171E26;
-  --clay-cream-soft: #1D2630;
-  --clay-cream-deep: #222C37;
-  --clay-white: #1B232C;
-  --clay-mint: #17332B;
-  --clay-mint-deep: #1C3D33;
-  --clay-edge: rgba(148, 197, 178, 0.14);
-  --clay-edge-soft: rgba(148, 197, 178, 0.08);
-
-  /* 3중 다크 클레이 그림자 — 위 하이라이트는 옅은 청록, 아래 그늘은 넓게 */
-  --clay-lift: 0 24px 44px -20px rgba(0, 0, 0, 0.85), 0 12px 22px -14px rgba(0, 0, 0, 0.6);
-  --clay-out: 0 18px 30px -18px rgba(0, 0, 0, 0.8), 0 8px 16px -10px rgba(0, 0, 0, 0.55);
-  --clay-soft: 0 10px 20px -16px rgba(0, 0, 0, 0.7), 0 4px 10px -8px rgba(0, 0, 0, 0.45);
-  --clay-light: inset 0 2px 1px rgba(203, 236, 224, 0.10), inset 0 -4px 10px -4px rgba(0, 0, 0, 0.5);
-  --clay-light-soft: inset 0 1px 1px rgba(203, 236, 224, 0.07), inset 0 -2px 6px -3px rgba(0, 0, 0, 0.4);
-  --clay-inset: inset 0 2px 6px rgba(0, 0, 0, 0.55), inset 0 -2px 1px rgba(203, 236, 224, 0.06);
-  --clay-press: inset 0 4px 10px -2px rgba(0, 0, 0, 0.66), inset 0 -2px 1px rgba(203, 236, 224, 0.05);
-  --clay-green-lift: 0 14px 26px -14px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(52, 211, 153, 0.18);
-  --clay-green-in: inset 0 2px 1px rgba(255, 255, 255, 0.14), inset 0 -4px 9px -4px rgba(0, 0, 0, 0.5);
-
-  /* 배경 */
-  --bg-base: #171E26;
-  --bg-app: #121820;
-  --bg-subtle: #1D2630;
-  --bg-soft: #0C1116;
-  --bg-glass: rgba(18, 24, 32, 0.92);
-
-  /* 글자 — 다크 표면 위에서 읽히는 밝기 */
-  --text-strong: #F1F6F3;
-  --text: #DDE6E1;
-  --text-sub: #B7C6BF;
-  --text-muted: #93A49C;
-
-  /* 보더 */
-  --border: rgba(148, 197, 178, 0.16);
-  --border-strong: rgba(148, 197, 178, 0.28);
-  --border-soft: rgba(148, 197, 178, 0.09);
-
-  /* 에메랄드 포인트는 다크에서 한 단계 밝게 */
-  --green: #34D399;
-  --green-hover: #10B981;
-  --green-dark: #6EE7B7;
-  --green-deep: #A7F3D0;
-  --green-soft: #14312A;
-  --green-soft-border: #1F5A47;
-  --green-tint: #12271F;
-  --green-grad: linear-gradient(135deg, #10B981 0%, #059669 100%);
-  --green-grad-soft: linear-gradient(135deg, #14312A 0%, #1B3B31 100%);
-
-  --red: #F87171;
-  --red-soft: #33191C;
-  --amber: #FBBF24;
-  --amber-soft: #33280F;
-
-  /* 기존 그림자 토큰도 다크 클레이로 */
-  --shadow-xs: 0 2px 4px -2px rgba(0, 0, 0, 0.6);
-  --shadow-sm: var(--clay-soft);
-  --shadow-card: var(--clay-out), var(--clay-light);
-  --shadow-hover: var(--clay-lift), var(--clay-light);
-  --shadow-float: var(--clay-green-lift);
-  --shadow-sheet: 0 -18px 46px -20px rgba(0, 0, 0, 0.8), inset 0 2px 0 rgba(203, 236, 224, 0.08);
-}
-
-html[data-theme="dark"] { background: var(--clay-page); }
-
-html[data-theme="dark"] body {
-  background-color: var(--clay-page);
-  background-image:
-    radial-gradient(120% 62% at 50% -12%, rgba(52, 211, 153, 0.10) 0%, rgba(52, 211, 153, 0) 60%),
-    radial-gradient(90% 54% at 102% 2%, rgba(16, 185, 129, 0.10) 0%, rgba(16, 185, 129, 0) 58%),
-    radial-gradient(84% 62% at -2% 102%, rgba(16, 185, 129, 0.07) 0%, rgba(16, 185, 129, 0) 62%);
-  color: var(--text);
-}
-
-html[data-theme="dark"] .app-container {
-  background: var(--bg-app);
-  box-shadow: 0 34px 70px -46px rgba(0, 0, 0, 0.9);
-}
-
-html[data-theme="dark"] .app-header {
-  background: var(--bg-glass);
-  border-bottom: 1px solid rgba(203, 236, 224, 0.07);
-  box-shadow: 0 14px 26px -26px rgba(0, 0, 0, 0.9);
-}
-
-html[data-theme="dark"] .bottom-nav-bar {
-  background: rgba(17, 23, 30, 0.95);
-  border-top: 1px solid rgba(203, 236, 224, 0.08);
-  box-shadow: 0 -16px 32px -26px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(203, 236, 224, 0.06);
-}
-
-/* 흰색을 직접 쓴 표면들 — 다크에서는 클레이 서피스로 */
-html[data-theme="dark"] .post-card,
-html[data-theme="dark"] .hot-card,
-html[data-theme="dark"] .board-row,
-html[data-theme="dark"] .group-tile,
-html[data-theme="dark"] .myprofile-head,
-html[data-theme="dark"] .album-block,
-html[data-theme="dark"] .myprofile-stat,
-html[data-theme="dark"] .menu-item,
-html[data-theme="dark"] .chat-room-item,
-html[data-theme="dark"] .notif-item,
-html[data-theme="dark"] .modal-sheet,
-html[data-theme="dark"] .drawer,
-html[data-theme="dark"] .gallery-card,
-html[data-theme="dark"] .member-item,
-html[data-theme="dark"] .activity-item,
-html[data-theme="dark"] .saved-item {
-  background: var(--clay-white);
-  color: var(--text);
-}
-
-html[data-theme="dark"] .icon-btn,
-html[data-theme="dark"] .explore-region-btn,
-html[data-theme="dark"] .explore-filter-btn,
-html[data-theme="dark"] .dm-unread-toggle,
-html[data-theme="dark"] .explore-chip,
-html[data-theme="dark"] .region-chip,
-html[data-theme="dark"] .age-chip,
-html[data-theme="dark"] .radius-chip {
-  background: var(--clay-cream-soft);
-  color: var(--text-sub);
-  border-color: var(--border);
-}
-
-html[data-theme="dark"] .explore-type-btn,
-html[data-theme="dark"] .explore-type-seg {
-  background: var(--clay-cream-soft);
-  color: var(--text-sub);
-  border-color: var(--border);
-}
-
-html[data-theme="dark"] .explore-type-btn.active {
-  background: var(--green-grad);
-  color: #04150F;
-}
-
-html[data-theme="dark"] .explore-search input,
-html[data-theme="dark"] .text-input,
-html[data-theme="dark"] .text-area,
-html[data-theme="dark"] .chat-input,
-html[data-theme="dark"] .ob-input,
-html[data-theme="dark"] .chat-input-bar {
-  background: var(--clay-cream-soft);
-  color: var(--text);
-  border-color: var(--border);
-}
-
-html[data-theme="dark"] .explore-search { background: var(--clay-cream-soft); border-color: var(--border); }
-
-html[data-theme="dark"] .btn-primary { background: #E7F3EC; color: #0C1A14; }
-html[data-theme="dark"] .btn-pair > .btn-secondary { background: var(--clay-cream-soft); color: var(--text-sub); }
-
-html[data-theme="dark"] .oog-splash { background: #070D0A; }
-html[data-theme="dark"] .oog-splash-title { color: #D9F7EA; }
-
-html[data-theme="dark"] .spotlight-bubble { background: var(--clay-white); color: var(--text); }
-html[data-theme="dark"] .spotlight-title { color: var(--text-strong); }
-html[data-theme="dark"] .spotlight-desc { color: var(--text-sub); }
-
-html[data-theme="dark"] .onboarding { background: #0C1116; }
-html[data-theme="dark"] .onboarding-panel { background: var(--clay-white); }
-
-html[data-theme="dark"] .hot-rank { background: rgba(203, 236, 224, 0.16); color: #EAF6F0; }
-html[data-theme="dark"] .hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); color: #FFF7E6; }
-html[data-theme="dark"] .hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #94A3B8 0%, #475569 100%); color: #F1F5F9; }
-html[data-theme="dark"] .hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #D97706 0%, #92400E 100%); color: #FFF7E6; }
-
-html[data-theme="dark"] .toast { background: #E7F3EC; color: #0C1A14; }
-
-html[data-theme="dark"] .album-block.is-secret {
-  background: linear-gradient(160deg, #17332B 0%, var(--clay-white) 62%);
-}
-
-html[data-theme="dark"] .switch-toggle { background: rgba(203, 236, 224, 0.16); }
-html[data-theme="dark"] .switch-toggle.on { background: var(--green-grad); }
-
 /* 다크 테마 보조 클래스 — body 에 함께 붙여 테마별 예외를 잡는다 */
-body.theme-dark { color-scheme: dark; }
 
 .album-lock { display: inline-flex; align-items: center; color: var(--green-dark); }
 .album-lock .oo-ic { width: 14px; height: 14px; }
@@ -16397,222 +16247,6 @@ body.theme-dark { color-scheme: dark; }
 }
 
 .board-row.post-card.is-text-only { background: var(--clay-white, #FFFFFF); }
-
-/* ==========================================================================
-   24-11. 다크 클레이 — 흰색을 직접 쓴 화면들(홈·모임·디엠·모달·사이드바·가입)
-   --------------------------------------------------------------------------
-   토큰을 쓰지 않은 옛 컴포넌트만 골라 표면을 클레이 서피스로 바꾼다.
-   ========================================================================== */
-html[data-theme="dark"] .hot-strip {
-  background:
-    radial-gradient(120% 80% at 100% 0%, rgba(16, 185, 129, 0.14) 0%, rgba(16, 185, 129, 0) 62%),
-    linear-gradient(180deg, var(--clay-white) 0%, #18211F 100%);
-  border-color: var(--border);
-}
-
-html[data-theme="dark"] .hot-title,
-html[data-theme="dark"] .gallery-title,
-html[data-theme="dark"] .home-discover-title,
-html[data-theme="dark"] .home-recommend-title,
-html[data-theme="dark"] .home-browse-title,
-html[data-theme="dark"] .home-block-title,
-html[data-theme="dark"] .board-block-title,
-html[data-theme="dark"] .chat-title,
-html[data-theme="dark"] .chat-section-title,
-html[data-theme="dark"] .profile-topbar-title,
-html[data-theme="dark"] .explore-title { color: var(--text-strong); }
-
-html[data-theme="dark"] .hot-more,
-html[data-theme="dark"] .gallery-sort button,
-html[data-theme="dark"] .home-browse-sorts button,
-html[data-theme="dark"] .explore-region-chip,
-html[data-theme="dark"] .explore-sub-chip,
-html[data-theme="dark"] .home-browse-chip,
-html[data-theme="dark"] .board-chip,
-html[data-theme="dark"] .feed-subtab,
-html[data-theme="dark"] .dm-view-btn {
-  background: var(--clay-cream-soft);
-  color: var(--text-sub);
-  border-color: var(--border);
-  box-shadow: var(--clay-light-soft);
-}
-
-html[data-theme="dark"] .explore-region-chip.active,
-html[data-theme="dark"] .home-browse-chip.active,
-html[data-theme="dark"] .board-chip.active,
-html[data-theme="dark"] .feed-subtab.active,
-html[data-theme="dark"] .dm-view-btn.active {
-  background: var(--green-dark);
-  color: #04150F;
-}
-
-html[data-theme="dark"] .explore-region-chip-count { background: rgba(52, 211, 153, 0.16); color: var(--green-dark); }
-html[data-theme="dark"] .explore-region-chip.active .explore-region-chip-count { background: rgba(4, 21, 15, 0.2); color: #04150F; }
-
-html[data-theme="dark"] .gallery-card,
-html[data-theme="dark"] .feed-card,
-html[data-theme="dark"] .chat-room-item,
-html[data-theme="dark"] .composer-sheet,
-html[data-theme="dark"] .match-detail-sheet,
-html[data-theme="dark"] .group-detail-sheet,
-html[data-theme="dark"] .notif-settings-card,
-html[data-theme="dark"] .pwa-card,
-html[data-theme="dark"] .home-chat-card,
-html[data-theme="dark"] .home-event-card,
-html[data-theme="dark"] .group-tile-body,
-html[data-theme="dark"] .composer-tag,
-html[data-theme="dark"] .media-option,
-html[data-theme="dark"] .cover-option,
-html[data-theme="dark"] .member-detail,
-html[data-theme="dark"] .notice-card,
-html[data-theme="dark"] .activity-item,
-html[data-theme="dark"] .saved-item,
-html[data-theme="dark"] .profile-block {
-  background: var(--clay-white);
-  border-color: var(--border);
-  color: var(--text);
-}
-
-html[data-theme="dark"] .composer-tag.active,
-html[data-theme="dark"] .media-option.active {
-  background: var(--green-soft);
-  border-color: var(--green-soft-border);
-  color: var(--green-dark);
-}
-
-html[data-theme="dark"] .composer-header,
-html[data-theme="dark"] .sheet-head,
-html[data-theme="dark"] .chat-header,
-html[data-theme="dark"] .chat-input-bar,
-html[data-theme="dark"] .chat-room-overlay,
-html[data-theme="dark"] .chat-messages,
-html[data-theme="dark"] .drawer-section,
-html[data-theme="dark"] .drawer-head {
-  background: var(--clay-white);
-  border-color: var(--border);
-}
-
-html[data-theme="dark"] .chat-room-overlay { background: var(--bg-app); }
-html[data-theme="dark"] .chat-messages { background: var(--bg-app); }
-
-html[data-theme="dark"] .bubble.them,
-html[data-theme="dark"] .chat-bubble.them {
-  background: var(--clay-cream-soft);
-  color: var(--text);
-}
-
-html[data-theme="dark"] .chat-day span { background: var(--clay-cream-soft); color: var(--text-muted); }
-
-html[data-theme="dark"] .input-bar,
-html[data-theme="dark"] .search-box,
-html[data-theme="dark"] .region-row,
-html[data-theme="dark"] .settings-menu-list,
-html[data-theme="dark"] .menu-item {
-  background: var(--clay-cream-soft);
-  border-color: var(--border);
-}
-
-html[data-theme="dark"] .modal-overlay { background: rgba(2, 6, 9, 0.72); }
-html[data-theme="dark"] .drawer-scrim { background: rgba(2, 6, 9, 0.62); }
-
-html[data-theme="dark"] .sheet-grabber { background: rgba(203, 236, 224, 0.22); }
-
-html[data-theme="dark"] .text-btn.ghost { color: var(--text-sub); }
-
-html[data-theme="dark"] .onboarding-body,
-html[data-theme="dark"] .onboarding-card,
-html[data-theme="dark"] .ob-card,
-html[data-theme="dark"] .ob-mail,
-html[data-theme="dark"] .guide-cat-card,
-html[data-theme="dark"] .ob-choice {
-  background: var(--clay-white);
-  border-color: var(--border);
-  color: var(--text);
-}
-
-html[data-theme="dark"] .ob-input,
-html[data-theme="dark"] .ob-choice.on { background: var(--clay-cream-soft); }
-
-html[data-theme="dark"] .profile-avatar-large,
-html[data-theme="dark"] .profile-card,
-html[data-theme="dark"] .profile-stats,
-html[data-theme="dark"] .stat-cell { background: var(--clay-white); border-color: var(--border); }
-
-html[data-theme="dark"] .empty-state { color: var(--text-muted); }
-html[data-theme="dark"] .empty-title { color: var(--text-strong); }
-
-html[data-theme="dark"] .skeleton-card,
-html[data-theme="dark"] .skeleton-block,
-html[data-theme="dark"] .skeleton-line { background: var(--clay-cream-soft); }
-
-/* 다크 — 디엠함 모임방 · 안내 줄 · 커버 일러스트 · 새 모임 타일 */
-html[data-theme="dark"] .chat-group-item,
-html[data-theme="dark"] .chat-group-item:hover {
-  background: var(--clay-white);
-  border-color: var(--border);
-}
-
-html[data-theme="dark"] .chat-group-item:active { background: var(--clay-cream-soft); }
-html[data-theme="dark"] .chat-group-name { color: var(--text-strong); }
-html[data-theme="dark"] .chat-group-members,
-html[data-theme="dark"] .chat-group-last { color: var(--text-sub); }
-html[data-theme="dark"] .chat-group-next { color: var(--green-dark); }
-html[data-theme="dark"] .chat-group-count { background: var(--green-soft); color: var(--green-dark); }
-
-html[data-theme="dark"] .chat-dm-policy.is-off {
-  background: #33240F;
-  color: #FCD9A8;
-}
-
-html[data-theme="dark"] .chat-dm-policy.is-on { background: var(--green-soft); color: var(--green-dark); }
-
-html[data-theme="dark"] .chat-group-emoji,
-html[data-theme="dark"] .gallery-cover,
-html[data-theme="dark"] .gallery-cover-photo,
-html[data-theme="dark"] .group-tile-cover,
-html[data-theme="dark"] .home-hero-cover,
-html[data-theme="dark"] .profile-cover {
-  filter: brightness(0.5) saturate(0.9);
-}
-
-html[data-theme="dark"] .gallery-cover.is-plain { background: linear-gradient(160deg, #1E2A33 0%, #16211F 100%); }
-
-html[data-theme="dark"] .gallery-new {
-  background: linear-gradient(160deg, #1B242C 0%, #15201D 100%);
-  border-color: var(--border-strong);
-}
-
-html[data-theme="dark"] .gallery-new-title { color: var(--text-strong); }
-html[data-theme="dark"] .gallery-new-desc { color: var(--text-muted); }
-html[data-theme="dark"] .gallery-new-plus { background: var(--green-soft); color: var(--green-dark); }
-
-/* 다크 — 모임 상세 시트의 운영 카드 · 일정 행 · 멤버 칩 */
-html[data-theme="dark"] .group-ops,
-html[data-theme="dark"] .sheet-block,
-html[data-theme="dark"] .schedule-row,
-html[data-theme="dark"] .member-chip,
-html[data-theme="dark"] .ops-row,
-html[data-theme="dark"] .ops-toggle-row,
-html[data-theme="dark"] .notice-card,
-html[data-theme="dark"] .group-detail-body,
-html[data-theme="dark"] .sheet-body {
-  background: var(--clay-white);
-  border-color: var(--border);
-  color: var(--text);
-}
-
-html[data-theme="dark"] .schedule-row.tone-regular,
-html[data-theme="dark"] .ops-role { background: var(--green-soft); color: var(--green-dark); }
-
-html[data-theme="dark"] .ops-toggle-title,
-html[data-theme="dark"] .sheet-section-title,
-html[data-theme="dark"] .ops-label,
-html[data-theme="dark"] .member-name { color: var(--text-strong); }
-
-html[data-theme="dark"] .ops-toggle-desc,
-html[data-theme="dark"] .ops-value { color: var(--text-muted); }
-
-html[data-theme="dark"] .btn-secondary.ops-deputy-btn { background: var(--clay-cream-soft); color: var(--text-sub); }
 
 /* 1:1 대화방(190) 위로 비밀앨범 시트가 올라와야 한다 */
 #secret-album-modal { z-index: 260; }
@@ -16656,7 +16290,7 @@ html[data-theme="dark"] .btn-secondary.ops-deputy-btn { background: var(--clay-c
   padding: 7px 13px;
   border: 1px solid var(--border);
   border-radius: var(--r-full);
-  background: var(--clay-cream, #FFFDF7);
+  background: var(--clay-cream);
   color: var(--text-sub);
   font-size: 12px;
   font-weight: var(--fw-label);
@@ -16911,22 +16545,6 @@ html[data-theme="dark"] .btn-secondary.ops-deputy-btn { background: var(--clay-c
 .filter-nearby-chip { min-height: 30px; padding: 4px 2px; }
 .filter-sheet-foot { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 
-/* ---------------------------------------- 26-9. 다크 대응 */
-html[data-theme="dark"] .composer-tag {
-  background: var(--clay-cream-soft);
-  border-color: var(--border);
-  color: var(--text-sub);
-  box-shadow: inset 0 1px 0 rgba(203, 236, 224, 0.06);
-}
-html[data-theme="dark"] .composer-tag.active {
-  background: var(--green-grad);
-  border-color: transparent;
-  color: #04150F;
-}
-html[data-theme="dark"] .album-open { background: transparent; }
-html[data-theme="dark"] .album-slot { background: rgba(203, 236, 224, 0.06); }
-html[data-theme="dark"] .album-slot.is-filled { background: var(--bg-soft); }
-
 /* 26-10. 남은 터치 마감 — 배너 닫기 · 조건 해제 칩 · 앨범 삭제 버튼 */
 .ppb-close { width: 28px; height: 28px; display: grid; place-items: center; }
 .explore-active-filters .explore-chip,
@@ -16952,7 +16570,6 @@ body.is-album-viewing { overflow: hidden; }
 .explore-sub-chip { font-weight: 680; }
 #btn-secret-album-share { font-weight: 680; }
 .age-range-foot { font-weight: 640; }
-
 
 /* ==========================================================================
  * 27. Sprint 26.5 — 스토리텔링은 배경 위 글자만 · 읽는 호흡 · 설정 아코디언
@@ -17138,7 +16755,7 @@ body.is-album-viewing { overflow: hidden; }
   margin-top: 14px;
   padding: 14px;
   border-radius: 22px;
-  background: var(--clay-cream, #FFFDF7);
+  background: var(--clay-cream);
   box-shadow: 0 22px 44px -22px rgba(4, 40, 30, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   max-height: 46vh;
   overflow-y: auto;
@@ -17153,20 +16770,6 @@ body.is-album-viewing { overflow: hidden; }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 .spotlight-next { box-shadow: 0 14px 24px -14px rgba(4, 60, 44, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.26); }
-
-/* ---------------------------------------------- 27-3. 다크 */
-html[data-theme="dark"] .onboarding {
-  background-color: var(--clay-page);
-  background-image:
-    radial-gradient(110% 58% at 50% -8%, rgba(52, 211, 153, 0.12) 0%, rgba(52, 211, 153, 0) 62%),
-    radial-gradient(80% 54% at 100% 102%, rgba(16, 185, 129, 0.10) 0%, rgba(16, 185, 129, 0) 60%);
-}
-html[data-theme="dark"] .onboarding-panel { background: transparent; }
-html[data-theme="dark"] .ob-answer { background: var(--clay-white); box-shadow: var(--clay-out), var(--clay-light); }
-html[data-theme="dark"] .spotlight-bubble { background: transparent; color: #F6FCF9; }
-html[data-theme="dark"] .spotlight-title { color: #FFFFFF; }
-html[data-theme="dark"] .spotlight-desc { color: rgba(255, 255, 255, 0.87); }
-html[data-theme="dark"] .spotlight-body { background: var(--clay-cream); box-shadow: 0 22px 44px -22px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(203, 236, 224, 0.08); }
 
 /* ---------------------------------------------- 27-4. 라이트박스 길게 누르기 메뉴 */
 .album-viewer-img,
@@ -17261,7 +16864,6 @@ html[data-theme="dark"] .spotlight-body { background: var(--clay-cream); box-sha
 }
 #tab-explore.is-field-empty .empty-actions { margin-top: 18px; }
 .empty-primary { min-width: 176px; height: 46px; padding: 0 22px; border-radius: 16px; }
-html[data-theme="dark"] .empty-kicker { color: #6EE7B7; }
 
 /* ---------------------------------------------- 27-6. 설정 사이드바 아코디언 */
 #profile-drawer .drawer-section.acc {
@@ -17335,11 +16937,6 @@ html[data-theme="dark"] .empty-kicker { color: #6EE7B7; }
 .acc-body .notif-settings-card,
 .acc-body .pwa-card { margin: 0; box-shadow: none; border: 0; background: transparent; padding: 6px 10px 10px; }
 .acc-body .notif-settings-card + .pwa-card { border-top: 1px solid var(--border-soft); padding-top: 12px; }
-
-html[data-theme="dark"] #profile-drawer .drawer-section.acc { background: var(--clay-white); box-shadow: var(--clay-soft), var(--clay-light-soft); }
-html[data-theme="dark"] .acc-head { color: var(--text-strong); }
-html[data-theme="dark"] .acc-head:active { background: var(--bg-subtle); }
-html[data-theme="dark"] .acc-chevron { color: var(--text-muted); }
 .acc-body .menu-item.is-switch .menu-val { margin-left: auto; padding-right: 10px; }
 .acc-body .menu-item.is-switch .switch-toggle { flex: 0 0 auto; }
 .acc-body .menu-item { justify-content: flex-start; }
@@ -17347,7 +16944,6 @@ html[data-theme="dark"] .acc-chevron { color: var(--text-muted); }
 /* 프로필 올리기 줄의 글자도 누를 수 있는 자리임을 알린다(스위치는 그대로) */
 .explore-profile-publish .epp-text { cursor: pointer; }
 .explore-profile-publish .epp-text:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 8px; }
-html[data-theme="dark"] .onboarding-body { background: transparent; box-shadow: none; }
 
 /* ==========================================================================
    28.5. UX·UI 대개편 (Sprint 28.5 · 2026-11-17)
@@ -17383,13 +16979,16 @@ html[data-theme="dark"] .onboarding-body { background: transparent; box-shadow: 
   --r-4: 20px;
   --r-5: 26px;
 
-  /* 글자 — 본문 14px 미만 금지, 보조 12px 미만 금지 */
+  /* 글자 — R2 위계: 화면 제목 24 · 섹션 제목 18 · 본문 15 · 보조 13 (줄 간격 1.45) */
+  --fs-screen: 24px;
+  --fs-section: 18px;
+  --fs-sub: 13px;
   --fs-display: 28px;
   --fs-title: 20px;
-  --fs-subtitle: 16px;
-  --fs-body: 14px;
-  --fs-helper: 12px;
-  --lh-body: 1.5;
+  --fs-subtitle: 18px;
+  --fs-body: 15px;
+  --fs-helper: 13px;
+  --lh-body: 1.45;
   --lh-helper: 1.45;
 
   /* 모션 */
@@ -17408,12 +17007,7 @@ html[data-theme="dark"] .onboarding-body { background: transparent; box-shadow: 
     inset 0 2px 1px rgba(255, 255, 255, 0.9);
   --sh-inset: inset 0 2px 5px rgba(20, 66, 50, 0.16);
 
-  /* 대비용 초록 — 흰 글씨·크림 바탕 모두 4.5:1 이상 */
-  --green-text: #047857;
-  --green-solid: #047857;
-  --green-solid-hover: #04654B;
-  --green-deco: #10B981;       /* 장식·아이콘 배경 전용 */
-  --green-on: #ECFDF5;
+  /* 초록 값은 R1 블록. 링만 여기 남긴다(그림자 성격) */
   --focus-ring: 0 0 0 3px rgba(4, 120, 87, 0.35);
 
   /* 레이아웃 */
@@ -17423,25 +17017,6 @@ html[data-theme="dark"] .onboarding-body { background: transparent; box-shadow: 
   /* 스플래시 자산 — 이미지를 바꾸려면 이 두 줄만 고친다. */
   --splash-art-svg: url('../assets/oog_christmas_night.svg');
   --splash-art-fallback: url('../assets/splash-bg.jpg');
-}
-
-:root[data-theme="dark"] {
-  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --sh-2: 0 6px 16px -10px rgba(0, 0, 0, 0.66);
-  --sh-3:
-    0 18px 30px -20px rgba(0, 0, 0, 0.8),
-    0 8px 14px -10px rgba(0, 0, 0, 0.6),
-    inset 0 2px 1px rgba(203, 236, 224, 0.1);
-  --green-text: #6EE7B7;
-  /* 흰 글씨가 4.5:1 로 읽히는 진한 초록 — 다크에서도 같은 값을 쓴다 */
-  --green-solid: #047857;
-  --green-solid-hover: #036147;
-  --green-deco: #34D399;
-  --green-on: #14312A;
-  --focus-ring: 0 0 0 3px rgba(110, 231, 183, 0.4);
-  /* 다크에서도 크림 계열의 따뜻함을 남긴다 — 순수 검정(#000) 금지 */
-  --bg-app: #121820;
-  --clay-page: #0C1116;
 }
 
 /* ---------------------------------------- 28.5-2. 초록 = 글자는 #047857 */
@@ -17579,7 +17154,6 @@ body { font-size: var(--fs-body); line-height: var(--lh-body); }
 .explore-type-btn,
 .gallery-sort-btn,
 .dm-view-btn,
-.dm-unread-toggle,
 .album-tab,
 .btn-primary,
 .btn-secondary,
@@ -17631,7 +17205,6 @@ body { font-size: var(--fs-body); line-height: var(--lh-body); }
 .home-block,
 .board-block,
 .home-photo-guide,
-.home-week,
 .album-block,
 .profile-block,
 .explore-profile-publish,
@@ -17665,7 +17238,6 @@ body { font-size: var(--fs-body); line-height: var(--lh-body); }
 .ob-btn.primary,
 .fab-write,
 .nav-tab-item.active .tab-icon,
-.unread-badge,
 .notif-dot,
 .popup-avatar,
 .story-ring.is-active {
@@ -18165,20 +17737,6 @@ body:not(.oog-dev) #menu-reset-data { display: none !important; }
 
 .chat-hobby { color: var(--text-muted); }
 
-.unread-badge {
-  flex: 0 0 auto;
-  min-width: 22px;
-  height: 22px;
-  border-radius: var(--r-full);
-  background: var(--green-solid);
-  color: #FFFFFF;
-  font-size: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--sh-1);
-}
 
 .chat-dm-section, .chat-group-section, .chat-request-section {
   border: 0;
@@ -18303,12 +17861,6 @@ body:not(.oog-dev) #menu-reset-data { display: none !important; }
   font-size: var(--fs-helper);
   font-weight: 700;
   border: 1px solid #FDE68A;
-}
-
-:root[data-theme="dark"] .profile-countdown-chip {
-  background: #33280F;
-  color: #FCD34D;
-  border-color: #5A4415;
 }
 
 .explore-publish-banner {
@@ -18576,9 +18128,7 @@ img[loading="lazy"] { content-visibility: auto; }
 .person-age,
 .person-meta,
 .card-dm,
-.chat-count-badge,
 .dm-view-btn,
-.dm-unread-toggle,
 .chat-section-sub,
 .chat-group-name,
 .chat-group-members,
@@ -18708,33 +18258,6 @@ img[loading="lazy"] { content-visibility: auto; }
 .home-week-head { padding-right: var(--sp-1); }
 .home-week-sub { flex: 0 0 auto; }
 
-/* ---------------------------------------- 28.5-18. 입체는 세 곳만 */
-/* 점토 그림자 변수를 1겹으로 낮춘다 — 목록·카드·칩·입력창이 조용해진다. */
-:root,
-:root[data-theme="dark"] {
-  --clay-soft: 0 1px 2px rgba(20, 66, 50, 0.06);
-  --clay-out: 0 2px 6px -3px rgba(20, 66, 50, 0.16);
-  --clay-lift: 0 6px 16px -10px rgba(20, 66, 50, 0.24);
-  --clay-light: inset 0 1px 0 rgba(255, 255, 255, 0.55);
-  --clay-light-soft: inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  --clay-inset: inset 0 1px 2px rgba(20, 66, 50, 0.12);
-  --clay-press: inset 0 2px 4px rgba(20, 66, 50, 0.16);
-  --clay-green-lift: 0 4px 12px -8px rgba(4, 120, 87, 0.4);
-  --clay-green-in: inset 0 1px 1px rgba(255, 255, 255, 0.3);
-}
-
-:root[data-theme="dark"] {
-  --clay-soft: 0 1px 2px rgba(0, 0, 0, 0.45);
-  --clay-out: 0 2px 6px -3px rgba(0, 0, 0, 0.55);
-  --clay-lift: 0 6px 16px -10px rgba(0, 0, 0, 0.65);
-  --clay-light: inset 0 1px 0 rgba(203, 236, 224, 0.08);
-  --clay-light-soft: inset 0 1px 0 rgba(203, 236, 224, 0.06);
-  --clay-inset: inset 0 1px 2px rgba(0, 0, 0, 0.5);
-  --clay-press: inset 0 2px 4px rgba(0, 0, 0, 0.6);
-  --clay-green-lift: 0 4px 12px -8px rgba(0, 0, 0, 0.6);
-  --clay-green-in: inset 0 1px 1px rgba(203, 236, 224, 0.08);
-}
-
 /* 남아 있는 3겹 조합을 1겹으로 */
 .icon-btn,
 .header-avatar,
@@ -18748,7 +18271,6 @@ img[loading="lazy"] { content-visibility: auto; }
 .home-browse-more,
 .gallery-sort-btn,
 .dm-view-btn,
-.dm-unread-toggle,
 .feed-card,
 .comment-submit,
 .home-hero-btn,
@@ -18886,31 +18408,6 @@ img[loading="lazy"] { content-visibility: auto; }
 .drawer-profile #notif-settings-body:not(.notif-expanded) > *:not(#notif-expand-btn) { display: none !important; }
 .drawer-profile .notif-sim-row { display: none !important; }
 
-/* 다크 — 모임 표지·배지가 검게 죽지 않게 초록 톤을 남긴다 */
-:root[data-theme="dark"] .gallery-cover.is-plain,
-:root[data-theme="dark"] .gallery-card .gallery-cover {
-  background: linear-gradient(135deg, #1B3B31 0%, #14312A 100%) !important;
-}
-:root[data-theme="dark"] .gallery-cover-emoji {
-  background: rgba(52, 211, 153, 0.14);
-  color: #6EE7B7;
-  box-shadow: var(--sh-1);
-}
-:root[data-theme="dark"] .gallery-leader {
-  background: rgba(52, 211, 153, 0.2);
-  color: #A7F3D0;
-  border: 1px solid rgba(110, 231, 183, 0.35);
-}
-:root[data-theme="dark"] .gallery-sort-btn {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text-sub);
-}
-:root[data-theme="dark"] .gallery-sort-btn.active {
-  background: #17332B;
-  color: #6EE7B7;
-}
-:root[data-theme="dark"] .gallery-leader { color: #D1FAE5 !important; background: rgba(16, 185, 129, 0.28) !important; }
-
 /* 하단 탭 뱃지 — 아이콘 위가 아니라 오른쪽 위 모서리에 */
 .nav-badge {
   top: 2px;
@@ -18923,14 +18420,6 @@ img[loading="lazy"] { content-visibility: auto; }
   background: #B91C1C;
   border: 2px solid var(--bg-app);
 }
-
-/* 다크 — 모임 단체방 아바타·안 읽음 수가 회색으로 죽지 않게 */
-:root[data-theme="dark"] .chat-group-emoji {
-  background-image: none !important;
-  background-color: #1B3B31 !important;
-  color: #6EE7B7 !important;
-  border: 1px solid rgba(110, 231, 183, 0.28);
-}
 .chat-group-count {
   background: var(--green-solid);
   color: #FFFFFF;
@@ -18942,4 +18431,2093 @@ img[loading="lazy"] { content-visibility: auto; }
   align-items: center;
   justify-content: center;
   border-radius: var(--r-full);
+}
+
+/* ==========================================================================
+   29. 다크 모드 — 다크 규칙은 이 한 곳에만 있다 (R3)
+   --------------------------------------------------------------------------
+   · 선택자는 :root[data-theme="dark"] 하나다. html[...] 접두어(같은 요소인데
+     특이도가 달라 "왜 이겼는지" 안 보이던 원인)와 body.theme-dark 죽은 훅은 없앴다.
+   · 값은 R1 토큰만 쓴다 — --bg-app · --bg-base · --bg-subtle · --bg-soft ·
+     --bg-elevated · --bg-glass · --border* · --text* · --green-* · --cat-*.
+     라이트도 같은 토큰을 쓰므로 한 값을 고치면 두 테마가 함께 움직인다.
+   · 그래서 여기 남은 규칙은 "토큰이 이미 뒤집어 주는 것"이 아니라
+     다크에서만 필요한 보정(그림자·반투명 막·사진 위 글자·상태색)뿐이다.
+   · 같은 선택자의 다크 규칙은 하나뿐이다(겹치는 선택자 0). 캐스케이드는
+     !important → 특이도 → 파일 순서로만 결정된다.
+   · 색·그림자 토큰의 정의처는 맨 위 R1 토큰 블록 두 곳(:root · :root[data-theme="dark"])뿐이다.
+   ========================================================================== */
+
+/* ---------------------------------------- 29-1. 셸 (바탕·헤더·탭바) */
+/* 바탕·유리는 라이트와 같은 토큰이라 규칙이 필요 없다. 다크는 그림자만 보정한다. */
+:root[data-theme="dark"] .app-container {
+  box-shadow: 0 34px 70px -46px rgba(0, 0, 0, 0.9);
+}
+:root[data-theme="dark"] .app-header {
+  border-bottom: 1px solid rgba(203, 236, 224, 0.07);
+  box-shadow: 0 14px 26px -26px rgba(0, 0, 0, 0.9);
+}
+:root[data-theme="dark"] .bottom-nav-bar {
+  border-top: 1px solid rgba(203, 236, 224, 0.08);
+  box-shadow: 0 -16px 32px -26px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(203, 236, 224, 0.06);
+}
+:root[data-theme="dark"] .modal-overlay { background: rgba(2, 6, 9, 0.72); }
+:root[data-theme="dark"] .drawer-scrim { background: rgba(2, 6, 9, 0.62); }
+:root[data-theme="dark"] .sheet-grabber { background: rgba(203, 236, 224, 0.22); }
+
+/* ---------------------------------------- 29-2. 카드 · 판 · 칩 */
+:root[data-theme="dark"] .post-card,
+:root[data-theme="dark"] .group-tile,
+:root[data-theme="dark"] .notif-item,
+:root[data-theme="dark"] .modal-sheet,
+:root[data-theme="dark"] .drawer,
+:root[data-theme="dark"] .gallery-card,
+:root[data-theme="dark"] .home-chat-card,
+:root[data-theme="dark"] .guide-cat-card,
+:root[data-theme="dark"] .group-ops,
+:root[data-theme="dark"] .region-row,
+:root[data-theme="dark"] .settings-menu-list,
+:root[data-theme="dark"] .profile-stats {
+  background: var(--bg-base);
+  color: var(--text);
+}
+:root[data-theme="dark"] .chat-room-item,
+:root[data-theme="dark"] .activity-item,
+:root[data-theme="dark"] .feed-card,
+:root[data-theme="dark"] .chat-group-item {
+  background: var(--bg-base);
+  color: var(--text);
+  border-color: var(--border-soft);
+}
+:root[data-theme="dark"] .member-item,
+:root[data-theme="dark"] .composer-sheet,
+:root[data-theme="dark"] .profile-block,
+:root[data-theme="dark"] .pwa-card,
+:root[data-theme="dark"] .group-tile-body,
+:root[data-theme="dark"] .member-detail,
+:root[data-theme="dark"] .sheet-block,
+:root[data-theme="dark"] .sheet-body,
+:root[data-theme="dark"] .group-detail-body,
+:root[data-theme="dark"] .notice-card,
+:root[data-theme="dark"] .home-event-card {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+:root[data-theme="dark"] .hot-card,
+:root[data-theme="dark"] .board-row,
+:root[data-theme="dark"] .myprofile-head,
+:root[data-theme="dark"] .album-block,
+:root[data-theme="dark"] .myprofile-stat,
+:root[data-theme="dark"] .saved-item,
+:root[data-theme="dark"] .composer-header,
+:root[data-theme="dark"] .sheet-head,
+:root[data-theme="dark"] .chat-header,
+:root[data-theme="dark"] .drawer-head,
+:root[data-theme="dark"] .profile-card,
+:root[data-theme="dark"] .stat-cell,
+:root[data-theme="dark"] .chat-group-item:hover {
+  color: var(--text);
+}
+:root[data-theme="dark"] .menu-item {
+  background: var(--bg-subtle);
+  color: var(--text-sub);
+  border-color: var(--border-soft);
+}
+:root[data-theme="dark"] .notif-settings-card,
+:root[data-theme="dark"] .media-option,
+:root[data-theme="dark"] .schedule-row,
+:root[data-theme="dark"] .drawer-section,
+:root[data-theme="dark"] .input-bar {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+:root[data-theme="dark"] .cover-option {
+  background: var(--bg-soft);
+  color: var(--text);
+}
+:root[data-theme="dark"] .icon-btn,
+:root[data-theme="dark"] .explore-chip,
+:root[data-theme="dark"] .age-chip,
+:root[data-theme="dark"] .radius-chip {
+  background: var(--bg-elevated);
+}
+:root[data-theme="dark"] .region-chip,
+:root[data-theme="dark"] .explore-type-seg {
+  background: var(--bg-subtle);
+  color: var(--text-sub);
+}
+:root[data-theme="dark"] .explore-type-btn {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .explore-region-chip {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+:root[data-theme="dark"] .composer-tag {
+  background: var(--bg-base);
+  color: var(--text-sub);
+  box-shadow: inset 0 1px 0 rgba(203, 236, 224, 0.06);
+}
+
+/* 입력 */
+:root[data-theme="dark"] .explore-search input {
+  background: transparent;
+  color: var(--text-strong);
+}
+:root[data-theme="dark"] .text-input,
+:root[data-theme="dark"] .text-area,
+:root[data-theme="dark"] .ob-input {
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+}
+:root[data-theme="dark"] .chat-input {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+:root[data-theme="dark"] .chat-input-bar {
+  background: var(--bg-soft);
+  color: var(--text);
+}
+:root[data-theme="dark"] .switch-toggle,
+:root[data-theme="dark"] .chat-day span,
+:root[data-theme="dark"] .skeleton-card,
+:root[data-theme="dark"] .skeleton-block,
+:root[data-theme="dark"] .skeleton-line,
+:root[data-theme="dark"] .ob-choice.on,
+:root[data-theme="dark"] .album-slot.is-filled {
+  background: var(--bg-soft);
+}
+:root[data-theme="dark"] .album-slot { background: rgba(203, 236, 224, 0.06); }
+:root[data-theme="dark"] .switch-toggle.on { background: var(--green-hover); }
+
+/* 선택된 칩 — 라이트가 이미 --green-soft 바탕 + --green-dark 글자라
+   다크도 같은 토큰으로 함께 뒤집힌다(여기 남은 것은 라이트가 직접색을 쓴 곳뿐). */
+:root[data-theme="dark"] .composer-tag.active {
+  background: var(--green-dark);
+  color: var(--bg-app);
+  border-color: transparent;
+}
+:root[data-theme="dark"] .explore-region-chip-count {
+  background: rgba(52, 211, 153, 0.16);
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------- 29-3. 글자 */
+:root[data-theme="dark"] .empty-state,
+:root[data-theme="dark"] .ops-label,
+:root[data-theme="dark"] .member-name,
+:root[data-theme="dark"] .ops-toggle-desc {
+  color: var(--text-sub);
+}
+:root[data-theme="dark"] .chat-group-members { color: var(--text-muted); }
+:root[data-theme="dark"] .schedule-row.tone-regular,
+:root[data-theme="dark"] .empty-kicker { color: var(--green-dark); }
+
+/* ---------------------------------------- 29-4. 채팅 · 모임 */
+:root[data-theme="dark"] .chat-room-overlay,
+:root[data-theme="dark"] .chat-messages {
+  background: var(--bg-app);
+}
+:root[data-theme="dark"] .bubble.them,
+:root[data-theme="dark"] .chat-bubble.them {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+:root[data-theme="dark"] .onboarding-body {
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .onboarding-card,
+:root[data-theme="dark"] .ob-card,
+:root[data-theme="dark"] .member-chip,
+:root[data-theme="dark"] .ops-row,
+:root[data-theme="dark"] .ops-toggle-row {
+  color: var(--text);
+}
+:root[data-theme="dark"] .onboarding-panel,
+:root[data-theme="dark"] .album-open { background: transparent; }
+:root[data-theme="dark"] #profile-drawer .drawer-section.acc {
+  box-shadow: var(--clay-soft), var(--clay-light-soft);
+}
+:root[data-theme="dark"] .ob-answer { box-shadow: var(--clay-out), var(--clay-light); }
+
+/* ---------------------------------------- 29-5. 사진·스크림 위의 판과 글자 (테마와 무관하게 어둡다) */
+:root[data-theme="dark"] .spotlight-bubble { background: transparent; color: #F6FCF9; }
+:root[data-theme="dark"] .spotlight-title { color: #FFFFFF; }
+:root[data-theme="dark"] .spotlight-desc { color: rgba(255, 255, 255, 0.87); }
+:root[data-theme="dark"] .spotlight-body {
+  box-shadow: 0 22px 44px -22px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(203, 236, 224, 0.08);
+}
+:root[data-theme="dark"] .onboarding {
+  background-image:
+    radial-gradient(110% 58% at 50% -8%, rgba(52, 211, 153, 0.12) 0%, rgba(52, 211, 153, 0) 62%),
+    radial-gradient(80% 54% at 100% 102%, rgba(16, 185, 129, 0.10) 0%, rgba(16, 185, 129, 0) 60%);
+}
+:root[data-theme="dark"] .hot-strip {
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(16, 185, 129, 0.14) 0%, rgba(16, 185, 129, 0) 62%),
+    var(--bg-base);
+}
+:root[data-theme="dark"] .album-block.is-secret {
+  background: linear-gradient(160deg, rgba(52, 211, 153, 0.16) 0%, var(--bg-elevated) 62%);
+}
+:root[data-theme="dark"] .hot-rank { background: rgba(203, 236, 224, 0.16); color: #EAF6F0; }
+:root[data-theme="dark"] .hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); color: #FFF7E6; }
+:root[data-theme="dark"] .hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #94A3B8 0%, #475569 100%); color: #F1F5F9; }
+:root[data-theme="dark"] .hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #D97706 0%, #92400E 100%); color: #FFF7E6; }
+
+/* ---------------------------------------- 29-6. 상태색 (표면 토큰이 아니라 의미색이라 그대로) */
+:root[data-theme="dark"] .chat-dm-policy.is-off { background: #33240F; color: #FCD9A8; }
+:root[data-theme="dark"] .profile-countdown-chip { background: #33280F; color: #FCD34D; border-color: #5A4415; }
+:root[data-theme="dark"] .oog-splash { background: #070D0A; }
+:root[data-theme="dark"] .oog-splash-title { color: #D9F7EA; }
+
+/* ---------------------------------------- 29-7. 표지는 대분류 색을 그대로 쓴다 */
+/* 다크에서 모든 표지를 한 색(짙은 초록)으로 덮던 !important 규칙(L18890)과
+   표지 전체에 걸던 brightness(.5) 필터는 R3 에서 없앴다.
+   표지 색은 21-2 의 --cat-1~7 하나가 정하고, 다크에서도 대분류마다 다른 색으로 보인다. */
+:root[data-theme="dark"] .gallery-cover-emoji { box-shadow: var(--sh-1); }
+/* ==========================================================================
+   30. R2 — 공통 컴포넌트의 모양
+   --------------------------------------------------------------------------
+   범위: 상단바 · 하단 탭바 · 카드 · 모임 카드 표지 · 일정 카드 · 칩 · 버튼 ·
+         입력창 · 바텀시트 · 안내 배너 · 글자 위계.
+
+   원칙
+     · 색은 맨 위 R1 토큰(--bg-*, --text-*, --border*, --green, --cat-*)만 쓴다.
+       이 블록에는 hex 를 한 자도 쓰지 않는다 → 라이트·다크가 같은 규칙을 함께 쓴다.
+     · 면은 두 단계만: 카드는 --bg-base + 1px --border, 구획·입력·칩은 --bg-subtle.
+     · 점토 3겹 그림자는 마스코트·일러스트에만 남긴다. UI 컴포넌트는 테두리로 구분한다.
+     · 반경 카드·배너 16 · 버튼·입력 14 · 칩 999(알약). 카드 안쪽 여백 16.
+   ========================================================================== */
+
+/* ---------------------------------------- 30-1. 글자 위계 */
+/* 화면 제목 24/700 · 섹션 제목 18/700 · 본문 15/500 · 보조 13/400 · 줄 간격 1.45 */
+body {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  line-height: var(--lh-body);
+}
+
+.gallery-title,
+.explore-title,
+.chat-title,
+.profile-topbar-title {
+  font-size: var(--fs-screen);
+  font-weight: var(--fw-display);
+  line-height: 1.3;
+  letter-spacing: -0.5px;
+  color: var(--text-strong);
+}
+
+.section-title,
+.home-week-title,
+.home-discover-title,
+.home-recommend-title,
+.home-browse-title,
+.home-block-title,
+.board-block-title,
+.chat-section-title,
+.profile-block-title,
+.album-title,
+.filter-group-title,
+.hot-title,
+.sheet-section-title {
+  font-size: var(--fs-section);
+  font-weight: var(--fw-title);
+  line-height: 1.35;
+  letter-spacing: -0.3px;
+  color: var(--text-strong);
+}
+
+/* 보조 글자는 13px/400 — 값(오른쪽 정렬)만 500 으로 남긴다 */
+.gallery-sub,
+.gallery-meta,
+.gallery-next,
+.home-week-sub,
+.home-recommend-sub,
+.home-browse-sub,
+.explore-count,
+.sheet-meta,
+.post-meta,
+.post-time,
+.board-row-meta,
+.chat-time,
+.chat-hobby,
+.empty-desc,
+.home-photo-guide-text span {
+  font-size: var(--fs-sub);
+  font-weight: 400;
+  color: var(--text-sub);
+}
+
+/* ---------------------------------------- 30-2. 상단바 · 하단 탭바 */
+.app-header {
+  background: var(--bg-glass);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.app-header.scrolled {
+  box-shadow: none;
+  border-bottom-color: var(--border);
+}
+
+.bottom-nav-bar {
+  background: var(--bg-glass);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  border-top: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.icon-btn {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--text-sub);
+}
+
+.icon-btn:hover { background: var(--bg-subtle); color: var(--text-strong); }
+
+/* 탭 활성 = 아이콘 채움 + 글자색만. 알약 배경·점토 그림자는 두지 않는다. */
+.nav-tab-item .tab-icon {
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-tab-item.active .tab-icon {
+  background: transparent;
+  box-shadow: none;
+  color: var(--green);
+}
+
+/* R4 — 탭 활성은 **채움형 아이콘**으로 맞바꾼다(선 아이콘을 CSS 로 통째로 채우면
+   세부 선까지 뭉개진다). index.html 이 .tab-ic-line / .tab-ic-fill 두 벌을 들고 있고
+   여기서 하나만 보인다. */
+.tab-icon .tab-ic-line { display: inline-flex; }
+.tab-icon .tab-ic-fill { display: none; }
+.nav-tab-item.active .tab-icon .tab-ic-line { display: none; }
+.nav-tab-item.active .tab-icon .tab-ic-fill { display: inline-flex; }
+
+.nav-tab-item.active .tab-label {
+  color: var(--green);
+  font-weight: var(--fw-title);
+}
+
+.nav-tab-item .tab-label { font-size: var(--fs-helper); }
+
+.nav-badge {
+  border: 1.5px solid var(--bg-app);
+  box-shadow: none;
+}
+
+/* ---------------------------------------- 30-3. 점토 3겹 그림자는 UI 에서 걷는다 */
+.icon-btn,
+.header-avatar,
+.gallery-cover-emoji,
+.group-tile-emoji,
+.gallery-ring,
+.group-tile-pill,
+.group-tile-join,
+.group-age-badge,
+.home-browse-chip,
+.home-browse-sort,
+.home-browse-more,
+.gallery-sort-btn,
+.gallery-find,
+.dm-view-btn,
+.home-view-btn,
+.home-switch-chip,
+.comment-submit,
+.home-hero-btn,
+.album-slot,
+.member-row,
+.chat-room-item,
+.chat-group-item,
+.spec-chip,
+.profile-recent-item,
+.notif-item,
+.drawer-section,
+.sheet-body,
+.toast,
+.story-ring,
+.story-add .story-ring,
+.modal-sheet,
+.filter-sheet,
+.composer-sheet,
+.push-banner,
+.push-permission-banner,
+.home-photo-guide,
+.btn-primary,
+.btn-primary-action,
+.btn-secondary,
+.btn-join-group,
+.apply-btn,
+.pwa-install-btn,
+.ppb-cta,
+.ob-btn,
+.chat-send,
+.fab-write,
+.notif-dot,
+.count-badge,
+.nav-badge,
+.group-tile-crown,
+.quick-like,
+.card-dm,
+.sheet-close-btn,
+.modal-close,
+.drawer-close,
+#btn-filter-reset {
+  box-shadow: none;
+}
+
+/* ---------------------------------------- 30-4. 카드 */
+/* 흰색(다크는 카드색) + 1px 테두리 + 그림자 없음 · 모서리 16 · 안쪽 여백 16 */
+.gallery-card,
+.recommend-card,
+.group-tile,
+.group-card,
+.masonry-card,
+.hot-strip,
+.hot-card,
+.home-block,
+.board-block,
+.profile-block,
+.album-block,
+.chat-request-card,
+.explore-profile-publish,
+.person-card,
+.event-card,
+.apply-card,
+.joined-item,
+.pwa-card,
+.drawer-section,
+.myprofile-head,
+.home-photo-guide,
+.push-permission-banner,
+.push-banner,
+.skeleton-card,
+.notif-cat-item,
+.empty-state {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: none;
+}
+
+.gallery-card,
+.recommend-card,
+.group-tile,
+.group-card,
+.masonry-card,
+.hot-strip,
+.home-block,
+.board-block,
+.profile-block,
+.album-block,
+.person-card,
+.event-card,
+.apply-card,
+.joined-item,
+.pwa-card,
+.myprofile-head,
+.home-photo-guide,
+.push-permission-banner,
+.push-banner {
+  border-radius: var(--r-card);
+}
+
+.home-block,
+.board-block,
+.profile-block,
+.album-block,
+.group-card,
+.joined-item,
+.apply-card,
+.person-card,
+.event-card,
+.hot-strip,
+.push-permission-banner,
+.push-banner,
+.home-photo-guide {
+  padding: var(--sp-4);
+}
+
+.gallery-body,
+.group-tile-body,
+.recommend-body {
+  padding: var(--sp-4);
+}
+
+/* 내 프로필의 숫자 칸도 카드 규칙(테두리 + 카드색, 그림자 없음) */
+.myprofile-stat {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: none;
+}
+
+.myprofile-stat strong { font-size: var(--fs-section); font-weight: var(--fw-title); }
+.myprofile-stat span { font-size: var(--fs-helper); font-weight: 400; color: var(--text-sub); }
+
+/* 관리자 모드 띠도 카드 + 텍스트 버튼 */
+.admin-mode-bar {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: var(--sp-2) var(--sp-3);
+  padding-right: 46px;
+  box-shadow: none;
+}
+
+.admin-mode-badge { font-size: var(--fs-sub); font-weight: 600; color: var(--text-sub); }
+
+.admin-pending-count {
+  background: var(--green);
+  color: var(--bg-app);
+  font-size: var(--fs-helper);
+  font-weight: var(--fw-title);
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+}
+
+/* 모임 상세 '일정' 행 — 정기 일정도 같은 회색 면 + 왼쪽 카테고리 막대 */
+.schedule-row {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  position: relative;
+  overflow: hidden;
+  padding-left: var(--sp-3);
+}
+
+.schedule-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--tone-ink, var(--cat-neutral));
+}
+
+.schedule-row.tone-regular {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+}
+
+.schedule-row.tone-regular::before { background: var(--green); }
+
+.schedule-label { font-size: var(--fs-helper); color: var(--text-sub); }
+.schedule-value { font-size: var(--fs-sub); font-weight: var(--fw-title); }
+
+/* 역할 배지(모임장·부방장)도 색면 대신 테두리 배지로 */
+.badge-role,
+.badge-role.leader,
+.badge-role.deputy {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  color: var(--text-sub);
+  box-shadow: none;
+}
+
+/* 디엠 요청함의 한 줄 설명 */
+.chat-request-note {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-sub);
+  font-weight: 400;
+  line-height: var(--lh-body);
+  color: var(--text-sub);
+}
+
+/* 설정·메뉴의 행은 카드 안의 행 — 테두리 없이 구분선만 */
+.drawer-section .menu-item,
+.drawer-profile .settings-menu-list .menu-item {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--border-soft);
+  border-radius: 0;
+  box-shadow: none;
+  min-height: 48px;
+}
+
+.drawer-section .menu-item:first-child { border-top: 0; }
+
+/* 카드 안의 카드(행 목록)는 테두리 없이 구획만 */
+.gallery-card .gallery-card-inner,
+.post-card,
+.board-row,
+.chat-room-item,
+.chat-group-item,
+.menu-item,
+.member-row,
+.notif-item {
+  box-shadow: none;
+}
+
+/* ---------------------------------------- 30-5. 모임 카드 표지 */
+/* 표지 = 대분류 색면(--cat-N-soft) + 그 색의 문양(--cat-N). 사진이 있으면 사진. */
+.gallery-cover,
+.group-tile-cover,
+.recommend-cover {
+  box-shadow: none;
+}
+
+.gallery-card .gallery-cover,
+.gallery-card .gallery-card-cover,
+.gallery-cover {
+  aspect-ratio: 20 / 9;
+}
+
+.group-tile.ratio-wide .group-tile-cover { aspect-ratio: 5 / 2; }
+.group-tile.ratio-square .group-tile-cover { aspect-ratio: 5 / 3; }
+.recommend-cover { height: 56px; }
+
+/* hidden 속성은 항상 이긴다 — 안내 배너를 '숨김'으로 두면 실제로 사라지게 */
+.home-photo-guide[hidden],
+.push-permission-banner[hidden] { display: none; }
+
+/* 표지 위 흰 타일을 없애고, 대분류 색 문양을 크게 */
+.gallery-cover-emoji,
+.gallery-cover.is-plain .gallery-cover-emoji,
+.group-tile-emoji,
+.recommend-clay {
+  background: transparent;
+  box-shadow: none;
+  color: var(--tone-ink, var(--cat-neutral));
+  opacity: 1;
+}
+
+.gallery-cover-emoji { width: 48px; height: 48px; border-radius: var(--r-2); }
+.gallery-cover-emoji .oo-ic { width: 30px; height: 30px; }
+.group-tile-emoji .oo-ic { width: 32px; height: 32px; }
+
+.gallery-cover.is-plain {
+  box-shadow: none;
+}
+
+/* 사진이 없는 표지의 색은 21-2 의 --tone-from 그대로 — 취미마다 다른 색. */
+
+.gallery-name,
+.recommend-name,
+.group-tile-name {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-title);
+  line-height: 1.35;
+  letter-spacing: -0.3px;
+  color: var(--text-strong);
+}
+
+.gallery-meta,
+.group-tile-member {
+  font-size: var(--fs-sub);
+  font-weight: 400;
+  color: var(--text-sub);
+}
+
+.gallery-next {
+  font-size: var(--fs-sub);
+  font-weight: 500;
+  color: var(--green-text);
+}
+
+.gallery-leader,
+.gallery-story-badge,
+.group-tile-badge,
+.group-tile-pill {
+  font-size: var(--fs-helper);
+  border-radius: var(--r-full);
+  border: 0;
+  box-shadow: none;
+}
+
+/* 표지 위 역할 배지 — 표지 색 위에서도 읽히도록 카드색 판 */
+.gallery-leader {
+  background: var(--bg-glass);
+  color: var(--text-sub);
+  font-weight: var(--fw-strong);
+}
+
+/* ---------------------------------------- 30-6. 일정 카드 */
+.home-week-rail {
+  scrollbar-width: none;
+}
+
+.home-week-rail::-webkit-scrollbar { display: none; }
+
+.home-week-card {
+  flex: 0 0 184px;
+  gap: 3px;
+  padding: var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+  border-radius: var(--r-card);
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  box-shadow: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 왼쪽 카테고리 세로 막대 — 카드의 .tone-* 이 --tone-ink 를 정한다 */
+.home-week-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--tone-ink, var(--cat-neutral));
+}
+
+.home-week-card .hw-day {
+  font-size: var(--fs-section);
+  font-weight: var(--fw-title);
+  letter-spacing: -0.4px;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.home-week-card .hw-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-title);
+  color: var(--text-strong);
+  line-height: 1.35;
+}
+
+.home-week-card .hw-group {
+  font-size: var(--fs-sub);
+  font-weight: 400;
+  color: var(--text-sub);
+}
+
+/* 일정 영역 자체에는 상자를 두지 않는다(사각형 외곽선 버그의 재발 방지) */
+.home-week {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+/* ---------------------------------------- 30-7. 칩 */
+/* 선택됨 = --green 면 + 흰 글씨 / 선택 안 됨 = --bg-subtle + --text-sub, 테두리 1px */
+.cat-pill,
+.feed-chip,
+.explore-chip,
+.filter-chip,
+.board-chip,
+.radius-chip,
+.age-chip,
+.activity-view-chip,
+.home-browse-chip,
+.gallery-sort-btn,
+.dm-view-btn,
+.home-view-btn,
+.explore-type-btn,
+.drawer-chip,
+.tag-pick,
+.ob-hobby,
+.member-chip,
+.spec-chip,
+.explore-region-chip,
+.explore-sub-chip,
+.composer-group-chip,
+.post-detail-group-chip,
+.group-tag-pill,
+.group-category-tag,
+.home-tag,
+.home-switch-chip,
+.notif-filter,
+.explore-nearby-chip,
+.explore-filter-btn,
+.group-top-tab {
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-sub);
+  box-shadow: none;
+}
+
+.cat-pill.active,
+.feed-chip.active,
+.explore-chip.active,
+.explore-chip.type.active,
+.filter-chip.active,
+.board-chip.active,
+.radius-chip.active,
+.age-chip.active,
+.age-chip.tone-all.active,
+.age-chip.tone-none.active,
+.age-chip.tone-20s.active,
+.age-chip.tone-2030.active,
+.age-chip.tone-30plus.active,
+.age-chip.tone-me.active,
+.activity-view-chip.active,
+.home-browse-chip.active,
+.gallery-sort-btn.active,
+.dm-view-btn.active,
+.home-view-btn.active,
+.explore-type-btn.active,
+.drawer-chip.active,
+.tag-pick.active,
+.ob-hobby.active,
+.explore-region-chip.active,
+.explore-sub-chip.active,
+.composer-group-chip.active,
+.home-switch-chip.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--bg-app);
+  box-shadow: none;
+}
+
+/* 선택된 칩 안의 숫자 배지도 흰 글씨 위에 얹는다 */
+.feed-chip.active .chip-count,
+.chip.active .chip-count,
+.explore-chip.active .chip-count {
+  background: transparent;
+  color: var(--bg-app);
+}
+
+.group-top-tab.active {
+  background: transparent;
+  border-color: transparent;
+}
+
+.chip-emoji,
+.cat-emoji { font-size: var(--fs-sub); }
+
+/* 세그먼트(모임별·최근순 등)는 트랙 하나 + 선택된 칸만 초록 */
+.dm-view-seg,
+.home-view-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: var(--bg-subtle);
+  box-shadow: none;
+}
+
+.dm-view-seg button,
+.home-view-seg button {
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-sub);
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-strong);
+}
+
+.dm-view-seg button.active,
+.home-view-seg button.active {
+  background: var(--green);
+  color: var(--bg-app);
+  box-shadow: none;
+}
+
+/* 검색창은 바깥 상자 하나만 — 안쪽 input 은 투명하게 둔다(상자 안의 상자 금지)
+   · 30-9 의 input[type=…] 규칙보다 이겨야 해서 [type] 을 붙여 특이도를 올린다. */
+.explore-search input[type],
+.home-browse-search input[type],
+.search-box input[type],
+.chat-input input[type],
+.comment-input input[type] {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.explore-search input[type]:focus,
+.home-browse-search input[type]:focus,
+.search-box input[type]:focus,
+.chat-input input[type]:focus,
+.comment-input input[type]:focus {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+/* ---------------------------------------- 30-8. 버튼 */
+/* 주요 버튼 = --green + 흰 글씨, 높이 48 · 모서리 14 */
+.btn-primary,
+.btn-primary-action,
+.btn-secondary.btn-solid,
+.apply-btn,
+.pwa-install-btn,
+.home-browse-new,
+.filter-apply,
+#btn-filter-apply,
+.group-topbar-act.is-primary,
+.ob-btn.primary,
+.chat-send,
+.comment-submit,
+.btn-publish,
+.sheet-btn.primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  height: 48px;
+  padding: 0 var(--sp-5);
+  border: 1px solid var(--green);
+  border-radius: var(--r-control);
+  background: var(--green);
+  background-image: none;
+  color: var(--bg-app);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-title);
+  box-shadow: none;
+}
+
+.btn-primary:hover,
+.btn-primary-action:hover,
+.apply-btn:hover,
+.pwa-install-btn:hover,
+.home-browse-new:hover,
+.filter-apply:hover,
+#btn-filter-apply:hover {
+  background: var(--green-hover);
+  border-color: var(--green-hover);
+  filter: none;
+}
+
+/* 쪽지 요청의 수락·거절 — 한 줄에 서는 작은 버튼 */
+.chat-request-actions button {
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-2);
+  background: var(--bg-base);
+  color: var(--text-strong);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-title);
+  box-shadow: none;
+}
+
+.chat-request-actions button.accept {
+  padding: 0 var(--sp-4);
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--bg-app);
+}
+
+/* 보조 버튼 = 테두리만 */
+.btn-secondary,
+.btn-join-group,
+.detail-btn,
+.sheet-btn,
+.gallery-find,
+.photo-upload-btn,
+.explore-action-btn,
+.home-browse-more,
+.home-browse-sort,
+.home-hero-btn,
+.home-view-btn,
+.home-switch-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-control);
+  background: var(--bg-base);
+  background-image: none;
+  color: var(--text-strong);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
+  box-shadow: none;
+}
+
+.btn-join-group.joined {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-sub);
+  box-shadow: none;
+}
+
+.btn-primary-action.leave {
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  color: var(--text-sub);
+  box-shadow: none;
+}
+
+/* 텍스트 버튼 — 면·테두리 없이 글자와 터치 영역만 */
+.text-btn,
+.ppb-cta,
+.home-photo-guide-cta,
+.hot-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--green-text);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-title);
+  box-shadow: none;
+}
+
+.text-btn:hover,
+.ppb-cta:hover,
+.hot-more:hover {
+  background: var(--bg-subtle);
+  color: var(--green-text);
+}
+
+/* ---------------------------------------- 30-9. 입력창 */
+/* 구획색 바탕 + 1px 테두리 · 모서리 14, 포커스는 테두리 색만 */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select,
+.ob-input,
+.explore-search,
+.home-browse-search,
+.text-input,
+.chat-input,
+.search-box,
+.comment-input,
+.tag-add-input,
+.field-input,
+.composer-textarea,
+.notif-time-input,
+.policy-question-input,
+.notice-pin-input,
+.text-area {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  box-shadow: none;
+  color: var(--text);
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus,
+.ob-input:focus,
+.explore-search:focus-within,
+.home-browse-search:focus-within,
+.text-input:focus,
+.chat-input:focus,
+.comment-input:focus,
+.tag-add-input:focus,
+.field-input:focus {
+  border-color: var(--green);
+  box-shadow: none;
+  background: var(--bg-base);
+}
+
+/* ---------------------------------------- 30-10. 바텀시트 · 모달 */
+.modal-sheet {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--r-4) var(--r-4) 0 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-6);
+  box-shadow: var(--sh-2);
+}
+
+.filter-sheet,
+.composer-sheet {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--r-4) var(--r-4) 0 0;
+  box-shadow: var(--sh-2);
+}
+
+.sheet-grabber {
+  background: var(--border-strong);
+}
+
+.sheet-title {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-title);
+  line-height: 1.3;
+  letter-spacing: -0.4px;
+  color: var(--text-strong);
+}
+
+.drawer {
+  background: var(--bg-base);
+  border-left: 1px solid var(--border);
+}
+
+/* ---------------------------------------- 30-11. 안내 배너 */
+/* 연초록 면 대신 카드 + 작은 아이콘 + 한 줄 + 텍스트 버튼 */
+.push-permission-banner {
+  align-items: center;
+  gap: var(--sp-3);
+  margin: var(--sp-2) var(--sp-3) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-card);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
+.ppb-icon {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-sub);
+  display: grid;
+  place-items: center;
+}
+
+.ppb-icon .oo-ic { width: 20px; height: 20px; }
+
+.ppb-text { gap: 0; }
+
+.ppb-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
+  color: var(--text-strong);
+}
+
+.ppb-desc { display: none; }
+
+.ppb-close {
+  width: 32px;
+  height: 32px;
+  color: var(--text-muted);
+  font-size: 18px;
+}
+
+.home-photo-guide {
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-card);
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.home-photo-guide-face {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-sub);
+}
+
+.home-photo-guide-face .oo-ic { width: 20px; height: 20px; }
+
+.home-photo-guide-text strong {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
+  color: var(--text-strong);
+}
+
+.push-banner {
+  border-left: 3px solid var(--green);
+  border-radius: var(--r-card);
+  padding: var(--sp-3);
+}
+
+.push-banner-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-sub);
+}
+
+.push-banner-title { font-size: var(--fs-body); font-weight: var(--fw-strong); }
+.push-banner-body { font-size: var(--fs-sub); font-weight: 400; color: var(--text-sub); }
+.push-banner-meta { font-size: var(--fs-helper); color: var(--text-muted); }
+
+/* 다크 전용 칩 규칙(29-x)보다 이 블록이 이기도록 같은 특이도로 한 번 더 적는다 */
+:root[data-theme="dark"] .explore-chip,
+:root[data-theme="dark"] .age-chip,
+:root[data-theme="dark"] .radius-chip,
+:root[data-theme="dark"] .explore-type-btn,
+:root[data-theme="dark"] .explore-region-chip,
+:root[data-theme="dark"] .member-chip {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-sub);
+}
+
+:root[data-theme="dark"] .explore-chip.active,
+:root[data-theme="dark"] .age-chip.active,
+:root[data-theme="dark"] .radius-chip.active,
+:root[data-theme="dark"] .explore-type-btn.active,
+:root[data-theme="dark"] .explore-region-chip.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--bg-app);
+}
+
+/* 시트 안에서 더 특이한 선택자(.region-sheet …)로 칠하던 선택 상태도 같은 규칙으로 */
+.region-sheet .explore-region-chip.active,
+.filter-sheet .explore-region-chip.active,
+.filter-sheet .explore-type-btn.active,
+.filter-bear-chip.active {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--bg-app);
+}
+
+/* 다크: 카드와 바탕이 붙어 보이지 않게 테두리로만 구분한다 (그림자 대신) */
+:root[data-theme="dark"] .app-header,
+:root[data-theme="dark"] .bottom-nav-bar {
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .icon-btn {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .nav-tab-item.active .tab-icon {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* '새 모임 만들기' 빈 카드도 같은 카드 규칙(점선 테두리 + 카드색) */
+.gallery-new {
+  background: var(--bg-base);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-card);
+  box-shadow: none;
+  color: var(--text-sub);
+}
+
+.gallery-new:hover {
+  border-color: var(--green);
+  background: var(--bg-base);
+}
+
+.gallery-new-title { font-size: var(--fs-body); font-weight: var(--fw-title); color: var(--text-strong); }
+.gallery-new-desc { font-size: var(--fs-sub); font-weight: 400; color: var(--text-sub); }
+.gallery-new-plus { background: var(--bg-subtle); color: var(--text-sub); box-shadow: none; }
+
+/* ==========================================================================
+   31. R3 — 화면별 점검 · 일관성 마감
+   --------------------------------------------------------------------------
+   범위: 가입(온보딩) · 홈 · 탐색 · 디엠 · 내 프로필 · 설정(사이드바) ·
+         모임 안(피드·채팅·일정) · 사람 상세 · MATCH 팝업 · 스플래시 ·
+         빈 상태·오류 상태·스켈레톤.
+
+   원칙
+     · 초록은 앱에서 **세 자리**에만 쓴다.
+         ① 주 행동 버튼(면)  ② 선택된 컨트롤(면)  ③ 브랜드 워드마크
+       상태값·보조 문구·개수 뱃지·아바타·장식 아이콘은 중립색으로 돌린다.
+     · 면은 밝기 다섯 단계(앱 < 카드 < 입력·구획 < 시트 < hover).
+       정의는 맨 위 R1 토큰 블록 한 곳 — 이 블록은 그 토큰만 참조한다.
+     · 한 화면의 강한 색 면은 2개까지. 나머지는 중립색.
+     · 색은 토큰만 쓴다 → 라이트·다크가 같은 규칙을 함께 쓴다.
+       hex 는 **순위 메달(금·은·동)과 그 위 흰 글자**뿐이다 — 두 테마에서 같은 의미색이라
+       토큰이 뒤집히면 오히려 틀어진다. 그 밖에는 rgba(그림자·스크림)만.
+   ========================================================================== */
+
+/* ---------------------------------------- 31-1. 초록 글자 → 중립 */
+/* 28.5-2 는 보조 문구·개수·상태값을 모두 초록으로 칠했다. R2 이후 초록은
+   '행동·선택·브랜드'의 색이므로, 정보를 읽는 글자는 중립 회색으로 되돌린다.
+   (브랜드 워드마크 .brand-logo 는 그대로 초록) */
+.gallery-sub,
+.home-week-sub,
+.explore-count,
+.post-style,
+.home-block-more,
+.text-btn,
+.board-block-more,
+.home-recommend-more-title,
+.filter-current,
+.dm-scope-name,
+.section-count,
+.gallery-title + .gallery-sub,
+.acc-meta,
+.gallery-next,
+.chat-group-next,
+.home-event-next,
+.event-card .event-next {
+  color: var(--text-sub);
+}
+
+/* 값(오른쪽 정렬)은 회색보다 한 단계 진하게 — 읽는 정보라 대비를 남긴다 */
+.menu-val,
+.menu-item.is-switch.on .menu-val {
+  color: var(--text);
+}
+
+/* 섹션 제목 옆 개수 뱃지 = 면 + 중립 글자(초록 알약 아님) */
+.section-count,
+.board-block-title .section-count,
+.home-block-title .section-count {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  font-weight: var(--fw-label);
+}
+
+/* ---------------------------------------- 31-2. 탭·세그먼트 = 면 + 굵은 글자 */
+/* 하단 탭 활성은 '아이콘 채움 + 진한 글자'로 남기고 색만 중립으로.
+   초록은 화면 안의 행동·선택에만 쓰이게 한다. */
+.nav-tab-item.active,
+.nav-tab-item.active .tab-label,
+.nav-tab-item.active .tab-icon {
+  color: var(--text-strong);
+}
+
+/* 모임 안 상단 탭 — 비활성이 면을 갖고 활성이 비어 있던(뒤집힌) 상태를 바로잡는다 */
+.group-top-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+}
+.group-top-tab:hover { color: var(--text-sub); }
+.group-top-tab.active {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-strong);
+  font-weight: var(--fw-title);
+}
+.group-top-tab.active::after { background: var(--text-strong); }
+
+/* ---------------------------------------- 31-3. 뱃지·카운트 = 중립 */
+/* 읽지 않은 개수는 '있음/없음'만 알리면 된다 — 초록 알약을 회색 칩으로. */
+.chat-group-count,
+.nav-badge {
+  background: var(--text-strong);
+  color: var(--bg-app);
+}
+.nav-badge.dot { background: var(--red); }
+.member-role-badge.me {
+  background: var(--bg-subtle);
+  color: var(--text-sub);
+}
+
+/* ---------------------------------------- 31-4. 아바타 = 사진 없으면 중립 */
+/* 사진 없는 사용자의 큰 초록 사각형(R2 가 남긴 항목). 사람마다 다른 색은
+   그 사람의 표지·카드가 하고, 아바타는 '사진 없음' 자리로 조용히 둔다. */
+.profile-avatar-large,
+.myprofile-avatar {
+  background: var(--bg-subtle);
+  color: var(--text-sub);
+  box-shadow: none;
+  outline: 1px solid var(--border);
+}
+.profile-avatar-large .avatar-letter,
+.myprofile-avatar .avatar-letter { color: var(--text-sub); }
+/* 헤더·설정 머리의 내 아바타도 같은 중립 면(paintMyAvatars · renderProfileDrawer 가 칠한다) */
+.header-avatar,
+#profile-drawer-avatar {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+/* 내정보 큰 아바타 — flex-basis 58px 이 width 96px 을 눌러 세로로 길쭉해지던 것 */
+.myprofile-avatar {
+  flex: 0 0 96px;
+  width: 96px;
+  height: 96px;
+}
+/* 접속 표시는 상태색(작은 점) — 이 한 점만 초록으로 남긴다 */
+.profile-avatar-large .online-indicator { background: var(--green); }
+
+.chat-request-avatar,
+.chat-msg-avatar,
+.member-row-avatar,
+.drawer-member-avatar,
+.event-avatar,
+.event-person-avatar,
+.notice-reader-avatar,
+.member-avatar { border: 1px solid var(--border); }
+
+/* ---------------------------------------- 31-5. 면·그림자 = 초록기 걷기 */
+/* 초록기가 섞인 그림자(크림·민트 시절 rgba(20,66,50,…))를 중립 검정으로. */
+.modal-sheet,
+.filter-sheet,
+.post-detail-sheet,
+.group-detail-sheet {
+  box-shadow: 0 -10px 34px -18px rgba(0, 0, 0, 0.28), 0 -1px 0 var(--border);
+}
+.app-container {
+  box-shadow: 0 0 0 1px var(--border), 0 24px 60px -24px rgba(15, 23, 42, 0.24);
+}
+.switch-knob,
+.switch-toggle .knob,
+.toggle-knob {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+/* 입력창 — 테두리는 중립, 초점은 면과 링으로만 */
+.chat-input {
+  border-color: var(--border);
+  background: var(--bg-subtle);
+}
+.chat-input:focus {
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 3px var(--bg-soft);
+}
+.chat-input-bar { background: var(--bg-base); }
+
+/* 나이 슬라이더 — 옅은 사각 판·초록기 그림자를 걷고 6px 트랙만 남긴다 */
+.age-range { background: var(--bg-subtle); border-color: var(--border); }
+.age-range-track { box-shadow: none; }
+.age-range-track::before { background: var(--border-strong); top: 12px; height: 6px; border-radius: 999px; }
+.age-range-fill { top: 12px; height: 6px; border-radius: 999px; }
+.age-range-input {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+.age-range-input::-webkit-slider-runnable-track {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+.age-range-input::-moz-range-track {
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+}
+.age-range-input::-webkit-slider-thumb {
+  background: var(--bg-base);
+  border: 2px solid var(--text-sub);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.age-range-input::-moz-range-thumb {
+  background: var(--bg-base);
+  border: 2px solid var(--text-sub);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.age-range-input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--text-strong); outline-offset: 2px; }
+
+/* ---------------------------------------- 31-6. 화면별 초록 면 정리 */
+/* 홈 — 모임 카드의 '다음 일정'은 정보라 중립 */
+.gallery-next { color: var(--text-sub); }
+
+/* 탐색 — 실베 블록의 초록 그라디언트를 걷는다(카드 한 장에 색 면 두 개 금지) */
+.hot-strip {
+  background: var(--bg-base);
+  box-shadow: none;
+}
+:root[data-theme="dark"] .hot-strip { background: var(--bg-base); }
+/* 열기 막대는 '양'을 보여 주는 데이터 — 초록 대신 중립 막대 */
+.hot-heat { background: var(--border); }
+.hot-heat-bar { background: var(--text-muted); }
+.hot-card-hobby { color: var(--text-sub); }
+
+/* 디엠 — 요청 카드의 수락 버튼이 이 화면의 유일한 초록 면 */
+.chat-request-card { background: var(--bg-base); border-color: var(--border); }
+
+/* 모임 안 — 표지 워터마크가 어두운 바탕에서 묻히지 않게 한 단계 올린다 */
+:root[data-theme="dark"] .home-hero-emoji { opacity: 0.3; }
+
+/* 일정 — 참석한 카드의 초록 테두리는 중립 테두리로(선택 표시는 참석 버튼이 한다) */
+.event-card.is-joined {
+  border-color: var(--border-strong);
+  background: var(--bg-base);
+}
+.rsvp-btn.active.rs-yes { box-shadow: none; }
+
+/* 단체 채팅 — '모임 정보'는 보조 동작이라 테두리 칩으로 */
+.chat-profile-btn {
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+.chat-profile-btn:hover { background: var(--bg-subtle); }
+
+/* 글쓰기 — 모임 선택의 '선택됨'은 큰 초록 면 대신 테두리 + 체크 */
+.composer-group-chip { background: var(--bg-soft); border-color: var(--border); }
+.composer-group-chip.active {
+  background: var(--bg-subtle);
+  border-color: var(--green);
+  box-shadow: none;
+}
+.composer-group-chip.active .chip-text strong { color: var(--text-strong); }
+.composer-group-chip.active .chip-text span { color: var(--text-sub); }
+.chip-check {
+  background: var(--green);
+  color: var(--bg-app);
+  width: 16px;
+  height: 16px;
+}
+.chip-thumb { background: var(--bg-soft); }
+
+/* 공지 — 고정 공지의 초록 면을 구획 면으로 */
+.board-notice.is-pinned {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+}
+.board-notice { background: var(--bg-subtle); border-color: var(--border); }
+
+/* 내정보 — 탭 활성은 '올라온 면 + 진한 글자', 개수는 회색 칩 */
+.album-tab.active {
+  background: var(--bg-base);
+  color: var(--text-strong);
+  font-weight: var(--fw-title);
+}
+.album-count {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+}
+
+/* 사람 상세 — 스펙·공통 취미 칩은 중립 테두리(주 행동 '대화 시작하기'만 초록) */
+.spec-chip,
+.chain-chip,
+.explore-action-btn {
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+.spec-chip:hover,
+.chain-chip:hover { border-color: var(--text-muted); }
+
+/* 설정 — 묶음 헤더의 초록 요약값은 중립 */
+.acc-meta { color: var(--text-sub); }
+.drawer-chip.active {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+  color: var(--text-strong);
+}
+
+/* ---------------------------------------- 31-7. 가입(온보딩) — 흰 첫 화면 */
+/* 초록 안개를 걷어 라이트는 #FFFFFF, 다크는 앱 바탕에서 시작한다.
+   스플래시가 이 화면으로 넘어올 때 색이 이어지도록 하는 값이기도 하다. */
+.onboarding {
+  background-color: var(--bg-app);
+  background-image: none;
+}
+:root[data-theme="dark"] .onboarding { background-image: none; }
+.onboarding-logo {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+  color: var(--green-text);
+}
+.onboarding-logo,
+.ob-step-label,
+.ob-kicker-label { letter-spacing: -0.4px; }
+/* 진행 막대 = 이 화면의 유일한 초록 면 */
+.ob-progress-fill { background: var(--green); }
+.ob-progress-track { background: var(--bg-soft); }
+
+/* ---------------------------------------- 31-8. 스플래시 → 첫 화면 페이드 */
+/* 어두운 일러스트에서 흰 화면으로 '툭' 끊기지 않게, 스플래시가 걷히는
+   동안 앱 바탕색 막을 함께 올린다(라이트=흰색, 다크=--bg-app). */
+.oog-splash::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bg-app);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s cubic-bezier(0.5, 0, 0.9, 0.45);
+}
+.oog-splash.is-leaving { opacity: 1; transform: none; }
+.oog-splash.is-leaving::after { opacity: 1; }
+.oog-splash.is-leaving .oog-splash-stage {
+  opacity: 0;
+  transform: scale(1.02);
+  transition: opacity 0.16s ease, transform 0.2s ease;
+}
+
+/* ---------------------------------------- 31-9. 카드 제목 줄바꿈 */
+/* 한글은 단어 중간에서 끊기지 않게(keep-all) — 2열 카드 제목이
+   '쇠질 소 / 모임' 처럼 쪼개지던 자리를 단어 단위로 접는다. */
+.gallery-name,
+.group-tile-name,
+.recommend-name,
+.home-week-card .hw-title,
+.event-card .event-title,
+.board-row-title,
+.chat-room-name,
+.post-card .post-title {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.gallery-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: calc(1.3em * 2);   /* 한 줄·두 줄 카드의 높이를 같게 */
+}
+
+/* ---------------------------------------- 31-10. 빈 상태 · 오류 · 스켈레톤 */
+.empty-art {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+}
+.empty-kicker,
+:root[data-theme="dark"] .empty-kicker {
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+.empty-state .empty-title { color: var(--text-strong); }
+.empty-state .empty-desc { color: var(--text-sub); }
+
+.oog-error-state {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+}
+.oog-error-state .retry {
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  color: var(--text-strong);
+}
+
+/* 스켈레톤 — 새 면 토큰으로. 다크에서 카드보다 한 단계 밝은 회색 */
+.skeleton-card { background: var(--bg-base); border: 1px solid var(--border); }
+.skeleton-block,
+.skeleton-line,
+.skeleton-pill,
+.skeleton-avatar,
+.skeleton-head {
+  background: var(--bg-soft);
+}
+:root[data-theme="dark"] .skeleton-card {
+  background: var(--bg-base);
+  border-color: var(--border);
+}
+:root[data-theme="dark"] .skeleton-block,
+:root[data-theme="dark"] .skeleton-line,
+:root[data-theme="dark"] .skeleton-pill,
+:root[data-theme="dark"] .skeleton-avatar {
+  background: var(--bg-soft);
+}
+
+/* ---------------------------------------- 31-11. MATCH 팝업 — 색 면 2개 */
+/* 딥네이비 + 초록 안개 + 민트 제목은 화면 전체가 초록 한 색이 됐다.
+   바탕은 앱 바탕, 제목은 흰 글자, 초록은 '첫 메시지 보내기' 버튼과 하트에만. */
+.match-popup {
+  background-color: var(--bg-app);
+  background-image: radial-gradient(circle at 50% 24%, var(--bg-soft) 0%, transparent 62%);
+}
+.popup-kicker {
+  color: var(--text-sub);
+  border-color: var(--border-strong);
+  background: var(--bg-base);
+}
+.popup-title {
+  color: var(--text-strong);
+  text-shadow: none;
+}
+.popup-names { color: var(--text-strong); }
+.popup-common { color: var(--text-sub); }
+.match-avatars-heart .oo-ic { color: var(--green); }
+.popup-btn.primary { background: var(--green); color: var(--bg-app); }
+.popup-btn.ghost {
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+.msg-suggest-chip { background: var(--bg-soft); border-color: var(--border); color: var(--text-sub); }
+
+/* 스켈레톤 반짝임은 면 토큰 두 단계 사이에서만 */
+@keyframes skeletonShimmer3 {
+  0% { opacity: 0.55; }
+  50% { opacity: 1; }
+  100% { opacity: 0.55; }
+}
+.masonry-skeleton .skeleton-block,
+.masonry-skeleton .skeleton-line {
+  animation: skeletonShimmer3 1.4s ease-in-out infinite;
+}
+
+/* ---------------------------------------- 31-12. 화면별 잔여 초록 정리(2차) */
+/* 세그먼트(여러 칸 중 하나) = 올라온 면 + 진한 글자 · 칩(켜고 끄는 조건) = 초록 면.
+   두 언어를 섞으면 한 화면에 초록 면이 세 개를 넘는다 — 세그먼트는 면으로 말한다. */
+.home-view-seg,
+.dm-view-seg,
+.explore-type-seg,
+.album-tabs { background: var(--bg-subtle); }
+
+.home-view-btn.active,
+.dm-view-btn.active,
+.explore-type-btn.active,
+.album-tab.active {
+  background: var(--bg-elevated);
+  color: var(--text-strong);
+  border-color: var(--border);
+  box-shadow: none;
+}
+.home-view-btn.active::after,
+.dm-view-btn.active::after,
+.explore-type-btn.active::after { background: var(--text-strong); }
+
+/* 홈 둘러보기 */
+.group-tile-badge {
+  background: var(--bg-elevated);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.group-tile-join.joined {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--text-sub);
+}
+.home-browse-sort.active { color: var(--text-strong); }
+.home-browse-sort.active::after { background: var(--text-strong); }
+
+/* 탐색 · 실베 */
+.hot-more { color: var(--text-sub); }
+.hot-more:hover { border-color: var(--border-strong); color: var(--text); }
+.hot-card .hot-rank { background: var(--bg-soft); color: var(--text-sub); }
+.hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); color: #FFFFFF; }
+.hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #64748B 0%, #334155 100%); color: #FFFFFF; }
+.hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #B45309 0%, #78350F 100%); color: #FFFFFF; }
+
+/* 디엠 */
+.chat-read { color: var(--text-muted); }
+
+/* 설정 */
+.pwa-card-state,
+.pwa-card-state.ready {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+
+/* 모임 안 — 피드 */
+.feed-tag {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.me-badge {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.feed-group-badge { color: var(--text-sub); }
+.home-hero-kicker,
+.home-hero-next { color: var(--text-sub); }
+.home-hero-next .next-dot { background: var(--text-muted); }
+
+/* 모임 안 — 일정 */
+.notice-pin-label { color: var(--text-sub); }
+.board-photo-btn { color: var(--text-sub); border-color: var(--border-strong); }
+.board-post-tag {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border-color: var(--border);
+}
+.board-chip.review { color: var(--text-sub); }
+.event-kind {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.schedule-row,
+.schedule-row.tone-regular,
+:root[data-theme="dark"] .schedule-row,
+:root[data-theme="dark"] .schedule-row.tone-regular { color: var(--text-sub); }
+
+/* 모임 상세 · 사람 상세 */
+.admin-pending-count {
+  background: var(--bg-soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.leader-badge {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.detail-verified {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.common-chip,
+.match-popup .common-chip {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.detail-hobby-pill {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+.detail-style { color: var(--text-sub); }
+
+/* ---------------------------------------- 31-13. 특이도 맞춤(세그먼트·배지) */
+/* 위 규칙보다 특이도가 높아 이기던 선택자들만 같은 자리에서 다시 적는다. */
+.dm-view-seg button.active,
+.home-view-seg button.active,
+.explore-type-seg .explore-type-btn.active,
+:root[data-theme="dark"] .explore-type-btn.active,
+.filter-sheet .explore-type-btn.active,
+.filter-sheet .explore-region-chip.active {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+  color: var(--text-strong);
+  box-shadow: none;
+}
+
+/* 나이 슬라이더 채움 — 초록은 '적용하기' 버튼 몫으로 */
+.age-range-fill { background: var(--text-muted); }
+
+/* 공지 바 — 초록 안개 대신 카드 면, 고정 표시는 작은 점으로 */
+.home-notice-line {
+  background: var(--bg-base);
+  border-color: var(--border);
+}
+.home-notice-line.is-empty { background: var(--bg-soft); }
+.home-notice-line .notice-pin-dot { background: var(--text-muted); }
+
+/* 모임 히어로의 '단체 채팅'은 보조 동작 — 화면의 주 행동은 글쓰기 FAB 하나 */
+.home-hero-actions .home-hero-btn.primary {
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  box-shadow: none;
+}
+
+/* MATCH 팝업의 '나' 쪽 아바타 — 초록 원 대신 중립 원 */
+.match-avatar.me {
+  background: var(--bg-subtle);
+  color: var(--text-sub);
+  border: 1px solid var(--border);
+}
+
+/* 다크의 4위 이하 순위 숫자 */
+:root[data-theme="dark"] .hot-card .hot-rank {
+  background: var(--bg-soft);
+  color: var(--text-sub);
+}
+
+/* 내가 쓴 피드 카드의 아바타 — 사진이 없으면 중립 면(다른 사람 아바타는 사람색 유지) */
+.feed-card-header:has(.me-badge) .feed-avatar {
+  background: var(--bg-soft) !important;
+  color: var(--text-sub) !important;
+  border: 1px solid var(--border);
+}
+
+/* 다크에서 '지역' 칩의 선택 상태는 시트 안에서만 중립(위 :root 규칙보다 특이도 한 단계 위) */
+:root[data-theme="dark"] .filter-sheet .explore-region-chip.active {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+  color: var(--text-strong);
+}
+
+/* 나이 슬라이더 — Chromium 이 그리는 기본 트랙 컨테이너(흰 판)를 걷는다 */
+.age-range-input::-webkit-slider-container { background: transparent; box-shadow: none; border: 0; }
+.age-range-input::-webkit-slider-runnable-track { background: transparent; }
+
+/* 시트는 열릴 때 스스로 포커스를 받는다(tabindex="-1") — 앱 공통 초록 포커스 링이
+   시트 위쪽 모서리에 초록 선으로 그려지던 자리. 링은 키보드로 도는 요소에만 남긴다. */
+.modal-sheet:focus,
+.modal-sheet:focus-visible,
+.filter-sheet:focus,
+.filter-sheet:focus-visible,
+.composer-sheet:focus,
+.composer-sheet:focus-visible,
+.chat-room-overlay:focus,
+.chat-room-overlay:focus-visible,
+.chat-room-view:focus,
+.chat-room-view:focus-visible {
+  outline: none;
+}
+
+/* 모임 상세의 모임 아이콘 타일·정기 일정 행 — 연초록 면을 걷어 중립 면으로 */
+.sheet-emoji-badge {
+  background: var(--bg-soft);
+  border-color: var(--border);
+  color: var(--text-sub);
+}
+.schedule-row.tone-regular {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+}
+.schedule-row.tone-regular::before { background: var(--text-muted); }
+
+/* 글자 입력은 초점 표시를 테두리로 한다 — 공통 초록 링(outline)이 입력창 테두리에
+   겹쳐 '초록 테두리'로 보이던 자리. (테두리 색 변화가 초점 표시 역할을 한다) */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.chat-input:focus-visible,
+.text-input:focus-visible,
+.ob-input:focus-visible,
+.comment-input:focus-visible,
+.composer-textarea:focus-visible { outline: none; }
+/* 초점 테두리는 중립 — 초록은 화면의 행동·선택에 남긴다 */
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus,
+.chat-input:focus,
+.chat-input:focus-visible,
+.text-input:focus,
+.ob-input:focus,
+.comment-input:focus,
+.composer-textarea:focus {
+  border-color: var(--text-muted);
+  box-shadow: 0 0 0 3px var(--bg-soft);
+}
+
+/* 일정 카드 왼쪽 막대 = 그 일정의 종류색(대분류 토큰) — 기본값이 브랜드 초록이었다 */
+.event-card::before { background: var(--text-muted); }
+.event-card.tone-workout::before { background: var(--cat-1); }
+.event-card.tone-drink::before { background: var(--cat-5); }
+.event-card.tone-meal::before { background: var(--cat-6); }
+.event-card.tone-etc::before { background: var(--cat-2); }
+.event-card.is-joined { border-color: var(--border-strong); }
+
+/* 작성자 아바타의 초록 링·히어로 '다음 일정' 점 — 정보 표시라 중립 */
+.feed-avatar { outline-color: var(--border); }
+.home-hero-next-dot {
+  background: var(--text-muted);
+  box-shadow: none;
+}
+
+/* 홈 아래쪽 '추천 모임 / 더 많은 모임' — 연초록 면과 초록 알약을 카드·테두리로 */
+.home-recommend-more {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.home-recommend-taste {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-strong);
+  color: var(--text-sub);
+  box-shadow: none;
+}
+.home-recommend-more-btn {
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  box-shadow: none;
+}
+
+/* '모임 둘러보기' 정렬 탭 — 좁은 폭에서 '추천/순'처럼 단어가 쪼개지던 자리 */
+.home-browse-sorts {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.home-browse-sorts::-webkit-scrollbar { display: none; }
+.home-browse-sort {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-title);
+}
+.home-browse-sort.active {
+  background: var(--bg-soft);
+  border-color: var(--border-strong);
+  color: var(--text-strong);
+}
+.home-browse-sort.active::after { display: none; }
+
+/* ============================================================================
+ * R4 — 아이콘 2px 통일 · 카테고리 표지 문양 7종
+ * ----------------------------------------------------------------------------
+ *  ① js/icons.js 가 그리는 모든 아이콘 = 24 격자 · **선 2px** · 둥근 끝 · currentColor.
+ *     Sprint 21 의 클레이 3겹 입체(그늘·몸통·광택)는 21-1 자리에서 걷었다.
+ *  ② 채움은 활성 상태에서만 — 하단 탭은 .tab-ic-fill(채움형), 좋아요·북마크는 is-solid.
+ *  ③ 정적 마크업(index.html)은 .oo-icon-N 이 크기를 정한다(.oo-ic 은 1em 이라 글자 크기를 따른다).
+ *  ④ 카테고리 표지 문양(catSports … catDaily)만 면 문양 — 표지에서 한 단계 크게.
+ * ========================================================================== */
+
+/* ③ 예전 inline SVG 의 width/height 를 그대로 옮긴 자리 크기 */
+.oo-icon-17,
+.oo-icon-18,
+.oo-icon-20,
+.oo-icon-24 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+.oo-icon-17 { font-size: 17px; }
+.oo-icon-18 { font-size: 18px; }
+.oo-icon-20 { font-size: 20px; }
+.oo-icon-24 { font-size: 24px; }
+
+/* ④ 대분류 표지 문양 — 2px 선 아이콘보다 한 단계 크게 두어 멀리서도 읽히게 */
+.gallery-cover-emoji .oo-ic { width: 44px; height: 44px; }
+.group-tile-emoji .oo-ic { width: 32px; height: 32px; }
+.recommend-clay .oo-ic { width: 40px; height: 40px; }
+
+/* 표지 워터마크(히어로)는 면 문양이라 살짝 낮춰 뒤로 물러나게 */
+.home-hero-emoji { opacity: 0.12; }
+:root[data-theme="dark"] .home-hero-emoji { opacity: 0.2; }
+
+/* ⑤ 9~11px 자리의 광학 보정 — 2px 선을 11px 로 줄이면 0.9px 이 되어 흐려진다.
+   아주 작은 자리만 2.4 로 올려(화면에서 1px) 같은 무게로 보이게 한다. 큰 자리는 그대로 2px. */
+.group-tile-cat .oo-ic,
+.hot-row-hobby .oo-ic,
+.hot-card-hobby .oo-ic,
+.hot-card-meta .oo-ic,
+.hot-row-meta .oo-ic,
+.person-meta .oo-ic,
+.post-detail-sub .oo-ic,
+.notif-cat-chip .oo-ic,
+.active-filter-chip-emoji .oo-ic,
+.activity-group-emoji .oo-ic,
+.chip-emoji .oo-ic,
+.chip-thumb .oo-ic,
+.joined-emoji .oo-ic { stroke-width: 2.4; }
+
+/* ============================================================================
+ * R5 — WCAG 감사에서 실제로 찾은 세 자리 (정보가 사라지던 곳만 고친다)
+ * ----------------------------------------------------------------------------
+ *  ① 시트 안에서 선택된 지역 칩이 중립 면(R3 31-13)으로 바뀐 뒤에도 개수 알약은
+ *     흰 글자(rgba 255,.22 면)로 남아 라이트에서 1:1 — 숫자가 보이지 않았다.
+ *  ② 선택된 모임 칩(글자 흰색)의 썸네일이 그 흰색을 물려받아 옅은 타일 위에서 사라졌다.
+ *  ③ 모임 채팅 머리 아바타(연초록 면)의 문양도 흰색이라 1.09:1 이었다.
+ *  셋 다 '색만' 고친다 — 크기·배치·동작은 그대로다.
+ * ========================================================================== */
+.filter-sheet .explore-region-chip.active .explore-region-chip-count,
+.region-sheet .explore-region-chip.active .explore-region-chip-count,
+:root[data-theme="dark"] .filter-sheet .explore-region-chip.active .explore-region-chip-count {
+  color: var(--text-sub);
+  background: var(--bg-soft);
+}
+
+.composer-group-chip.active .chip-thumb,
+.composer-group-chip.active .chip-thumb .oo-ic { color: var(--tone-ink, var(--text-sub)); }
+
+.group-chat-avatar,
+.group-chat-avatar .oo-ic { color: var(--green-dark); }
+:root[data-theme="dark"] .group-chat-avatar,
+:root[data-theme="dark"] .group-chat-avatar .oo-ic { color: var(--green-text); }
+
+/* ④ 다크의 지역 칩 개수 알약 — 옅은 초록 면 위 뮤트 글자가 4.41:1 로 기준(4.5)에 살짝 못 미쳤다. */
+:root[data-theme="dark"] .explore-region-chip-count {
+  color: var(--text-sub);
+  background: var(--bg-soft);
 }

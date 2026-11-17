@@ -1135,15 +1135,13 @@ const HOBBY_TAXONOMY = [
   }
 ];
 
-/* 대분류 색조 → 점토 그라디언트(표지) · 잉크색(배지). CSS 의 .tone-* 과 같은 값이다. */
-const HOBBY_TONES = {
-  green: { from: '#EAF9F1', to: '#CBEDDA', ink: '#065F46', chip: '#D7F2E4' },
-  violet: { from: '#F4EEFE', to: '#DCD2FB', ink: '#4C1D95', chip: '#E7DDFD' },
-  teal: { from: '#E8F6F8', to: '#C9E8EE', ink: '#0F525F', chip: '#D6EEF2' },
-  amber: { from: '#FFF5E6', to: '#FBE1BA', ink: '#8A4708', chip: '#FCEBCF' },
-  sky: { from: '#EAF4FE', to: '#CFE4FA', ink: '#0F4C75', chip: '#DCEDFC' },
-  coral: { from: '#FFF0EA', to: '#FBD8CB', ink: '#8A3418', chip: '#FCE2D8' },
-  mint: { from: '#EFFAF3', to: '#D2EFE0', ink: '#14532D', chip: '#DEF4E8' }
+/* 대분류 색조 키 → 카테고리 토큰 번호.
+   색의 정의는 CSS 의 --cat-1~7 · --cat-1-soft~7-soft · --cat-neutral 한 곳뿐이고,
+   JS 는 그 토큰 이름만 돌려준다(라이트·다크가 같은 토큰으로 함께 움직인다).
+   · 순서 = HOBBY_TAXONOMY 순서: 운동 1 · 게임 2 · 독서 3 · 맛집 4 · 여행 5 · 문화 6 · 일상 7
+   · 옛 색조 이름(green·violet·teal·amber·sky·coral·mint)은 CSS 클래스(.tone-*)와 함께 쓰는 별칭이다. */
+const TONE_CAT = {
+  green: 1, violet: 2, teal: 3, amber: 4, sky: 5, coral: 6, mint: 7
 };
 
 /** 세부 취미 한 줄 — 대분류 id 를 붙인 평면 목록(필터·칩·프로필 공용). */
@@ -6170,19 +6168,30 @@ class Store {
     return (this.state.exploreHobbyChips || []).filter((h) => h.core === true);
   }
 
-  /** 취미 id → 점토 색조 키(운동=green · 게임=violet …). 모르는 id 는 green. */
+  /** 취미 id → 점토 색조 키(운동=green · 게임=violet …). 모르는 id 는 neutral. */
   getHobbyTone(hobbyId) {
     const chip = (this.state.exploreHobbyChips || []).find((h) => h.id === hobbyId)
       || (this.state.customHobbies || []).find((h) => h.id === hobbyId);
     if (chip && chip.tone) return chip.tone;
     const cat = HOBBY_TAXONOMY.find((c) => c.id === hobbyId);
-    return cat ? cat.tone : 'green';
+    /* 대분류표에도 없으면 초록으로 떨어뜨리지 않고 중립(--cat-neutral)으로 —
+       모르는 취미가 '운동'과 같은 색이 되어 오해를 사던 것을 없앤다. */
+    return cat ? cat.tone : 'neutral';
   }
 
-  /** 점토 색조의 실제 색 — 표지 그라디언트·배지 잉크색을 화면이 직접 만들 때 쓴다. */
+  /** 색조의 실제 색 — CSS 카테고리 토큰 이름만 돌려준다(색 값을 JS 에 두지 않는다). */
   getHobbyToneColors(hobbyId) {
     const tone = this.getHobbyTone(hobbyId);
-    return Object.assign({ tone }, HOBBY_TONES[tone] || HOBBY_TONES.green);
+    const n = TONE_CAT[tone];
+    const key = n ? `--cat-${n}` : '--cat-neutral';
+    return {
+      tone,
+      category: n || 0,
+      from: `var(${key}-soft)`,
+      to: `color-mix(in srgb, var(${key}) 38%, var(--bg-base))`,
+      ink: `var(${key})`,
+      chip: `var(${key}-soft)`
+    };
   }
 
   /** 사진이 없는 모임 표지에 쓸 취미 색조 그라디언트. */
