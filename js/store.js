@@ -3677,7 +3677,450 @@ function stripAllContent(state) {
   return state;
 }
 
-/** 클린 스타트 상태 — 앱을 처음 연 사람이 보는 상태(회원가입 전, 콘텐츠 0). */
+/* ============================================================================
+ * Sprint 27 — 최소 예시 데이터(샘플)
+ * ----------------------------------------------------------------------------
+ * 11/17 11:16 루키 님: 가이드 5/8("여기가 내 모임 자리예요")·7/8("탐색은 사람과 글을
+ * 보는 곳이에요") 뒤로 **텅 빈 화면**이 비쳐서 무엇을 하는 곳인지 알 수 없다는 지적.
+ *  · 가이드 중은 물론, 가입 직후 실사용 상태에서도 기능을 바로 눌러 볼 수 있게
+ *    **최소한의 예시 데이터**를 채운다(내 모임 2 · 둘러볼 모임 3 · 탐색 사람 4 ·
+ *    동네 글 4 · 1:1 대화 2 · 공지·일정·단체방).
+ *  · 예시는 모두 `sample: true` 로 표시해 한 번에 걷어낼 수 있다
+ *    (설정 › 데이터 관리 › 예시 데이터 비우기).
+ *  · 사람·동네는 가상의 가명이고 사진은 쓰지 않는다(Sprint 18 예시 이미지 금지 유지).
+ *  · `#demo` 시드(예전 데모 계정)와는 id 접두사(sample_)로 분리해 서로 덮지 않는다.
+ * ========================================================================== */
+const SAMPLE_DATA_VERSION = 1;
+const SAMPLE_FALLBACK_REGION = 'seoul-seongdong-gwangjin';
+/* 예시 중 **내가 가입한 모임** 두 곳 — 나머지 셋은 둘러보기용이다. */
+const SAMPLE_JOINED_GROUP_IDS = ['sample_grp_run', 'sample_grp_board'];
+
+/** 가상의 예시 이웃 4명 — 이름·나이·동네 모두 지어낸 값이다. */
+function samplePeople(regionId) {
+  const area = (regionDef(regionId) || {}).name || '우리 동네';
+  const rows = [
+    {
+      id: 'sample_p_mora', nickname: '모래', age: 28, hobbyIds: ['run'], hobbyLabel: '러닝',
+      hobbyStyle: '아침 러닝 · 5K', badge: '아침 러닝 3년', ratio: 'mid',
+      avatarText: '모', avatarGradient: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)',
+      bio: '출근 전에 5K만 뛰고 하루를 시작해요. 속도보다 같이 나오는 게 어려운 거더라고요.',
+      hobbies: ['아침러닝', '한강', '기록'],
+      specChips: [
+        { icon: 'run', label: '페이스', value: '5K 27분' },
+        { icon: 'clock', label: '러닝 시간', value: '화·목 07:00' },
+        { icon: 'map', label: '주 코스', value: '동네 한 바퀴' }
+      ],
+      verified: true
+    },
+    {
+      id: 'sample_p_haru', nickname: '하루', age: 31, hobbyIds: ['fitness'], hobbyLabel: '크로스핏',
+      hobbyStyle: '퇴근 후 와드 · 3년차', badge: '와드 3년차', ratio: 'square',
+      avatarText: '하', avatarGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
+      bio: '퇴근하고 한 시간 땀 흘리면 그날 있었던 일이 다 정리돼요. 초보자 질문 환영합니다.',
+      hobbies: ['크로스핏', '오운완', '스쿼트'],
+      specChips: [
+        { icon: 'dumbbell', label: '주 운동', value: '주 4회' },
+        { icon: 'clock', label: '운동 시간', value: '평일 19시' },
+        { icon: 'fire', label: '요즘 목표', value: '데드 120kg' }
+      ],
+      verified: false
+    },
+    {
+      id: 'sample_p_danchu', nickname: '단추', age: 26, hobbyIds: ['boardgame'], hobbyLabel: '보드게임',
+      hobbyStyle: '전략게임 · 뉴비 환영', badge: '설명 잘해요', ratio: 'wide',
+      avatarText: '단', avatarGradient: 'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)',
+      bio: '주말 오후에 보드게임 카페에서 두어 판 합니다. 처음 하는 사람에게 설명하는 걸 좋아해요.',
+      hobbies: ['전략게임', '파티게임', '보드게임카페'],
+      specChips: [
+        { icon: 'idea', label: '선호 장르', value: '전략 · 협력' },
+        { icon: 'users', label: '인원', value: '3~5인' },
+        { icon: 'clock', label: '모임 시간', value: '토·일 15시' }
+      ],
+      verified: true
+    },
+    {
+      id: 'sample_p_choko', nickname: '초코', age: 33, hobbyIds: ['hike'], hobbyLabel: '등산',
+      hobbyStyle: '주말 산행 · 천천히', badge: '하산 맛집 담당', ratio: 'square',
+      avatarText: '초', avatarGradient: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
+      bio: '일요일 아침에 가까운 산 하나 오르고 내려와서 국밥 한 그릇. 그게 제 주말입니다.',
+      hobbies: ['주말산행', '둘레길', '하산맛집'],
+      specChips: [
+        { icon: 'mountain', label: '주 코스', value: '동네 뒷산' },
+        { icon: 'clock', label: '산행 시간', value: '일 08:00' },
+        { icon: 'meal', label: '하산 메뉴', value: '국밥' }
+      ],
+      verified: false
+    }
+  ];
+  return rows.map((p) => ({
+    ...p,
+    sample: true,
+    location: area,
+    regionId,
+    distanceKm: 0.6 + (rows.indexOf(p) * 0.7),
+    cycle: '주 2~3회',
+    cycleIcon: '',
+    likesMe: false
+  }));
+}
+
+/** 예시 모임 — 내가 가입한 2개(run·boardgame)와 둘러볼 3개(climb·cafe·hike). */
+function sampleGroups(regionId) {
+  const area = (regionDef(regionId) || {}).name || '우리 동네';
+  const base = {
+    location: area, regionId, sample: true, ageLimit: 'all', joinMode: 'approval',
+    deputyIds: [], dmEnabled: true, deputyCanModerate: false, members: [],
+    joinQuestions: ['이 취미는 얼마나 해보셨어요? 편한 요일도 알려주세요']
+  };
+  return [
+    {
+      ...base,
+      id: 'sample_grp_run', name: '토요일 아침 동네 러닝팟', category: 'run', categoryName: '러닝',
+      hobbyId: 'run', meetLabel: '토 08:00 · 5K', ratio: 'wide', icon: 'run',
+      coverGradient: 'linear-gradient(135deg, #F1F5F9 0%, #E0F2FE 100%)',
+      distanceKm: 0.5, memberCount: 8, maxMembers: 20, privacyType: 'open', privacyLabel: '자유 가입',
+      description: '토요일 아침에 동네 한 바퀴 5K 가볍게 뛰고 커피 한 잔 합니다. 페이스는 각자.',
+      tags: ['#아침러닝', '#5K', '#동네한바퀴'], rules: '뒤처진 사람 없이 함께 들어와요.',
+      leaderId: 'sample_p_mora', leaderName: '모래', customTags: ['오운완', '기록인증', '주말번개'],
+      joinPolicy: ['토 08:00 정기런'], joinMode: 'open', joinQuestions: [],
+      createdAt: ago(42 * 24 * HOUR),
+      members: [
+        { id: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)', hobbies: ['크로스핏'], joinedAt: ago(21 * 24 * HOUR) },
+        { id: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)', hobbies: ['보드게임'], joinedAt: ago(9 * 24 * HOUR) }
+      ]
+    },
+    {
+      ...base,
+      id: 'sample_grp_board', name: '동네 보드게임 한 판', category: 'boardgame', categoryName: '보드게임',
+      hobbyId: 'boardgame', meetLabel: '토·일 15:00', ratio: 'square', icon: 'dice',
+      coverGradient: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
+      distanceKm: 0.9, memberCount: 6, maxMembers: 12, privacyType: 'approval_private',
+      privacyLabel: '비공개 승인제',
+      description: '주말 오후 동네 보드게임 카페에서 2~3판. 뉴비도 설명 들으면서 바로 끼어요.',
+      tags: ['#보드게임', '#주말', '#뉴비환영'], rules: '이긴 사람이 다음 판 설명을 맡아요.',
+      leaderId: 'sample_p_danchu', leaderName: '단추', customTags: ['게임후기', '신작소개'],
+      joinPolicy: ['토·일 15:00'],
+      createdAt: ago(60 * 24 * HOUR),
+      members: [
+        { id: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)', hobbies: ['등산'], joinedAt: ago(30 * 24 * HOUR) }
+      ]
+    },
+    {
+      ...base,
+      id: 'sample_grp_climb', name: '퇴근 후 볼더링 같이', category: 'climb', categoryName: '클라이밍',
+      hobbyId: 'climb', meetLabel: '평일 20:00', ratio: 'wide', icon: 'climb',
+      coverGradient: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
+      distanceKm: 1.4, memberCount: 11, maxMembers: 20, privacyType: 'approval_private',
+      privacyLabel: '비공개 승인제',
+      description: '평일 저녁에 동네 클라이밍장에서 만나요. 초보자는 루트 읽기부터 같이 합니다.',
+      tags: ['#볼더링', '#평일저녁', '#초보환영'], rules: '안전 매트 위에서만, 부상 방지 우선.',
+      leaderId: 'sample_p_haru', leaderName: '하루', customTags: ['완등인증', '루트공유'],
+      joinPolicy: ['평일 20:00'], createdAt: ago(18 * 24 * HOUR)
+    },
+    {
+      ...base,
+      id: 'sample_grp_cafe', name: '주말 카페 한 곳씩', category: 'cafe', categoryName: '카페/맛집',
+      hobbyId: 'cafe', meetLabel: '일 11:00', ratio: 'square', icon: 'cup',
+      coverGradient: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
+      distanceKm: 2.2, memberCount: 9, maxMembers: 15, privacyType: 'open', privacyLabel: '자유 가입',
+      description: '일요일 낮에 동네 카페 한 곳을 골라 가서 한 시간 이야기해요. 조용한 곳 위주.',
+      tags: ['#카페투어', '#일요일', '#조용한곳'], rules: '조용한 카페 매너 지키기.',
+      leaderId: 'sample_p_choko', leaderName: '초코', customTags: ['카페후기', '원두추천'],
+      joinPolicy: ['일 11:00'], joinMode: 'open', joinQuestions: [],
+      createdAt: ago(12 * 24 * HOUR)
+    },
+    {
+      ...base,
+      id: 'sample_grp_hike', name: '일요 아침 가까운 산', category: 'hike', categoryName: '등산·트레킹',
+      hobbyId: 'hike', meetLabel: '일 08:00', ratio: 'square', icon: 'mountain',
+      coverGradient: 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
+      distanceKm: 3.1, memberCount: 13, maxMembers: 25, privacyType: 'approval_private',
+      privacyLabel: '비공개 승인제',
+      description: '일요일 아침 가까운 산 하나 오르고 내려와 국밥 한 그릇. 무리하지 않는 코스로 다녀요.',
+      tags: ['#주말산행', '#둘레길', '#하산맛집'], rules: '페이스는 느린 사람에 맞춰요.',
+      leaderId: 'sample_p_choko', leaderName: '초코', customTags: ['정상인증', '코스공유'],
+      joinPolicy: ['일 08:00'], createdAt: ago(25 * 24 * HOUR)
+    }
+  ];
+}
+
+/** 예시 피드 글 — 내 모임 두 곳에만. 사진 없이 글만 쓰고, 댓글로 반응을 확인할 수 있게. */
+function sampleFeedPosts() {
+  return [
+    {
+      id: 'sample_post_run_1', groupId: 'sample_grp_run', authorId: 'sample_p_mora',
+      authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)',
+      tag: '오운완', caption: '오늘 아침 5K 완주. 어제보다 20초 빨랐습니다. 다음 주 토요일도 같은 시간에 출발해요.',
+      mediaCaption: '', likes: 6, likedByMe: false, bookmarkedByMe: false,
+      comments: [
+        { id: 'sample_c_run_1', authorId: 'sample_p_danchu', authorName: '단추', text: '이번 주는 저도 나가볼게요', createdAt: ago(3 * HOUR) }
+      ],
+      sample: true, createdAt: ago(5 * HOUR)
+    },
+    {
+      id: 'sample_post_run_2', groupId: 'sample_grp_run', authorId: 'sample_p_haru',
+      authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
+      tag: '후기', caption: '러닝 끝나고 다 같이 커피 마셨는데 그 10분이 제일 좋네요. 다음엔 코스 좀 길게 가요.',
+      mediaCaption: '', likes: 4, likedByMe: false, bookmarkedByMe: false, comments: [],
+      sample: true, createdAt: ago(28 * HOUR)
+    },
+    {
+      id: 'sample_post_board_1', groupId: 'sample_grp_board', authorId: 'sample_p_danchu',
+      authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)',
+      tag: '게임후기', caption: '오늘 3인 전략게임 한 판. 처음 하신 분이 마지막에 1등 했습니다. 설명이 통했네요.',
+      mediaCaption: '', likes: 5, likedByMe: false, bookmarkedByMe: false,
+      comments: [
+        { id: 'sample_c_board_1', authorId: 'sample_p_choko', authorName: '초코', text: '다음엔 저도 끼워주세요', createdAt: ago(20 * HOUR) }
+      ],
+      sample: true, createdAt: ago(26 * HOUR)
+    }
+  ];
+}
+
+function sampleGroupNotices() {
+  return [
+    {
+      id: 'sample_notice_run', groupId: 'sample_grp_run', text: '이번 주 토요일 08:00 동네 공원 입구에서 출발해요. 늦으시면 단체방에 남겨주세요.',
+      pinned: true, authorId: 'sample_p_mora', authorName: '모래', authorRole: 'leader',
+      readers: [{ memberId: 'sample_p_haru', name: '하루', avatarText: '하', at: ago(2 * HOUR) }],
+      sample: true, at: ago(9 * HOUR)
+    },
+    {
+      id: 'sample_notice_board', groupId: 'sample_grp_board', text: '이번 주말은 토요일 15시로 잡았습니다. 처음 오시는 분은 편한 복장으로 오세요.',
+      pinned: true, authorId: 'sample_p_danchu', authorName: '단추', authorRole: 'leader',
+      readers: [], sample: true, at: ago(2 * 24 * HOUR)
+    }
+  ];
+}
+
+function sampleGroupEvents() {
+  return [
+    {
+      id: 'sample_evt_run', groupId: 'sample_grp_run', kind: 'workout', title: '토요일 아침 5K',
+      when: atClock(3, 8, 0), place: '동네 공원 입구', note: '가볍게 5K. 끝나고 근처에서 커피 한 잔 해요.',
+      capacity: 10, createdBy: 'sample_p_mora', createdByName: '모래',
+      rsvps: [
+        { memberId: 'sample_p_mora', name: '모래', avatarText: '모', gradient: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)', status: 'yes' },
+        { memberId: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)', status: 'yes' }
+      ],
+      sample: true, createdAt: ago(30 * HOUR)
+    },
+    {
+      id: 'sample_evt_board', groupId: 'sample_grp_board', kind: 'etc', title: '주말 보드게임 한 판',
+      when: atClock(4, 15, 0), place: '동네 보드게임 카페', note: '2~3판 예정. 처음 오셔도 설명 들으면서 바로 하실 수 있어요.',
+      capacity: 6, createdBy: 'sample_p_danchu', createdByName: '단추',
+      rsvps: [
+        { memberId: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)', status: 'yes' },
+        { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)', status: 'maybe' }
+      ],
+      sample: true, createdAt: ago(2 * 24 * HOUR)
+    }
+  ];
+}
+
+function sampleGroupChats() {
+  return [
+    {
+      groupId: 'sample_grp_run', sample: true,
+      messages: [
+        { id: 'sample_gc_run_1', from: 'member', authorId: 'sample_p_mora', authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)', text: '토요일 08시 공원 입구요. 날씨 괜찮대요', at: ago(3 * HOUR) },
+        { id: 'sample_gc_run_2', from: 'member', authorId: 'sample_p_haru', authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)', text: '저는 5분 일찍 나가서 스트레칭하고 있을게요', at: ago(2 * HOUR) }
+      ]
+    },
+    {
+      groupId: 'sample_grp_board', sample: true,
+      messages: [
+        { id: 'sample_gc_board_1', from: 'member', authorId: 'sample_p_danchu', authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)', text: '토요일 15시, 카페 자리 미리 잡아둘게요', at: ago(20 * HOUR) }
+      ]
+    }
+  ];
+}
+
+/** 동네 글 4개 — 지역 게시판의 필터·좋아요·댓글·글쓰기를 바로 시험할 수 있게. */
+function sampleExplorePosts(regionId) {
+  const area = (regionDef(regionId) || {}).name || '우리 동네';
+  const style = (id) => {
+    const s = EXPLORE_MEET_STYLES.find((x) => x.id === id) || EXPLORE_MEET_STYLES[0];
+    return { meetStyle: s.id, meetStyleLabel: s.name };
+  };
+  const rows = [
+    {
+      id: 'sample_ex_1', authorId: 'sample_p_mora', authorName: '모래', authorAvatarText: '모',
+      authorGradient: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)', hobbyId: 'run', hobbyLabel: '러닝',
+      ...style('now'), tag: '번개',
+      caption: '지금 동네 공원 한 바퀴 가볍게 뛰실 분? 30분이면 끝나요.',
+      likes: 7, comments: [{ id: 'sample_ex_c1', authorId: 'sample_p_haru', authorName: '하루', text: '지금 나갈 수 있어요!', createdAt: ago(20 * MINUTE) }],
+      createdAt: ago(40 * MINUTE)
+    },
+    {
+      id: 'sample_ex_2', authorId: 'sample_p_haru', authorName: '하루', authorAvatarText: '하',
+      authorGradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)', hobbyId: 'fitness', hobbyLabel: '크로스핏',
+      ...style('comfortable'), tag: '편한만남',
+      caption: '퇴근하고 같이 운동하실 분 있나요. 저는 초보라 무게보다 자세 위주로 해요.',
+      likes: 5, comments: [], createdAt: ago(4 * HOUR)
+    },
+    {
+      id: 'sample_ex_3', authorId: 'sample_p_danchu', authorName: '단추', authorAvatarText: '단',
+      authorGradient: 'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)', hobbyId: 'boardgame', hobbyLabel: '보드게임',
+      ...style('dm'), tag: '1:1',
+      caption: '주말에 보드게임 같이 하실 분. 처음이어도 설명해드려요.',
+      likes: 3, comments: [], createdAt: ago(9 * HOUR)
+    },
+    {
+      id: 'sample_ex_4', authorId: 'sample_p_choko', authorName: '초코', authorAvatarText: '초',
+      authorGradient: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)', hobbyId: 'hike', hobbyLabel: '등산',
+      ...style('drink'), tag: '한잔',
+      caption: '일요일 산행 끝나고 국밥 드실 분. 코스는 짧게 잡아요.',
+      likes: 4, comments: [], createdAt: ago(22 * HOUR)
+    }
+  ];
+  return rows.map((row, i) => ({
+    ...row, sample: true, regionId, location: area, groupName: `${area} ${row.hobbyLabel}`,
+    mediaCaption: '', ratio: ['wide', 'square'][i % 2], likedByMe: false,
+    comments: (row.comments || []).map((c) => ({ ...c, createdAt: c.createdAt }))
+  }));
+}
+
+/** 1:1 대화 2개 — 메시지 보내기·비밀앨범 공개/해제를 바로 시험할 수 있게. */
+function sampleChatRooms() {
+  return [
+    {
+      id: 'sample_chat_mora', partnerId: 'sample_p_mora', partnerName: '모래', partnerHobby: '러닝',
+      partnerAvatarText: '모', partnerGradient: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)',
+      lastMessage: '토요일 아침 같이 뛰어요!', lastTime: '오늘', unreadCount: 1, isNewMatch: false, sample: true,
+      messages: [
+        { id: 'sample_m_mora_1', from: 'them', text: '같은 동네라 반가워요. 토요일 아침 러닝 같이 하실래요?', at: ago(3 * HOUR + 20 * MINUTE) },
+        { id: 'sample_m_mora_2', from: 'me', text: '좋아요. 08시 공원 입구 맞죠?', at: ago(2 * HOUR) },
+        { id: 'sample_m_mora_3', from: 'them', text: '네! 토요일 아침 같이 뛰어요!', at: ago(95 * MINUTE) }
+      ]
+    },
+    {
+      id: 'sample_chat_danchu', partnerId: 'sample_p_danchu', partnerName: '단추', partnerHobby: '보드게임',
+      partnerAvatarText: '단', partnerGradient: 'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)',
+      lastMessage: '설명은 제가 할게요, 편하게 오세요', lastTime: '어제', unreadCount: 0, isNewMatch: false, sample: true,
+      messages: [
+        { id: 'sample_m_dan_1', from: 'them', text: '보드게임 처음이시라고 들었어요. 어려운 게임은 빼고 갈게요', at: ago(28 * HOUR) },
+        { id: 'sample_m_dan_2', from: 'me', text: '감사합니다 ㅎㅎ 주말에 뵐게요', at: ago(27 * HOUR) },
+        { id: 'sample_m_dan_3', from: 'them', text: '설명은 제가 할게요, 편하게 오세요', at: ago(26 * HOUR) }
+      ]
+    }
+  ];
+}
+
+/** 예시 한 묶음 — regionId 의 동네로 사람·글·모임의 지역을 맞춘다. */
+function buildSampleContent(regionId) {
+  return {
+    groups: sampleGroups(regionId),
+    feedPosts: sampleFeedPosts(),
+    explorePosts: sampleExplorePosts(regionId),
+    matchProfiles: samplePeople(regionId),
+    chatRooms: sampleChatRooms(),
+    groupChats: sampleGroupChats(),
+    groupNotices: sampleGroupNotices(),
+    groupEvents: sampleGroupEvents(),
+    joinedGroupIds: SAMPLE_JOINED_GROUP_IDS.slice(),
+    firstGroupId: 'sample_grp_run'
+  };
+}
+
+/**
+ * 예시 데이터를 상태에 넣는다(이미 있으면 지우고 새로 넣는다).
+ *  · `sample: true` 로 표시해 두고, 사람·글·모임 모두 **가입한 모임 2개**와 이어진다.
+ *  · 동네는 지금 내 지역(없으면 기본 지역)으로 맞춰 '우리 동네'에서 바로 보이게 한다.
+ */
+function applySampleData(state, options = {}) {
+  if (!state) return state;
+  stripSampleData(state);
+  const me = state.currentUser || {};
+  const regionId = options.regionId
+    || (me.registered && me.regionId ? me.regionId : null)
+    || SAMPLE_FALLBACK_REGION;
+  const block = buildSampleContent(regionId);
+  state.groups = (state.groups || []).concat(block.groups);
+  state.feedPosts = (state.feedPosts || []).concat(block.feedPosts);
+  state.explorePosts = (state.explorePosts || []).concat(block.explorePosts);
+  state.matchProfiles = (state.matchProfiles || []).concat(block.matchProfiles);
+  state.chatRooms = (state.chatRooms || []).concat(block.chatRooms);
+  state.groupChats = (state.groupChats || []).concat(block.groupChats);
+  state.groupNotices = (state.groupNotices || []).concat(block.groupNotices);
+  state.groupEvents = (state.groupEvents || []).concat(block.groupEvents);
+  if (!state.currentUser) state.currentUser = blankCurrentUser();
+  const joined = Array.isArray(state.currentUser.joinedGroupIds) ? state.currentUser.joinedGroupIds : [];
+  block.joinedGroupIds.forEach((id) => { if (!joined.includes(id)) joined.push(id); });
+  state.currentUser.joinedGroupIds = joined;
+  state.homePrefs = state.homePrefs || { groupId: null };
+  if (!state.homePrefs.groupId) state.homePrefs.groupId = block.firstGroupId;
+  state.sampleData = {
+    seeded: true,
+    version: SAMPLE_DATA_VERSION,
+    regionId,
+    seededAt: new Date().toISOString(),
+    clearedAt: null
+  };
+  return state;
+}
+
+/** 예시 데이터만 걷어낸다 — 내가 만든 모임·글·대화는 건드리지 않는다. */
+function stripSampleData(state) {
+  if (!state) return { ok: false, removed: 0 };
+  let removed = 0;
+  const keep = (list) => (Array.isArray(list) ? list.filter((item) => {
+    if (item && item.sample === true) { removed += 1; return false; }
+    return true;
+  }) : []);
+  state.groups = keep(state.groups);
+  state.feedPosts = keep(state.feedPosts);
+  state.explorePosts = keep(state.explorePosts);
+  state.matchProfiles = keep(state.matchProfiles);
+  state.chatRooms = keep(state.chatRooms);
+  state.groupChats = keep(state.groupChats);
+  state.groupNotices = keep(state.groupNotices);
+  state.groupEvents = keep(state.groupEvents);
+  const sampleIds = SAMPLE_JOINED_GROUP_IDS;
+  if (state.currentUser) {
+    state.currentUser.joinedGroupIds = (state.currentUser.joinedGroupIds || [])
+      .filter((id) => !sampleIds.includes(id));
+  }
+  if (state.homePrefs && sampleIds.includes(state.homePrefs.groupId)) {
+    state.homePrefs.groupId = (state.currentUser.joinedGroupIds || [])[0] || null;
+  }
+  return { ok: true, removed };
+}
+
+/** 지금 예시 데이터가 얼마나 들어 있는지(설정 › 데이터 관리 요약용). */
+function sampleSummaryOf(state) {
+  const count = (list) => (Array.isArray(list) ? list.filter((x) => x && x.sample === true).length : 0);
+  const meta = (state && state.sampleData) || {};
+  const counts = {
+    groups: count(state.groups),
+    posts: count(state.feedPosts) + count(state.explorePosts),
+    people: count(state.matchProfiles),
+    chats: count(state.chatRooms) + count(state.groupChats),
+    events: count(state.groupEvents)
+  };
+  return {
+    seeded: meta.seeded === true && counts.groups + counts.posts + counts.people + counts.chats > 0,
+    cleared: !!meta.clearedAt,
+    version: meta.version || null,
+    counts,
+    total: counts.groups + counts.posts + counts.people + counts.chats + counts.events
+  };
+}
+
+/** 가입에서 동네를 골랐을 때 — 예시의 동네를 그 지역으로 옮긴다. */
+function retargetSampleRegion(state, regionId) {
+  if (!state || !state.sampleData || !state.sampleData.seeded || !regionId) return state;
+  const area = (regionDef(regionId) || {}).name || '';
+  (state.explorePosts || []).forEach((p) => {
+    if (p.sample) { p.regionId = regionId; p.location = area; p.groupName = `${area} ${p.hobbyLabel || ''}`.trim(); }
+  });
+  (state.matchProfiles || []).forEach((p) => { if (p.sample) { p.regionId = regionId; p.location = area; } });
+  (state.groups || []).forEach((g) => { if (g.sample) { g.regionId = regionId; g.location = area; } });
+  state.sampleData.regionId = regionId;
+  return state;
+}
+
+/** 클린 스타트 상태 — 앱을 처음 연 사람이 보는 상태(회원가입 전, 예시 데이터만). */
 function buildCleanState() {
   const state = JSON.parse(JSON.stringify(defaultInitialState));
   stripAllContent(state);
@@ -3691,6 +4134,8 @@ function buildCleanState() {
   state.tastePrefs = { hobbyIds: [], goalIds: [], updatedAt: null };
   state.customHobbies = [];
   applyRegionIds(state);
+  /* Sprint 27 — 텅 빈 화면 대신 최소 예시 데이터로 시작한다(가입 후 바로 눌러 볼 수 있게). */
+  applySampleData(state);
   return state;
 }
 
@@ -3938,6 +4383,21 @@ class Store {
           ? cu.album[kind].filter((p) => p && p.url).slice(0, 4) : [];
       });
       cu.secretShares = (cu.secretShares && typeof cu.secretShares === 'object') ? cu.secretShares : {};
+      /* Sprint 27 — 예전에 저장된 '텅 빈' 계정에도 최소 예시 데이터를 넣는다.
+         (가이드가 빈 화면을 비추던 문제) 내가 만든 내용이 하나라도 있으면 건드리지 않고,
+         '예시 데이터 비우기'를 누른 상태(cleared)도 다시 넣지 않는다. */
+      const sd = parsed.sampleData && typeof parsed.sampleData === 'object' ? parsed.sampleData : {};
+      const emptyContent = merged.groups.length === 0 && merged.feedPosts.length === 0
+        && merged.explorePosts.length === 0 && merged.matchProfiles.length === 0;
+      if (sd.seeded !== true && !sd.clearedAt && emptyContent) applySampleData(merged);
+      merged.sampleData = {
+        seeded: merged.sampleData ? merged.sampleData.seeded === true : false,
+        version: merged.sampleData ? merged.sampleData.version || SAMPLE_DATA_VERSION : SAMPLE_DATA_VERSION,
+        regionId: merged.sampleData ? (merged.sampleData.regionId || null) : null,
+        seededAt: (merged.sampleData && merged.sampleData.seededAt) || null,
+        clearedAt: (merged.sampleData && merged.sampleData.clearedAt) || (sd.clearedAt || null)
+      };
+      merged.settings.lastSettingsGroup = merged.settings.lastSettingsGroup || 'account';
       merged.schemaVersion = STORAGE_SCHEMA_VERSION;
       return merged;
     } catch (e) {
@@ -8766,6 +9226,93 @@ class Store {
   }
 
   /* ==========================================================================
+   * 16-E-3. Sprint 27 — 예시 데이터 · 앨범 순서/대표 사진 · 설정 묶음 기억
+   * -------------------------------------------------------------------------
+   *  · 예시 데이터: 가이드·실사용 초기에 기능을 바로 눌러 볼 수 있는 최소 샘플.
+   *    모두 sample:true 라 '예시 데이터 비우기' 한 번으로 걷어낼 수 있고,
+   *    같은 버튼으로 다시 넣을 수도 있다(사용자가 만든 모임·글은 건드리지 않는다).
+   *  · 앨범 순서: 공개 앨범 첫 장이 **대표 사진**(내 프로필·탐색 카드).
+   *    길게 누르기 메뉴에서 '대표 사진으로' / '앞으로' / '뒤로' 로 옮긴다.
+   * ======================================================================== */
+  getSampleSummary() {
+    return sampleSummaryOf(this.state);
+  }
+
+  /** 예시 데이터를 다시 넣는다(내 콘텐츠는 그대로). */
+  seedSampleData() {
+    applySampleData(this.state, {
+      regionId: (this.state.currentUser && this.state.currentUser.regionId) || this.state.sampleData && this.state.sampleData.regionId
+    });
+    this.saveState();
+    return { ok: true, sample: this.getSampleSummary() };
+  }
+
+  /** 예시 데이터만 비운다 — 내가 만든 내용은 남는다. */
+  clearSampleData() {
+    const before = this.getSampleSummary();
+    const res = stripSampleData(this.state);
+    this.state.sampleData = {
+      seeded: false,
+      version: SAMPLE_DATA_VERSION,
+      regionId: (this.state.sampleData && this.state.sampleData.regionId) || null,
+      seededAt: (this.state.sampleData && this.state.sampleData.seededAt) || null,
+      clearedAt: new Date().toISOString()
+    };
+    this.saveState();
+    return { ok: true, removed: res.removed, before, sample: this.getSampleSummary() };
+  }
+
+  /** 설정 사이드바에서 마지막에 펼친 묶음 — 앱을 다시 열어도 그 자리로 돌아온다. */
+  getLastSettingsGroup() {
+    const key = (this.state.settings || {}).lastSettingsGroup;
+    return typeof key === 'string' && key ? key : 'account';
+  }
+
+  setLastSettingsGroup(key) {
+    const allowed = ['account', 'profile', 'groups', 'talk', 'alerts', 'display', 'data'];
+    if (!allowed.includes(key)) return { ok: false, reason: 'invalid' };
+    if (!this.state.settings) this.state.settings = { darkMode: false };
+    this.state.settings.lastSettingsGroup = key;
+    this.saveState();
+    return { ok: true, key };
+  }
+
+  /** 공개 앨범의 첫 장 = 대표 사진. 지금 대표가 무엇인지. */
+  getAlbumCover(kind = 'public') {
+    return this.getMyAlbum(kind)[0] || null;
+  }
+
+  /**
+   * 사진을 앨범의 맨 앞(대표)으로 옮긴다. 이미 맨 앞이면 no-op.
+   * 비밀앨범에도 쓸 수 있지만 '대표'라는 말은 공개 앨범에만 붙인다.
+   */
+  setMyAlbumCover(kind, photoId) {
+    return this.moveMyAlbumPhoto(kind, photoId, -999);
+  }
+
+  /**
+   * 앨범 한 칸을 앞/뒤로 옮긴다(delta 음수=앞, 양수=뒤).
+   *  · 순서만 바뀌고 사진 id·내용은 그대로다(지우고 다시 넣지 않는다).
+   *  · 끝에 있는 사진을 더 밀면 그대로 둔다(reason:'edge').
+   */
+  moveMyAlbumPhoto(kind, photoId, delta) {
+    const key = kind === 'secret' ? 'secret' : 'public';
+    const u = this.state.currentUser;
+    const list = (u.album && Array.isArray(u.album[key])) ? u.album[key] : [];
+    const from = list.findIndex((p) => p.id === photoId);
+    if (from < 0) return { ok: false, reason: 'not_found' };
+    const step = Number(delta) || 0;
+    const to = Math.max(0, Math.min(list.length - 1, from + step));
+    if (to === from) return { ok: false, reason: 'edge', photos: list, index: from };
+    const next = list.slice();
+    const [photo] = next.splice(from, 1);
+    next.splice(to, 0, photo);
+    u.album[key] = next;
+    this.saveState();
+    return { ok: true, photos: next, index: to, cover: key === 'public' ? next[0] : null };
+  }
+
+  /* ==========================================================================
    * 16-E-2. Sprint 24 — 내 프로필 앨범(공개 4장 · 비밀 4장) · 비밀앨범 공개
    * -------------------------------------------------------------------------
    * 11/17 00:30 루키 님: "내 프로필 탭 … 공개 이미지(최대 4장)와 비밀앨범(최대 4장)을
@@ -9195,6 +9742,9 @@ class Store {
     };
     if (location) user.coords = null;
 
+    /* Sprint 27 — 가입 계정도 예시 모임 2개에 들어가 있다(빈 화면 대신 바로 눌러 보게). */
+    const sampleJoined = SAMPLE_JOINED_GROUP_IDS.slice();
+    user.joinedGroupIds = sampleJoined;
     this.state.currentUser = user;
     this.state.account = {
       loginId: quick ? `guest_${Date.now().toString(36)}` : loginId,
@@ -9210,6 +9760,12 @@ class Store {
     this.state.onboarding = { completed: true, completedAt: new Date().toISOString(), step: 3 };
     this.state.sessionActive = true;
     this.state.homePrefs = { groupId: null };
+    /* Sprint 27 — 예시 사람·글이 가입에서 고른 동네에 보이도록 맞춘다. */
+    if (user.regionId) retargetSampleRegion(this.state, user.regionId);
+    if (!this.state.homePrefs.groupId) {
+      const firstSample = (this.state.groups || []).find((g) => g.sample && this.state.currentUser.joinedGroupIds.includes(g.id));
+      this.state.homePrefs.groupId = firstSample ? firstSample.id : ((this.state.currentUser.joinedGroupIds || [])[0] || null);
+    }
     this.saveState();
     return { ok: true, user, onboarding: this.getOnboardingState() };
   }

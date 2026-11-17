@@ -52,10 +52,10 @@
          화면을 누르거나 키를 누르면 즉시 건너뛴다.
        · OS '동작 줄이기' · 자동화 테스트(navigator.webdriver)에서는 기다리지 않는다. -->
   <div class="oog-splash" id="oog-splash" role="status" aria-live="polite" aria-label="우그 불러오는 중">
+    <!-- Sprint 27.5 — 배경 그림 위에 로고 글자만(점토 타일 박스 없음) -->
+    <div class="oog-splash-bg" aria-hidden="true"></div>
     <div class="oog-splash-stage">
-      <div class="oog-splash-clay" aria-hidden="true">
-        <span class="oog-splash-logo">ooG</span>
-      </div>
+      <span class="oog-splash-logo">ooG</span>
       <p class="oog-splash-word" aria-hidden="true">우그</p>
       <div class="oog-splash-dots" aria-hidden="true"><span></span><span></span><span></span></div>
     </div>
@@ -1262,6 +1262,15 @@
       </div>
       <!-- Sprint 26.5 — 사진을 길게 누르면(또는 우클릭) 그 자리에서 열리는 메뉴 -->
       <div class="album-viewer-menu" id="album-viewer-menu" role="menu" aria-label="사진 메뉴" tabindex="-1" hidden>
+        <button class="avm-item" data-viewer-menu="cover" role="menuitem" type="button">
+          <span class="avm-icon" data-oog-icon="star" aria-hidden="true"></span>대표 사진으로
+        </button>
+        <button class="avm-item" data-viewer-menu="prev" role="menuitem" type="button">
+          <span class="avm-icon" data-oog-icon="chevronUp" aria-hidden="true"></span>앞으로 이동
+        </button>
+        <button class="avm-item" data-viewer-menu="next" role="menuitem" type="button">
+          <span class="avm-icon" data-oog-icon="chevronDown" aria-hidden="true"></span>뒤로 이동
+        </button>
         <button class="avm-item" data-viewer-menu="replace" role="menuitem" type="button">
           <span class="avm-icon" data-oog-icon="image" aria-hidden="true"></span>사진 바꾸기
         </button>
@@ -1365,6 +1374,21 @@
                   <span class="menu-label">내가 좋아요한 취미친구</span>
                   <span class="menu-val" id="menu-liked-count">0명</span>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Sprint 27.5 — '가입한 소모임·가입 신청'을 '모임' 묶음으로 분리(잭디·이반시티식) -->
+          <section class="drawer-section acc" data-acc="groups">
+            <h3 class="drawer-section-title">
+              <button class="acc-head" id="acc-head-groups" type="button" aria-expanded="false" aria-controls="acc-body-groups">
+                <span class="acc-label">모임</span>
+                <span class="acc-meta" id="acc-meta-groups">가입 0 · 신청 0</span>
+                <span class="acc-chevron" aria-hidden="true" data-oog-icon="chevronDown"></span>
+              </button>
+            </h3>
+            <div class="acc-body" id="acc-body-groups" role="region" aria-labelledby="acc-head-groups" hidden>
+              <div class="settings-menu-list">
                 <div class="menu-item" id="menu-joined-manage" role="button" tabindex="0">
                   <span class="menu-label">가입한 소모임 관리</span>
                   <span class="menu-val" id="menu-joined-count">0개</span>
@@ -1461,6 +1485,15 @@
                   <span class="menu-label">내 활동 기록</span>
                   <span class="menu-val" id="menu-activity-count">0건</span>
                 </div>
+                <!-- Sprint 27.5 — 예시 데이터는 한 번에 비우거나 다시 넣을 수 있다 -->
+                <div class="menu-item" id="menu-sample-data" role="button" tabindex="0">
+                  <span class="menu-label">예시 데이터 비우기</span>
+                  <span class="menu-val" id="menu-sample-state">모임 5 · 사람 4</span>
+                </div>
+                <div class="menu-item" id="menu-sample-restore" role="button" tabindex="0" hidden>
+                  <span class="menu-label">예시 데이터 다시 넣기</span>
+                  <span class="menu-val">모임·사람·글</span>
+                </div>
                 <div class="menu-item danger" id="menu-reset-data" role="button" tabindex="0">
                   <span class="menu-label">데이터 초기화</span>
                   <span class="menu-val">회원가입부터</span>
@@ -1481,6 +1514,8 @@
          · 화면을 어둡게 덮고 타겟 요소만 점토 빛으로 뚫어 보여준다(.spotlight-hole 의 box-shadow).
          · 말풍선 안에서 취향 질문(당신의 취미는 무엇인가요? / 우그에서 어떤 걸 해보고 싶나요?)을 묻는다. -->
     <div class="spotlight" id="spotlight" hidden>
+      <!-- Sprint 27.5 — 문구 뒤 완만한 어둠+흐림. 네모 카드가 아니라 마스크로 가장자리가 사라진다. -->
+      <div class="spotlight-veil" id="spotlight-veil" aria-hidden="true" hidden></div>
       <div class="spotlight-hole" id="spotlight-hole" aria-hidden="true"></div>
       <div class="spotlight-bubble" id="spotlight-bubble" role="dialog" aria-modal="true"
            aria-labelledby="spotlight-title" tabindex="-1">

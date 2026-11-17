@@ -224,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnHomeBrowseNew: $('#btn-home-browse-new'),
     spotlight: $('#spotlight'),
     spotlightHole: $('#spotlight-hole'),
+    spotlightVeil: $('#spotlight-veil'),
     spotlightBubble: $('#spotlight-bubble'),
     spotlightStep: $('#spotlight-step'),
     spotlightTitle: $('#spotlight-title'),
@@ -322,6 +323,10 @@ document.addEventListener('DOMContentLoaded', () => {
     menuProfileStatusVal: $('#menu-profile-status-val'),
     accMetaDisplay: $('#acc-meta-display'),
     accMetaAlerts: $('#acc-meta-alerts'),
+    accMetaGroups: $('#acc-meta-groups'),
+    menuSampleData: $('#menu-sample-data'),
+    menuSampleState: $('#menu-sample-state'),
+    menuSampleRestore: $('#menu-sample-restore'),
     profilePhotoInput: $('#profile-photo-input'),
     groupSpace: $('#group-space'),
     groupSpaceName: $('#group-space-name'),
@@ -879,24 +884,33 @@ document.addEventListener('DOMContentLoaded', () => {
    * 11/17 08:05 사용자: "스토리텔링의 글이 너무 빨리 나와 천천히 나와야지"
    *
    *  · 제목은 한 글자씩, 쉼표·마침표·줄바꿈에서 사람이 숨 쉬는 만큼 멈춘다.
-   *  · 제목이 끝나면 한 숨(0.48초) 뒤 설명이 떠오르고, **설명을 읽을 만큼**
-   *    (글자수 × 30ms, 0.9~2.4초) 기다린 뒤에야 입력란이 나타난다.
+   *  · 제목이 끝나면 한 숨(약 0.4초) 뒤 설명이 떠오르고, **설명을 읽을 만큼**
+   *    (글자수 × 24ms, 0.76~1.7초) 기다린 뒤에야 입력란이 나타난다.
+   *  · 27.5 — 26.5의 92ms/3.2~3.5초는 "살짝 빠르게"(11/17 11:16 지시)에 맞춰
+   *    글자 68ms · 문장부호 쉼 축소로 **약 2.5초**가 되게 조였다. 단계가 넘어간
+   *    두 번째 화면부터는 스킵 힌트를 0.8초 앞당겨(1.5초 → 0.7초) 기다림을 줄였다.
    *  · 문구(제목·설명·힌트)를 탭하면 기다리지 않고 바로 답이 나온다.
    *  · prefers-reduced-motion · 자동 테스트(webdriver) 에서는 기다리지 않고 바로 보여준다.
    *    (?narr=1 로 강제, ?narr=0 으로 끔 · window.oog.setNarration)
    * ---------------------------------------------------------------- */
   const NARRATION_TIMING = {
-    char: 92,          // 한 글자 (약 10.9자/초 · 읽어 주는 속도)
-    brHold: 300,       // 줄바꿈에서 한 숨
-    commaHold: 170,    // 쉼표
-    periodHold: 310,   // 마침표 · 물음표
-    breath: 480,       // 제목 → 설명
-    descFade: 560,     // 설명이 떠오르는 시간
-    descRead: 30,      // 설명 한 글자를 읽는 시간
-    descMin: 900,
-    descMax: 2400,
-    hintDelay: 1500    // '문구를 탭하면' 힌트가 나타나는 시점
+    char: 68,          // 한 글자 (약 14.7자/초 · 읽어 주는 속도)
+    brHold: 210,       // 줄바꿈에서 한 숨
+    commaHold: 110,    // 쉼표
+    periodHold: 190,   // 마침표 · 물음표
+    breath: 400,       // 제목 → 설명
+    descFade: 420,     // 설명이 떠오르는 시간
+    descRead: 24,      // 설명 한 글자를 읽는 시간
+    descMin: 760,
+    descMax: 1700,
+    hintDelay: 1500,   // 첫 화면 — '문구를 탭하면' 힌트가 나타나는 시점
+    hintDelayNext: 700 // 두 번째 화면부터 — 0.8초 앞당김
   };
+
+  /** 지금 화면이 첫 단계인지 — 스킵 힌트·기다림을 줄일지 정한다. */
+  function narrationHintDelay(isFirst) {
+    return isFirst ? NARRATION_TIMING.hintDelay : NARRATION_TIMING.hintDelayNext;
+  }
 
   function narrationEnabled() {
     if (!ui.narration || ui.narration.enabled === false) return false;
@@ -993,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
     if (cfg.hintNode) {
-      after(NARRATION_TIMING.hintDelay, () => {
+      after(cfg.hintDelay != null ? cfg.hintDelay : NARRATION_TIMING.hintDelay, () => {
         if (st.done) return;
         cfg.hintNode.classList.add('is-on');
       });
@@ -1059,10 +1073,12 @@ document.addEventListener('DOMContentLoaded', () => {
     step.classList.add('is-narrating');
     step.classList.remove('narr-done', 'narr-desc-in');
     answer.hidden = true;
+    const stepIndex = Math.min(ui.onboardingStep, obFlow().length - 1);
     playNarration({
       titleNode,
       descNode,
       hintNode: hint,
+      hintDelay: narrationHintDelay(stepIndex === 0),
       onStart: () => { answer.hidden = true; },
       onDescIn: () => step.classList.add('narr-desc-in'),
       onReveal: reveal
@@ -1513,6 +1529,34 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeAllModals() {
     $$('.modal-overlay.active').forEach((m) => closeModal(m));
     if (el.storyViewer && !el.storyViewer.hidden) closeStoryViewer();
+  }
+
+  /** Sprint 27.5 — 예시 데이터만 비운다(내 모임·글은 그대로). */
+  function runClearSampleData() {
+    const res = store.clearSampleData();
+    closeAllModals();
+    if (res.before && res.before.counts.groups && (store.currentUser.joinedGroupIds || []).length === 0) {
+      ui.groupSpaceId = null;
+      if (ui.activeTab === 'tab-home') renderHome();
+    }
+    renderHome();
+    renderExplore();
+    renderChatRooms();
+    updateBadges();
+    renderProfileDrawer();
+    showToast('예시 데이터를 비웠어요 · 내가 만든 것은 그대로예요', 'info');
+  }
+
+  /** Sprint 27.5 — 예시 데이터를 다시 넣는다(가이드·기능 체험용). */
+  function runRestoreSampleData() {
+    store.seedSampleData();
+    closeAllModals();
+    renderHome();
+    renderExplore();
+    renderChatRooms();
+    updateBadges();
+    renderProfileDrawer();
+    showToast('예시 데이터를 다시 넣었어요', 'success');
   }
 
 
@@ -2164,24 +2208,24 @@ document.addEventListener('DOMContentLoaded', () => {
       desc: '함께 해보고 싶은 것을 고르면 홈의 추천 모임이 그 취미로 채워져요. 건너뛰어도 괜찮아요.'
     },
     {
-      id: 'gallery', target: '#group-gallery .gallery-head', tab: 'tab-home',
+      id: 'gallery', targets: ['#group-gallery-grid .gallery-card'], tab: 'tab-home',
       title: '여기가 내 모임 자리예요',
-      desc: '가입한 모임이 이 2열 카드로 쌓입니다. 카드를 누르면 그 모임만의 피드·게시판·디엠으로 들어가요.'
+      desc: '지금 보이는 두 모임은 둘러보기용 예시예요. 카드를 누르면 그 모임만의 피드·게시판·디엠으로 들어가요.'
     },
     {
-      id: 'recommend', target: '#home-recommend', tab: 'tab-home',
+      id: 'recommend', targets: ['#home-recommend-grid .recommend-card', '#home-browse-grid > *'], tab: 'tab-home',
       title: '취향에 맞는 모임을 모아뒀어요',
-      desc: '홈을 조금 내리면 내 취미에 맞는 모임이 나오고, 그 아래 「모임 둘러보기」에서 전체 모임을 볼 수 있어요.'
+      desc: '취미를 고르면 맞는 모임을 골라드리고, 아래 「모임 둘러보기」에서 예시 모임에 바로 가입 신청해 볼 수 있어요.'
     },
     {
-      id: 'explore', target: '#explore-head', tab: 'tab-explore',
+      id: 'explore', targets: ['#explore-board .board-row'], tab: 'tab-explore',
       title: '탐색은 사람과 글을 보는 곳이에요',
-      desc: '지금 보고 계신 이 탭입니다. 우리 동네를 골라 사람과 글을 보고, 마음에 들면 바로 쪽지를 보내요.'
+      desc: '지금 보이는 사람 4명과 동네 글 4개는 예시예요. 우리 동네를 골라 보고, 마음에 들면 바로 쪽지를 보내요.'
     },
     {
       id: 'dm', target: '#dm-head', tab: 'tab-chat',
       title: '전체 디엠함이에요',
-      desc: '지금 보고 계신 이 탭에 모임 단체방과 1:1 대화가 모두 모입니다. 새 소식은 탭 위 숫자로 알려드려요.'
+      desc: '예시 대화 2개가 모여 있어요. 지금 보고 계신 이 탭에서 메시지를 보내고 비밀앨범 공개도 시험해 볼 수 있어요.'
     }
   ];
 
@@ -2226,6 +2270,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.spotlight.hidden = true;
       el.spotlight.classList.remove('is-open');
     }
+    if (el.spotlightVeil) el.spotlightVeil.hidden = true;
     document.body.classList.remove('spotlight-open');
     if (ui.activeTab === 'tab-home') {
       renderHomeRecommend();
@@ -2244,14 +2289,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return res;
   }
 
-  /** 스포트라이트가 비출 타겟의 화면 좌표(없으면 null = 가운데 카드). */
+  /** 스포트라이트가 비출 타겟의 화면 좌표(없으면 null = 가운데 카드).
+   *  Sprint 27.5 — targets 후보 중 **지금 보이는 첫 번째**를 쓴다(추천이 비었으면 둘러보기). */
   function guideTargetRect(step) {
-    if (!step || !step.target) return null;
-    const node = document.querySelector(step.target);
-    if (!node) return null;
-    const r = node.getBoundingClientRect();
-    if (!r.width && !r.height) return null;
-    return { x: r.left, y: r.top, w: r.width, h: r.height };
+    if (!step) return null;
+    const list = Array.isArray(step.targets) ? step.targets : (step.target ? [step.target] : []);
+    for (const selector of list) {
+      const node = document.querySelector(selector);
+      if (!node) continue;
+      const r = node.getBoundingClientRect();
+      if (!r.width && !r.height) continue;
+      return { x: r.left, y: r.top, w: r.width, h: r.height };
+    }
+    return null;
   }
 
   function placeSpotlight() {
@@ -2268,7 +2318,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.spotlightHole.style.top = `${Math.max(0, rect.y - pad)}px`;
       el.spotlightHole.style.width = `${rect.w + pad * 2}px`;
       el.spotlightHole.style.height = `${rect.h + pad * 2}px`;
-      el.spotlightHole.style.borderRadius = step.id === 'recommend' ? '22px' : '18px';
+      el.spotlightHole.style.borderRadius = step.id === 'recommend' ? '26px' : (step.id === 'gallery' ? '24px' : '18px');
     } else {
       el.spotlightHole.hidden = true;
       el.spotlightHole.style.width = '0px';
@@ -2286,19 +2336,36 @@ document.addEventListener('DOMContentLoaded', () => {
       bubble.style.top = `${Math.max(56, Math.round(vh * 0.15))}px`;
       bubble.style.transform = 'translateX(-50%)';
       bubble.style.maxHeight = `${Math.round(vh * 0.78)}px`;
+      placeSpotlightVeil(bubble);
       return;
     }
     const margin = 12;
-    const bubbleH = Math.min(bubble.offsetHeight || 220, vh * 0.62);
+    /* 하단 탭바(약 76px)를 가리지 않게 그 위까지만 쓴다. */
+    const safeBottom = vh - 78;
+    const bubbleH = Math.min(bubble.offsetHeight || 220, (safeBottom - 12) * 0.86);
     const below = rect.y + rect.h + margin;
     const above = rect.y - bubbleH - margin;
-    const putAbove = below + bubbleH > vh - 12 && above > 12;
+    const putAbove = below + bubbleH > safeBottom && above > 12;
     bubble.classList.add(putAbove ? 'above' : 'below');
     bubble.style.transform = 'none';
-    const top = putAbove ? Math.max(12, above) : Math.min(vh - bubbleH - 12, below);
+    const top = putAbove ? Math.max(12, above) : Math.max(12, Math.min(safeBottom - bubbleH, below));
     bubble.style.top = `${top}px`;
     bubble.style.left = `${Math.max(10, Math.min(vw - 10 - 350, (vw - 350) / 2))}px`;
-    bubble.style.maxHeight = `${Math.round(vh * 0.62)}px`;
+    bubble.style.maxHeight = `${Math.round((safeBottom - 12) * 0.86)}px`;
+    placeSpotlightVeil(bubble);
+  }
+
+  /** 문구 뒤의 흐림 막을 말풍선 크기에 맞춘다(문구가 움직이면 함께). */
+  function placeSpotlightVeil(bubble) {
+    const veil = el.spotlightVeil;
+    if (!veil || !bubble) return;
+    const r = bubble.getBoundingClientRect();
+    if (!r.width) { veil.hidden = true; return; }
+    veil.hidden = false;
+    veil.style.left = `${r.left - 18}px`;
+    veil.style.top = `${r.top - 14}px`;
+    veil.style.width = `${r.width + 36}px`;
+    veil.style.height = `${r.height + 36}px`;
   }
 
   /**
@@ -2334,6 +2401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     playNarration({
       titleNode,
       descNode,
+      hintDelay: narrationHintDelay(false),
       onStart: () => { if (body) body.hidden = true; },
       onDescIn: () => bubble.classList.add('narr-desc-in'),
       onReveal: () => {
@@ -2359,6 +2427,50 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof ui.narrationReveal === 'function') ui.narrationReveal();
       });
     }
+  }
+
+  /**
+   * 스포트라이트는 스크롤을 따라간다 — 부드러운 스크롤로 카드가 움직이는 동안
+   * 구멍·말풍선이 옛 자리에 남아 있으면 엉뚱한 곳을 비춘다(Sprint 27.5).
+   */
+  (function wireGuideScrollFollow() {
+    if (!el.main) return;
+    let frame = null;
+    const follow = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        const g = guideState();
+        if (g.open && el.spotlight && !el.spotlight.hidden) placeSpotlight();
+      });
+    };
+    el.main.addEventListener('scroll', follow, { passive: true });
+    window.addEventListener('resize', follow, { passive: true });
+    /* 문구(답 카드)가 나타나 말풍선이 커지면 흐림 막도 함께 자란다. */
+    if (el.spotlightBubble && typeof ResizeObserver === 'function') {
+      const ro = new ResizeObserver(() => {
+        const g = guideState();
+        if (g.open && el.spotlight && !el.spotlight.hidden) placeSpotlight();
+      });
+      ro.observe(el.spotlightBubble);
+    }
+  })();
+
+  /** 비출 대상이 화면 밖이면 그 카드가 보이도록 부드럽게 스크롤한다. */
+  function ensureGuideTargetVisible(step) {
+    if (!el.main) return false;
+    const list = Array.isArray(step.targets) ? step.targets : (step.target ? [step.target] : []);
+    const node = list.map((s) => document.querySelector(s)).find(Boolean);
+    if (!node) return false;
+    const mainRect = el.main.getBoundingClientRect();
+    const r = node.getBoundingClientRect();
+    const topInMain = r.top - mainRect.top;
+    const tooHigh = topInMain < 60;
+    const tooLow = r.bottom > window.innerHeight - 96;
+    if (!tooHigh && !tooLow) return false;
+    const target = el.main.scrollTop + topInMain - Math.max(80, mainRect.height * 0.24);
+    el.main.scrollTo({ top: Math.max(0, target), behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    return true;
   }
 
   /** 가이드 한 단계를 그린다 — 그 단계가 설명하는 **탭으로 실제 이동**한 뒤 짚어 준다. */
@@ -2387,15 +2499,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     applyGuideNarration(step);
     store.setGuideStep(g.step);
-    if (step.target) {
-      const node = document.querySelector(step.target);
-      if (node) {
-        const main = el.main;
-        const nodeTop = node.getBoundingClientRect().top - (main ? main.getBoundingClientRect().top : 0);
-        if (main && (nodeTop < 40 || nodeTop > main.clientHeight * 0.66)) {
-          main.scrollTo({ top: Math.max(0, main.scrollTop + nodeTop - main.clientHeight * 0.32), behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-        }
-      }
+    if (step.target || step.targets) {
+      /* 탐색처럼 목록이 늦게 그려지는 화면은 스크롤 시점을 몇 번 더 잡아 준다. */
+      [0, 260, 720, 1200].forEach((delay) => {
+        setTimeout(() => {
+          const g2 = guideState();
+          if (!g2.open || g2.step !== g.step) return;
+          ensureGuideTargetVisible(step);
+          placeSpotlight();
+        }, delay);
+      });
     } else if (el.main) {
       el.main.scrollTop = 0;
     }
@@ -3598,6 +3711,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderGroupDrawer(grp);
     } else {
       renderProfileDrawer();
+      restoreSettingsGroup();
     }
     ui.drawerOpen = kind;
     node.hidden = false;
@@ -3766,7 +3880,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 처음에는 '계정 및 보안' 하나만 열려 있어, 사이드바가 짧고 읽기 쉽다.
    *  · 접힌 묶음은 hidden 이라 화면 낭독기·Tab 순서에서도 빠진다.
    * ======================================================================== */
-  const SETTINGS_GROUPS = ['account', 'profile', 'talk', 'alerts', 'display', 'data'];
+  const SETTINGS_GROUPS = ['account', 'profile', 'groups', 'talk', 'alerts', 'display', 'data'];
 
   function settingsSection(key) {
     return el.profileDrawer ? el.profileDrawer.querySelector(`.drawer-section[data-acc="${key}"]`) : null;
@@ -3796,17 +3910,29 @@ document.addEventListener('DOMContentLoaded', () => {
   function openSettingsGroup(key) {
     if (ui.drawerOpen !== 'profile') openDrawer('profile');
     SETTINGS_GROUPS.forEach((k) => { if (k !== key) setSettingsGroup(k, false); });
-    return setSettingsGroup(key, true);
+    const res = setSettingsGroup(key, true);
+    /* 테스트·딥링크로 열어도 '마지막에 펼친 묶음' 기억에 남긴다. */
+    if (SETTINGS_GROUPS.includes(key)) store.setLastSettingsGroup(key);
+    return res;
   }
 
   function getSettingsState() {
     return {
       open: ui.drawerOpen,
+      lastGroup: store.getLastSettingsGroup(),
       groups: SETTINGS_GROUPS.map((key) => {
         const sec = settingsSection(key);
         return { key, open: !!(sec && sec.classList.contains('is-open')) };
       })
     };
+  }
+
+  /** 사이드바를 열 때 마지막에 펼쳤던 묶음을 그대로 펼친다(27.5). */
+  function restoreSettingsGroup() {
+    const key = store.getLastSettingsGroup();
+    const target = SETTINGS_GROUPS.includes(key) ? key : 'account';
+    SETTINGS_GROUPS.forEach((k) => setSettingsGroup(k, k === target));
+    return target;
   }
 
   /** 아코디언 헤더의 요약 — 펼치지 않아도 지금 상태가 보이게. */
@@ -3830,6 +3956,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const on = Object.keys(channels).filter((k) => channels[k]).length;
       el.accMetaAlerts.textContent = on ? `켜짐 ${on}` : '꺼짐';
     }
+    /* Sprint 27.5 — '모임' 묶음 요약: 가입 N · 신청 N */
+    if (el.accMetaGroups) {
+      const joined = (store.currentUser.joinedGroupIds || []).length;
+      const pending = store.getMyPendingApplicationCount();
+      el.accMetaGroups.textContent = `가입 ${joined} · 신청 ${pending}`;
+    }
+    /* Sprint 27.5 — 예시 데이터 요약과 비우기/다시 넣기 줄 */
+    const sample = store.getSampleSummary();
+    if (el.menuSampleState) {
+      el.menuSampleState.textContent = sample.seeded
+        ? `모임 ${sample.counts.groups} · 사람 ${sample.counts.people}`
+        : '없음';
+    }
+    if (el.menuSampleData) el.menuSampleData.hidden = !sample.seeded;
+    if (el.menuSampleRestore) el.menuSampleRestore.hidden = sample.seeded;
   }
 
   function renderProfileDrawer() {
@@ -4295,6 +4436,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const willOpen = !sec.classList.contains('is-open');
         if (willOpen) SETTINGS_GROUPS.forEach((k) => { if (k !== key) setSettingsGroup(k, false); });
         setSettingsGroup(key, willOpen);
+        /* Sprint 27.5 — 마지막에 펼친 묶음을 기억한다(앱을 다시 열어도 그 자리로). */
+        if (willOpen) store.setLastSettingsGroup(key);
       });
     });
     /* 헤더를 키보드(Enter·Space)로도 — button 이라 기본 동작이지만, 포커스 이동을 보장 */
@@ -4656,6 +4799,13 @@ document.addEventListener('DOMContentLoaded', () => {
     askConfirm('데이터를 초기화할까요?', '내 계정·모임·글·스토리·디엠·알림 기록이 모두 비워지고 회원가입부터 다시 시작해요. 되돌릴 수 없어요.',
       '초기화', runResetData);
   });
+  /* Sprint 27.5 — 예시 데이터 비우기 / 다시 넣기 */
+  $('#menu-sample-data') && $('#menu-sample-data').addEventListener('click', () => {
+    const sum = store.getSampleSummary();
+    askConfirm('예시 데이터를 비울까요?',
+      `예시 모임 ${sum.counts.groups} · 사람 ${sum.counts.people} · 글 ${sum.counts.posts}만 사라지고, 내가 만든 모임·글·대화는 그대로 남아요.`, '비우기', runClearSampleData);
+  });
+  $('#menu-sample-restore') && $('#menu-sample-restore').addEventListener('click', () => runRestoreSampleData());
   $('#menu-story-archive') && $('#menu-story-archive').addEventListener('click', openStoryArchive);
   $('#menu-edit-photo') && $('#menu-edit-photo').addEventListener('click', () => {
     el.profilePhotoInput && el.profilePhotoInput.click();
@@ -7617,6 +7767,7 @@ document.addEventListener('DOMContentLoaded', () => {
       /* Sprint 24 — 기본 상태는 설명하지 않는다. 꺼둔 모임이 있을 때만 그 사실을 적는다. */
       const off = store.getJoinedGroups().filter((g) => g.dmEnabled === false);
       el.chatDmPolicy.className = `chat-dm-policy ${off.length ? 'is-off' : 'is-on'}`;
+      el.chatDmPolicy.hidden = off.length === 0;
       el.chatDmPolicy.innerHTML = off.length
         ? `${off.map((g) => escapeHtml(g.name)).join(', ')}는 1:1 대화가 꺼져 있어요`
         : '';
@@ -11028,10 +11179,13 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------------------------------------- 내 프로필 탭 · 앨범 */
   function albumFilledHTML(kind, photo, index) {
     const label = kind === 'secret' ? '비밀앨범' : '공개';
-    return `<figure class="album-slot is-filled" data-album-photo="${escapeHtml(photo.id)}" data-album-kind="${kind}">
+    /* Sprint 27.5 — 공개 앨범 첫 장이 대표 사진 — 칸에 표시를 붙인다. */
+    const cover = kind === 'public' && index === 0;
+    return `<figure class="album-slot is-filled${cover ? ' is-cover' : ''}" data-album-photo="${escapeHtml(photo.id)}" data-album-kind="${kind}">
       <img class="album-img" src="${escapeHtml(photo.url)}" alt="${label} 사진 ${index + 1}" loading="lazy" decoding="async">
       <button class="album-open" data-album-open="${escapeHtml(photo.id)}" data-album-kind="${kind}" data-album-index="${index}" type="button"
               aria-label="${label} 사진 ${index + 1} 크게 보기"></button>
+      ${cover ? '<span class="album-cover-badge">대표</span>' : ''}
       <button class="album-remove" data-album-remove="${escapeHtml(photo.id)}" data-album-kind="${kind}" type="button"
               aria-label="${label} 사진 ${index + 1} 지우기">&times;</button>
     </figure>`;
@@ -11173,9 +11327,61 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 26.5 — 길게 누르기 메뉴를 알리는 한 줄(버튼은 보조용으로 남긴다). */
     if (el.albumViewerHint) {
       el.albumViewerHint.textContent = single
-        ? '사진을 길게 누르면 바꾸기·지우기가 열려요'
-        : '좌우로 넘기기 · 길게 누르면 바꾸기·지우기';
+        ? '사진을 길게 누르면 대표·바꾸기·지우기가 열려요'
+        : '좌우로 넘기기 · 길게 누르면 대표·순서·바꾸기·지우기';
     }
+    /* Sprint 27.5 — 메뉴 항목의 가능 여부(대표는 공개 앨범에만, 끝에서는 이동 불가) */
+    syncAlbumViewerMenuState(photos.length);
+  }
+
+  /** 길게 누르기 메뉴의 항목 상태 — 지금 사진으로 할 수 있는 것만 활성화한다. */
+  function syncAlbumViewerMenuState(total) {
+    const menu = el.albumViewerMenu;
+    if (!menu) return;
+    const count = total == null ? albumViewerPhotos(albumViewer.kind).length : total;
+    const atFirst = albumViewer.index <= 0;
+    const atLast = albumViewer.index >= count - 1;
+    const cover = menu.querySelector('[data-viewer-menu="cover"]');
+    const prev = menu.querySelector('[data-viewer-menu="prev"]');
+    const next = menu.querySelector('[data-viewer-menu="next"]');
+    if (cover) {
+      /* 대표 사진 = 공개 앨범 첫 장. 이미 맨 앞이면 할 일이 없다. */
+      cover.hidden = albumViewer.kind !== 'public';
+      cover.disabled = atFirst;
+    }
+    if (prev) prev.disabled = atFirst;
+    if (next) next.disabled = atLast;
+  }
+
+  /** Sprint 27.5 — 지금 사진을 공개 앨범 대표(첫 장)로 옮긴다. */
+  function setAlbumViewerCover() {
+    const photos = albumViewerPhotos(albumViewer.kind);
+    const photo = photos[albumViewer.index];
+    if (!photo) return { ok: false, reason: 'not_found' };
+    const res = store.setMyAlbumCover(albumViewer.kind, photo.id);
+    if (!res.ok) { showToast('이미 대표 사진이에요', 'info'); return res; }
+    albumViewer.index = 0;
+    afterAlbumChange(albumViewer.kind);
+    renderAlbumViewer();
+    showToast('대표 사진으로 정했어요', 'success');
+    return res;
+  }
+
+  /** Sprint 27.5 — 앨범 안에서 앞/뒤로 한 칸 옮긴다. */
+  function moveAlbumViewerPhoto(delta) {
+    const photos = albumViewerPhotos(albumViewer.kind);
+    const photo = photos[albumViewer.index];
+    if (!photo) return { ok: false, reason: 'not_found' };
+    const res = store.moveMyAlbumPhoto(albumViewer.kind, photo.id, delta);
+    if (!res.ok) {
+      showToast(delta < 0 ? '첫 사진이에요' : '마지막 사진이에요', 'info');
+      return res;
+    }
+    albumViewer.index = res.index;
+    afterAlbumChange(albumViewer.kind);
+    renderAlbumViewer();
+    showToast(delta < 0 ? '앞으로 옮겼어요' : '뒤로 옮겼어요', 'success');
+    return res;
   }
 
   function openAlbumViewer(kind, index, from) {
@@ -11281,8 +11487,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.closest('[data-album-viewer-close]')) { closeAlbumViewerMenu(); closeAlbumViewer(); return; }
     const menuItem = e.target.closest('[data-viewer-menu]');
     if (menuItem) {
+      const act = menuItem.dataset.viewerMenu;
       closeAlbumViewerMenu();
-      if (menuItem.dataset.viewerMenu === 'delete') deleteAlbumViewerPhoto();
+      if (act === 'delete') deleteAlbumViewerPhoto();
+      else if (act === 'cover') setAlbumViewerCover();
+      else if (act === 'prev') moveAlbumViewerPhoto(-1);
+      else if (act === 'next') moveAlbumViewerPhoto(1);
       else openAlbumPicker(albumViewer.kind, false);
       return;
     }
@@ -11769,8 +11979,23 @@ document.addEventListener('DOMContentLoaded', () => {
     openSettingsGroup: (key) => openSettingsGroup(key),
     setSettingsGroup: (key, open) => setSettingsGroup(key, open),
     getSettingsState: () => getSettingsState(),
+    /* Sprint 27.5 — 가이드 단계 바로 열기(스포트라이트 확인·테스트) */
+    openGuideAt: (stepId) => startGuide({ step: stepId }),
+    closeGuide: (status) => closeGuide(status),
+    getGuideView: () => ({
+      open: !!(ui.guide && ui.guide.open),
+      step: ui.guide ? GUIDE_STEPS[ui.guide.step] && GUIDE_STEPS[ui.guide.step].id : null,
+      target: guideTargetRect(GUIDE_STEPS[ui.guide ? ui.guide.step : 0] || GUIDE_STEPS[0]),
+      hole: el.spotlightHole ? { w: el.spotlightHole.style.width, h: el.spotlightHole.style.height, hidden: !!el.spotlightHole.hidden } : null
+    }),
     openAlbumViewerMenu: (x, y) => openAlbumViewerMenu(x, y),
     closeAlbumViewerMenu: () => closeAlbumViewerMenu(),
+    /* Sprint 27.5 — 대표 사진·앨범 순서·예시 데이터 */
+    setAlbumViewerCover: () => setAlbumViewerCover(),
+    moveAlbumViewerPhoto: (delta) => moveAlbumViewerPhoto(delta),
+    getSampleState: () => store.getSampleSummary(),
+    clearSampleData: () => runClearSampleData(),
+    restoreSampleData: () => runRestoreSampleData(),
     getAlbumViewerMenuState: () => ({
       open: albumViewerMenuOpen(),
       items: el.albumViewerMenu
