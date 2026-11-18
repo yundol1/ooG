@@ -613,6 +613,15 @@ document.addEventListener('DOMContentLoaded', () => {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+  /* 받침으로 조사를 고른다 — '롤는 처음이라' 처럼 받침 있는 말 뒤에 '는'이 붙던 자리 */
+  const josa = (word, withFinal, withoutFinal) => {
+    const w = String(word == null ? '' : word).trim();
+    if (!w) return withoutFinal;
+    const code = w.charCodeAt(w.length - 1);
+    if (!(code >= 0xac00 && code <= 0xd7a3)) return withoutFinal;
+    return (code - 0xac00) % 28 === 0 ? withoutFinal : withFinal;
+  };
+
   const fmtCount = (n) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
   /* ==========================================================================
@@ -6124,18 +6133,9 @@ document.addEventListener('DOMContentLoaded', () => {
       : '전체 지역으로 돌아왔어요 · 이 선택도 기억해 둘게요', 'info');
   }
 
-  /** 순위 변동 배지 — 위/아래 화살표 + 계단수, NEW (그대로면 생략) */
-  function hotMoveHTML(it, compact) {
-    const mv = it && it.movement;
-    if (!mv || mv === 'same') return compact ? '' : '<span class="hot-move same" aria-hidden="true">–</span>';
-    if (mv === 'new') {
-      return `<span class="hot-move new" aria-label="지난 집계에 없던 글이에요">NEW</span>`;
-    }
-    const up = mv === 'up';
-    const steps = Math.abs(it.delta || 0);
-    return `<span class="hot-move ${up ? 'up' : 'down'}"
-                  aria-label="지난 집계보다 ${steps}계단 ${up ? '상승' : '하락'}">${up ? ic('chevronUp') : ic('chevronDown')}${steps}</span>`;
-  }
+  /* D1-c — 실베 배지(NEW · 위/아래 화살표)는 사용자 지시(11/18)로 걷어냈다.
+     순위 번호(1, 2, 3…)만 남기고, 등락은 화면에 그리지 않는다.
+     (store.getHotPosts() 의 movement/prevRank/delta 는 '내 글이 실베에 들어왔다' 알림 판단에 계속 쓴다.) */
 
   /** 내 글이 실베에 새로 들어왔으면 알림을 보낸다(실제 반응·시뮬레이션 공통 경로).
    *  · 기준은 **전체 실베 Top 10** 이고(11/15 지시) 화면의 지역·반경 필터와 무관하다 — 같은 글로 다시 알리지 않는다. */
@@ -6174,7 +6174,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="hot-card-body">
           <span class="hot-card-hobby">${it.regionName ? `${ic('pin')} ${escapeHtml(it.regionName)} · ` : ''}${escapeHtml(postStyleLabel(p))}</span>
           <span class="hot-card-caption">${escapeHtml(firstSentence(p.caption || ''))}</span>
-          <span class="hot-card-meta">${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}${hotMoveHTML(it, true)}</span>
+          <span class="hot-card-meta">${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}</span>
         </span>
         <span class="hot-card-media">
           ${p.photoUrl ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">` : `<span class="hot-card-noimg" aria-hidden="true">${ic(p.hobbyIcon || 'note')}</span>`}
@@ -6207,7 +6207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="hot-row-main">
           <span class="hot-row-hobby">${ic('pin')} ${escapeHtml(postStyleLabel(p))}${it.regionName ? ` · ${escapeHtml(it.regionName)}` : ''}</span>
           <span class="hot-row-caption">${escapeHtml(p.caption || '')}</span>
-          <span class="hot-row-meta">${escapeHtml(p.authorName)} · ${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}${hotMoveHTML(it, true)}</span>
+          <span class="hot-row-meta">${escapeHtml(p.authorName)} · ${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}</span>
         </span>
         <span class="hot-row-heat" aria-hidden="true"><span style="width:${it.heat}%"></span></span>
       </button>`;
@@ -6832,8 +6832,10 @@ document.addEventListener('DOMContentLoaded', () => {
     el.popupCommon.textContent = `${profile.hobbyStyle} · ${profile.location}`;
     /* Sprint 28.5 — 함께 가입한 모임·공통 취미 + 모임 기반 첫 메시지 3개 */
     if (el.popupCommon && el.popupCommon.parentElement) {
-      let extra = el.popupCommon.parentElement.querySelector('.popup-common-chips, .msg-suggest');
-      if (extra) extra.remove();
+      /* 같은 팝업을 두 번 열면 이전 추천 칩·문구가 겹쳐 쌓였다 — 전부 걷어낸다 */
+      el.popupCommon.parentElement
+        .querySelectorAll('.popup-common-chips, .msg-suggest')
+        .forEach((extra) => extra.remove());
     }
     const suggestHost = el.popupCommon && el.popupCommon.parentElement;
     const actions = suggestHost && suggestHost.querySelector('.popup-actions');
@@ -6844,7 +6846,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const gname = (store.getJoinedGroups() || [])[0];
       const cards = [
         gname ? `${gname.name}에서 봤어요! 다음 모임에 오세요?` : `${hobby} 같이 해요! 이번 주에 시간 되세요?`,
-        `${hobby}는 처음이라 궁금한 게 많아요. 어떤 게 제일 재밌으세요?`,
+        `${hobby}${josa(hobby, '은', '는')} 처음이라 궁금한 게 많아요. 어떤 게 제일 재밌으세요?`,
         `동네가 가까운 것 같아요. 근처에 ${hobby} 하기 좋은 곳 있을까요?`
       ];
       (actions ? actions : suggestHost).insertAdjacentHTML('beforebegin', `
@@ -12373,7 +12375,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sessionUnread: (ui.notifSessionUnread || []).slice()
     }),
     /* Sprint 8 — 내 동네 반경 · 실베 2차 · 알림함/활동 로그 2차 · 성능 */
-    syncHotEntryNotifications, hotMoveHTML,
+    syncHotEntryNotifications,
     simulateHotEntry: (opts) => store.simulateHotEntry(opts),
     markNotifRead, removeNotif,
     renderNotificationList,
