@@ -11081,8 +11081,9 @@ body {
   justify-content: space-between;
   gap: 8px;
   padding: 6px 0;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px solid var(--divider);   /* Sprint 31 — 점선 → 다른 화면과 같은 1px 실선 */
 }
+.ops-row:last-of-type { border-bottom: 0; }
 
 .ops-label { font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-sub); }
 
@@ -11101,7 +11102,7 @@ body {
   gap: 10px;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--divider);
 }
 
 .ops-toggle-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -11708,7 +11709,9 @@ body.group-mode #bottom-nav { display: none; }
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding: 2px 0 10px;
+  /* Sprint 31 — 오른쪽 끝 칩이 글쓰기 FAB(오른쪽 18px · 46px) 아래로 숨지 않게 64px 확보 */
+  padding: 2px 64px 10px 0;
+  scroll-padding-right: 64px;
   scrollbar-width: none;
 }
 
@@ -15326,8 +15329,10 @@ body.spotlight-open { overflow: hidden; }
 .explore-head { padding: 16px 2px 10px; }
 
 /* 세 칸(전체·사람·글)이 된 세그먼트가 지역·필터와 한 줄에 여유 있게 앉는다 */
-.explore-type-seg { padding: 0 4px; }
-.explore-type-btn { padding: 0 9px; font-size: var(--fs-sub); font-weight: 640; }
+.explore-type-seg { padding: 0; }
+.explore-type-btn { padding: 0 12px; font-size: var(--fs-sub); font-weight: 640; }
+/* Sprint 31 — 활성 알약이 트랙 높이를 꽉 채운다(30 vs 32 의 1px 밝은 잔선 제거) */
+.explore-type-seg .explore-type-btn { min-height: 32px; border-radius: var(--r-full); }
 
 /* ---------------------------------------------- 22-2. 스토리텔링 회원가입 */
 /* 질문 카드를 화면 위쪽에 붙여 진행 막대 → 질문 → 입력 → 버튼 순으로 읽히게 한다 */
@@ -16977,7 +16982,7 @@ body.is-album-viewing { overflow: hidden; }
 .acc-chevron .oo-ic { width: 15px; height: 15px; stroke-width: 2.4; }
 .drawer-section.is-open .acc-chevron { transform: rotate(180deg); color: var(--green-dark); }
 .drawer-section.is-open .acc-head { border-bottom: 1px solid var(--border-soft); }
-.acc-body { padding: 8px 0 2px; }
+.acc-body { padding: 4px 0 2px; }
 .acc-body.is-opening { animation: accBodyIn 0.22s ease both; }
 @keyframes accBodyIn {
   from { opacity: 0; transform: translateY(-4px); }
@@ -17074,8 +17079,7 @@ body.is-album-viewing { overflow: hidden; }
   /* 레이아웃 (상단·하단 높이는 맨 위 :root 의 --header-h · --nav-h 하나만 쓴다) */
   --gtab-h: 44px;
 
-  /* 스플래시 자산 — 이미지를 바꾸려면 이 두 줄만 고친다. */
-  --splash-art-svg: url('../assets/oog_christmas_night.svg');
+  /* 스플래시 자산 — 이미지를 바꾸려면 이 한 줄만 고친다. (Sprint 31: 없는 선택 자산 var 제거) */
   --splash-art-fallback: url('../assets/splash-bg.jpg');
 }
 
@@ -17628,7 +17632,7 @@ body.group-mode #tab-board .board-block-title#board-posts-title::before { conten
 .drawer-profile .drawer-body {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: 10px;                 /* Sprint 31 — 16 → 10: 다른 화면과 같은 세로 밀도 */
   padding: var(--sp-3) var(--sp-3) var(--sp-8);
 }
 
@@ -17654,8 +17658,8 @@ body.group-mode #tab-board .board-block-title#board-posts-title::before { conten
 }
 
 .drawer-profile .acc-head {
-  min-height: var(--tap);
-  padding: var(--sp-2) var(--sp-3);
+  min-height: var(--tap);    /* 44 — 손가락 하한 유지(라벨 행이지만 규칙은 하나로) */
+  padding: 4px var(--sp-3);  /* Sprint 31 — 위아래 8 → 4 로 제목 여백만 다듬는다 */
   background: transparent;
   border: 0;
   width: 100%;
@@ -18086,13 +18090,7 @@ body:not(.oog-dev) #menu-reset-data { display: none !important; }
   background-repeat: no-repeat;
 }
 
-/* 크리스마스 밤 SVG 가 있을 때만 두 겹으로 — 없으면 위의 기존 일러스트가 그대로 보인다. */
-.oog-splash-bg.has-art-svg {
-  background-image: var(--splash-art-svg), var(--splash-art-fallback);
-  background-position: center 20%, center 20%;
-  background-size: cover, cover;
-  background-repeat: no-repeat, no-repeat;
-}
+/* 선택 자산(크리스마스 밤 SVG)은 쓰지 않는다 — 없는 파일을 요청해 콘솔 404 를 남기지 않게 걷어냈다. */
 
 /* 이미지 지연 로딩 — 화면 밖 사진은 그리지 않는다 */
 img[loading="lazy"] { content-visibility: auto; }
@@ -18408,9 +18406,9 @@ img[loading="lazy"] { content-visibility: auto; }
 
 /* 하단 탭 뱃지 — 아이콘 위가 아니라 오른쪽 위 모서리에 */
 .nav-badge {
-  top: 2px;
+  top: -3px;                 /* Sprint 31 — 아이콘 모서리에 2px 낮게 앉던 것 보정 */
   right: 50%;
-  transform: translateX(20px);
+  transform: translateX(21px);
   min-width: 18px;
   height: 18px;
   line-height: 14px;
@@ -19114,6 +19112,11 @@ body {
   box-shadow: none;
 }
 
+/* Sprint 31 — 시트 닫기 × 아래로 내려 겹치지 않게. (53px = × 의 아래끝 44 + 여백 9) */
+.sheet-body > .admin-mode-bar:first-child {
+  margin-top: 53px;
+}
+
 .admin-mode-badge { font-size: var(--fs-sub); font-weight: 600; color: var(--text-sub); }
 
 .admin-pending-count {
@@ -19125,23 +19128,21 @@ body {
   border-radius: 8px;
 }
 
-/* 모임 상세 '일정' 행 — 정기 일정도 같은 연회색 면 + 왼쪽 카테고리 막대 */
+/* 모임 상세 '일정' 행 — 정기 일정도 같은 연회색 면 + 앞쪽 카테고리 점 (Sprint 31: 막대 → 점) */
 .schedule-row {
   background: var(--fill-subtle);
   border: 0;
   border-radius: var(--r-2);
-  position: relative;
-  overflow: hidden;
   padding-left: var(--sp-3);
 }
 
+/* 홈·일정 탭의 .event-kind::before 와 같은 5px 점 — 종류 색은 .tone-* 이 정한 --tone-ink */
 .schedule-row::before {
   content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
   background: var(--tone-ink, var(--cat-neutral));
 }
 
@@ -21216,7 +21217,7 @@ select:focus,
 .myprofile-stat { padding: 8px 6px; }
 .myprofile-stat strong { font-size: var(--fs-title); }
 .album-block { padding: var(--pad-card); }
-.drawer-profile .acc-head { min-height: 44px; }
+.drawer-profile .acc-head { min-height: var(--tap); }
 .drawer-profile .menu-item { min-height: 44px; }
 
 /* ---------------------------------------- 32-11. 목록·알림도 같은 밀도 */

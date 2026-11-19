@@ -125,6 +125,34 @@
         return { items, page, limit, hasMore: (page + 1) * limit < all.length, total: all.length };
       }
     },
+    'explore.list': {
+      method: 'GET', mutate: false,
+      params: {
+        filter: { type: 'string', optional: true, enum: ['all', 'people', 'posts', 'groups'] },
+        query: { type: 'string', optional: true, max: 60 },
+        page: { type: 'number', optional: true, min: 0, max: 200 },
+        limit: { type: 'number', optional: true, min: 1, max: 40 },
+        age: { type: 'string', optional: true },
+        region: { type: 'string', optional: true },
+        radius: { type: 'string', optional: true }
+      },
+      response: ['items', 'page', 'limit', 'hasMore', 'total', 'filter', 'query'],
+      local: (store, p) => {
+        const filter = p.filter || 'all';
+        const query = p.query || '';
+        const page = Number.isFinite(p.page) ? p.page : 0;
+        const limit = Number.isFinite(p.limit) ? p.limit : 12;
+        const feed = store.getExploreFeed(filter, query, { page, limit }, p.age || 'all', p.region || 'all', p.radius || 'all');
+        const raw = Array.isArray(feed) ? feed : (feed.items || []);
+        const total = Array.isArray(feed) ? raw.length : (feed.total || 0);
+        return {
+          items: raw.map(slimExploreItem),
+          page, limit, total,
+          hasMore: Array.isArray(feed) ? false : !!feed.hasMore,
+          filter, query
+        };
+      }
+    },
     'explore.profile.status': {
       method: 'GET', mutate: false, params: {},
       response: ['active', 'meetStyleId', 'meetStyleLabel', 'intro', 'expiresAt', 'remainingMs', 'remainingLabel'],
@@ -212,6 +240,44 @@
       response: ['partnerId', 'mine', 'theirs'],
       local: (store, p) => store.getSecretAlbumState(p.partnerId)
     },
+    /* Sprint 31 — 앨범 순서 바꾸기(0-based 목표 자리) · 대표 사진 지정. */
+    'album.reorder': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        kind: { type: 'string', required: true, enum: ['public', 'secret'] },
+        photoId: { type: 'string', required: true },
+        to: { type: 'number', required: true, min: 0, max: 3 }
+      },
+      response: ['ok', 'photos', 'index', 'from', 'to'],
+      local: (store, p) => {
+        const photos = store.getMyAlbum(p.kind);
+        const from = photos.findIndex((x) => x.id === p.photoId);
+        if (from < 0) throw new ApiError('not_found', '그 사진을 찾지 못했어요', { details: { photoId: p.photoId } });
+        if (p.to >= photos.length) throw new ApiError('validation', '그 자리로는 옮길 수 없어요', { details: { to: p.to, count: photos.length } });
+        if (p.to === from) return { ok: true, photos: photos.map(slimPhoto), index: from, from, to: from, moved: false };
+        const res = store.moveMyAlbumPhoto(p.kind, p.photoId, p.to - from);
+        if (!res.ok) throw new ApiError('conflict', '순서를 바꾸지 못했어요', { details: res });
+        return { ok: true, photos: res.photos.map(slimPhoto), index: res.index, from, to: res.index, moved: true };
+      }
+    },
+    'album.setCover': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        kind: { type: 'string', required: true, enum: ['public', 'secret'] },
+        photoId: { type: 'string', required: true }
+      },
+      response: ['ok', 'photos', 'index', 'cover', 'already'],
+      local: (store, p) => {
+        if (p.kind !== 'public') throw new ApiError('validation', '대표 사진은 공개 앨범에만 있어요', { details: { field: 'kind' } });
+        const photos = store.getMyAlbum('public');
+        const at = photos.findIndex((x) => x.id === p.photoId);
+        if (at < 0) throw new ApiError('not_found', '그 사진을 찾지 못했어요', { details: { photoId: p.photoId } });
+        if (at === 0) return { ok: true, photos: photos.map(slimPhoto), index: 0, cover: slimPhoto(photos[0]), already: true };
+        const res = store.setMyAlbumCover('public', p.photoId);
+        if (!res.ok) throw new ApiError('conflict', '대표 사진을 바꾸지 못했어요', { details: res });
+        return { ok: true, photos: res.photos.map(slimPhoto), index: 0, cover: slimPhoto(res.photos[0]), already: false };
+      }
+    },
     'chat.rooms.list': {
       method: 'GET', mutate: false, params: {},
       response: ['rooms', 'groupRooms', 'count', 'unread'],
@@ -241,6 +307,43 @@
       response: ['ok', 'message'],
       local: (store, p) => store.sendChatMessage(p.roomId, p.text)
     },
+    /* Sprint 31 — 1:1 대화 보내기. 화면 코드가 부르는 이름(dm.send)과 같은 계약. */
+    'dm.send': {
+      method: 'POST', mutate: true,
+      params: {
+        roomId: { type: 'string', required: true },
+        text: { type: 'string', required: true, max: 500 }
+      },
+      response: ['ok', 'message'],
+      local: (store, p) => {
+        const message = store.sendChatMessage(p.roomId, p.text);
+        if (!message) {
+          const room = store.getChatRoom ? store.getChatRoom(p.roomId) : null;
+          if (!room) throw new ApiError('not_found', '그 대화방을 찾지 못했어요', { details: { roomId: p.roomId } });
+          throw new ApiError('validation', '보낼 말을 적어 주세요', { details: { field: 'text' } });
+        }
+        return { ok: true, message: { id: message.id, text: message.text, at: message.at, from: message.from } };
+      }
+    },
+    /* Sprint 31 — 모임 단체 채팅 보내기. */
+    'group.chat.send': {
+      method: 'POST', mutate: true,
+      params: {
+        groupId: { type: 'string', required: true },
+        text: { type: 'string', required: true, max: 1000 }
+      },
+      response: ['ok', 'message'],
+      local: (store, p) => {
+        const res = store.sendGroupChatMessage(p.groupId, p.text);
+        if (!res || !res.ok) {
+          const reason = res && res.reason;
+          if (reason === 'not_member') throw new ApiError('unauthorized', '이 모임의 멤버만 쓸 수 있어요', { details: { groupId: p.groupId } });
+          throw new ApiError('validation', '보낼 말을 적어 주세요', { details: { field: 'text' } });
+        }
+        const m = res.message;
+        return { ok: true, message: { id: m.id, text: m.text, at: m.at, from: m.from, authorId: m.authorId, authorName: m.authorName } };
+      }
+    },
     'groups.list': {
       method: 'GET', mutate: false, params: {},
       response: ['groups', 'count'],
@@ -267,6 +370,41 @@
 
   function slimPhoto(p) {
     return { id: p.id, url: p.url, caption: p.caption || '', at: p.at || null };
+  }
+
+  /** Sprint 31 — 탐색 카드의 공통 모양(사람·글·모임). 화면이 타입별 분기 없이 읽게. */
+  function slimExploreItem(item) {
+    if (item.type === 'person') {
+      const p = item.profile || {};
+      return {
+        id: item.id, kind: 'person',
+        name: p.nickname || '', subtitle: p.bio || p.hobbyLabel || '',
+        regionId: p.regionId || null, age: p.age || null,
+        hobby: p.hobbyLabel || null, photo: p.photoUrl || null,
+        distanceKm: Number.isFinite(item.distanceKm) ? item.distanceKm : null,
+        isMe: !!item.isMe
+      };
+    }
+    if (item.type === 'post') {
+      const p = item.post || {};
+      return {
+        id: item.id, kind: 'post',
+        name: p.authorName || '', subtitle: p.caption || '',
+        regionId: p.regionId || null, age: null,
+        hobby: p.hobbyLabel || null, photo: p.photoUrl || null,
+        distanceKm: Number.isFinite(item.distanceKm) ? item.distanceKm : null,
+        createdAt: p.createdAt || null
+      };
+    }
+    const g = item.group || {};
+    return {
+      id: item.id, kind: 'group',
+      name: g.name || '', subtitle: g.description || '',
+      regionId: g.regionId || null, age: null,
+      hobby: g.categoryName || null, photo: g.coverUrl || null,
+      distanceKm: Number.isFinite(item.distanceKm) ? item.distanceKm : null,
+      joined: !!item.joined
+    };
   }
 
   function slimCard(item) {

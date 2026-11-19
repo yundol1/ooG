@@ -280,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     albumViewerReplace: $('#btn-album-viewer-replace'),
     albumViewerDelete: $('#btn-album-viewer-delete'),
     albumViewerClose: $('#btn-album-viewer-close'),
+    albumViewerLive: $('#album-viewer-live'),
     headerHomeBtn: $('#btn-header-home'),
     dmViewSeg: $('#dm-view-seg'),
     dmSentBanner: $('#dm-sent-banner'),
@@ -6932,7 +6933,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <ul class="schedule-list">
           ${rows.map((row) => `
             <li class="schedule-row tone-${escapeHtml(row.tone)}">
-              <span class="schedule-icon" aria-hidden="true">${ic(row.icon)}</span>
               <span class="schedule-label">${escapeHtml(row.label)}</span>
               <span class="schedule-value">${escapeHtml(row.value)}</span>
             </li>`).join('')}
@@ -11186,24 +11186,12 @@ document.addEventListener('DOMContentLoaded', () => {
        · 주소에 ?splash=1 을 붙이면 강제로 보여 주고, ?splash=hold 는 직접 끌 때까지,
          ?splash=0 은 끈다(미리보기·촬영용).
      ------------------------------------------------------------------------ */
-  /* Sprint 28.5 — 스플래시 자산은 이 한 곳만 바꾸면 교체된다.
-     oog_christmas_night.svg 가 있으면 그것을, 없으면 기존 일러스트를 쓴다. */
-  const SPLASH_ART = {
-    svg: 'assets/oog_christmas_night.svg',
-    fallback: 'assets/splash-bg.jpg'
-  };
+  /* Sprint 28.5 — 스플래시 자산은 CSS 의 --splash-art-fallback 한 곳만 바꾸면 교체된다.
+     Sprint 31 — 선택 자산(oog_christmas_night.svg) 확인용 프로브를 거뒀다.
+     없는 파일을 매번 요청해 콘솔에 404 를 남기던 자리라, 이제는 있는 자산 하나만 쓴다. */
 
   const splash = (() => {
     const node = document.getElementById('oog-splash');
-    /* SVG 자산이 실제로 있을 때만 배경을 두 겹으로 바꾼다. */
-    try {
-      const bg = node && node.querySelector('.oog-splash-bg');
-      if (bg) {
-        const probe = new Image();
-        probe.onload = () => bg.classList.add('has-art-svg');
-        probe.src = SPLASH_ART.svg;
-      }
-    } catch (e) { /* 자산 확인 실패는 무시 — 기존 일러스트로 뜬다 */ }
     const params = new URLSearchParams(window.location.search || '');
     const param = params.get('splash');
     const hold = param === 'hold';
@@ -11579,8 +11567,26 @@ document.addEventListener('DOMContentLoaded', () => {
     kind: 'public',
     index: 0,
     open: false,
-    from: 'profile'       // 'profile' | 'secret'
+    from: 'profile',       // 'profile' | 'secret'
+    trigger: null          // Sprint 31 — 닫을 때 포커스를 돌려줄 원래 자리
   };
+
+  /** 보조기기에 한 줄을 알린다(같은 문장도 다시 읽히도록 다음 프레임에 넣는다). */
+  function announceAlbumViewer(text) {
+    const live = el.albumViewerLive;
+    if (!live) return;
+    live.textContent = '';
+    const put = () => { live.textContent = text; };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(put);
+    else setTimeout(put, 16);
+  }
+
+  /** 모달 안에서 Tab 이 도는 요소들 — 보이는 것만, 메뉴가 닫혔으면 메뉴 버튼은 뺀다. */
+  function albumViewerFocusables() {
+    if (!el.albumViewer) return [];
+    return [...el.albumViewer.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+      .filter((n) => !n.disabled && n.offsetParent !== null && !n.hidden);
+  }
 
   function albumViewerPhotos(kind) {
     return store.getMyAlbum(kind).slice();
@@ -11643,6 +11649,7 @@ document.addEventListener('DOMContentLoaded', () => {
     afterAlbumChange(albumViewer.kind);
     renderAlbumViewer();
     showToast('대표 사진으로 정했어요', 'success');
+    announceAlbumViewer('대표 사진으로 정했어요. 지금 1번째 사진이에요.');
     return res;
   }
 
@@ -11660,6 +11667,7 @@ document.addEventListener('DOMContentLoaded', () => {
     afterAlbumChange(albumViewer.kind);
     renderAlbumViewer();
     showToast(delta < 0 ? '앞으로 옮겼어요' : '뒤로 옮겼어요', 'success');
+    announceAlbumViewer(`${delta < 0 ? '앞으로' : '뒤로'} 옮겼어요. 지금 ${res.index + 1}번째 사진이에요.`);
     return res;
   }
 
@@ -11667,10 +11675,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.albumViewer) return { ok: false, reason: 'no_viewer' };
     const photos = albumViewerPhotos(kind);
     if (!photos.length) return { ok: false, reason: 'empty' };
+    const wasOpen = albumViewer.open;
     albumViewer.kind = kind === 'secret' ? 'secret' : 'public';
     albumViewer.index = Number.isFinite(Number(index)) ? Number(index) : 0;
     albumViewer.from = from || 'profile';
     albumViewer.open = true;
+    /* Sprint 31 — 열어 준 요소를 기억해 두었다가 닫으면 그 자리로 포커스를 돌린다. */
+    if (!wasOpen) {
+      const active = document.activeElement;
+      albumViewer.trigger = active && active !== document.body ? active : null;
+    }
     closeAlbumViewerMenu();
     el.albumViewer.hidden = false;
     el.albumViewer.classList.add('is-open');
@@ -11678,6 +11692,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAlbumViewer();
     syncProfilesBackdrop();
     if (el.albumViewerClose) el.albumViewerClose.focus({ preventScroll: true });
+    const total = albumViewerPhotos(albumViewer.kind).length;
+    const label = albumViewer.kind === 'secret' ? '비밀앨범' : '공개 사진';
+    announceAlbumViewer(`${label} 크게 보기. ${albumViewer.index + 1} / ${total}. 화살표로 넘기고 Esc 로 닫아요.`);
     return { ok: true, index: albumViewer.index, kind: albumViewer.kind };
   }
 
@@ -11690,6 +11707,22 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.remove('is-album-viewing');
     if (el.albumViewerImg) el.albumViewerImg.removeAttribute('src');
     syncProfilesBackdrop();
+    /* Sprint 31 — 원래 열었던 사진 칸(또는 버튼)으로 포커스 복귀.
+       대표 지정·순서 이동은 앨범을 다시 그리므로 그 사이 원래 칸이 새 노드로 바뀌어 있다.
+       연결이 끊겼으면 같은 종류·같은 자리의 새 칸으로 돌린다. */
+    const back = albumViewer.trigger;
+    const kind = albumViewer.kind;
+    const index = albumViewer.index;
+    albumViewer.trigger = null;
+    let target = (back && typeof back.focus === 'function' && document.contains(back)) ? back : null;
+    if (!target) {
+      target = document.querySelector(`[data-album-open][data-album-kind="${kind}"][data-album-index="${index}"]`)
+        || document.querySelector(`[data-album-open][data-album-kind="${kind}"]`)
+        || document.querySelector('[data-album-open]');
+    }
+    if (target && typeof target.focus === 'function') {
+      try { target.focus({ preventScroll: true }); } catch (e) { /* detached */ }
+    }
     return { open: false };
   }
 
@@ -11700,6 +11733,8 @@ document.addEventListener('DOMContentLoaded', () => {
     albumViewer.index = (albumViewer.index + delta + photos.length) % photos.length;
     renderAlbumViewer();
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(4);
+    const label = albumViewer.kind === 'secret' ? '비밀앨범' : '공개 사진';
+    announceAlbumViewer(`${label} ${albumViewer.index + 1} / ${photos.length}`);
     return { index: albumViewer.index, total: photos.length };
   }
 
@@ -11742,6 +11777,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!albumViewerPhotos(kind).length) { closeAlbumViewer(); showToast('사진을 지웠어요', 'info'); return; }
       renderAlbumViewer();
       showToast('사진을 지웠어요', 'info');
+      announceAlbumViewer(`사진을 지웠어요. ${albumViewer.index + 1} / ${albumViewerPhotos(kind).length}`);
     };
     /* 지우기는 화면에서 즉시(동기) 반영한다 — 실수로 지운 사진이 잠깐 남아 보이지 않게.
        (서버가 붙으면 api.call('album.remove') 로 바꾸고, 실패 시 되돌리는 자리는 finish() 다.) */
@@ -11913,6 +11949,17 @@ document.addEventListener('DOMContentLoaded', () => {
       closeAlbumViewer();
     } else if (e.key === 'ArrowLeft') { e.preventDefault(); stepAlbumViewer(-1); }
     else if (e.key === 'ArrowRight') { e.preventDefault(); stepAlbumViewer(1); }
+    else if (e.key === 'Tab') {
+      /* Sprint 31 — 포커스 트랩: Tab·Shift+Tab 이 모달 안에서만 돈다. */
+      const items = albumViewerFocusables();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (!el.albumViewer.contains(active)) { e.preventDefault(); first.focus(); return; }
+      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    }
   });
 
   const myProfileTabNode = $('#tab-myprofile');
