@@ -312,11 +312,13 @@
       method: 'POST', mutate: true,
       params: {
         roomId: { type: 'string', required: true },
-        text: { type: 'string', required: true, max: 500 }
+        text: { type: 'string', required: true, max: 500 },
+        /* Sprint 32 — 화면이 먼저 띄운 '전송 중' 말풍선의 id(있으면 그 말풍선을 확정한다). */
+        pendingId: { type: 'string', optional: true, max: 64 }
       },
       response: ['ok', 'message'],
       local: (store, p) => {
-        const message = store.sendChatMessage(p.roomId, p.text);
+        const message = store.sendChatMessage(p.roomId, p.text, { pendingId: p.pendingId });
         if (!message) {
           const room = store.getChatRoom ? store.getChatRoom(p.roomId) : null;
           if (!room) throw new ApiError('not_found', '그 대화방을 찾지 못했어요', { details: { roomId: p.roomId } });
@@ -330,18 +332,19 @@
       method: 'POST', mutate: true,
       params: {
         groupId: { type: 'string', required: true },
-        text: { type: 'string', required: true, max: 1000 }
+        text: { type: 'string', required: true, max: 1000 },
+        pendingId: { type: 'string', optional: true, max: 64 }
       },
-      response: ['ok', 'message'],
+      response: ['ok', 'message', 'confirmed'],
       local: (store, p) => {
-        const res = store.sendGroupChatMessage(p.groupId, p.text);
+        const res = store.sendGroupChatMessage(p.groupId, p.text, { pendingId: p.pendingId });
         if (!res || !res.ok) {
           const reason = res && res.reason;
           if (reason === 'not_member') throw new ApiError('unauthorized', '이 모임의 멤버만 쓸 수 있어요', { details: { groupId: p.groupId } });
           throw new ApiError('validation', '보낼 말을 적어 주세요', { details: { field: 'text' } });
         }
         const m = res.message;
-        return { ok: true, message: { id: m.id, text: m.text, at: m.at, from: m.from, authorId: m.authorId, authorName: m.authorName } };
+        return { ok: true, confirmed: !!res.confirmed, message: { id: m.id, text: m.text, at: m.at, from: m.from, authorId: m.authorId, authorName: m.authorName } };
       }
     },
     'groups.list': {

@@ -4091,6 +4091,13 @@ img, svg { display: block; }
   color: var(--green-dark);
 }
 
+/* Sprint 32 — 경계를 지나는 동안의 '전송 중'(읽음 자리에 잠시) */
+.chat-pending {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+
 .chat-typing {
   padding-left: 33px;
   font-size: var(--fs-caption);
@@ -6385,10 +6392,11 @@ p.pwa-steps {
   backdrop-filter: blur(4px);
 }
 
-/* 1~3위는 메달 색으로 순위를 바로 읽게 한다 */
-.hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); }
-.hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #64748B 0%, #334155 100%); }
-.hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #B45309 0%, #78350F 100%); }
+/* 1~3위는 메달 색으로 순위를 바로 읽게 한다
+   Sprint 32 — 흰 글씨가 4.5:1 을 넘도록 정지색을 한 단계 진하게(1위 2.4 → 5.0, 2위 3.9 → 7.5, 3위 3.8 → 5.5) */
+.hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #B45309 0%, #92400E 100%); }
+.hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #475569 0%, #334155 100%); }
+.hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #78350F 0%, #431407 100%); }
 
 .hot-heat {
   position: absolute;
@@ -6496,9 +6504,9 @@ p.pwa-steps {
   font-weight: var(--fw-label);
 }
 
-.hot-row.rank-1 .hot-row-rank { background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); color: #FFFFFF; }
-.hot-row.rank-2 .hot-row-rank { background: linear-gradient(135deg, #64748B 0%, #334155 100%); color: #FFFFFF; }
-.hot-row.rank-3 .hot-row-rank { background: linear-gradient(135deg, #B45309 0%, #78350F 100%); color: #FFFFFF; }
+.hot-row.rank-1 .hot-row-rank { background: linear-gradient(135deg, #B45309 0%, #92400E 100%); color: #FFFFFF; }
+.hot-row.rank-2 .hot-row-rank { background: linear-gradient(135deg, #475569 0%, #334155 100%); color: #FFFFFF; }
+.hot-row.rank-3 .hot-row-rank { background: linear-gradient(135deg, #78350F 0%, #431407 100%); color: #FFFFFF; }
 
 .hot-row-thumb {
   flex: 0 0 auto;
@@ -10462,7 +10470,10 @@ body {
 .home-pinned .home-events::-webkit-scrollbar { display: none; }
 
 .home-pinned .event-card {
-  flex: 0 0 236px;
+  /* Sprint 32 — 236px 고정폭이면 두 번째 카드가 117px(반 토막) 보여 어중간했다.
+     카드 = 레일 폭 − 56px(간격 8 + 예고 48) → 첫 카드는 꽉 차고 다음 카드가 48px 만 살짝 보인다. */
+  flex: 0 0 calc(100% - 56px);
+  max-width: 520px;
   scroll-snap-align: start;
   padding: 10px 11px 9px;
 }
@@ -18612,6 +18623,12 @@ img[loading="lazy"] { content-visibility: auto; }
   background: var(--bg-subtle);
   color: var(--text);
 }
+/* Sprint 32 — 다크의 밝은 초록 면(--green-grad) 위 흰 글씨는 2.0~2.8:1 이었다.
+   이 면 위 글자는 진한 잉크로(4.9:1 이상) — 라이트는 진한 초록 면이라 흰 글씨 그대로. */
+:root[data-theme="dark"] .chat-msg.mine .chat-bubble,
+:root[data-theme="dark"] .group-chat-msg.mine .chat-bubble {
+  color: #08130D;
+}
 :root[data-theme="dark"] .onboarding-body {
   background: transparent;
   color: var(--text);
@@ -18650,9 +18667,9 @@ img[loading="lazy"] { content-visibility: auto; }
   background: linear-gradient(160deg, rgba(52, 211, 153, 0.16) 0%, var(--bg-elevated) 62%);
 }
 :root[data-theme="dark"] .hot-rank { background: rgba(203, 236, 224, 0.16); color: #EAF6F0; }
-:root[data-theme="dark"] .hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); color: #FFF7E6; }
-:root[data-theme="dark"] .hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #94A3B8 0%, #475569 100%); color: #F1F5F9; }
-:root[data-theme="dark"] .hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #D97706 0%, #92400E 100%); color: #FFF7E6; }
+:root[data-theme="dark"] .hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #B45309 0%, #92400E 100%); color: #FFF7E6; }
+:root[data-theme="dark"] .hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #475569 0%, #334155 100%); color: #F1F5F9; }
+:root[data-theme="dark"] .hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #78350F 0%, #431407 100%); color: #FFF7E6; }
 
 /* ---------------------------------------- 29-6. 상태색 (표면 토큰이 아니라 의미색이라 그대로) */
 :root[data-theme="dark"] .chat-dm-policy.is-off { background: #33240F; color: #FCD9A8; }
@@ -20537,9 +20554,10 @@ select:focus,
 .hot-more { color: var(--text-sub); }
 .hot-more:hover { border-color: var(--border-strong); color: var(--text); }
 .hot-card .hot-rank { background: var(--bg-soft); color: var(--text-sub); }
-.hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #F59E0B 0%, #B45309 100%); color: #FFFFFF; }
-.hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #64748B 0%, #334155 100%); color: #FFFFFF; }
-.hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #B45309 0%, #78350F 100%); color: #FFFFFF; }
+/* Sprint 32 — 흰 글씨 4.5:1 이상(1위 5.0, 2위 7.5, 3위 5.5)으로 정지색을 진하게 */
+.hot-card.rank-1 .hot-rank { background: linear-gradient(135deg, #B45309 0%, #92400E 100%); color: #FFFFFF; }
+.hot-card.rank-2 .hot-rank { background: linear-gradient(135deg, #475569 0%, #334155 100%); color: #FFFFFF; }
+.hot-card.rank-3 .hot-rank { background: linear-gradient(135deg, #78350F 0%, #431407 100%); color: #FFFFFF; }
 
 /* 디엠 */
 .chat-read { color: var(--text-muted); }
@@ -20567,6 +20585,8 @@ select:focus,
 .feed-group-badge { color: var(--text-sub); }
 .home-hero-kicker,
 .home-hero-next { color: var(--text-sub); }
+/* Sprint 32 — 다크에서 4.38:1 이던 한 줄 일정(히어로 판 위)을 한 단계 올린다 */
+:root[data-theme="dark"] .home-hero-next { color: #BFC8D3; }
 .home-hero-next .next-dot { background: var(--text-muted); }
 
 /* 모임 안 — 일정 */
@@ -21852,7 +21872,20 @@ textarea,
   font-size: var(--fs-small);
 }
 .msg-suggest { margin-top: 10px; }
-.msg-suggest-chip { min-height: var(--btn-h-chip); padding: 0 var(--btn-pad-x); }
+/* Sprint 32 — 추천 멘트 칩: 보이는 높이는 30px(칩 규격) 그대로 두고
+   손가락 영역만 위아래 7px씩 넓혀 44px 로 만든다. 이웃과 겹치지 않게 줄 간격을 14px 로.
+   (행 간격 30 + 14 = 44 → 칩마다 ::after 44px 가 정확히 맞닿고 겹치지 않는다.) */
+.msg-suggest { gap: 14px; }
+.msg-suggest-chip { position: relative; min-height: var(--btn-h-chip); padding: 0 var(--btn-pad-x); }
+.msg-suggest-chip::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -7px;
+  bottom: -7px;
+  border-radius: inherit;
+}
 
 /* 시트 — 제목 18 이하 · 안쪽 여백 16 → 12~14 · 주 버튼 44 */
 .modal-sheet { padding: var(--sheet-pad-y) var(--sheet-pad-x) var(--sp-4); }

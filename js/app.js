@@ -3686,25 +3686,45 @@ document.addEventListener('DOMContentLoaded', () => {
             ${mine ? '' : `<span class="chat-sender">${escapeHtml(msg.authorName)}</span>`}
             <div class="chat-bubble">${escapeHtml(msg.text)}</div>
           </div>
-          <span class="chat-msg-foot"><span>${chatTimeLabel(msg.at)}</span></span>
+          <span class="chat-msg-foot">
+            ${msg.pending ? '<span class="chat-pending">전송 중</span>' : ''}
+            <span>${chatTimeLabel(msg.at)}</span>
+          </span>
         </div>`;
     }).join('');
     el.groupChatMessages.scrollTop = el.groupChatMessages.scrollHeight;
   }
 
-  function sendGroupChatMessage() {
+  /* Sprint 32 — 모임 단체 채팅도 경계(`group.chat.send`)를 지난다(낙관적 업데이트 + 실패 롤백). */
+  async function sendGroupChatMessage() {
     if (!ui.openGroupChatId || !el.groupChatInput) return;
+    const groupId = ui.openGroupChatId;
     const text = el.groupChatInput.value;
-    const res = store.sendGroupChatMessage(ui.openGroupChatId, text);
-    if (!res.ok) {
-      if (res.reason === 'empty') showToast('메시지를 입력해 주세요', 'warning');
+    const created = store.createPendingGroupChatMessage(groupId, text);
+    if (!created.ok) {
+      if (created.reason === 'empty') showToast('메시지를 입력해 주세요', 'warning');
       return;
     }
     el.groupChatInput.value = '';
     renderGroupChatMessages();
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8);
+
+    const message = created.message;
+    const res = await store.apiCall('group.chat.send', { groupId, text: message.text, pendingId: message.id });
+    if (!res.ok) {
+      store.dropPendingGroupChatMessage(groupId, message.id);
+      if (ui.openGroupChatId === groupId) {
+        renderGroupChatMessages();
+        if (el.groupChatInput && !el.groupChatInput.value) el.groupChatInput.value = message.text;
+      }
+      showToast('전송하지 못했어요', 'error', { label: '다시 보내기', onClick: () => sendGroupChatMessage() });
+      return;
+    }
+    store.sendGroupChatMessage(groupId, message.text, { pendingId: message.id });
+    if (ui.openGroupChatId === groupId) renderGroupChatMessages();
+    if (ui.activeTab === 'tab-home') renderHomeChatPreview(store.getGroup(groupId));
+
     /* 시연용: 모임원 한 명이 잠시 뒤 답한다(알림은 만들지 않는다). */
-    const groupId = ui.openGroupChatId;
     const roster = store.getGroupRoster(groupId).members.filter((m) => !m.isMe);
     if (roster.length && Math.random() < 0.8) {
       clearTimeout(ui.groupChatTimer);
@@ -8159,7 +8179,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${avatar}
           <div class="chat-bubble">${escapeHtml(msg.text)}</div>
           <span class="chat-msg-foot">
-            ${read ? '<span class="chat-read">읽음</span>' : ''}
+            ${msg.pending ? '<span class="chat-pending">전송 중</span>' : (read ? '<span class="chat-read">읽음</span>' : '')}
             <span>${chatTimeLabel(msg.at)}</span>
           </span>
         </div>`;
@@ -8242,21 +8262,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }, delay);
   }
 
-  function sendChatMessage() {
+  /* Sprint 32 — 1:1 전송이 **경계(js/api.js `dm.send`)** 를 지난다.
+     ① 화면에 먼저 '전송 중' 말풍선을 띄우고(낙관적 업데이트)
+     ② 경계를 호출해 확정하고, 실패하면 말풍선을 거두고 입력창에 되돌려 재시도를 안내한다. */
+  async function sendChatMessage() {
     if (!el.chatInput || !ui.openRoomId) return;
+    const roomId = ui.openRoomId;
     const text = el.chatInput.value;
-    const message = store.sendChatMessage(ui.openRoomId, text);
-    if (!message) {
-      showToast('메시지를 입력해 주세요', 'warning');
+    const created = store.createPendingChatMessage(roomId, text);
+    if (!created.ok) {
+      if (created.reason === 'empty') showToast('메시지를 입력해 주세요', 'warning');
       return;
     }
     el.chatInput.value = '';
     renderChatMessages();
     renderChatRooms();
     updateBadges();
-    const roomId = ui.openRoomId;
     if (navibrateAvailable()) navigator.vibrate(8);
-    schedulePartnerReply(roomId);
+
+    const message = created.message;
+    const res = await store.apiCall('dm.send', { roomId, text: message.text, pendingId: message.id });
+    if (res.ok) {
+      store.sendChatMessage(roomId, message.text, { pendingId: message.id });
+      if (ui.openRoomId === roomId) renderChatMessages();
+      renderChatRooms();
+      schedulePartnerReply(roomId);
+      return;
+    }
+    /* 실패 — 롤백하고 같은 말을 바로 다시 보낼 수 있게 입력창에 남긴다. */
+    store.dropPendingChatMessage(roomId, message.id);
+    if (ui.openRoomId === roomId) {
+      renderChatMessages();
+      renderChatRooms();
+      if (el.chatInput && !el.chatInput.value) el.chatInput.value = message.text;
+    }
+    showToast('전송하지 못했어요', 'error', { label: '다시 보내기', onClick: () => sendChatMessage() });
   }
 
   function navibrateAvailable() { return typeof navigator !== 'undefined' && !!navigator.vibrate; }
@@ -11638,34 +11678,70 @@ document.addEventListener('DOMContentLoaded', () => {
     if (next) next.disabled = atLast;
   }
 
-  /** Sprint 27.5 — 지금 사진을 공개 앨범 대표(첫 장)로 옮긴다. */
-  function setAlbumViewerCover() {
+  /** Sprint 27.5 — 지금 사진을 공개 앨범 대표(첫 장)로 옮긴다.
+   *  Sprint 32 — 화면은 경계(`album.setCover`)를 지난다. 먼저 그려 두고(낙관적) 실패하면 순서를 되돌린다. */
+  async function setAlbumViewerCover() {
     const photos = albumViewerPhotos(albumViewer.kind);
     const photo = photos[albumViewer.index];
     if (!photo) return { ok: false, reason: 'not_found' };
-    const res = store.setMyAlbumCover(albumViewer.kind, photo.id);
+    const kind = albumViewer.kind;
+    const before = store.getMyAlbum(kind).map((p) => p.id);
+    const res = store.setMyAlbumCover(kind, photo.id);
     if (!res.ok) { showToast('이미 대표 사진이에요', 'info'); return res; }
     albumViewer.index = 0;
-    afterAlbumChange(albumViewer.kind);
+    afterAlbumChange(kind);
     renderAlbumViewer();
+    const env = await store.apiCall('album.setCover', { kind, photoId: photo.id });
+    if (!env.ok) {
+      restoreAlbumOrder(kind, before);
+      showToast('대표 사진을 바꾸지 못했어요', 'error');
+      return { ok: false, reason: env.error.code };
+    }
     showToast('대표 사진으로 정했어요', 'success');
     announceAlbumViewer('대표 사진으로 정했어요. 지금 1번째 사진이에요.');
     return res;
   }
 
-  /** Sprint 27.5 — 앨범 안에서 앞/뒤로 한 칸 옮긴다. */
-  function moveAlbumViewerPhoto(delta) {
+  /** Sprint 32 — 경계가 실패했을 때 앨범 순서를 호출 전으로 되돌린다. */
+  function restoreAlbumOrder(kind, before) {
+    const now = store.getMyAlbum(kind).map((p) => p.id);
+    if (!Array.isArray(before) || now.join(',') === before.join(',')) return false;
+    const list = store.getMyAlbum(kind);
+    const byId = {};
+    list.forEach((p) => { byId[p.id] = p; });
+    const next = before.map((id) => byId[id]).filter(Boolean);
+    if (next.length !== list.length) return false;
+    store.state.currentUser.album[kind === 'secret' ? 'secret' : 'public'] = next;
+    store.saveState();
+    albumViewer.index = Math.min(albumViewer.index, next.length - 1);
+    afterAlbumChange(kind);
+    renderAlbumViewer();
+    return true;
+  }
+
+  /** Sprint 27.5 — 앨범 안에서 앞/뒤로 한 칸 옮긴다(Sprint 32부터 경계 `album.reorder` 를 지난다). */
+  async function moveAlbumViewerPhoto(delta) {
     const photos = albumViewerPhotos(albumViewer.kind);
     const photo = photos[albumViewer.index];
     if (!photo) return { ok: false, reason: 'not_found' };
-    const res = store.moveMyAlbumPhoto(albumViewer.kind, photo.id, delta);
+    const kind = albumViewer.kind;
+    const from = albumViewer.index;
+    const before = store.getMyAlbum(kind).map((p) => p.id);
+    const res = store.moveMyAlbumPhoto(kind, photo.id, delta);
     if (!res.ok) {
       showToast(delta < 0 ? '첫 사진이에요' : '마지막 사진이에요', 'info');
       return res;
     }
     albumViewer.index = res.index;
-    afterAlbumChange(albumViewer.kind);
+    afterAlbumChange(kind);
     renderAlbumViewer();
+    const env = await store.apiCall('album.reorder', { kind, photoId: photo.id, to: res.index });
+    if (!env.ok) {
+      restoreAlbumOrder(kind, before);
+      albumViewer.index = from;
+      showToast('순서를 바꾸지 못했어요', 'error');
+      return { ok: false, reason: env.error.code };
+    }
     showToast(delta < 0 ? '앞으로 옮겼어요' : '뒤로 옮겼어요', 'success');
     announceAlbumViewer(`${delta < 0 ? '앞으로' : '뒤로'} 옮겼어요. 지금 ${res.index + 1}번째 사진이에요.`);
     return res;
