@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toastTimer: null,
     /* Sprint 3.5 — 카드 하트 · 상호 LIKE 팝업 */
     personSheetId: null,         // 지금 열린 프로필 상세 시트의 대상
+    likersPostId: null,          // v33.4 — 좋아요한 사람 시트가 보고 있는 글
     matchPopupRoomId: null,      // 방금 열린 대화방 (축하 팝업의 '대화방 열기' 대상)
     matchPopupProfileId: null,
     highlightRoomId: null,       // 채팅 탭에서 방금 열린 방을 강조
@@ -646,6 +647,10 @@ document.addEventListener('DOMContentLoaded', () => {
     feedCommentList: $('#feed-comment-list'),
     feedCommentForm: $('#feed-comment-form'),
     feedCommentInput: $('#feed-comment-input'),
+    /* v33.4 — 좋아요한 사람 시트 */
+    likersModal: $('#likers-modal'),
+    likersSub: $('#likers-sub'),
+    likersList: $('#likers-list'),
     eventGuestToggle: $('#event-guest-toggle'),
     composerTitle: $('#composer-title'),
     composerRecommendCheck: $('#composer-recommend-check'),
@@ -2327,28 +2332,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const p = it.post;
     const grp = it.group;
     const tone = it.tone || 'neutral';
-    const vis = grp ? groupCoverVisual(grp) : { photoUrl: null, tone, icon: it.hobbyIcon || 'sparkle' };
-    const avatar = vis.photoUrl
-      ? `<img class="ig-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
-      : `<span class="ig-avatar-tile tone-${escapeHtml(vis.tone)}" aria-hidden="true">${ic(vis.icon)}</span>`;
+    const author = personFor(p.authorId, p.authorName);
     const media = p.photoUrl
       ? `<img class="ig-media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
       : `<span class="ig-media-tile tone-${escapeHtml(tone)}" aria-hidden="true">${ic(it.hobbyIcon || 'sparkle')}</span>`;
     const comments = (p.comments || []);
-    const shown = comments.slice(-2);
     /* 모임명은 위 헤더에 이미 있으니, 아래 줄에는 만나는 곳(아지트)만 적는다 — 정확한 주소는 쓰지 않는다. */
     const place = it.azitName || ((it.region && it.region.sigunguName) || '모임 안에서');
     const when = new Date(p.createdAt);
     const hours = Math.max(0, Math.round((Date.now() - when.getTime()) / 36e5));
     const whenLabel = hours < 1 ? '방금' : (hours < 24 ? `${hours}시간 전` : `${Math.round(hours / 24)}일 전`);
+    const likeCount = Number(p.likes) || 0;
     return `
       <article class="ig-post" data-home-feed-post="${escapeHtml(it.uid)}" data-suggest-post="${escapeHtml(p.id)}"
                data-post-id="${escapeHtml(p.id)}" data-post-round="${it.round || 0}">
         <header class="ig-head">
-          <span class="ig-avatar tone-${escapeHtml(vis.tone)}">${avatar}</span>
+          <button class="ig-avatar ig-avatar-person" type="button" style="${avatarStyle(author)}"
+                  ${profileAttrs(author.id, author.nickname)}
+                  aria-label="${escapeHtml(p.authorName)} 프로필 열기">${avatarInnerHTML(author)}</button>
           <span class="ig-head-text">
-            <span class="ig-group">${escapeHtml(it.groupName)}</span>
-            <span class="ig-place">${ic('map')} ${escapeHtml(place)}</span>
+            <button class="ig-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(p.authorName)}</button>
+            <span class="ig-subline">
+              <span class="ig-group">${escapeHtml(it.groupName)}</span>
+              <span class="ig-place">${ic('map')} ${escapeHtml(place)}</span>
+            </span>
           </span>
           <span class="ig-when">${escapeHtml(whenLabel)}</span>
         </header>
@@ -2358,22 +2365,41 @@ document.addEventListener('DOMContentLoaded', () => {
                   aria-pressed="${p.likedByMe ? 'true' : 'false'}"
                   aria-label="${p.likedByMe ? '좋아요 취소' : '좋아요'}">
             ${p.likedByMe ? ic('heartFilled') : ic('heart')}
-            <span class="ig-act-count" data-feed-like-count="${escapeHtml(p.id)}">${Number(p.likes) || 0}</span>
+          </button>
+          <button class="ig-act ig-act-num ${likeCount ? '' : 'is-zero'}" data-feed-likers="${escapeHtml(p.id)}" type="button"
+                  aria-label="좋아요한 사람 ${likeCount}명">
+            <span class="ig-act-count" data-feed-like-count="${escapeHtml(p.id)}">${fmtCount(likeCount)}</span>
           </button>
           <button class="ig-act" data-feed-comment-open="${escapeHtml(p.id)}" type="button"
                   aria-label="댓글 보기">
             ${ic('comment')}
+          </button>
+          <button class="ig-act ig-act-num ${comments.length ? '' : 'is-zero'}" data-feed-comment-open="${escapeHtml(p.id)}" type="button"
+                  aria-label="댓글 ${comments.length}개 보기">
             <span class="ig-act-count" data-feed-comment-count="${escapeHtml(p.id)}">${comments.length}</span>
           </button>
         </div>
-        <p class="ig-caption"><strong>${escapeHtml(it.groupName)}</strong> ${escapeHtml(firstSentence(p.caption) || '사진을 올렸어요')}</p>
-        <div class="ig-comments">
-          ${comments.length ? `<button class="ig-comments-all" data-feed-comment-open="${escapeHtml(p.id)}" type="button">
-            댓글 ${comments.length}개 모두 보기</button>` : ''}
-          ${shown.map((c) => `<p class="ig-comment-line"><strong>${escapeHtml(c.authorName || '멤버')}</strong> ${escapeHtml(c.text || '')}</p>`).join('')}
-        </div>
+        <p class="ig-caption"><button class="ig-caption-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(p.authorName)}</button> ${escapeHtml(firstSentence(p.caption) || '사진을 올렸어요')}</p>
+        <div class="ig-comments">${igCommentsHTML(p)}</div>
         <button class="ig-add-comment" data-feed-comment-open="${escapeHtml(p.id)}" type="button">댓글 달기…</button>
       </article>`;
+  }
+
+  /** 추천 피드 카드의 댓글 미리보기 — 사람 아바타 + 닉네임 + 문장(둘 다 프로필로 이어진다). */
+  function igCommentsHTML(post) {
+    const comments = (post && post.comments) || [];
+    if (!comments.length) return '';
+    const postId = escapeHtml(post.id);
+    return `<button class="ig-comments-all" data-feed-comment-open="${postId}" type="button">
+            댓글 ${comments.length}개 모두 보기</button>`
+      + comments.slice(-2).map((c) => {
+        const person = personFor(c.authorId, c.authorName);
+        return `<p class="ig-comment-line">
+            <button class="ig-comment-avatar" type="button" ${profileAttrs(person.id, person.nickname)}
+                    style="${avatarStyle(person)}" aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${avatarInnerHTML(person)}</button>
+            <button class="ig-comment-name" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName || '멤버')}</button>
+            <span class="ig-comment-text">${escapeHtml(c.text || '')}</span></p>`;
+      }).join('');
   }
 
   /** 첫 배치 — 추천 피드 노출을 허용한 글만, 인스타그램처럼 한 장씩. */
@@ -2470,11 +2496,18 @@ document.addEventListener('DOMContentLoaded', () => {
       el.feedCommentSub.textContent = `${grp ? grp.name : '모임'} · 댓글 ${comments.length}개`;
     }
     el.feedCommentList.innerHTML = comments.length
-      ? comments.map((c) => `
+      ? comments.map((c) => {
+        const person = personFor(c.authorId, c.authorName);
+        return `
           <div class="feed-comment-row">
-            <span class="feed-comment-author">${escapeHtml(c.authorName || '멤버')}</span>
-            <span class="feed-comment-text">${escapeHtml(c.text || '')}</span>
-          </div>`).join('')
+            <button class="feed-comment-avatar" type="button" style="${avatarStyle(person)}"
+                    ${profileAttrs(person.id, person.nickname)} aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${avatarInnerHTML(person)}</button>
+            <div class="feed-comment-main">
+              <button class="feed-comment-author" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName || '멤버')}</button>
+              <span class="feed-comment-text">${escapeHtml(c.text || '')}</span>
+            </div>
+          </div>`;
+      }).join('')
       : '<p class="feed-comment-empty">첫 댓글을 남겨 보세요.</p>';
     if (el.feedCommentList.lastElementChild) {
       el.feedCommentList.scrollTop = el.feedCommentList.scrollHeight;
@@ -2486,9 +2519,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!post) return;
     document.querySelectorAll(`[data-feed-like-count="${postId}"]`).forEach((n) => {
       n.textContent = String(Number(post.likes) || 0);          // eslint-disable-line no-param-reassign
+      n.classList.toggle('is-zero', !Number(post.likes));
+      n.setAttribute('aria-label', `좋아요한 사람 ${fmtCount(post.likes)}명`);
     });
     document.querySelectorAll(`[data-feed-comment-count="${postId}"]`).forEach((n) => {
       n.textContent = String((post.comments || []).length);      // eslint-disable-line no-param-reassign
+      n.classList.toggle('is-zero', !(post.comments || []).length);
     });
   }
 
@@ -2814,6 +2850,8 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           return;
         }
+        const likers = e.target.closest('[data-feed-likers]');
+        if (likers) { openLikers(likers.dataset.feedLikers); return; }
         const cmt = e.target.closest('[data-feed-comment-open]');
         if (cmt) { openFeedComments(cmt.dataset.feedCommentOpen); return; }
         const card = e.target.closest('[data-suggest-post]');
@@ -2834,17 +2872,15 @@ document.addEventListener('DOMContentLoaded', () => {
         /* 카드의 댓글 수·최근 댓글도 바로 맞춘다(다시 그리지 않고 제자리만 고침) */
         refreshFeedPostCounts(postId);
         document.querySelectorAll(`[data-post-id="${postId}"] .ig-comments`).forEach((box) => {
-          const post = store.getPost(postId);
-          const comments = post.comments || [];
-          const shown = comments.slice(-2);
-          box.innerHTML = `<button class="ig-comments-all" data-feed-comment-open="${postId}" type="button">
-            댓글 ${comments.length}개 모두 보기</button>`
-            + shown.map((c) => `<p class="ig-comment-line"><strong>${escapeHtml(c.authorName || '멤버')}</strong> ${escapeHtml(c.text || '')}</p>`).join('');
+          box.innerHTML = igCommentsHTML(store.getPost(postId));
         });
       });
     }
     const closeFeedComment = $('#btn-close-feed-comment');
     if (closeFeedComment) closeFeedComment.addEventListener('click', () => closeModal(el.feedCommentModal));
+    /* v33.4 — 좋아요한 사람 시트 닫기 */
+    const closeLikers = $('#btn-close-likers');
+    if (closeLikers) closeLikers.addEventListener('click', () => closeModal(el.likersModal));
 
     /* 내 그룹 전체 화면 — 뒤로 · 새 모임 · 카드 · 내 일정 */
     const backMy = $('#btn-mygroups-back');
@@ -5336,11 +5372,17 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.postSheetId = post.id;
     const grp = store.getGroup(post.groupId);
     const comments = post.comments || [];
+    const author = personFor(post.authorId, post.authorName);
+    const likeCount = Number(post.likes) || 0;
     el.postBody.innerHTML = `
       <div class="post-detail-head">
-        <span class="post-detail-avatar" style="background:${post.authorGradient}">${escapeHtml(post.authorAvatarText || post.authorName.charAt(0))}</span>
+        <button class="post-detail-avatar" type="button" style="${avatarStyle(author)}"
+                ${profileAttrs(author.id, author.nickname)} aria-label="${escapeHtml(post.authorName)} 프로필 열기">${avatarInnerHTML(author)}</button>
         <div class="post-detail-who">
-          <div class="post-detail-name">${escapeHtml(post.authorName)}${post.authorId === store.currentUser.id ? ' <span class="me-badge">나</span>' : ''}</div>
+          <div class="post-detail-name">
+            <button class="post-detail-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(post.authorName)}</button>
+            ${post.authorId === store.currentUser.id ? '<span class="me-badge">나</span>' : ''}
+          </div>
           <div class="post-detail-sub">
             ${grp ? `${ic(grp.icon)} ${escapeHtml(grp.name)} · ` : ''}
             <span data-created="${post.createdAt}">${timeAgo(post.createdAt)}</span>
@@ -5353,16 +5395,19 @@ document.addEventListener('DOMContentLoaded', () => {
         : ''}
       ${post.mediaCaption ? `<p class="post-detail-media-caption">${escapeHtml(post.mediaCaption)}</p>` : ''}
       <p class="post-detail-caption">${escapeHtml(post.caption)}</p>
-      <div class="post-detail-stats">
-        <span>${ic('heart')} 좋아요 ${fmtCount(post.likes)}</span>
-        <span>댓글 ${comments.length}</span>
-        ${grp ? `<span class="post-detail-group-chip">${escapeHtml(grp.name)} 멤버 공개</span>` : ''}
+      <div class="post-detail-actionbar">
+        <button class="post-detail-like ${post.likedByMe ? 'liked' : ''}" data-feed-post-like="${post.id}"
+                aria-pressed="${post.likedByMe}" aria-label="${post.likedByMe ? '좋아요 취소' : '좋아요'}" type="button">
+          ${HEART_SVG(post.likedByMe)}
+        </button>
+        <button class="post-detail-count ${likeCount ? '' : 'is-zero'}" data-feed-post-likers="${post.id}" type="button"
+                data-feed-like-count="${post.id}" aria-label="좋아요한 사람 ${likeCount}명">${fmtCount(likeCount)}</button>
+        <button class="post-detail-count" data-post-comments="${post.id}" type="button"
+                aria-label="댓글 ${comments.length}개">${COMMENT_SVG()}</button>
+        <button class="post-detail-count ${comments.length ? '' : 'is-zero'}" data-post-comments="${post.id}" type="button"
+                data-feed-comment-count="${post.id}" aria-label="댓글 ${comments.length}개 보기">${comments.length}</button>
       </div>
       <div class="post-detail-actions">
-        <button class="post-detail-like ${post.likedByMe ? 'liked' : ''}" data-feed-post-like="${post.id}"
-                aria-pressed="${post.likedByMe}" type="button">
-          ${HEART_SVG(post.likedByMe)} ${post.likedByMe ? '좋아요 취소' : '좋아요'}
-        </button>
         ${grp ? `<button class="post-detail-group" data-feed-post-group="${grp.id}" type="button">모임 보기</button>` : ''}
         ${post.authorId === store.currentUser.id
           ? `<button class="post-detail-group" data-feed-post-edit="${post.id}" type="button">글 수정</button>` : ''}
@@ -5374,21 +5419,27 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
       <div class="post-comment-list">
         ${comments.length
-          ? comments.map((c) => `
+          ? comments.map((c) => {
+            const person = personFor(c.authorId, c.authorName);
+            return `
               <div class="post-comment">
-                <span class="post-comment-avatar" style="background:${commentAvatarTint(c.authorName)}" aria-hidden="true">${escapeHtml(String(c.authorName || '?').charAt(0))}</span>
+                <button class="post-comment-avatar" type="button" style="${avatarStyle(person)}"
+                        ${profileAttrs(person.id, person.nickname)} aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${avatarInnerHTML(person)}</button>
                 <div class="post-comment-body">
                   <div class="post-comment-top">
-                    <span class="post-comment-name">${escapeHtml(c.authorName)}</span>
+                    <button class="post-comment-name" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName)}</button>
                     ${c.createdAt ? `<span class="post-comment-time" data-created="${c.createdAt}">${timeAgo(c.createdAt)}</span>` : ''}
                   </div>
                   <p class="post-comment-text">${escapeHtml(c.text)}</p>
                 </div>
-              </div>`).join('')
+              </div>`;
+          }).join('')
           : '<p class="post-comment-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요.</p>'}
       </div>
       <form class="comment-form" data-feed-comment-form="${post.id}">
-        <input type="text" class="comment-input" aria-label="댓글 입력" placeholder="댓글 달기..." maxlength="200" autocomplete="off">
+        <span class="input-shrink">
+          <input type="text" class="comment-input" aria-label="댓글 입력" placeholder="댓글 달기..." maxlength="200" autocomplete="off">
+        </span>
         <button type="submit" class="comment-submit" disabled>게시</button>
       </form>`;
   }
@@ -6295,6 +6346,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8);
         return;
       }
+      const likersBtn = e.target.closest('[data-feed-post-likers]');
+      if (likersBtn) { openLikers(likersBtn.dataset.feedPostLikers); return; }
+      const cmtBtn = e.target.closest('[data-post-comments]');
+      if (cmtBtn) {
+        const input = el.postBody.querySelector('.comment-input');
+        if (input) { input.focus(); input.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        return;
+      }
       const editBtn = e.target.closest('[data-feed-post-edit]');
       if (editBtn) {
         closeModal(el.postModal);
@@ -6861,6 +6920,8 @@ document.addEventListener('DOMContentLoaded', () => {
        새 글(2시간 안)은 제목 앞에 점을 붙인다. */
     const age = store.getPostAuthorAge(p);
     const fresh = (Date.now() - new Date(p.createdAt).getTime()) < 2 * 60 * 60 * 1000;
+    const pAuthor = personFor(p.authorId, p.authorName);
+    const postLikeCount = Number(p.likes) || 0;
     const metaBits = [
       escapeHtml(p.authorName) + (p.isMine ? ' (나)' : ''),
       age ? `${age}세` : '',
@@ -6875,9 +6936,10 @@ document.addEventListener('DOMContentLoaded', () => {
                aria-label="${escapeHtml(regionName)} · ${escapeHtml(p.authorName)}님의 ${escapeHtml(styleName)} 글 · ${escapeHtml(preview.slice(0, 34))}">
         <span class="board-row-body">
           <header class="post-head">
-            <span class="post-avatar" style="background:${p.authorGradient}">${escapeHtml(p.authorAvatarText || p.authorName.charAt(0))}</span>
+            <button class="post-avatar" type="button" style="${avatarStyle(pAuthor)}"
+                    ${profileAttrs(pAuthor.id, pAuthor.nickname)} aria-label="${escapeHtml(p.authorName)} 프로필 열기">${avatarInnerHTML(pAuthor)}</button>
             <div class="post-author-block">
-              <span class="post-author">${escapeHtml(p.authorName)}${p.isMine ? ' <span class="me-badge">나</span>' : ''}</span>
+              <button class="post-author" type="button" ${profileAttrs(pAuthor.id, pAuthor.nickname)}>${escapeHtml(p.authorName)}</button>${p.isMine ? ' <span class="me-badge">나</span>' : ''}
               <span class="post-meta">
                 ${p.tag ? `<span class="post-tag">#${escapeHtml(p.tag)}</span>` : ''}
                 <span class="post-region">${ic('pin')} ${escapeHtml(regionName)}</span>
@@ -6890,9 +6952,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="board-row-meta">${metaBits.join(' · ')}</p>
           <div class="post-foot">
             <button class="post-like ${p.likedByMe ? 'liked' : ''}" data-like-post="${p.id}"
-                    aria-pressed="${p.likedByMe}" aria-label="게시글 좋아요" type="button">
-              ${HEART_SVG(p.likedByMe)}<span>${fmtCount(p.likes)}</span>
+                    aria-pressed="${p.likedByMe}" aria-label="${p.likedByMe ? '좋아요 취소' : '게시글 좋아요'}" type="button">
+              ${HEART_SVG(p.likedByMe)}
             </button>
+            <button class="post-like-count ${postLikeCount ? '' : 'is-zero'}" data-like-likers="${p.id}" type="button"
+                    data-feed-like-count="${p.id}" aria-label="좋아요한 사람 ${postLikeCount}명">${fmtCount(postLikeCount)}</button>
             <span class="post-stat">${COMMENT_SVG()} ${p.comments.length}</span>
             <span class="post-group">${escapeHtml(p.groupName || regionName)}</span>
             <span class="post-time" data-created="${p.createdAt}">${timeAgo(p.createdAt)}</span>
@@ -7509,6 +7573,12 @@ document.addEventListener('DOMContentLoaded', () => {
       togglePostLike(postLike.dataset.likePost, postLike);
       return;
     }
+    /* v33.4 — 하트 옆 숫자 = 좋아요한 사람 목록 */
+    const postLikers = e.target.closest('[data-like-likers]');
+    if (postLikers) {
+      openLikers(postLikers.dataset.likeLikers);
+      return;
+    }
     const openBtn = e.target.closest('[data-group-open]');
     if (openBtn) {
       openGroupDetail(openBtn.dataset.groupOpen);
@@ -7632,23 +7702,35 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ------------------------------------------------- 취미친구 프로필 상세 시트 */
-  function openPersonDetail(profileId) {
-    const p = store.getPersonProfile(profileId);
+  /**
+   * 사람 프로필 시트 — id 문자열이나 이미 찾은 profile 객체를 받는다.
+   * v33.4: 피드·좋아요·댓글에서 누른 사람도 이 시트 하나로 열린다.
+   *        매칭 카드 사람이 아니면(모임 사람·이름만 아는 사람) '관심 보내기'는 숨기고
+   *        1:1 대화만 남긴다. 내가 누르면 '내 프로필 열기'.
+   */
+  function openPersonDetail(profileOrId) {
+    const p = (profileOrId && typeof profileOrId === 'object')
+      ? profileOrId
+      : store.getPersonProfile(profileOrId);
     if (!p || !el.personDetailBody) return;
+    const isMe = !!(p.isMe || p.id === store.currentUser.id);
     ui.personSheetId = p.id;
-    const liked = store.isProfileLiked(p.id);
-    const room = store.findChatRoomByPartner(p.id);
+    const isMatchPerson = !isMe && !!store.getMatchProfile(p.id);
+    const liked = isMatchPerson && store.isProfileLiked(p.id);
+    const room = !isMe ? store.findChatRoomByPartner(p.id) : null;
 
     let primary;
-    if (room) {
+    if (isMe) {
+      primary = `<button class="detail-btn like" data-person-action="myprofile" type="button">내 프로필 열기</button>`;
+    } else if (room) {
       primary = `<button class="detail-btn like" data-person-action="chat" type="button">대화 이어가기</button>`;
     } else {
       /* Sprint 16 — 매칭(상호 하트)을 기다리지 않고 바로 쪽지를 보낸다 */
-      primary = `<button class="detail-btn like" data-person-action="dm" type="button">대화 시작하기</button>`;
+      primary = `<button class="detail-btn like" data-person-action="dm" type="button">${isMatchPerson ? '대화 시작하기' : '1:1 대화 시작하기'}</button>`;
     }
-    const secondary = liked
+    const secondary = !isMatchPerson ? '' : (liked
       ? `<button class="detail-btn ghost" data-person-action="unlike" type="button">보낸 관심 취소</button>`
-      : `<button class="detail-btn ghost" data-person-action="like" type="button">관심만 보내기</button>`;
+      : `<button class="detail-btn ghost" data-person-action="like" type="button">관심만 보내기</button>`);
     const closeAction = `<button class="detail-btn ghost" data-person-action="close" type="button">닫기</button>`;
 
     const metaBadges = [
@@ -7678,6 +7760,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="detail-head">
         <div class="detail-name-row">
           <h2 class="detail-name">${escapeHtml(p.nickname)}</h2>
+          ${isMe ? '<span class="me-badge">나</span>' : ''}
           ${p.age ? `<span class="detail-age">${p.age}세</span>` : ''}
           ${p.verified ? `<span class="detail-verified">${ic('check')} 취미 인증</span>` : ''}
         </div>
@@ -7699,6 +7782,93 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal(el.personDetailModal);
   }
 
+  /* ==========================================================================
+   * v33.4 — 이름·id 로 사람 프로필 열기 (피드 글 · 좋아요 · 댓글 공통)
+   * ------------------------------------------------------------------------
+   * 11/22 00:44 사용자: "피드에 올린 글 또는 좋아요 또는 댓글에 있는 프로필을 누르면
+   * 해당 이용자 프로필이 나오게 해줘."
+   *
+   *  · 화면은 `<... data-open-profile="id" data-profile-name="이름">` 만 달고,
+   *    여는 일은 이 한 곳이 맡는다(어느 화면이든 같은 시트가 열린다).
+   *  · capture 단계에서 받아 카드의 다른 동작(카드 열기·좋아요)을 막는다.
+   * ======================================================================== */
+  function openProfileFrom(identity) {
+    const person = store.resolvePersonProfile(identity || {});
+    if (!person) {
+      showToast('프로필을 열 수 없어요', 'warning');
+      return;
+    }
+    if (person.isMe) {
+      document.querySelectorAll('.modal-overlay.active').forEach((node) => closeModal(node));
+      closeSubscreens();
+      switchTab('tab-myprofile');
+      return;
+    }
+    openPersonDetail(person);
+  }
+
+  document.addEventListener('click', (e) => {
+    const node = e.target instanceof Element ? e.target.closest('[data-open-profile]') : null;
+    if (!node) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openProfileFrom({ id: node.dataset.openProfile, name: node.dataset.profileName });
+  }, true);
+
+  /** 사람을 누를 수 있게 하는 속성 묶음 — id 를 모르면 이름만. */
+  function profileAttrs(id, name) {
+    return `data-open-profile="${escapeHtml(id || '')}" data-profile-name="${escapeHtml(name || '')}"`;
+  }
+
+  /** 사람 아바타의 내용(사진이 있으면 사진, 없으면 이니셜). */
+  function avatarInnerHTML(person) {
+    const p = person || {};
+    if (p.photoUrl) {
+      return `<img class="avatar-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`;
+    }
+    return escapeHtml(p.avatarText || String(p.nickname || '?').charAt(0));
+  }
+
+  /** 아바타 배경 — 프로필 색이 있으면 그 색, 없으면 이름에서 만든 색. */
+  function avatarStyle(person) {
+    const p = person || {};
+    if (p.photoUrl) return '';
+    return `background:${p.avatarGradient || commentAvatarTint(p.nickname)}`;
+  }
+
+  /** 피드·댓글이 가리키는 사람의 프로필(등록하지 않는 읽기 전용). */
+  function personFor(id, name) {
+    return store.resolvePersonProfile({ id, name }, { register: false });
+  }
+
+  /* ------------------------------------------------------ 좋아요한 사람 시트 */
+  function openLikers(postId) {
+    if (!el.likersModal) return;
+    ui.likersPostId = postId;
+    renderLikers();
+    openModal(el.likersModal);
+  }
+
+  function renderLikers() {
+    const postId = ui.likersPostId;
+    const info = postId ? store.getPostLikeInfo(postId) : { count: 0, people: [] };
+    if (el.likersSub) {
+      el.likersSub.textContent = info.count ? `${info.count}명이 좋아합니다` : '아직 좋아요가 없어요';
+    }
+    if (!el.likersList) return;
+    el.likersList.innerHTML = info.people.length
+      ? info.people.map((person) => `
+          <button class="liker-row" type="button" ${profileAttrs(person.id, person.nickname)}
+                  aria-label="${escapeHtml(person.nickname)} 프로필 열기">
+            <span class="liker-avatar" style="${avatarStyle(person)}">${avatarInnerHTML(person)}</span>
+            <span class="liker-text">
+              <span class="liker-name">${escapeHtml(person.nickname)}${person.isMe ? '<span class="me-badge">나</span>' : ''}</span>
+              ${person.hobbyLabel ? `<span class="liker-hobby">${escapeHtml(person.hobbyLabel)}</span>` : ''}
+            </span>
+          </button>`).join('')
+      : '<p class="likers-empty">아직 좋아요가 없어요. 첫 좋아요를 남겨보세요.</p>';
+  }
+
   el.personDetailBody && el.personDetailBody.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-person-action]');
     if (!btn) return;
@@ -7706,6 +7876,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileId = ui.personSheetId;
     if (action === 'close' || action === 'none') {
       closeModal(el.personDetailModal);
+      return;
+    }
+    if (action === 'myprofile') {
+      closeModal(el.personDetailModal);
+      closeSubscreens();
+      switchTab('tab-myprofile');
       return;
     }
     if (action === 'dm' && profileId) {
@@ -8394,16 +8570,24 @@ document.addEventListener('DOMContentLoaded', () => {
         ${comments.length > 2 && !expanded
           ? `<button class="comment-more" data-action="expand-comments">댓글 ${comments.length}개 모두 보기</button>`
           : ''}
-        ${shown.map((c) => `
+        ${shown.map((c) => {
+          const person = personFor(c.authorId, c.authorName);
+          const mine = c.authorId === meId;
+          return `
           <div class="comment-item ${c.parentId ? 'is-reply' : ''}">
-            <span class="comment-author">${c.parentId && c.replyToName ? `<span class="comment-reply-to">↳ ${escapeHtml(c.replyToName)}</span> ` : ''}${escapeHtml(c.authorName)}${c.authorId === meId ? '<span class="me-badge">나</span>' : ''}</span>
-            <span class="comment-text">${escapeHtml(c.text)}</span>
-            <span class="comment-time" data-created="${c.createdAt}">${timeAgo(c.createdAt)}</span>
-            <button class="comment-like ${c.likedByMe ? 'liked' : ''}" data-action="comment-like" data-comment-id="${c.id}"
-                    aria-pressed="${!!c.likedByMe}" type="button"
-                    aria-label="${escapeHtml(c.authorName)}님 댓글 좋아요"><span aria-hidden="true">${ic('heart', { filled: c.likedByMe })}</span>${c.likes ? ` ${c.likes}` : ''}</button>
-            ${c.parentId ? '' : `<button class="comment-reply" data-action="reply" data-comment-id="${c.id}" data-comment-author="${escapeHtml(c.authorName)}" type="button">답글</button>`}
-          </div>`).join('')}
+            <button class="comment-avatar" type="button" ${profileAttrs(person.id, person.nickname)}
+                    style="${avatarStyle(person)}" aria-label="${escapeHtml(c.authorName)} 프로필 열기">${avatarInnerHTML(person)}</button>
+            <span class="comment-body">
+              <button class="comment-author" type="button" ${profileAttrs(person.id, person.nickname)}>${c.parentId && c.replyToName ? `<span class="comment-reply-to">↳ ${escapeHtml(c.replyToName)}</span> ` : ''}${escapeHtml(c.authorName)}${mine ? '<span class="me-badge">나</span>' : ''}</button>
+              <span class="comment-text">${escapeHtml(c.text)}</span>
+              <span class="comment-time" data-created="${c.createdAt}">${timeAgo(c.createdAt)}</span>
+              <button class="comment-like ${c.likedByMe ? 'liked' : ''}" data-action="comment-like" data-comment-id="${c.id}"
+                      aria-pressed="${!!c.likedByMe}" type="button"
+                      aria-label="${escapeHtml(c.authorName)}님 댓글 좋아요"><span aria-hidden="true">${ic('heart', { filled: c.likedByMe })}</span>${c.likes ? ` ${c.likes}` : ''}</button>
+              ${c.parentId ? '' : `<button class="comment-reply" data-action="reply" data-comment-id="${c.id}" data-comment-author="${escapeHtml(c.authorName)}" type="button">답글</button>`}
+            </span>
+          </div>`;
+        }).join('')}
         ${expanded && comments.length > 2
           ? '<button class="comment-more collapse" data-action="collapse-comments">댓글 접기</button>' : ''}
       </div>`;
@@ -8420,16 +8604,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const media = post.photoUrl
       ? `<img class="media-img" src="${escapeHtml(post.photoUrl)}" alt="게시물 사진" loading="lazy" decoding="async" width="400" height="400">`
       : '';
+    const author = personFor(post.authorId, post.authorName);
+    const likeCount = Number(post.likes) || 0;
+    const commentCount = (post.comments || []).length;
 
     return `
       <article class="feed-card ${isNew ? 'is-new' : ''} ${media ? 'has-media' : 'is-text-only'}" data-post-id="${post.id}" data-has-media="${media ? '1' : '0'}">
         <header class="feed-card-header">
-          <button class="feed-avatar" style="background:${post.authorGradient}" data-author="${escapeHtml(post.authorName)}">
-            ${escapeHtml(post.authorAvatarText)}
+          <button class="feed-avatar" style="${avatarStyle(author)}" ${profileAttrs(author.id, author.nickname)}
+                  aria-label="${escapeHtml(post.authorName)} 프로필 열기">
+            ${avatarInnerHTML(author)}
           </button>
           <div class="feed-author-block">
             <div class="feed-author-line">
-              <span class="feed-author-name">${escapeHtml(post.authorName)}</span>
+              <button class="feed-author-name" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(post.authorName)}</button>
               ${post.authorId === store.currentUser.id ? '<span class="me-badge">나</span>' : ''}
             </div>
             <button class="feed-group-badge" data-open-group="${post.groupId}">
@@ -8459,10 +8647,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="feed-actions">
           <div class="feed-actions-left">
-            <button class="feed-action like ${post.likedByMe ? 'liked' : ''}" data-action="like" aria-label="좋아요" aria-pressed="${post.likedByMe}">
+            <button class="feed-action like ${post.likedByMe ? 'liked' : ''}" data-action="like" aria-label="${post.likedByMe ? '좋아요 취소' : '좋아요'}" aria-pressed="${post.likedByMe}">
               <span class="heart-wrap">${HEART_SVG(post.likedByMe)}</span>
             </button>
+            <button class="feed-count ${likeCount ? '' : 'is-zero'}" data-action="likers" type="button"
+                    data-feed-like-count="${post.id}" aria-label="좋아요한 사람 ${likeCount}명">${fmtCount(likeCount)}</button>
             <button class="feed-action" data-action="comment" aria-label="댓글">${COMMENT_SVG()}</button>
+            <button class="feed-count ${commentCount ? '' : 'is-zero'}" data-action="comments" type="button"
+                    data-feed-comment-count="${post.id}" aria-label="댓글 ${commentCount}개">${commentCount}</button>
             <button class="feed-action" data-action="share" aria-label="공유">${SEND_SVG()}</button>
           </div>
           <button class="feed-action bookmark ${post.bookmarkedByMe ? 'saved' : ''}" data-action="bookmark" aria-label="북마크">
@@ -8470,15 +8662,15 @@ document.addEventListener('DOMContentLoaded', () => {
           </button>
         </div>
 
-        <div class="feed-likes"><strong>좋아요 ${fmtCount(post.likes)}개</strong></div>
-
         ${post.caption ? `
-          <p class="feed-caption"><span class="caption-author">${escapeHtml(post.authorName)}</span> ${escapeHtml(post.caption)}</p>` : ''}
+          <p class="feed-caption"><button class="caption-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(post.authorName)}</button> ${escapeHtml(post.caption)}</p>` : ''}
 
         ${renderComments(post, expanded)}
 
         <form class="comment-form" data-comment-form="${post.id}">
-          <input type="text" class="comment-input" aria-label="댓글 입력" placeholder="댓글 달기..." maxlength="300" autocomplete="off">
+          <span class="input-shrink">
+            <input type="text" class="comment-input" aria-label="댓글 입력" placeholder="댓글 달기..." maxlength="300" autocomplete="off">
+          </span>
           <button type="submit" class="comment-submit" disabled>게시</button>
         </form>
       </article>`;
@@ -8533,7 +8725,11 @@ document.addEventListener('DOMContentLoaded', () => {
         animateLike(card, postId);
         return;
       }
-      if (action === 'comment') {
+      if (action === 'likers') {
+        openLikers(postId);
+        return;
+      }
+      if (action === 'comment' || action === 'comments') {
         const input = card.querySelector('.comment-input');
         if (input) { input.focus(); input.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
         return;
@@ -8603,11 +8799,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const groupBadge = e.target.closest('[data-open-group]');
     if (groupBadge) { openGroupDetail(groupBadge.dataset.openGroup); return; }
-
-    const authorBtn = e.target.closest('[data-author]');
-    if (authorBtn) {
-      showToast(`${authorBtn.dataset.author}님의 프로필은 다음 업데이트에서 열려요`, 'info');
-    }
   });
 
   /* 댓글 입력 → 게시 버튼 활성화 / 전송 */
@@ -8762,12 +8953,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!result) return;
     const btn = card.querySelector('[data-action="like"]');
     const heartWrap = btn.querySelector('.heart-wrap');
-    const likesEl = card.querySelector('.feed-likes strong');
+    const countEl = card.querySelector('[data-feed-like-count]');
 
     btn.classList.toggle('liked', result.liked);
     btn.setAttribute('aria-pressed', String(result.liked));
+    btn.setAttribute('aria-label', result.liked ? '좋아요 취소' : '좋아요');
     heartWrap.innerHTML = HEART_SVG(result.liked);
-    likesEl.textContent = `좋아요 ${fmtCount(result.likes)}개`;
+    if (countEl) {
+      countEl.textContent = fmtCount(result.likes);
+      countEl.classList.toggle('is-zero', !Number(result.likes));
+      countEl.setAttribute('aria-label', `좋아요한 사람 ${fmtCount(result.likes)}명`);
+    }
+    document.querySelectorAll(`[data-feed-like-count="${postId}"]`).forEach((node) => {
+      if (node === countEl) return;
+      node.textContent = fmtCount(result.likes);
+      node.classList.toggle('is-zero', !Number(result.likes));
+    });
 
     btn.classList.remove('pop');
     void btn.offsetWidth;            // reflow → 애니메이션 재시작
@@ -9544,11 +9745,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const group = postGroupOf(post);
     const comments = post.comments || [];
 
+    const author = personFor(post.authorId, post.authorName);
+    const likeCount = Number(post.likes) || 0;
     el.postBody.innerHTML = `
       <div class="post-detail-head">
-        <span class="post-detail-avatar" style="background:${post.authorGradient}">${escapeHtml(post.authorAvatarText || post.authorName.charAt(0))}</span>
+        <button class="post-detail-avatar" type="button" style="${avatarStyle(author)}"
+                ${profileAttrs(author.id, author.nickname)} aria-label="${escapeHtml(post.authorName)} 프로필 열기">${avatarInnerHTML(author)}</button>
         <div class="post-detail-who">
-          <div class="post-detail-name">${escapeHtml(post.authorName)}</div>
+          <div class="post-detail-name">
+            <button class="post-detail-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(post.authorName)}</button>
+          </div>
           <div class="post-detail-sub">
             ${ic('pin')} ${escapeHtml(postRegionLabel(post))} ·
             <span class="post-detail-style">${escapeHtml(postStyleLabel(post))}</span> ·
@@ -9561,19 +9767,23 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `<div class="post-detail-media ratio-${post.ratio || 'wide'}"><img class="media-img" src="${escapeHtml(post.photoUrl)}" alt="게시글 사진" loading="lazy" decoding="async"></div>`
         : ''}
       <p class="post-detail-caption">${escapeHtml(post.caption)}</p>
-      <div class="post-detail-stats">
-        <span>${ic('heart')} 좋아요 ${fmtCount(post.likes)}</span>
-        <span>댓글 ${comments.length}</span>
+      <div class="post-detail-actionbar">
+        <button class="post-detail-like ${post.likedByMe ? 'liked' : ''}" data-post-like="${post.id}"
+                aria-pressed="${post.likedByMe}" aria-label="${post.likedByMe ? '좋아요 취소' : '좋아요'}" type="button">
+          ${HEART_SVG(post.likedByMe)}
+        </button>
+        <button class="post-detail-count ${likeCount ? '' : 'is-zero'}" data-post-likers="${post.id}" type="button"
+                data-feed-like-count="${post.id}" aria-label="좋아요한 사람 ${likeCount}명">${fmtCount(likeCount)}</button>
+        <button class="post-detail-count" data-post-comments="${post.id}" type="button"
+                aria-label="댓글 ${comments.length}개">${COMMENT_SVG()}</button>
+        <button class="post-detail-count ${comments.length ? '' : 'is-zero'}" data-post-comments="${post.id}" type="button"
+                data-feed-comment-count="${post.id}" aria-label="댓글 ${comments.length}개 보기">${comments.length}</button>
         ${group ? `<span class="post-detail-group-chip">${ic(group.icon)} ${escapeHtml(group.name)}</span>` : ''}
       </div>
       <div class="post-detail-actions">
-        <button class="post-detail-like ${post.likedByMe ? 'liked' : ''}" data-post-like="${post.id}"
-                aria-pressed="${post.likedByMe}" type="button">
-          ${HEART_SVG(post.likedByMe)} ${post.likedByMe ? '좋아요 취소' : '좋아요'}
-        </button>
         ${group ? `<button class="post-detail-group" data-post-group="${group.id}" type="button">모임 보기</button>` : ''}
         ${post.authorId !== store.currentUser.id
-          ? `<button class="post-detail-dm" data-post-dm="${escapeHtml(post.authorId)}" type="button">
+          ? `<button class="post-detail-dm" data-post-dm="${escapeHtml(post.authorId || '')}" data-post-dm-name="${escapeHtml(post.authorName || '')}" type="button">
                ${ic('send')} ${escapeHtml(post.authorName)}님에게 쪽지
              </button>` : ''}
       </div>
@@ -9583,21 +9793,27 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
       <div class="post-comment-list">
         ${comments.length
-          ? comments.map((c) => `
+          ? comments.map((c) => {
+            const person = personFor(c.authorId, c.authorName);
+            return `
               <div class="post-comment">
-                <span class="post-comment-avatar" style="background:${commentAvatarTint(c.authorName)}" aria-hidden="true">${escapeHtml(String(c.authorName || '?').charAt(0))}</span>
+                <button class="post-comment-avatar" type="button" style="${avatarStyle(person)}"
+                        ${profileAttrs(person.id, person.nickname)} aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${avatarInnerHTML(person)}</button>
                 <div class="post-comment-body">
                   <div class="post-comment-top">
-                    <span class="post-comment-name">${escapeHtml(c.authorName)}</span>
+                    <button class="post-comment-name" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName)}</button>
                     ${c.createdAt ? `<span class="post-comment-time" data-created="${c.createdAt}">${timeAgo(c.createdAt)}</span>` : ''}
                   </div>
                   <p class="post-comment-text">${escapeHtml(c.text)}</p>
                 </div>
-              </div>`).join('')
+              </div>`;
+          }).join('')
           : '<p class="post-comment-empty">아직 댓글이 없어요. 첫 댓글을 남겨보세요.</p>'}
       </div>
       <form class="comment-form" data-post-comment-form="${post.id}">
-        <input type="text" class="comment-input" aria-label="댓글 입력" placeholder="댓글 달기..." maxlength="200" autocomplete="off">
+        <span class="input-shrink">
+          <input type="text" class="comment-input" aria-label="댓글 입력" placeholder="댓글 달기..." maxlength="200" autocomplete="off">
+        </span>
         <button type="submit" class="comment-submit" disabled>게시</button>
       </form>`;
   }
@@ -9615,24 +9831,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const paint = (node) => {
       node.classList.toggle('liked', result.liked);
       node.setAttribute('aria-pressed', String(result.liked));
-      node.innerHTML = `${HEART_SVG(result.liked)}<span>${fmtCount(result.likes)}</span>`;
+      node.setAttribute('aria-label', result.liked ? '좋아요 취소' : '좋아요');
+      node.innerHTML = HEART_SVG(result.liked);
       if (result.liked) {
         node.classList.remove('pop');
         void node.offsetWidth;
         node.classList.add('pop');
       }
-      /* Sprint 12 — 숫자도 같이 살짝 튄다(버튼만 움직이면 따로 논다) */
-      const card = node.closest('.feed-card');
-      const likes = card && card.querySelector('.feed-likes');
-      if (likes) {
-        likes.classList.remove('beat');
-        void likes.offsetWidth;
-        likes.classList.add('beat');
-        setTimeout(() => likes.classList.remove('beat'), 480);
-      }
     };
-    document.querySelectorAll(`[data-like-post="${postId}"]`).forEach(paint);
+    document.querySelectorAll(`[data-like-post="${postId}"], [data-post-like="${postId}"]`).forEach(paint);
     if (btn) paint(btn);
+    /* v33.4 — 숫자는 하트 옆 별도 버튼(좋아요한 사람 열기)이 함께 든다 */
+    document.querySelectorAll(`[data-feed-like-count="${postId}"]`).forEach((node) => {
+      node.textContent = fmtCount(result.likes);
+      node.classList.toggle('is-zero', !Number(result.likes));
+      node.classList.remove('beat');
+      void node.offsetWidth;
+      node.classList.add('beat');
+      setTimeout(() => node.classList.remove('beat'), 480);
+      node.setAttribute('aria-label', `좋아요한 사람 ${fmtCount(result.likes)}명`);
+    });
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8);
     if (el.postModal && el.postModal.classList.contains('active')) renderPostDetail(postId);
     /* Sprint 8 — 내 글 반응이 순위를 밀어올렸으면 실베 진입 알림 */
@@ -9642,6 +9860,14 @@ document.addEventListener('DOMContentLoaded', () => {
   el.postBody && el.postBody.addEventListener('click', (e) => {
     const likeBtn = e.target.closest('[data-post-like]');
     if (likeBtn) { togglePostLike(likeBtn.dataset.postLike, likeBtn); return; }
+    const likersBtn = e.target.closest('[data-post-likers]');
+    if (likersBtn) { openLikers(likersBtn.dataset.postLikers); return; }
+    const cmtBtn = e.target.closest('[data-post-comments]');
+    if (cmtBtn) {
+      const input = el.postBody.querySelector('.comment-input');
+      if (input) { input.focus(); input.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      return;
+    }
     const groupBtn = e.target.closest('[data-post-group]');
     if (groupBtn) {
       closeModal(el.postModal);
@@ -9651,8 +9877,13 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 23 — 동네 글에서 작성자에게 바로 1:1 쪽지 */
     const dmBtn = e.target.closest('[data-post-dm]');
     if (dmBtn) {
+      const targetId = dmBtn.dataset.postDm;
       closeModal(el.postModal);
-      openDmComposer(dmBtn.dataset.postDm);
+      if (store.getMatchProfile(targetId)) {
+        openDmComposer(targetId);
+      } else {
+        openPersonDetail(store.resolvePersonProfile({ id: targetId, name: dmBtn.dataset.postDmName }));
+      }
     }
   });
 
@@ -14340,6 +14571,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (qp.get('dev') === '1') document.body.classList.add('oog-dev');
   } catch (e) { /* 주소를 못 읽어도 앱은 연다 */ }
   const bootStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  /* v33.4 — 좋아요 수 = '좋아요한 사람' 목록 크기. 앱이 아는 사람보다 큰 수는 한 번 내린다. */
+  store.normalizePostLikes();
   /* Sprint 11 — 펼쳐 둔 알림 묶음을 세션에서 복원 */
   /* Sprint 8 — 첫 렌더 경량화: 탐색 탭만 먼저 그린다.
      피드·대화방·알림 목록은 그 탭을 처음 열 때(또는 알림이 바뀔 때) 그린다. */

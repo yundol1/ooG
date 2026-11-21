@@ -3536,6 +3536,10 @@ const defaultInitialState = {
   /* ---------------- 하트(LIKE) 기록 (중복 방지·카드 상태의 근거) ---------------- */
   matchSwipes: [],
 
+  /* v33.4 — 피드·댓글에서 알게 된 사람(모임 명부·이름만 아는 사람)의 최소 프로필.
+     프로필 시트를 열 때 한 번씩 적히고, id 로 다시 찾을 수 있다. */
+  personas: {},
+
   /* ---------------- 1:1 채팅방 (Sprint 4에서 메시지 송수신 구현) ----------------
    * 매칭으로 새로 열린 방은 isNewMatch: true → 채팅 탭에서 '새 매칭' 배지
    * ------------------------------------------------------------------------- */
@@ -4047,6 +4051,7 @@ function stripAllContent(state) {
   state.explorePosts = [];
   state.matchProfiles = [];
   state.partnerProfiles = [];
+  state.personas = {};
   state.chatRooms = [];
   state.chatReplyPools = [];
   state.stories = [];
@@ -7772,6 +7777,19 @@ class Store {
     if (direct) return direct;
     const partner = (this.state.partnerProfiles || []).find((p) => p.id === profileId);
     if (partner) return partner;
+    /* v33.4 — 피드·댓글에서 알게 된 사람(모임 명부·이름만 아는 사람) */
+    const persona = (this.state.personas || {})[profileId];
+    if (persona) {
+      return this.syntheticProfile({
+        id: persona.id,
+        name: persona.nickname,
+        avatarText: persona.avatarText,
+        avatarGradient: persona.avatarGradient,
+        photoUrl: persona.photoUrl,
+        hobbyLabel: persona.hobbyLabel,
+        location: persona.location
+      });
+    }
     const room = this.state.chatRooms.find((r) => r.partnerId === profileId);
     if (!room) return null;
     return {
@@ -7797,6 +7815,229 @@ class Store {
       verified: false,
       isSynthetic: true
     };
+  }
+
+  /* ==========================================================================
+   * v33.4 — 피드·좋아요·댓글의 프로필 연결 + 좋아요한 사람 목록
+   * ------------------------------------------------------------------------
+   * 11/22 00:44 사용자(아이폰에서 쓰다가): "피드에 올린 글 또는 좋아요 또는 댓글에
+   * 있는 프로필을 누르면 해당 이용자 프로필이 나오게 해줘."
+   *
+   *  · 화면은 사람을 id 로도, 이름으로도 가리킨다(시드 댓글은 id 가 없거나 모임 사람
+   *    id 라 프로필로 바로 안 풀린다). 그래서 '가리킴 → 프로필' 해석을 여기 한 곳에 둔다.
+   *  · 해석 순서: 나 → id 로 찾은 프로필 → 매칭·모임 동료 프로필 → 모임 명부 → 이름만.
+   *    마지막 두 단계는 사진 없이 이름·이니셜만 있는 최소 프로필을 만든다(지어낸 사람 금지).
+   *  · 좋아요 수와 '좋아요한 사람' 목록은 같은 수를 쓴다 — 앱이 아는 사람보다 많은 수는
+   *    목록으로 보여 줄 수 없어 그 수에 맞춰 내린다(normalizePostLikes).
+   * ======================================================================== */
+
+  /** 이름·id 만으로 사람 프로필을 찾는다(없으면 이름 기반 최소 프로필).
+   *  register:false 면 state.personas 에 적지 않는다(화면 그리기용). */
+  resolvePersonProfile(identity = {}, options = {}) {
+    const me = this.currentUser || {};
+    const id = String(identity.id || '');
+    const name = String(identity.name || identity.nickname || '').trim();
+
+    if ((id && me.id && id === me.id) || (name && me.nickname && name === me.nickname)) {
+      return this.meProfile();
+    }
+    if (id) {
+      const byId = this.getPersonProfile(id);
+      if (byId) return byId;
+    }
+    if (!name) return id ? this.syntheticProfile({ id }) : null;
+
+    const byName = (this.state.matchProfiles || []).find((p) => p.nickname === name)
+      || (this.state.partnerProfiles || []).find((p) => p.nickname === name);
+    if (byName) return byName;
+
+    /* 모임 명부 — 모임 사람(모임장·멤버)의 이름은 프로필 카드가 없다. */
+    for (const group of this.state.groups || []) {
+      const member = (group.members || []).find((m) => m.name === name)
+        || (group.leaderName === name ? { id: group.leaderId, name: group.leaderName } : null);
+      if (member) {
+        const profile = this.syntheticProfile({
+          id: member.id || `by-name:${name}`,
+          name,
+          avatarText: member.avatarText,
+          avatarGradient: member.gradient,
+          hobbyLabel: group.categoryName || '모임 사람',
+          location: group.location || ''
+        });
+        return options.register === false ? profile : this.registerPersona(profile);
+      }
+    }
+    /* 마지막 — 이름만 아는 사람. 사진 없이 이니셜 아바타만. */
+    const fallback = this.syntheticProfile({ id: id || `by-name:${name}`, name });
+    return options.register === false ? fallback : this.registerPersona(fallback);
+  }
+
+  /**
+   * 이름만 아는 사람을 state.personas 에 적어 둔다 — 다음에 id 로 다시 찾을 수 있고,
+   * 1:1 대화(getPersonProfile)도 이 카드로 방을 연다. 프로필 사진·관계는 지어내지 않는다.
+   */
+  registerPersona(profile) {
+    if (!profile || !profile.id) return profile;
+    if (!this.state.personas || typeof this.state.personas !== 'object') this.state.personas = {};
+    const exist = this.state.personas[profile.id];
+    if (!exist) {
+      this.state.personas[profile.id] = {
+        id: profile.id,
+        nickname: profile.nickname,
+        avatarText: profile.avatarText,
+        avatarGradient: profile.avatarGradient,
+        photoUrl: profile.photoUrl || null,
+        hobbyLabel: profile.hobbyLabel || '',
+        location: profile.location || ''
+      };
+      this.saveState();
+    }
+    return profile;
+  }
+
+  /** 내 프로필을 사람 카드와 같은 모양으로. */
+  meProfile() {
+    const me = this.currentUser || {};
+    const hobbies = me.hobbies || [];
+    return {
+      id: me.id,
+      nickname: me.nickname || '나',
+      age: me.age != null ? Number(me.age) : null,
+      distanceKm: 0,
+      location: me.location || '',
+      hobbyIds: [],
+      hobbyLabel: hobbies[0] || '내 취미',
+      hobbyIcon: '',
+      hobbyStyle: hobbies.slice(0, 2).join(' · ') || '내 프로필',
+      cycle: '',
+      cycleIcon: '',
+      hobbies,
+      specChips: [],
+      bio: me.bio || '',
+      avatarText: me.avatarText || String(me.nickname || '나').charAt(0),
+      avatarGradient: me.avatarGradient || 'linear-gradient(135deg, #10B981, #047857)',
+      photoUrl: me.photoUrl || null,
+      badge: '나',
+      ratio: 'mid',
+      likesMe: false,
+      verified: false,
+      isMe: true,
+      isSynthetic: true
+    };
+  }
+
+  /** 이름(혹은 id)만 아는 사람의 최소 프로필 — 없는 정보는 비워 둔다. */
+  syntheticProfile({ id, name, avatarText, avatarGradient, photoUrl, hobbyLabel, location } = {}) {
+    const nickname = String(name || '').trim() || '이용자';
+    return {
+      id: id || `by-name:${nickname}`,
+      nickname,
+      age: null,
+      distanceKm: null,
+      location: location || '',
+      hobbyIds: [],
+      hobbyLabel: hobbyLabel || '',
+      hobbyIcon: '',
+      hobbyStyle: hobbyLabel || '모임에서 만난 사람',
+      cycle: '',
+      cycleIcon: '',
+      hobbies: [],
+      specChips: [],
+      bio: hobbyLabel ? `${hobbyLabel}에서 함께해요.` : '',
+      avatarText: avatarText || nickname.charAt(0),
+      avatarGradient: avatarGradient || 'linear-gradient(135deg, #10B981, #047857)',
+      photoUrl: photoUrl || null,
+      badge: hobbyLabel || '모임 사람',
+      ratio: 'mid',
+      likesMe: false,
+      verified: false,
+      isSynthetic: true
+    };
+  }
+
+  /** 좋아요한 사람으로 세울 수 있는 사람 — 나와 글쓴이는 뺀다. */
+  getLikerPool(post) {
+    const meId = (this.currentUser || {}).id;
+    const authorId = post ? post.authorId : null;
+    const seen = new Set();
+    const pool = [];
+    const push = (person) => {
+      if (!person || !person.id) return;
+      if (person.id === meId || person.id === authorId) return;
+      if (seen.has(person.id)) return;
+      seen.add(person.id);
+      pool.push(person);
+    };
+    (this.state.matchProfiles || []).forEach(push);
+    (this.state.partnerProfiles || []).forEach(push);
+    /* 사람마다 항상 같은 순서 — 글 id 로 시작점을 돌려 글마다 다른 얼굴이 보이게. */
+    return pool.sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  }
+
+  /** 글 id 로 정해지는 순서로 n명을 고른다(같은 글 → 늘 같은 사람). */
+  pickLikers(post, pool, n) {
+    const out = [];
+    const total = pool.length;
+    if (!total || n <= 0) return out;
+    const key = String((post && post.id) || '');
+    let hash = 0;
+    for (let i = 0; i < key.length; i += 1) hash = (hash * 31 + key.charCodeAt(i)) % 100003;
+    const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+    let step = 7 + (hash % 11);
+    while (gcd(step, total) !== 1) step += 1;
+    const start = hash % total;
+    for (let i = 0; i < Math.min(n, total); i += 1) out.push(pool[(start + i * step) % total]);
+    return out;
+  }
+
+  /** 글의 '좋아요한 사람' 목록 — 내가 눌렀으면 맨 앞에 나. */
+  getPostLikeInfo(postId) {
+    const post = this.getPost(postId) || this.getExplorePost(postId) || null;
+    if (!post) return { count: 0, people: [] };
+    const likedByMe = !!post.likedByMe;
+    const pool = this.getLikerPool(post);
+    const others = Math.max(0, Math.min(Number(post.likes) || 0, pool.length + (likedByMe ? 1 : 0)) - (likedByMe ? 1 : 0));
+    const people = this.pickLikers(post, pool, others).map((p) => ({
+      id: p.id,
+      nickname: p.nickname,
+      avatarText: p.avatarText || String(p.nickname || '?').charAt(0),
+      avatarGradient: p.avatarGradient,
+      photoUrl: p.photoUrl || null,
+      hobbyLabel: p.hobbyLabel || (p.hobbies || [])[0] || '',
+      isMe: false
+    }));
+    if (likedByMe && this.currentUser && this.currentUser.id) {
+      const me = this.meProfile();
+      people.unshift({
+        id: me.id,
+        nickname: me.nickname,
+        avatarText: me.avatarText,
+        avatarGradient: me.avatarGradient,
+        photoUrl: me.photoUrl,
+        hobbyLabel: me.hobbyLabel,
+        isMe: true
+      });
+    }
+    return { count: people.length, people };
+  }
+
+  /**
+   * 좋아요 수를 앱이 아는 사람 수에 맞춘다 — 처음 한 번만 내려간다.
+   * (예: 47개 → 31명. 수와 목록이 어긋나면 목록을 믿을 수 없게 된다)
+   */
+  normalizePostLikes() {
+    const posts = (this.state.feedPosts || []).concat(this.state.explorePosts || []);
+    let changed = false;
+    posts.forEach((post) => {
+      const cap = this.getLikerPool(post).length + (post.likedByMe ? 1 : 0);
+      const likes = Number(post.likes) || 0;
+      if (likes > cap) {
+        post.likes = cap;
+        changed = true;
+      }
+    });
+    if (changed) this.saveState();
+    return changed;
   }
 
   /**
@@ -8062,15 +8303,15 @@ class Store {
     const exist = this.state.chatRooms.find((r) => r.partnerId === profileId);
     if (exist) return { room: exist, created: false };
 
-    const profile = this.getMatchProfile(profileId);
+    const profile = this.getMatchProfile(profileId) || this.getPersonProfile(profileId);
     const room = {
       id: `chat_${profileId}_${Date.now()}`,
       partnerId: profileId,
       partnerName: profile ? profile.nickname : '새 메이트',
-      partnerHobby: profile ? `${profile.hobbyIcon || ''} ${profile.hobbyLabel || ''}`.trim() : '취미 메이트',
+      partnerHobby: profile ? `${profile.hobbyIcon || ''} ${profile.hobbyLabel || ''}`.trim() || '모임 사람' : '취미 메이트',
       partnerAvatarText: profile ? profile.avatarText || profile.nickname.charAt(0) : '?',
       partnerGradient: profile ? profile.avatarGradient : 'linear-gradient(135deg, #0B815A, #047857)',
-      lastMessage: '서로 LIKE! 먼저 인사해 보세요',
+      lastMessage: profile && profile.isMe ? '나와의 대화' : '먼저 인사해 보세요',
       lastTime: '방금',
       unreadCount: 1,
       isNewMatch: true,
@@ -11140,7 +11381,9 @@ class Store {
    * 보낸 대화는 바깥 3번째 탭 '전체 디엠함'에 즉시 노출".
    * ======================================================================== */
   startDirectMessage(profileId, text) {
-    const profile = this.getMatchProfile(profileId);
+    /* v33.4 — 피드·댓글에서 연 프로필(모임 사람·이름만 아는 사람)과도 대화를 시작한다.
+       이런 사람은 state.personas 에 한 번 등록되어 getPersonProfile 로 풀린다. */
+    const profile = this.getMatchProfile(profileId) || this.getPersonProfile(profileId);
     if (!profile) return { ok: false, reason: 'not_found' };
     const body = String(text || '').trim();
     const opened = this.openChatRoom(profileId);

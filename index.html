@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <!-- Sprint 28.5 — 핀치 확대를 막지 않는다(접근성). maximum-scale·user-scalable 제거. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <!-- R1 — 브라우저 크롬 색은 바탕색과 같게: 라이트 #FFFFFF · 다크 #0D1117 -->
   <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0D1117" media="(prefers-color-scheme: dark)">
@@ -1083,10 +1083,23 @@
         <p class="feed-comment-sub" id="feed-comment-sub"></p>
         <div class="feed-comment-list" id="feed-comment-list" aria-live="polite"><!-- JS --></div>
         <form class="feed-comment-form" id="feed-comment-form">
-          <input class="feed-comment-input" id="feed-comment-input" type="text" maxlength="300"
-                 placeholder="댓글 달기" autocomplete="off" aria-label="댓글 입력">
+          <span class="input-shrink">
+            <input class="feed-comment-input" id="feed-comment-input" type="text" maxlength="300"
+                   placeholder="댓글 달기" autocomplete="off" aria-label="댓글 입력">
+          </span>
           <button class="feed-comment-send" id="btn-feed-comment-send" type="submit">게시</button>
         </form>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 8-E. 좋아요한 사람 (v33.4) ==================== -->
+    <div class="modal-overlay" id="likers-modal" role="dialog" aria-modal="true" aria-label="좋아요한 사람">
+      <div class="modal-sheet likers-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-likers" aria-label="닫기">&times;</button>
+        <h2 class="sheet-title">좋아요</h2>
+        <p class="likers-sub" id="likers-sub"></p>
+        <div class="likers-list" id="likers-list" aria-live="polite"><!-- JS --></div>
       </div>
     </div>
 
@@ -1466,7 +1479,9 @@
         <div class="chat-messages group-chat-messages" id="group-chat-messages" aria-live="polite"><!-- JS --></div>
 
         <form class="chat-input-bar" id="group-chat-form">
-          <input type="text" class="chat-input" id="group-chat-input" placeholder="모임원에게 한마디" maxlength="500" autocomplete="off" aria-label="단체 채팅 입력">
+          <span class="input-shrink">
+            <input type="text" class="chat-input" id="group-chat-input" placeholder="모임원에게 한마디" maxlength="500" autocomplete="off" aria-label="단체 채팅 입력">
+          </span>
           <button type="submit" class="chat-send-btn" aria-label="메시지 보내기">
             <span class="oo-icon-18" aria-hidden="true" data-oog-icon="send"></span>
           </button>
@@ -1497,7 +1512,9 @@
         <div class="chat-messages" id="chat-messages" aria-live="polite"><!-- JS --></div>
 
         <form class="chat-input-bar" id="chat-form">
-          <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요" maxlength="500" autocomplete="off" aria-label="메시지 입력">
+          <span class="input-shrink">
+            <input type="text" class="chat-input" id="chat-input" placeholder="메시지를 입력하세요" maxlength="500" autocomplete="off" aria-label="메시지 입력">
+          </span>
           <button type="submit" class="chat-send-btn" id="btn-chat-send" aria-label="메시지 보내기">
             <span class="oo-icon-18" aria-hidden="true" data-oog-icon="send"></span>
           </button>

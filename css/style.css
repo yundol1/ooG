@@ -534,7 +534,7 @@ img, svg { display: block; }
   background: transparent;
   border: none;
   outline: none;
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
   font-weight: var(--fw-body);
   color: var(--text-strong);
 }
@@ -1374,7 +1374,7 @@ img, svg { display: block; }
   background: transparent;
   border: none;
   outline: none;
-  font-size: var(--fs-sub);
+  font-size: var(--fs-input);
   font-weight: var(--fw-meta);
   color: var(--text-strong);
   padding: 4px 0;
@@ -1504,7 +1504,7 @@ img, svg { display: block; }
   border: 0;
   outline: none;
   background: transparent;
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
   font-weight: var(--fw-body);
   letter-spacing: -0.2px;
   color: var(--text-strong);
@@ -2980,7 +2980,7 @@ img, svg { display: block; }
   background: var(--bg-soft);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
-  font-size: var(--fs-sub);
+  font-size: var(--fs-input);
   font-weight: var(--fw-meta);
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -3433,7 +3433,7 @@ img, svg { display: block; }
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   padding: 11px 13px;
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
   font-weight: var(--fw-body);
   color: var(--text-strong);
   outline: none;
@@ -4122,7 +4122,7 @@ img, svg { display: block; }
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   background: var(--bg-subtle);
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
   font-weight: var(--fw-body);
 }
 
@@ -4661,7 +4661,7 @@ img, svg { display: block; }
   background: var(--bg-base);
   color: var(--text);
   font-family: var(--font);
-  font-size: var(--fs-sub);
+  font-size: var(--fs-input);
   font-weight: var(--fw-meta);
   padding: 7px 8px;
 }
@@ -4969,7 +4969,7 @@ img, svg { display: block; }
   border-radius: var(--r-sm);
   background: var(--bg-base);
   font-family: var(--font);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-input);
   font-weight: var(--fw-meta);
   color: var(--text);
   padding: 8px 10px;
@@ -5272,7 +5272,7 @@ img, svg { display: block; }
   background: var(--bg-subtle);
   color: var(--text);
   font-family: var(--font);
-  font-size: var(--fs-sub);
+  font-size: var(--fs-input);
   font-weight: var(--fw-meta);
   line-height: 1.5;
   padding: 10px 12px;
@@ -12387,7 +12387,7 @@ b {
   border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--bg-base);
-  font-size: var(--fs-body);
+  font-size: var(--fs-input);
   color: var(--text-strong);
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -12550,7 +12550,7 @@ select.ob-input { appearance: none; -webkit-appearance: none; }
   border: 1px solid rgba(255, 255, 255, 0.28);
   background: rgba(255, 255, 255, 0.12);
   color: #FFFFFF;
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
 }
 .story-reply-input::placeholder { color: rgba(255, 255, 255, 0.62); }
 .story-reply-input:focus { outline: none; border-color: rgba(255, 255, 255, 0.6); }
@@ -14603,7 +14603,7 @@ img[hidden] { display: none !important; }
   border: 1.5px solid transparent;
   background: var(--clay-cream);
   box-shadow: var(--clay-inset);
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
   font-weight: var(--fw-body);
   color: var(--text-strong);
 }
@@ -14881,7 +14881,7 @@ body.spotlight-open { overflow: hidden; }
   border: 1.5px solid transparent;
   background: var(--bg-soft);
   box-shadow: var(--clay-inset);
-  font-size: var(--fs-sub);
+  font-size: var(--fs-input);
   font-weight: var(--fw-meta);
   color: var(--text-strong);
 }
@@ -14995,7 +14995,7 @@ body.spotlight-open { overflow: hidden; }
   color: var(--text-muted);
 }
 
-.ob-input-lg { height: 54px; font-size: var(--fs-section); font-weight: 620; }
+.ob-input-lg { height: 54px; font-size: var(--fs-input); font-weight: 620; }
 .ob-num-input { letter-spacing: 0.2em; font-weight: 720; }
 
 /* 단계 전환 — 앞으로는 오른쪽에서, 뒤로는 왼쪽에서 살짝 밀려 들어온다 */
@@ -16500,6 +16500,7 @@ body.is-album-viewing { overflow: hidden; }
   --fs-sub: 12px;     /* 보조 — 시간·건수·메타 */
   --fs-small: 13px;     /* 작은 본문 — 목록·라벨 */
   --fs-body: 14px;      /* 본문 */
+  --fs-input: 16px;     /* 입력창 전용 — iOS 자동 확대 하한(16px)을 지키려고 본문보다 한 단계 크다 */
   --fs-title: 15px;     /* 카드·시트 제목 */
   --fs-section: 16px;   /* 섹션 제목 */
   --fs-screen: 20px;    /* 화면 제목 */
@@ -18045,15 +18046,13 @@ body {
 .chat-last-msg,
 .menu-label,
 .ob-desc,
-.ob-input,
-.field-input,
-.composer-textarea,
 .filter-group-title,
 .empty-desc,
 .album-share-note,
 .home-photo-guide-text span {
   font-size: var(--fs-body);
 }
+/* 입력창(ob-input · field-input · composer-textarea)은 16px — 아래 --fs-input 규칙이 맡는다 */
 
 /* (2) 보조 12 — 시간·건수·보조 문장 32개. 줄 간격 1.45 */
 .post-meta,
@@ -19072,6 +19071,16 @@ body {
 /* U2 — 연회색 면 + 테두리 없음, **포커스에서만 초록 1.5px**. 높이 44 · 모서리 12.
    평상시에도 1.5px 투명 테두리를 두어 포커스 때 크기가 끊기지 않는다.
    (textarea 만 높이가 자유 — 최소 44) */
+/* v33.4 — iOS 자동 확대 방지: 입력창 글자는 **항상 16px 이상**(--fs-input).
+   iOS Safari 는 computed font-size 가 16px 미만인 input·textarea·select 에 포커스를 주면
+   화면을 확대해 오른쪽이 잘린다. 화면 글자(본문 14)와 입력창 글자를 따로 둔다 —
+   입력창만 16px 이라 화면의 글자 위계는 그대로다. */
+input,
+textarea,
+select {
+  font-size: var(--fs-input);
+}
+
 input[type="text"],
 input[type="search"],
 input[type="email"],
@@ -20360,7 +20369,7 @@ select:focus,
 .comment-item .comment-reply .oo-ic { width: 11px; height: 11px; }
 .comment-more { font-size: var(--fs-sub); font-weight: 700; padding: 2px 0; margin-bottom: 1px; }
 .comment-form { padding: 4px 12px 6px; gap: 6px; }
-.comment-input { font-size: var(--fs-body); min-height: 24px; }
+.comment-input { font-size: var(--fs-input); min-height: 24px; }
 .comment-submit { min-height: 40px; padding: 0 14px; }
 
 /* ---------------------------------------- 32-9. 모임 안 — 일정·채팅 */
@@ -20679,7 +20688,7 @@ textarea,
 .feed-action svg { width: 19px; height: 19px; }
 .post-like { min-height: 30px; }
 .comment-submit { height: auto; min-height: var(--btn-h-cta); padding: 0 16px; font-size: var(--fs-body); border-radius: var(--r-control); }
-.comment-input { min-height: 24px; font-size: var(--fs-body); }
+.comment-input { min-height: 24px; font-size: var(--fs-input); }
 
 /* ⑥ 입력·검색 — 44 (U2) */
 .explore-search,
@@ -20693,7 +20702,7 @@ textarea,
 .home-browse-search input {
   height: auto;
   min-height: 0;
-  font-size: var(--fs-body);
+  font-size: var(--fs-input);
 }
 .explore-search .oo-ic,
 .home-browse-search .oo-ic { width: 16px; height: 16px; }
@@ -21806,7 +21815,7 @@ body.subscreen-open { overflow: hidden; }
   border: 0;
   background: none;
   color: var(--text-strong);
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
   font-weight: var(--fw-body);
   outline: none;
 }
@@ -22184,7 +22193,7 @@ body.subscreen-open { overflow: hidden; }
   border: 0;
   background: none;
   color: var(--text-strong);
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
 }
 .azit-search input:focus { outline: none; }
 .azit-search-clear {
@@ -23120,7 +23129,7 @@ body.subscreen-open { overflow: hidden; }
   border-radius: var(--r-control);
   background: var(--bg-base);
   color: var(--text-strong);
-  font-size: var(--fs-small);
+  font-size: var(--fs-input);
 }
 .feed-comment-send {
   flex: 0 0 auto;
@@ -23348,4 +23357,456 @@ body {
 .group-space img,
 .group-space video {
   max-width: 100%;
+}
+
+/* ==========================================================================
+ * v33.4 — 피드 숫자 배치 · 프로필 연결 · 댓글 아바타 · 좋아요한 사람 시트
+ * --------------------------------------------------------------------------
+ * 11/22 00:44 사용자(아이폰 실사용 스크린샷과 함께):
+ *   ① 입력창을 누르면 화면이 확대돼 오른쪽이 잘린다 → 입력창 글자 16px (위 30-9 참고)
+ *   ② 피드·좋아요·댓글의 프로필을 누르면 그 사람 프로필이 열려야
+ *   ③ 액션 아이콘 옆에 좋아요·댓글 **숫자만**, '좋아요 N개' 별도 줄은 없앤다
+ *   ④ 댓글 작성자 옆에 원형 프로필 아바타
+ *
+ *  · 숫자(좋아요)는 하트와 다른 버튼이다 — 하트는 좋아요 토글, 숫자는 좋아요한 사람 목록.
+ *  · 둘 다 눌림 영역 44×44(작은 행에서는 ::after 로 넓힌다).
+ *  · 0 이면 숫자 버튼은 폭 0 으로 접힌다(자리는 차지하지 않고 DOM 에는 남는다).
+ * ======================================================================== */
+
+/* (1) 피드 액션 줄의 숫자 버튼 */
+.feed-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-strong);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-label);
+  line-height: 1;
+  cursor: pointer;
+  transition: transform var(--dur-press, 120ms) ease, background var(--dur-quick, 120ms) ease;
+}
+.feed-count:active { transform: scale(0.9); }
+.feed-count.beat { animation: countBeat 0.44s var(--ease-spring, ease-out); }
+@keyframes countBeat {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+.feed-count.is-zero {
+  min-width: 0;
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* (2) 프로필로 이어지는 버튼 — 배경·테두리 없이 글자 그대로 */
+button.feed-avatar,
+button.post-avatar,
+button.post-detail-avatar,
+button.post-author,
+button.post-detail-author,
+button.feed-author-name,
+button.comment-author,
+button.post-comment-name,
+button.caption-author,
+button.ig-author,
+button.ig-caption-author,
+button.ig-comment-name,
+button.feed-comment-author,
+button.liker-row {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+button.feed-avatar,
+button.post-avatar,
+button.post-detail-avatar { display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
+button.feed-avatar:active,
+button.post-avatar:active,
+button.post-detail-avatar:active { transform: scale(0.94); }
+
+.post-avatar .avatar-img,
+.feed-avatar .avatar-img,
+.post-detail-avatar .avatar-img,
+.comment-avatar .avatar-img,
+.post-comment-avatar .avatar-img,
+.feed-comment-avatar .avatar-img,
+.ig-avatar .avatar-img,
+.ig-comment-avatar .avatar-img,
+.liker-avatar .avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* 이름 버튼은 글자 위계를 그대로 지킨다 (D1-b: 이름 = 본문 크기 · 굵기로 구분) */
+button.feed-author-name { font-size: var(--fs-body); font-weight: var(--fw-display); color: var(--text-strong); }
+button.post-author { font-size: var(--fs-small); font-weight: var(--fw-display); color: var(--text-strong); }
+button.post-detail-author { font-size: var(--fs-title); font-weight: var(--fw-display); color: var(--text-strong); }
+button.caption-author { font-size: inherit; font-weight: var(--fw-strong); color: var(--text-strong); }
+button.post-comment-name { font-size: var(--fs-body); font-weight: var(--fw-display); color: var(--text-strong); }
+
+/* (3) 댓글 줄 — 원형 아바타(22px) + 이름 + 문장 */
+.comment-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.comment-avatar {
+  position: relative;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  line-height: 1;
+}
+/* 손가락이 닿는 영역은 44×44 — 보이는 원은 22px 그대로 */
+.comment-avatar::after {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+}
+.comment-body { flex: 1 1 auto; min-width: 0; }
+button.comment-author {
+  position: relative;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
+  color: var(--text-strong);
+  margin-right: 5px;
+}
+button.comment-author::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -13px;
+  width: calc(100% + 8px);
+  height: calc(100% + 26px);
+  border-radius: 8px;
+}
+
+/* (4) 글 상세의 액션 줄 — 좋아요 하트 / 숫자 / 댓글 / 숫자 */
+.post-detail-actionbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 10px;
+}
+.post-detail-actionbar .post-detail-like {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-sub);
+}
+.post-detail-actionbar .post-detail-like svg { width: 23px; height: 23px; }
+.post-detail-actionbar .post-detail-like.liked { background: transparent; border-color: transparent; color: var(--red); }
+.post-detail-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-strong);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.post-detail-count .oo-ic { font-size: 21px; color: var(--text-sub); }
+.post-detail-count:active { transform: scale(0.92); }
+.post-detail-count.is-zero {
+  min-width: 0;
+  width: 0;
+  padding: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+.post-detail-actionbar .post-detail-group-chip { margin-left: 6px; }
+
+/* (5) 동네 글 카드(게시판 행) — 하트 + 숫자 */
+.post-like-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--text-sub);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  cursor: pointer;
+}
+.post-like-count.is-zero { min-width: 0; width: 0; padding: 0; overflow: hidden; opacity: 0; pointer-events: none; }
+
+/* (6) 추천 피드(인스타형) — 작성자 아바타·이름, 숫자 버튼, 댓글 미리보기 아바타 */
+.ig-avatar-person { width: 38px; height: 38px; border: 0; padding: 0; color: #FFFFFF; cursor: pointer; }
+button.ig-author { font-size: var(--fs-small); font-weight: var(--fw-display); color: var(--text-strong); }
+.ig-subline { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ig-subline .ig-group { flex: 0 1 auto; font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-sub); }
+.ig-subline .ig-place { flex: 0 1 auto; }
+button.ig-caption-author { font-size: inherit; font-weight: var(--fw-display); color: var(--text-strong); }
+.ig-act-num {
+  min-width: 34px;
+  padding: 0 2px;
+  justify-content: flex-start;
+}
+.ig-act-num .ig-act-count { font-size: var(--fs-sub); font-weight: var(--fw-label); color: var(--text-strong); }
+.ig-act-num.is-zero { min-width: 0; width: 0; padding: 0; overflow: hidden; opacity: 0; pointer-events: none; }
+.ig-comment-line { display: flex; align-items: flex-start; gap: 6px; }
+.ig-comment-avatar {
+  position: relative;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  line-height: 1;
+  cursor: pointer;
+}
+.ig-comment-avatar::after {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: -12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+}
+button.ig-comment-name { font-size: var(--fs-caption); font-weight: var(--fw-display); color: var(--text-strong); }
+.ig-comment-text { flex: 1 1 auto; min-width: 0; }
+
+/* (7) 추천 피드 댓글 시트 — 아바타 + 이름 + 문장 */
+.feed-comment-row {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+}
+.feed-comment-avatar {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  line-height: 1;
+  cursor: pointer;
+}
+.feed-comment-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+button.feed-comment-author { font-size: var(--fs-caption); font-weight: var(--fw-display); color: var(--text-strong); }
+
+/* (8) 글 상세 댓글의 아바타·이름은 버튼이 됐다(모양은 그대로) */
+button.post-comment-avatar {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* (9) 좋아요한 사람 시트 */
+.likers-sheet { display: flex; flex-direction: column; max-height: 74vh; }
+.likers-sub {
+  padding: 2px 18px 10px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.likers-list {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;
+  padding: 0 8px 10px;
+}
+.liker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 10px;
+  border-radius: var(--r-control);
+  cursor: pointer;
+}
+.liker-row:active { background: var(--fill-subtle); }
+.liker-avatar {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  line-height: 1;
+}
+.liker-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.liker-name { font-size: var(--fs-body); font-weight: var(--fw-display); color: var(--text-strong); }
+.liker-name .me-badge { margin-left: 5px; }
+.liker-hobby { font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-muted); }
+.likers-empty {
+  padding: 26px 12px;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* 다크 모드 — 아바타 이니셜은 항상 흰 글자, 숫자 버튼은 본문 색 그대로 */
+:root[data-theme="dark"] .liker-row:active { background: var(--fill-subtle); }
+
+/* ==========================================================================
+ * v33.4-2 — 입력창 글자는 16px(자동 확대 차단) 그대로, **보이는 크기만 14px**
+ * --------------------------------------------------------------------------
+ * 11/22 사용자: "글자 크기는 작게해주고 화면 고정은 못해?"
+ *
+ *  · iOS Safari 는 computed font-size 가 16px 미만인 input 에 포커스하면 확대한다.
+ *    그래서 실제 font-size 는 16px 로 두고, transform: scale(0.875) 로 14px 처럼 보이게 한다.
+ *  · transform 은 레이아웃을 줄이지 않는다 → 칸(input)은 1/0.875(114.2857%) 만큼 넓게 잡고,
+ *    감싸는 .input-shrink 가 넘치는 부분을 잘라 낸다. 그래야 커서·오른쪽 끝·플레이스홀더가
+ *    칸의 오른쪽 끝에 정확히 맞는다.
+ *  · 세로도 같이 줄어들므로, 높이를 고정하던 칸은 높이도 1/0.875 로 잡아 보이는 높이를 지킨다.
+ * ======================================================================== */
+.input-shrink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.input-shrink > input,
+.input-shrink > textarea {
+  width: calc(100% / 0.875);
+  min-width: 0;
+  flex: 0 0 auto;
+  transform: scale(0.875);
+  transform-origin: left center;
+}
+/* 옆의 게시/보내기 버튼은 줄지 않는다 */
+.comment-form .comment-submit,
+.feed-comment-form .feed-comment-send,
+.chat-input-bar .chat-send-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* 채팅 입력줄 — 보이는 높이는 그대로 44px */
+.chat-input-bar .input-shrink { height: var(--tap); }
+.chat-input-bar .input-shrink > .chat-input {
+  height: calc(var(--tap) / 0.875);
+  min-height: calc(var(--tap) / 0.875);
+}
+
+/* 댓글 입력줄 — 보이는 칸 높이를 원래대로(24px 최소 · 부모 높이에 맞춤) */
+.comment-form .input-shrink,
+.feed-comment-form .input-shrink {
+  align-self: stretch;
+}
+.comment-form .input-shrink > .comment-input,
+.feed-comment-form .input-shrink > .feed-comment-input {
+  height: calc(100% / 0.875);
+  min-height: calc(100% / 0.875);
+}
+
+/* 프로필로 이어지는 작은 이름 버튼도 눌림 영역은 44px — ::after 로 넓힌다(보이는 글자는 그대로) */
+button.feed-author-name,
+button.caption-author,
+button.post-author,
+button.post-detail-author,
+button.ig-author,
+button.ig-caption-author,
+button.ig-comment-name,
+button.feed-comment-author,
+button.post-comment-name { position: relative; }
+button.feed-author-name::after,
+button.caption-author::after,
+button.post-author::after,
+button.post-detail-author::after,
+button.ig-author::after,
+button.ig-caption-author::after,
+button.ig-comment-name::after,
+button.feed-comment-author::after,
+button.post-comment-name::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  top: -13px;
+  width: calc(100% + 8px);
+  height: calc(100% + 26px);
+  border-radius: 8px;
+}
+
+/* 짧은 이름 버튼(2글자)은 가로도 44px 까지 넓힌다 */
+button.feed-author-name::after,
+button.caption-author::after {
+  left: -10px;
+  width: calc(100% + 20px);
+}
+
+/* 댓글 문장은 낱말(어절) 단위로 줄을 바꾼다 — 한 글자만 다음 줄로 떨어지는 일을 막는다. */
+.comment-text,
+.ig-comment-text,
+.feed-comment-text {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
