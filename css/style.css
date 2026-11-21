@@ -23142,7 +23142,7 @@ body.subscreen-open { overflow: hidden; }
 .guest-cover {
   position: relative;
   aspect-ratio: 16 / 9;
-  max-height: 200px;
+  max-height: 168px;
   margin: 26px 0 14px;
   border-radius: 12px;
   overflow: hidden;
