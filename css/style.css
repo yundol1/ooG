@@ -24195,6 +24195,9 @@ button.caption-author::after {
   border-radius: inherit;
 }
 .chat-resend:active { background: var(--bg-soft); }
+/* 내 말풍선은 '재전송'이 왼쪽에 와서 [재전송][말풍선] 순 — 말풍선이 오른쪽에 붙는다. */
+.chat-msg.mine.is-failed { justify-content: flex-end; }
+.chat-msg.mine.is-failed .chat-resend { order: -1; }
 
 /* ============================================================================
    Sprint 33 — 상세 화면 = 풀스크린 페이지 (바텀시트 → 화면 전환)
