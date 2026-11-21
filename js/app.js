@@ -1780,8 +1780,47 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
+  /* ==========================================================================
+   * Sprint 33 — 상세 화면은 **바텀시트가 아니라 풀스크린 페이지**로
+   * ------------------------------------------------------------------------
+   *  루키 님 #21873: 모임 상세·새 모임 위저드·글 상세·일정 상세·사람 프로필·좋아요 목록이
+   *  시트로 떠서 아래로 스크롤할 때 시트가 끌려 내려가 불편했다.
+   *  → 이 화면들만 `#find-screen` 과 같은 방식(오른쪽에서 미끄러지는 페이지)으로 띄운다.
+   *  → 댓글 시트(피드 댓글 요청)와 확인·입력용 미니 시트는 바텀시트 그대로 둔다.
+   * ======================================================================== */
+  const PAGE_MODALS = new Set([
+    'group-detail-modal',   // 모임 상세·가입
+    'group-create-modal',   // 새 모임 만들기 6단계 위저드
+    'explore-post-modal',   // 글 상세(모임·동네 글 공통)
+    'event-detail-modal',   // 일정 상세
+    'match-detail-modal',   // 이용자 프로필
+    'likers-modal'          // 좋아요 목록
+  ]);
+
+  /** 풀스크린 페이지의 머리말 — 왼쪽 '<' 뒤로가기 + 제목. 한 번만 만든다. */
+  function ensurePageHead(node) {
+    const sheet = node.querySelector('.modal-sheet');
+    if (!sheet) return null;
+    let head = sheet.querySelector('.page-head');
+    if (!head) {
+      head = document.createElement('header');
+      head.className = 'page-head';
+      head.innerHTML = `<button class="page-back" type="button" aria-label="뒤로 가기">`
+        + `<span aria-hidden="true">${ic('chevronLeft')}</span></button>`
+        + '<span class="page-title"></span>';
+      head.querySelector('.page-title').textContent = node.getAttribute('aria-label') || '뒤로';
+      head.querySelector('.page-back').addEventListener('click', () => closeModal(node));
+      sheet.insertBefore(head, sheet.firstChild);
+    }
+    return head;
+  }
+
   function openModal(node) {
     closeAllPostMenus();
+    /* Sprint 33 — 어떤 화면이 페이지이고 어떤 화면이 시트인지는 여기서 한 번에 정한다. */
+    const asPage = !!node && PAGE_MODALS.has(node.id);
+    node.classList.toggle('is-page', asPage);
+    if (asPage) ensurePageHead(node);
     /* Sprint 18 — 사이드바에서 연 시트가 사이드바 뒤에 가리지 않게 먼저 접는다. */
     if (ui.drawerOpen) closeDrawer({ silent: true });
     /* Sprint 12 — 닫히는 중인 다른 시트가 남아 있으면 즉시 정리한다
@@ -2302,7 +2341,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderHomeSuggestEvents() {
     if (!el.homeSuggestEventsList) return;
     const items = store.getRecommendedEvents({ limit: 4 });
-    el.homeSuggestEvents.hidden = items.length === 0;
+    /* Sprint 33 — 추천 일정은 홈 통합 '피드' 안의 가로 레일로 옮겼다. 이 섹션은 다시 띄우지 않는다. */
+    el.homeSuggestEvents.hidden = true;
+    renderHomeSuggestEventsLegacy(items);
+  }
+
+  /** (옛 자리 렌더 — 화면에는 쓰지 않고 테스트·호환용으로만 채운다) */
+  function renderHomeSuggestEventsLegacy(items) {
     if (!items.length) { el.homeSuggestEventsList.innerHTML = ''; return; }
     if (el.homeSuggestEventsSub) el.homeSuggestEventsSub.textContent = '게스트로 참여할 수 있는 일정이에요 · 모임장이 수락하면 참석돼요';
     el.homeSuggestEventsList.innerHTML = items.map((it) => {
@@ -2416,6 +2461,101 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** 첫 배치 — 추천 피드 노출을 허용한 글만, 인스타그램처럼 한 장씩. */
+  /* ==========================================================================
+   * Sprint 33 — 홈 통합 피드 (루키 님 #21895)
+   * ------------------------------------------------------------------------
+   *  흠어져 있던 '추천 그룹 · 추천 일정 · 피드'를 **하나의 피드 흐름**으로 합쳤다.
+   *  · 주인공은 인스타형 피드 글(무제한 스크롤)
+   *  · 글 2개마다 한 번씩 **가로로 넘기는 레일**(추천 그룹 ↔ 추천 일정 번갈아)이 끼어든다(릴스처럼).
+   *  · 레일은 `data-hscroll` + `touch-action: pan-x` — 좌우 드래그는 레일이 먹고,
+   *    스와이프 뒤로가기 제스처는 가로로 넘치는 영역에서 시작한 손을 건너뛰다(충돌 0).
+   * ======================================================================== */
+  const FEED_RAIL_EVERY = 2;
+
+  function rotateBy(list, n) {
+    if (!list.length) return list;
+    const k = ((n % list.length) + list.length) % list.length;
+    return list.slice(k).concat(list.slice(0, k));
+  }
+
+  /** 추천 그룹 가로 레일 — 가입하지 않은 모임만(기존 추천 규칙 그대로). */
+  function feedRailGroupsHTML(railIndex) {
+    const all = store.getRecommendedGroups({ limit: 8, sort: homeRecommendSort() });
+    if (!all.length) return '';
+    const items = rotateBy(all, railIndex);
+    return `
+      <section class="feed-rail" data-rail="groups" aria-label="추천 그룹">
+        <header class="feed-rail-head">
+          <h3 class="feed-rail-title">추천 그룹</h3>
+          <button class="feed-rail-more" type="button" data-home-find="1">모임 찾기${ic('chevronRight')}</button>
+        </header>
+        <div class="feed-rail-track" data-hscroll="1" role="list">
+          ${items.map((it) => `<div class="feed-rail-card" role="listitem">${groupCardHTML({
+            group: it.group, tone: it.tone, azit: it.azit, joined: false
+          })}</div>`).join('')}
+        </div>
+      </section>`;
+  }
+
+  /** 추천 그룹 레일의 일정 한 칸 — 모임명·아지트만(정확한 장소는 아니다). */
+  function feedRailEventCardHTML(it) {
+    const ev = it.event;
+    const d = new Date(ev.when);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const day = `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
+    const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const azit = it.azit || (it.group ? store.getGroupAzit(it.group) : null);
+    return `
+      <article class="feed-rail-event" data-suggest-event="${ev.id}" role="listitem" tabindex="0">
+        <span class="feed-rail-event-when">${escapeHtml(day)} · ${escapeHtml(time)}</span>
+        <span class="feed-rail-event-title">${escapeHtml(ev.title || '모임 일정')}</span>
+        <span class="feed-rail-event-meta">${escapeHtml(it.groupName)}${azit ? ` · ${escapeHtml(azit.name)}` : ''}</span>
+      </article>`;
+  }
+
+  /** 추천 일정 가로 레일 — '게스트 참여 가능' 일정만(기존 규칙 그대로). */
+  function feedRailEventsHTML(railIndex) {
+    const all = store.getRecommendedEvents({ limit: 8 });
+    if (!all.length) return '';
+    const items = rotateBy(all, railIndex);
+    return `
+      <section class="feed-rail" data-rail="events" aria-label="추천 일정">
+        <header class="feed-rail-head">
+          <h3 class="feed-rail-title">추천 일정</h3>
+          <span class="feed-rail-sub">게스트로 참여할 수 있어요</span>
+        </header>
+        <div class="feed-rail-track" data-hscroll="1" role="list">
+          ${items.map((it) => `<div class="feed-rail-card" role="listitem">${feedRailEventCardHTML(it)}</div>`).join('')}
+        </div>
+      </section>`;
+  }
+
+  function feedRailHTML(kind, railIndex) {
+    return kind === 'events' ? feedRailEventsHTML(railIndex) : feedRailGroupsHTML(railIndex);
+  }
+
+  /** 글 묶음 사이에 레일을 끼어 넣은 HTML — railIndex 는 다음에 쓸 레일 번호. */
+  function feedWithRailsHTML(items, startRail, isFirstPage) {
+    let rail = startRail || 0;
+    let html = '';
+    items.forEach((it, i) => {
+      html += igPostHTML(it);
+      const everyN = (i + 1) % FEED_RAIL_EVERY === 0;
+      const firstOne = isFirstPage && i === 0 && items.length === 1;
+      if (everyN || firstOne) {
+        const block = feedRailHTML(rail % 2 === 0 ? 'groups' : 'events', rail);
+        if (block) { html += block; rail += 1; }
+      }
+    });
+    /* 첫 화면에서 레일이 하나만 나오면(글 3개) 다른 종류의 레일을 한 번 더 붙여
+       '추천 그룹'과 '추천 일정'이 처음부터 둘 다 보이게 한다. */
+    if (isFirstPage && rail < 2) {
+      const extra = feedRailHTML(rail % 2 === 0 ? 'groups' : 'events', rail);
+      if (extra) { html += extra; rail += 1; }
+    }
+    return { html, rail };
+  }
+
   function renderHomeSuggestFeed() {
     if (!el.homeSuggestFeedList) return;
     const st = homeFeedState();
@@ -2428,14 +2568,22 @@ document.addEventListener('DOMContentLoaded', () => {
     el.homeSuggestFeed.hidden = first.total === 0;
     if (el.homeSuggestFeedSub) {
       el.homeSuggestFeedSub.textContent = first.total
-        ? '모임이 추천 피드로 공개한 글만 모았어요'
+        ? '모임이 공개한 글과 추천 모임·일정이 섞여 있어요'
         : '';
     }
-    el.homeSuggestFeedList.innerHTML = first.items.map(igPostHTML).join('');
     if (!first.total) {
-      el.homeSuggestFeedList.innerHTML = `
-        <p class="home-empty-line">아직 추천 피드에 공개된 글이 없어요. 모임에서 글을 쓸 때 '추천 피드에도 보여주기'를 켜면 여기 올라와요.</p>`;
+      el.homeSuggestFeed.hidden = false;
+      const rails = feedRailHTML('groups', 0);
+      el.homeSuggestFeedList.innerHTML = rails + `
+        <p class="home-empty-line">아직 피드에 공개된 글이 없어요. 모임에서 글을 쓸 때 '추천 피드에도 보여주기'를 켜면 여기 올라와요.</p>`;
+      updateHomeFeedMore();
+      setupHomeFeedObserver();
+      return;
     }
+    const built = feedWithRailsHTML(first.items, 0, true);
+    st.rail = built.rail;
+    el.homeSuggestFeedList.innerHTML = built.html;
+    hydrateIcons(el.homeSuggestFeedList);
     updateHomeFeedMore();
     setupHomeFeedObserver();
   }
@@ -2467,7 +2615,9 @@ document.addEventListener('DOMContentLoaded', () => {
     st.hasMore = next.hasMore;
     st.loading = false;
     if (el.homeSuggestFeedList) {
-      el.homeSuggestFeedList.insertAdjacentHTML('beforeend', next.items.map(igPostHTML).join(''));
+      const built = feedWithRailsHTML(next.items, st.rail || 0, false);
+      st.rail = built.rail;
+      el.homeSuggestFeedList.insertAdjacentHTML('beforeend', built.html);
       hydrateIcons(el.homeSuggestFeedList);
     }
     updateHomeFeedMore();
@@ -2807,6 +2957,29 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    /* Sprint 33 — 피드에 끼어든 가로 레일(추천 그룹·추천 일정)의 탭.
+       카드를 누르면 그 모임/일정 상세로 — 레일을 좌우로 미는 드래그는 건드리지 않는다. */
+    if (el.homeSuggestFeedList) {
+      el.homeSuggestFeedList.addEventListener('click', (e) => {
+        if (e.target.closest('[data-home-find]')) { openFindScreen(); return; }
+        const card = e.target.closest('[data-group-card]');
+        if (card) {
+          if (card.dataset.joined === '1') enterGroupSpace(card.dataset.groupId, 'tab-home');
+          else openGroupDetail(card.dataset.groupId);
+          return;
+        }
+        const evCard = e.target.closest('[data-suggest-event]');
+        if (evCard) { openEventDetail(evCard.dataset.suggestEvent); }
+      });
+      el.homeSuggestFeedList.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const evCard = e.target.closest('[data-suggest-event]');
+        if (!evCard) return;
+        e.preventDefault();
+        openEventDetail(evCard.dataset.suggestEvent);
+      });
+    }
+
     /* 추천 일정 — 게스트 참석 신청/취소 · 내 모임 일정이면 상세 */
     if (el.homeSuggestEventsList) {
       el.homeSuggestEventsList.addEventListener('click', (e) => {
@@ -2850,7 +3023,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.homeSuggestFeedList.addEventListener('click', (e) => {
         const like = e.target.closest('[data-feed-like]');
         if (like) {
-          const res = store.toggleLike(like.dataset.feedLike);
+          const res = likeWithBoundary(like.dataset.feedLike, 'feed');
           if (res) {
             like.classList.toggle('on', res.liked);
             like.setAttribute('aria-pressed', res.liked ? 'true' : 'false');
@@ -2878,7 +3051,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const postId = homeFeedState().openComments;
         const text = el.feedCommentInput ? el.feedCommentInput.value : '';
         if (!postId || !text.trim()) return;
-        const made = store.addComment(postId, text);
+        const made = commentWithBoundary(postId, text, { kind: 'feed' });
         if (!made) { showToast('댓글을 남기지 못했어요', 'warning'); return; }
         if (el.feedCommentInput) el.feedCommentInput.value = '';
         renderFeedComments();
@@ -4517,8 +4690,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ${mine ? '' : `<span class="chat-sender">${escapeHtml(msg.authorName)}</span>`}
             <div class="chat-bubble">${escapeHtml(msg.text)}</div>
           </div>
+          ${msg.failed ? `<button class="chat-resend" type="button" data-resend-group="${escapeHtml(grp.id)}"
+                  data-resend-message="${escapeHtml(msg.id)}"
+                  aria-label="이 말을 다시 보내기"><span aria-hidden="true">${ic('repeat')}</span>재전송</button>` : ''}
           <span class="chat-msg-foot">
+            ${msg.failed ? '<span class="chat-failed-label">전송 실패</span>' : ''}
             ${msg.pending ? '<span class="chat-pending">전송 중</span>' : ''}
+            ${msg.queued ? '<span class="chat-pending">전송 대기</span>' : ''}
             <span>${chatTimeLabel(msg.at)}</span>
           </span>
         </div>`;
@@ -4543,15 +4721,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const message = created.message;
     const res = await store.apiCall('group.chat.send', { groupId, text: message.text, pendingId: message.id });
     if (!res.ok) {
-      store.dropPendingGroupChatMessage(groupId, message.id);
-      if (ui.openGroupChatId === groupId) {
-        renderGroupChatMessages();
-        if (el.groupChatInput && !el.groupChatInput.value) el.groupChatInput.value = message.text;
-      }
-      showToast('전송하지 못했어요', 'error', { label: '다시 보내기', onClick: () => sendGroupChatMessage() });
+      /* 실패 — 말풍선은 남기고 옆에 '재전송'(Sprint 33). 입력창은 비운 채로 둔다. */
+      store.markPendingGroupChatMessageFailed(groupId, message.id);
+      if (ui.openGroupChatId === groupId) renderGroupChatMessages();
+      showToast('전송하지 못했어요 · 말풍선 옆 재전송을 눌러 주세요', 'error');
       return;
     }
     store.sendGroupChatMessage(groupId, message.text, { pendingId: message.id });
+    if (res.meta && res.meta.queued) store.markQueuedGroupChatMessage(groupId, message.id);
     if (ui.openGroupChatId === groupId) renderGroupChatMessages();
     if (ui.activeTab === 'tab-home') renderHomeChatPreview(store.getGroup(groupId));
 
@@ -4569,6 +4746,33 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 1500);
     }
   }
+
+  /** 실패한 단체 말풍선 재전송 — 같은 말풍선 id 로 경계를 다시 지난다. */
+  async function resendGroupChatMessage(groupId, messageId) {
+    const chat = store.getGroupChat(groupId);
+    const pending = chat && (chat.messages || []).find((m) => m.id === messageId);
+    if (!pending) return;
+    store.retryPendingGroupChatMessage(groupId, messageId);
+    if (ui.openGroupChatId === groupId) renderGroupChatMessages();
+    const res = await store.apiCall('group.chat.send', { groupId, text: pending.text, pendingId: messageId });
+    if (res.ok) {
+      store.sendGroupChatMessage(groupId, pending.text, { pendingId: messageId });
+      if (res.meta && res.meta.queued) store.markQueuedGroupChatMessage(groupId, messageId);
+      if (ui.openGroupChatId === groupId) renderGroupChatMessages();
+      return;
+    }
+    store.markPendingGroupChatMessageFailed(groupId, messageId);
+    if (ui.openGroupChatId === groupId) renderGroupChatMessages();
+    showToast('아직 보내지 못했어요', 'error');
+  }
+
+  el.groupChatMessages && el.groupChatMessages.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-resend-message]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    resendGroupChatMessage(btn.dataset.resendGroup, btn.dataset.resendMessage);
+  });
 
   /** 채팅 탭의 '모임 단체방' 목록 — 가입한 모임 전부, 최근 대화 순. */
   function renderChatGroupRooms() {
@@ -6013,7 +6217,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const rsvp = e.target.closest('[data-rsvp-status]');
       if (rsvp) {
         const eventId = rsvp.dataset.rsvpEvent;
-        const res = store.setGroupEventRsvp(eventId, rsvp.dataset.rsvpStatus);
+        const res = rsvpWithBoundary(eventId, rsvp.dataset.rsvpStatus);
         if (!res.ok) {
           showToast(res.reason === 'past' ? '지난 일정은 참석을 바꿀 수 없어요' : '참석 표시를 바꾸지 못했어요', 'warning');
           return;
@@ -6242,7 +6446,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const rsvp = e.target.closest('[data-rsvp-status]');
       if (!rsvp) return;
       const eventId = rsvp.dataset.rsvpEvent;
-      const res = store.setGroupEventRsvp(eventId, rsvp.dataset.rsvpStatus);
+      const res = rsvpWithBoundary(eventId, rsvp.dataset.rsvpStatus);
       if (!res.ok) { showToast('참석 표시를 바꾸지 못했어요', 'warning'); return; }
       renderEventDetail(eventId);
       renderHomeEvents(homeGroup());
@@ -6352,7 +6556,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.postBody.addEventListener('click', (e) => {
       const likeBtn = e.target.closest('[data-feed-post-like]');
       if (likeBtn) {
-        const res = store.toggleLike(likeBtn.dataset.feedPostLike);
+        const res = likeWithBoundary(likeBtn.dataset.feedPostLike, 'feed');
         if (!res) return;
         renderGroupPostDetail(likeBtn.dataset.feedPostLike);
         if (ui.activeTab === 'tab-home') renderHomeFeed(homeGroup());
@@ -6390,7 +6594,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!form) return;
       e.preventDefault();
       const input = form.querySelector('.comment-input');
-      const comment = store.addComment(form.dataset.feedCommentForm, input ? input.value : '');
+      const comment = commentWithBoundary(form.dataset.feedCommentForm, input ? input.value : '', { kind: 'feed' });
       if (!comment) { showToast('댓글을 남기지 못했어요', 'warning'); return; }
       renderGroupPostDetail(form.dataset.feedCommentForm);
       if (ui.activeTab === 'tab-home') renderHomeFeed(homeGroup());
@@ -7962,9 +8166,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (chips) (actions ? actions : suggestHost).insertAdjacentHTML('beforebegin', chips);
       const hobby = (profile.hobbies && profile.hobbies[0]) || profile.hobbyLabel || '취미';
       const gname = (store.getJoinedGroups() || [])[0];
+      /* Sprint 33 — 칩이 2열이 되어 한 칸이 좁다. 두 칸짜리 문장은 짧게, 마지막 한 줄(두 칸)만 길게. */
       const cards = [
-        gname ? `${gname.name}에서 봤어요! 다음 모임에 오세요?` : `${hobby} 같이 해요! 이번 주에 시간 되세요?`,
-        `${hobby}${josa(hobby, '은', '는')} 처음이라 궁금한 게 많아요. 어떤 게 제일 재밌으세요?`,
+        gname ? `${gname.name}에서 봤어요!` : `${hobby} 같이 해요!`,
+        `${hobby} 자주 하세요?`,
         `동네가 가까운 것 같아요. 근처에 ${hobby} 하기 좋은 곳 있을까요?`
       ];
       (actions ? actions : suggestHost).insertAdjacentHTML('beforebegin', `
@@ -8830,7 +9035,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = form.querySelector('.comment-input');
     const parentId = input && input.dataset.replyTo && ui.replyTo && ui.replyTo.postId === postId
       ? input.dataset.replyTo : null;
-    const comment = store.addComment(postId, input.value, parentId);
+    const comment = commentWithBoundary(postId, input.value, { kind: 'feed', parentId });
     if (!comment) return;
     if (input) { input.dataset.replyTo = ''; input.placeholder = '댓글 달기...'; }
     ui.replyTo = null;
@@ -8962,7 +9167,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function animateLike(card, postId) {
-    const result = store.toggleLike(postId);
+    const result = likeWithBoundary(postId, 'feed');
     if (!result) return;
     const btn = card.querySelector('[data-action="like"]');
     const heartWrap = btn.querySelector('.heart-wrap');
@@ -9195,11 +9400,29 @@ document.addEventListener('DOMContentLoaded', () => {
         : '글을 고쳤어요 · 이 모임 피드에만 보여요');
       return;
     }
-    const post = store.createPost({ groupId: ui.composer.groupId, ...payload });
+    /* Sprint 33 — 글 작성도 경계(`post.create`)를 지난다. 화면이 먼저 글을 올리고(낙관적),
+       실패하면 그 글을 걷어낸다(롤백). 글 id 를 화면이 만들어 재시도가 글을 두 개로 만들지 않는다. */
+    const postId = `post_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
+    const post = store.createPost({ id: postId, groupId: ui.composer.groupId, ...payload });
     if (!post) {
       showToast('모임과 내용을 확인해 주세요', 'warning');
       return;
     }
+    store.apiCall('post.create', {
+      postId,
+      groupId: post.groupId,
+      caption: post.caption,
+      photoUrl: post.photoUrl || '',
+      mediaCaption: post.mediaCaption || '',
+      tag: post.tag || null,
+      recommendOptIn: post.recommendOptIn === true
+    }).then((env) => {
+      if (env.ok) return;
+      store.removePost(postId);
+      repaintPostSurfaces(postId);
+      if (ui.activeTab === 'tab-feed' || ui.groupSpaceId) renderFeed();
+      showToast('글을 올리지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'error');
+    });
     closeModal(el.composerModal);
     ui.lastCreatedPostId = post.id;
     goGroupFeed(post.groupId, 'feed');
@@ -9453,11 +9676,16 @@ document.addEventListener('DOMContentLoaded', () => {
           ${escapeHtml(room.partnerAvatarText || room.partnerName.charAt(0))}
         </span>`;
       return `${divider}
-        <div class="chat-msg ${mine ? 'mine' : 'them'}">
+        <div class="chat-msg ${mine ? 'mine' : 'them'} ${msg.failed ? 'is-failed' : ''}">
           ${avatar}
           <div class="chat-bubble">${escapeHtml(msg.text)}</div>
+          ${msg.failed ? `<button class="chat-resend" type="button" data-resend-dm="${escapeHtml(msg.id)}"
+                  aria-label="이 말을 다시 보내기"><span aria-hidden="true">${ic('repeat')}</span>재전송</button>` : ''}
           <span class="chat-msg-foot">
-            ${msg.pending ? '<span class="chat-pending">전송 중</span>' : (read ? '<span class="chat-read">읽음</span>' : '')}
+            ${msg.failed ? '<span class="chat-failed-label">전송 실패</span>' : ''}
+            ${msg.pending ? '<span class="chat-pending">전송 중</span>' : ''}
+            ${msg.queued ? '<span class="chat-pending">전송 대기</span>' : ''}
+            ${!msg.pending && !msg.failed && !msg.queued && read ? '<span class="chat-read">읽음</span>' : ''}
             <span>${chatTimeLabel(msg.at)}</span>
           </span>
         </div>`;
@@ -9562,20 +9790,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const res = await store.apiCall('dm.send', { roomId, text: message.text, pendingId: message.id });
     if (res.ok) {
       store.sendChatMessage(roomId, message.text, { pendingId: message.id });
+      if (res.meta && res.meta.queued) store.markQueuedChatMessage(roomId, message.id);
       if (ui.openRoomId === roomId) renderChatMessages();
       renderChatRooms();
       schedulePartnerReply(roomId);
       return;
     }
-    /* 실패 — 롤백하고 같은 말을 바로 다시 보낼 수 있게 입력창에 남긴다. */
-    store.dropPendingChatMessage(roomId, message.id);
-    if (ui.openRoomId === roomId) {
-      renderChatMessages();
-      renderChatRooms();
-      if (el.chatInput && !el.chatInput.value) el.chatInput.value = message.text;
-    }
-    showToast('전송하지 못했어요', 'error', { label: '다시 보내기', onClick: () => sendChatMessage() });
+    /* 실패 — 말풍선은 그대로 두고 옆에 '재전송' 버튼을 붙인다(Sprint 33 · #20892 4번 '후자').
+       입력창에 글을 되돌리지 않으므로 대화 흐름이 끊기지 않는다. */
+    store.markPendingChatMessageFailed(roomId, message.id);
+    if (ui.openRoomId === roomId) renderChatMessages();
+    renderChatRooms();
+    showToast('전송하지 못했어요 · 말풍선 옆 재전송을 눌러 주세요', 'error');
   }
+
+  /** 실패한 1:1 말풍선 재전송 — 같은 말풍선 id 로 경계를 다시 지난다(중복 말풍선 없음). */
+  async function resendChatMessage(roomId, messageId) {
+    const room = store.getChatRoom(roomId);
+    const pending = room && (room.messages || []).find((m) => m.id === messageId);
+    if (!pending) return;
+    store.retryPendingChatMessage(roomId, messageId);
+    if (ui.openRoomId === roomId) renderChatMessages();
+    const res = await store.apiCall('dm.send', { roomId, text: pending.text, pendingId: messageId });
+    if (res.ok) {
+      store.sendChatMessage(roomId, pending.text, { pendingId: messageId });
+      if (res.meta && res.meta.queued) store.markQueuedChatMessage(roomId, messageId);
+      if (ui.openRoomId === roomId) renderChatMessages();
+      renderChatRooms();
+      schedulePartnerReply(roomId);
+      return;
+    }
+    store.markPendingChatMessageFailed(roomId, messageId);
+    if (ui.openRoomId === roomId) renderChatMessages();
+    showToast('아직 보내지 못했어요', 'error');
+  }
+
+  /* 말풍선 옆 '재전송' — 말풍선·프로필·링크 클릭을 가로채지 않게 먼저 잡는다. */
+  el.chatMessages && el.chatMessages.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-resend-dm]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (ui.openRoomId) resendChatMessage(ui.openRoomId, btn.dataset.resendDm);
+  });
 
   function navibrateAvailable() { return typeof navigator !== 'undefined' && !!navigator.vibrate; }
 
@@ -9748,7 +10005,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let hash = 0;
     const text = String(name || '?');
     for (let i = 0; i < text.length; i += 1) hash = (hash * 31 + text.charCodeAt(i)) % 360;
-    return `linear-gradient(135deg, hsl(${hash} 62% 58%) 0%, hsl(${(hash + 28) % 360} 58% 42%) 100%)`;
+    /* Sprint 33 — 아바타는 밝은 배경 + 진한 잉크(이니셜 색은 CSS --avatar-ink). */
+    return `linear-gradient(135deg, hsl(${hash} 72% 82%) 0%, hsl(${(hash + 28) % 360} 64% 70%) 100%)`;
   }
 
   function renderPostDetail(postId) {
@@ -9837,9 +10095,96 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.postModal.classList.contains('active')) openModal(el.postModal);
   }
 
+  /* ==========================================================================
+   * Sprint 33 — 글·좋아요·댓글·참석을 API 경계로 (2단계)
+   * --------------------------------------------------------------------------
+   *  화면은 32일차 채팅과 같은 방식: **먼저 바꾸고(낙관적) 경계를 지나고, 실패하면 되돌린다.**
+   *  · 경계 이름: post.like · post.comment · post.create · event.rsvp (js/api.js)
+   *  · 오프라인이면 경계가 쓰기를 큐에 넣고 성공으로 답한다(연결이 돌아오면 flush).
+   *  · 경계는 '원하는 상태'(liked·status)와 화면이 만든 id(postId·commentId)를 받아
+   *    같은 요청을 두 번 보내도 결과가 같다 — 재시도·큐가 글을 두 개 만들지 않는다.
+   * ======================================================================== */
+  /** 경계가 실패했을 때 그 글의 화면을 다시 그린다(어느 화면에서 눌렀든). */
+  function repaintPostSurfaces(postId) {
+    const explore = store.getExplorePost(postId);
+    if (el.postModal && el.postModal.classList.contains('active')) {
+      if (explore) renderPostDetail(postId);
+      else renderGroupPostDetail(postId);
+    }
+    if (el.feedCommentModal && el.feedCommentModal.classList.contains('active')) renderFeedComments();
+    if (ui.activeTab === 'tab-home') {
+      renderHomeSuggestFeed();
+      if (homeGroup()) renderHomeFeed(homeGroup());
+    } else if (ui.activeTab === 'tab-feed') {
+      renderFeed();
+    }
+  }
+
+  /** 좋아요 — 화면 먼저, 경계(`post.like`), 실패하면 하트·숫자를 이전 값으로. */
+  function likeWithBoundary(postId, kind) {
+    const post = kind === 'explore' ? store.getExplorePost(postId) : store.getPost(postId);
+    if (!post) return null;
+    const before = { liked: !!post.likedByMe, likes: Math.max(0, Number(post.likes) || 0) };
+    const res = store.setPostLike(postId, !before.liked, kind);
+    if (!res) return null;
+    store.apiCall('post.like', { postId, liked: res.liked, kind }).then((env) => {
+      if (env.ok) return;
+      store.restorePostLike(postId, before, kind);
+      repaintPostSurfaces(postId);
+      showToast('좋아요를 저장하지 못했어요', 'error');
+    });
+    return res;
+  }
+
+  /** 댓글 — 화면 먼저(댓글 id 를 화면이 만든다), 경계(`post.comment`), 실패하면 댓글을 걷어낸다. */
+  function commentWithBoundary(postId, text, options = {}) {
+    const opts = options || {};
+    const kind = opts.kind === 'explore' ? 'explore' : 'feed';
+    const commentId = `c_${postId}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const made = kind === 'explore'
+      ? store.addExplorePostComment(postId, text, { commentId })
+      : store.addComment(postId, text, opts.parentId || null, { commentId });
+    if (!made) return null;
+    store.apiCall('post.comment', {
+      postId, text: made.text, parentId: opts.parentId || null, commentId, kind
+    }).then((env) => {
+      if (env.ok) return;
+      if (kind === 'explore') store.removeExplorePostComment(postId, commentId);
+      else store.removeComment(postId, commentId);
+      repaintPostSurfaces(postId);
+      showToast('댓글을 남기지 못했어요', 'error');
+    });
+    return made;
+  }
+
+  /** 참석(RSVP) — 화면 먼저, 경계(`event.rsvp`), 실패하면 내 참석 상태를 이전 값으로. */
+  function rsvpWithBoundary(eventId, status, options = {}) {
+    const ev = store.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    /* 내 선택은 일정 객체가 아니라 요약이 계산한다(myRsvp) — 롤백은 그 값으로 되돌린다. */
+    const before = store.getGroupEventSummary(eventId).myRsvp || null;
+    const res = store.setGroupEventRsvp(eventId, status);
+    if (!res || !res.ok) return res;
+    store.apiCall('event.rsvp', { eventId, status }).then((env) => {
+      if (env.ok) return;
+      store.restoreGroupEventRsvp(eventId, before);
+      repaintEventSurfaces(eventId);
+      showToast('참석 여부를 저장하지 못했어요', 'error');
+    });
+    return res;
+  }
+
+  /** 참석 실패 롤백 뒤 — 일정 상세/일정 탭을 다시 그린다. */
+  function repaintEventSurfaces(eventId) {
+    const ev = store.getGroupEvent(eventId);
+    if (el.eventDetailModal && el.eventDetailModal.classList.contains('active') && ev) renderEventDetail(ev.id);
+    if (ui.activeTab === 'tab-feed') renderFeed();
+    if (ui.activeTab === 'tab-home') renderHome();
+  }
+
   /** 게시글 좋아요 — 카드·상세 시트의 같은 글을 모두 같은 상태로 맞춘다. */
   function togglePostLike(postId, btn) {
-    const result = store.toggleExplorePostLike(postId);
+    const result = likeWithBoundary(postId, 'explore');
     if (!result) return;
     const paint = (node) => {
       node.classList.toggle('liked', result.liked);
@@ -9912,7 +10257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!form) return;
     e.preventDefault();
     const input = form.querySelector('.comment-input');
-    const comment = store.addExplorePostComment(form.dataset.postCommentForm, input.value);
+    const comment = commentWithBoundary(form.dataset.postCommentForm, input.value, { kind: 'explore' });
     if (!comment) return;
     renderPostDetail(form.dataset.postCommentForm);
     renderExplore({ preserve: true });
@@ -13433,6 +13778,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!sheet) return null;
     const overlay = sheet.closest('.modal-overlay');
     if (!overlay || !overlay.classList.contains('active')) return null;
+    /* Sprint 33 — 풀스크린 페이지에서는 아래로 당겨 닫기 없음(스크롤이 곧 페이지 스크롤). */
+    if (overlay.classList.contains('is-page')) return null;
     return { sheet, overlay };
   }
 
@@ -13571,6 +13918,113 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     e.stopPropagation();
   }, true);
+
+  /* ==========================================================================
+   * Sprint 33 — 손가락으로 옆으로 밀어 이전 화면으로 (iOS 식 스와이프 뒤로가기)
+   * ------------------------------------------------------------------------
+   *  대상: 풀스크린 페이지(.modal-overlay.is-page) · 전용 화면(.subscreen) · 모임 공간(#group-space)
+   *  판별: 왼쪽 가장자리(x<=44)에서 시작하거나, 가로로 충분히 밀었을 때(dx>64 & dx>dy*1.5)
+   *  충돌 방지: 가로로 넘치는 레일(내 그룹 원형 줄·스토리·칩 목록) 안에서 시작한 손은 건너뜀.
+   *  놓을 때 dx>64 이면 닫고, 아니면 제자리로 돌아간다.
+   * ======================================================================== */
+  const SWIPE_EDGE = 44;
+  const SWIPE_CLOSE = 64;
+  let swipeBack = null;
+
+  function swipeSurfaceOf(target) {
+    if (!target || !target.closest) return null;
+    const sheet = target.closest('.modal-overlay.is-page.active .modal-sheet');
+    if (sheet) return { el: sheet, kind: 'modal', overlay: sheet.closest('.modal-overlay') };
+    const sub = target.closest('.subscreen:not([hidden])');
+    if (sub) return { el: sub, kind: 'subscreen' };
+    const space = target.closest('#group-space');
+    if (space && document.body.classList.contains('group-mode')) return { el: space, kind: 'group' };
+    return null;
+  }
+
+  /** 손이 가로로 넘치는 영역(가로 레일)에서 시작했는가 — 그런 곳은 뒤로가기 대상이 아니다. */
+  function startsInHorizontalScroller(target) {
+    let n = target;
+    while (n && n.nodeType === 1 && n !== document.body) {
+      const cs = getComputedStyle(n);
+      const ox = cs.overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && n.scrollWidth > n.clientWidth + 4) return true;
+      n = n.parentElement;
+    }
+    return false;
+  }
+
+  function resetSwipeBack() {
+    if (!swipeBack) return;
+    const el = swipeBack.el;
+    el.classList.add('is-swipe-settling');
+    el.style.transform = '';
+    setTimeout(() => el.classList.remove('is-swipe-settling'), 220);
+    swipeBack = null;
+    document.removeEventListener('touchmove', onSwipeMove);
+    document.removeEventListener('touchend', endSwipeBack);
+    document.removeEventListener('touchcancel', resetSwipeBack);
+  }
+
+  function onSwipeMove(e) {
+    if (!swipeBack || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const dx = t.clientX - swipeBack.startX;
+    const dy = t.clientY - swipeBack.startY;
+    if (!swipeBack.active) {
+      if (dx > 10 && dx > Math.abs(dy) * 1.5) swipeBack.active = true;
+      else if (Math.abs(dy) > 12 || dx < -8) { resetSwipeBack(); return; }
+      else return;
+    }
+    if (e.cancelable) e.preventDefault();
+    const shift = Math.max(0, dx);
+    swipeBack.el.style.transition = 'none';
+    swipeBack.el.style.transform = `translateX(${shift}px)`;
+    swipeBack.dx = shift;
+  }
+
+  function endSwipeBack() {
+    if (!swipeBack) return;
+    const done = swipeBack.dx > SWIPE_CLOSE;
+    const surf = swipeBack;
+    document.removeEventListener('touchmove', onSwipeMove);
+    document.removeEventListener('touchend', endSwipeBack);
+    document.removeEventListener('touchcancel', resetSwipeBack);
+    swipeBack = null;
+    if (!done) {
+      surf.el.classList.add('is-swipe-settling');
+      surf.el.style.transform = '';
+      setTimeout(() => surf.el.classList.remove('is-swipe-settling'), 220);
+      return;
+    }
+    /* 다 밀었으면 밀어낸 자리에서 이전 화면으로 */
+    surf.el.classList.add('is-swipe-settling');
+    surf.el.style.transform = 'translateX(100%)';
+    surf.el.classList.remove('is-swipe-settling');
+    setTimeout(() => {
+      surf.el.style.transform = '';
+      if (surf.kind === 'modal' && surf.overlay) closeModal(surf.overlay);
+      else if (surf.kind === 'subscreen') {
+        const back = surf.el.querySelector('.subscreen-back');
+        if (back) back.click(); else closeSubscreens();
+      } else if (surf.kind === 'group') {
+        exitGroupSpace();
+      }
+    }, 120);
+  }
+
+  document.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const surf = swipeSurfaceOf(e.target);
+    if (!surf) return;
+    if (startsInHorizontalScroller(e.target)) return;
+    if (t.clientX > SWIPE_EDGE && surf.kind !== 'group') return;
+    swipeBack = { el: surf.el, kind: surf.kind, overlay: surf.overlay || null, startX: t.clientX, startY: t.clientY, dx: 0, active: false };
+    document.addEventListener('touchmove', onSwipeMove, { passive: false });
+    document.addEventListener('touchend', endSwipeBack);
+    document.addEventListener('touchcancel', resetSwipeBack);
+  }, { passive: true });
 
   const composerCancel = $('#btn-composer-cancel');
   composerCancel && composerCancel.addEventListener('click', () => closeModal(el.composerModal));
@@ -15185,7 +15639,7 @@ document.addEventListener('DOMContentLoaded', () => {
       title: el.composerTitle ? el.composerTitle.textContent : '',
       open: !!(el.composerModal && el.composerModal.classList.contains('active'))
     }),
-    openEventDetail,
+    openEventDetail, openFeedComments,
     demoGuestRequest: (eventId, guest) => store.simulateGuestRequest(eventId, guest),
     getGuestFlow: (eventId) => {
       const ev = store.getGroupEvent(eventId);

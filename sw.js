@@ -13,7 +13,7 @@
 
 /* v33.5 — 새 모임 1단계 실시간 미리보기 · 2단계 이름·소개에서 찾은 취미 자동 추천.
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v33-5';
+const CACHE_VERSION = 'oog-shell-v33-6';
 const SHELL_ASSETS = [
   './',
   './index.html',

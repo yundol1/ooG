@@ -355,6 +355,112 @@
         return { groups, count: groups.length };
       }
     },
+    /* ------------------------------------------------------------------
+     * Sprint 33 — 글·좋아요·댓글·참석을 경계로(2단계)
+     *  · 화면이 먼저 바꿀 수 있게 **원하는 상태**를 받는 계약이다(같은 값으로 다시 불러도 결과가 같다).
+     *  · 작성자는 화면이 만든 id(postId·commentId)를 그대로 보낸다 — 재시도·오프라인 큐가 중복을 만들지 않는다.
+     * ------------------------------------------------------------------ */
+    'post.create': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        groupId: { type: 'string', required: true, max: 80 },
+        caption: { type: 'string', optional: true, max: 500 },
+        photoUrl: { type: 'string', optional: true, max: 8000000 },
+        mediaCaption: { type: 'string', optional: true, max: 40 },
+        tag: { type: 'string', optional: true, max: 40 },
+        recommendOptIn: { type: 'boolean', optional: true },
+        postId: { type: 'string', optional: true, max: 64 }
+      },
+      response: ['ok', 'post'],
+      local: (store, p) => {
+        const existing = p.postId ? store.getPost(p.postId) : null;
+        const post = existing || store.createPost({
+          id: p.postId || null,
+          groupId: p.groupId,
+          caption: p.caption || '',
+          photoUrl: p.photoUrl || '',
+          mediaCaption: p.mediaCaption || '',
+          tag: p.tag || null,
+          recommendOptIn: p.recommendOptIn === true
+        });
+        if (!post) {
+          const group = store.getGroup ? store.getGroup(p.groupId) : null;
+          if (!group) throw new ApiError('not_found', '그 모임을 찾지 못했어요', { details: { groupId: p.groupId } });
+          if (store.isGroupJoined && !store.isGroupJoined(p.groupId)) throw new ApiError('unauthorized', '이 모임의 멤버만 글을 쓸 수 있어요', { details: { groupId: p.groupId } });
+          throw new ApiError('validation', '내용이나 사진을 하나는 남겨 주세요', { details: { field: 'caption' } });
+        }
+        return { ok: true, post: slimPost(post) };
+      }
+    },
+    'post.like': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        postId: { type: 'string', required: true, max: 80 },
+        liked: { type: 'boolean', required: true },
+        kind: { type: 'string', optional: true, enum: ['feed', 'explore'] }
+      },
+      response: ['ok', 'liked', 'likes', 'changed'],
+      local: (store, p) => {
+        const res = store.setPostLike(p.postId, p.liked, p.kind || 'feed');
+        if (!res) throw new ApiError('not_found', '그 글을 찾지 못했어요', { details: { postId: p.postId } });
+        return { ok: true, liked: res.liked, likes: res.likes, changed: !!res.changed };
+      }
+    },
+    'post.comment': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        postId: { type: 'string', required: true, max: 80 },
+        text: { type: 'string', required: true, max: 300 },
+        parentId: { type: 'string', optional: true, max: 80 },
+        commentId: { type: 'string', optional: true, max: 64 },
+        kind: { type: 'string', optional: true, enum: ['feed', 'explore'] }
+      },
+      response: ['ok', 'comment', 'count'],
+      local: (store, p) => {
+        const kind = p.kind || 'feed';
+        const post = kind === 'explore' ? store.getExplorePost(p.postId) : store.getPost(p.postId);
+        if (!post) throw new ApiError('not_found', '그 글을 찾지 못했어요', { details: { postId: p.postId } });
+        const comment = kind === 'explore'
+          ? store.addExplorePostComment(p.postId, p.text, { commentId: p.commentId })
+          : store.addComment(p.postId, p.text, p.parentId || null, { commentId: p.commentId });
+        if (!comment) throw new ApiError('validation', '댓글을 적어 주세요', { details: { field: 'text' } });
+        return {
+          ok: true,
+          comment: {
+            id: comment.id, text: comment.text, authorId: comment.authorId, authorName: comment.authorName,
+            parentId: comment.parentId || null, createdAt: comment.createdAt
+          },
+          count: (post.comments || []).length
+        };
+      }
+    },
+    'event.rsvp': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        eventId: { type: 'string', required: true, max: 80 },
+        status: { type: 'string', required: true, enum: ['yes', 'maybe', 'no'] }
+      },
+      response: ['ok', 'eventId', 'status', 'autoWait', 'promoted', 'summary'],
+      local: (store, p) => {
+        const res = store.setGroupEventRsvp(p.eventId, p.status);
+        if (!res || !res.ok) {
+          const reason = (res && res.reason) || 'not_found';
+          const code = reason === 'not_member' ? 'unauthorized'
+            : reason === 'past' ? 'conflict'
+              : reason === 'bad_status' ? 'validation' : 'not_found';
+          const message = reason === 'past' ? '이미 지난 일정이에요'
+            : reason === 'not_member' ? '이 모임의 멤버만 참석할 수 있어요'
+              : reason === 'bad_status' ? '참석 여부가 올바르지 않아요' : '그 일정을 찾지 못했어요';
+          throw new ApiError(code, message, { details: { eventId: p.eventId, status: p.status } });
+        }
+        const s = res.summary || {};
+        return {
+          ok: true, eventId: res.eventId, status: res.status,
+          autoWait: !!res.autoWait, promoted: res.promoted ? { id: res.promoted.memberId || null, name: res.promoted.name || '' } : null,
+          summary: { yes: s.yes || 0, maybe: s.maybe || 0, no: s.no || 0, total: s.total || 0, capacity: s.capacity || 0, seatsLeft: s.seatsLeft || 0, myRsvp: s.myRsvp || null, full: !!s.full }
+        };
+      }
+    },
     'profile.update': {
       method: 'POST', mutate: true,
       params: {
@@ -373,6 +479,26 @@
 
   function slimPhoto(p) {
     return { id: p.id, url: p.url, caption: p.caption || '', at: p.at || null };
+  }
+
+  /** Sprint 33 — 글의 공통 모양(다른 사람이 만든 필드가 섞여도 화면은 이 키만 본다). */
+  function slimPost(post) {
+    if (!post) return null;
+    return {
+      id: post.id,
+      groupId: post.groupId || null,
+      authorId: post.authorId || null,
+      authorName: post.authorName || '',
+      caption: post.caption || '',
+      tag: post.tag || null,
+      photoUrl: post.photoUrl || null,
+      mediaCaption: post.mediaCaption || '',
+      likes: Number(post.likes) || 0,
+      likedByMe: !!post.likedByMe,
+      comments: Array.isArray(post.comments) ? post.comments.length : 0,
+      recommendOptIn: post.recommendOptIn === true,
+      createdAt: post.createdAt || null
+    };
   }
 
   /** Sprint 31 — 탐색 카드의 공통 모양(사람·글·모임). 화면이 타입별 분기 없이 읽게. */

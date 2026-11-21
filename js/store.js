@@ -236,7 +236,7 @@ const STORY_SEED = [
     authorId: 'leader_jun',
     authorName: '코치준',
     authorAvatarText: '준',
-    authorGradient: 'linear-gradient(135deg, #0F172A, #334155)',
+    authorGradient: 'linear-gradient(135deg, #8098D2, #C5CEDC)',
     mediaCaption: '오늘 와드',
     caption: '19:10반 와드 브리핑 짧게 올려요',
     createdAt: ago(2 * HOUR)
@@ -247,7 +247,7 @@ const STORY_SEED = [
     authorId: 'user_kettle',
     authorName: '케틀벨러버',
     authorAvatarText: '케',
-    authorGradient: 'linear-gradient(135deg, #8E6703, #B45309)',
+    authorGradient: 'linear-gradient(135deg, #CF9604, #F3700C)',
     mediaCaption: '케틀벨 스윙',
     caption: '오늘 스윙 100개 채웠습니다',
     createdAt: ago(6 * HOUR)
@@ -258,7 +258,7 @@ const STORY_SEED = [
     authorId: 'user_rookie',
     authorName: '루키',
     authorAvatarText: '루',
-    authorGradient: 'linear-gradient(135deg, #0B815A, #047857)',
+    authorGradient: 'linear-gradient(135deg, #0FB57E, #06AE7E)',
     mediaCaption: '오운완',
     caption: '샤워하고 나오는 길, 오늘도 해냈다',
     createdAt: ago(11 * HOUR)
@@ -269,7 +269,7 @@ const STORY_SEED = [
     authorId: 'user_iron',
     authorName: '아이언',
     authorAvatarText: '아',
-    authorGradient: 'linear-gradient(135deg, #64748B, #0F172A)',
+    authorGradient: 'linear-gradient(135deg, #E1E5EA, #8098D2)',
     mediaCaption: '벤치 100',
     caption: '주말 원정 준비 중',
     createdAt: ago(4 * HOUR)
@@ -280,7 +280,7 @@ const STORY_SEED = [
     authorId: 'match_junseo',
     authorName: '준서',
     authorAvatarText: '준',
-    authorGradient: 'linear-gradient(135deg, #067BAF, #0369A1)',
+    authorGradient: 'linear-gradient(135deg, #15B1F7, #05A1F6)',
     mediaCaption: 'V4 도전',
     caption: '새 벽 세팅 진짜 좋네요',
     createdAt: ago(9 * HOUR)
@@ -292,7 +292,7 @@ const STORY_SEED = [
     authorId: 'user_toe',
     authorName: '오늘의토우',
     authorAvatarText: '오',
-    authorGradient: 'linear-gradient(135deg, #7A50F7, #6D28D9)',
+    authorGradient: 'linear-gradient(135deg, #C8B6FC, #AB83E9)',
     mediaCaption: '어제 와드',
     caption: '어제 기록 (24시간 지나 사라짐)',
     createdAt: ago(26 * HOUR)
@@ -312,11 +312,11 @@ const GROUP_ROSTER_HOBBIES = [
   { name: '게임', icon: 'gamepad' }, { name: '등산', icon: 'mountain' }
 ];
 const GROUP_ROSTER_GRADIENTS = [
-  'linear-gradient(135deg, #10B981 0%, #047857 100%)',
-  'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)',
-  'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
-  'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)',
-  'linear-gradient(135deg, #475569 0%, #0F172A 100%)'
+  'linear-gradient(135deg, #16EBA4 0%, #06AE7E 100%)',
+  'linear-gradient(135deg, #AFE3FA 0%, #7994E2 100%)',
+  'linear-gradient(135deg, #F8B74B 0%, #F3700C 100%)',
+  'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
+  'linear-gradient(135deg, #DFE3E9 0%, #8098D2 100%)'
 ];
 
 /* Sprint 8 — 실시간 베스트(실베) 2차: 순위 변동 · 내 글 진입 알림 */
@@ -1369,11 +1369,11 @@ function applyRegionIds(state) {
 
 /* 시뮬레이션 트리거가 쓰는 '다른 이용자' 페르소나 (시드 인물과 겹치지 않게 고른다) */
 const SIMULATED_PERSONAS = [
-  { id: 'user_kettle', name: '케틀벨러버', age: 28, avatarText: '케', gradient: 'linear-gradient(135deg, #04825B 0%, #0B815A 100%)', hobby: '크로스핏' },
-  { id: 'user_night', name: '야간비행', age: 32, avatarText: '야', gradient: 'linear-gradient(135deg, #1E3A8A 0%, #0B7CAF 100%)', hobby: '러닝' },
-  { id: 'user_faker', name: '미드장인', age: 26, avatarText: '미', gradient: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)', hobby: '게임' },
-  { id: 'user_iron', name: '아이언', age: 34, avatarText: '아', gradient: 'linear-gradient(135deg, #475569 0%, #0F172A 100%)', hobby: '헬스' },
-  { id: 'user_hold', name: '홀드', age: 29, avatarText: '홀', gradient: 'linear-gradient(135deg, #0E7490 0%, #0B7A8B 100%)', hobby: '클라이밍' }
+  { id: 'user_kettle', name: '케틀벨러버', age: 28, avatarText: '케', gradient: 'linear-gradient(135deg, #05AF7A 0%, #0FAB78 100%)', hobby: '크로스핏' },
+  { id: 'user_night', name: '야간비행', age: 32, avatarText: '야', gradient: 'linear-gradient(135deg, #7994E2 0%, #76CFF6 100%)', hobby: '러닝' },
+  { id: 'user_faker', name: '미드장인', age: 26, avatarText: '미', gradient: 'linear-gradient(135deg, #AA83E7 0%, #E0D0FB 100%)', hobby: '게임' },
+  { id: 'user_iron', name: '아이언', age: 34, avatarText: '아', gradient: 'linear-gradient(135deg, #DFE3E9 0%, #8098D2 100%)', hobby: '헬스' },
+  { id: 'user_hold', name: '홀드', age: 29, avatarText: '홀', gradient: 'linear-gradient(135deg, #14A5CC 0%, #10B0C8 100%)', hobby: '클라이밍' }
 ];
 
 /* ---------------------------------------------------------------------------
@@ -1859,12 +1859,12 @@ const REGION_SEED_PEOPLE = [
 ];
 
 const REGION_SEED_GRADIENTS = [
-  'linear-gradient(135deg, #10B981 0%, #047857 100%)',
-  'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)',
-  'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
-  'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)',
-  'linear-gradient(135deg, #EC4899 0%, #9D174D 100%)',
-  'linear-gradient(135deg, #0E7490 0%, #22D3EE 100%)'
+  'linear-gradient(135deg, #16EBA4 0%, #06AE7E 100%)',
+  'linear-gradient(135deg, #AFE3FA 0%, #7994E2 100%)',
+  'linear-gradient(135deg, #F8B74B 0%, #F3700C 100%)',
+  'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
+  'linear-gradient(135deg, #FAD1E5 0%, #EA6EA0 100%)',
+  'linear-gradient(135deg, #14A5CC 0%, #60DFF3 100%)'
 ];
 
 /** 지역 시드 사람 한 명을 프로필 모양으로 만든다. */
@@ -1966,7 +1966,7 @@ const defaultInitialState = {
     role: 'ADMIN',
     membership: 'plus',
     avatarText: '루',
-    avatarGradient: 'linear-gradient(135deg, #0B815A 0%, #04825B 55%, #047857 100%)',
+    avatarGradient: 'linear-gradient(135deg, #0FB57E 0%, #06B881 55%, #06AE7E 100%)',
     /* Sprint 17 — 가입 시 올린 프로필 사진(Data URL) · 가입 완료 여부 */
     photoUrl: null,
     registered: true,
@@ -2493,13 +2493,14 @@ const defaultInitialState = {
       authorId: 'user_rookie',
       authorName: '루키',
       authorAvatarText: '루',
-      authorGradient: 'linear-gradient(135deg, #0B815A, #047857)',
+      authorGradient: 'linear-gradient(135deg, #0FB57E, #06AE7E)',
       tag: 'WOD기록',
       caption: '오늘 19:10 WOD 완주! 물구나무 푸시업은 아직 무리지만 정자세 푸시업 50개는 다 채웠습니다 샤워하고 나오니 잡생각이 싹 사라지네요.',
       mediaCaption: '20.11 WOD · 22분 캡',
       likes: 14,
       likedByMe: false,
       bookmarkedByMe: false,
+      recommendOptIn: true,
       comments: [
         { id: 'c_cf_01_1', authorId: 'leader_jun', authorName: '코치준', text: '오늘 푸시업 자세 진짜 좋아졌어요. 내일 스쿼트 클린 가봅시다', createdAt: ago(12 * MINUTE) },
         { id: 'c_cf_01_2', authorId: 'user_kettle', authorName: '케틀벨러버', text: '50개 채우셨다고요? 저는 30개에서 뻗었는데 ㅋㅋㅋ', createdAt: ago(8 * MINUTE) },
@@ -2513,7 +2514,7 @@ const defaultInitialState = {
       authorId: 'leader_jun',
       authorName: '코치준',
       authorAvatarText: '준',
-      authorGradient: 'linear-gradient(135deg, #0F172A, #334155)',
+      authorGradient: 'linear-gradient(135deg, #8098D2, #C5CEDC)',
       tag: '오운완',
       caption: '데드리프트 140kg 3회 성공. 무게보다 등 각도가 먼저라는 말, 이제 좀 알 것 같습니다. 다들 부상 없이 갑시다',
       mediaCaption: '3RM 갱신',
@@ -2532,13 +2533,14 @@ const defaultInitialState = {
       authorId: 'user_kettle',
       authorName: '케틀벨러버',
       authorAvatarText: '케',
-      authorGradient: 'linear-gradient(135deg, #04825B, #0B815A)',
+      authorGradient: 'linear-gradient(135deg, #05AF7A, #0FAB78)',
       tag: 'PR달성',
       caption: '파머스 워크 24kg 왕복 4세트. 전완근이 터지는 줄 알았지만 PR 갱신해서 기분 좋습니다 ㅋㅋ 내일도 출석 도장 찍어요!',
       mediaCaption: '왕복 4세트',
       likes: 11,
       likedByMe: false,
       bookmarkedByMe: false,
+      recommendOptIn: true,
       comments: [
         { id: 'c_cf_03_1', authorId: 'user_toe', authorName: '오늘의토우', text: '악력 미쳤다... 저는 16kg도 무서워요', createdAt: ago(2 * HOUR) }
       ],
@@ -2550,13 +2552,14 @@ const defaultInitialState = {
       authorId: 'user_toe',
       authorName: '오늘의토우',
       authorAvatarText: '토',
-      authorGradient: 'linear-gradient(135deg, #117F4D, #0B815A)',
+      authorGradient: 'linear-gradient(135deg, #17AC68, #0FB07B)',
       tag: '후기',
       caption: '입문 한 달 후기. 처음엔 스케일드로 따라갔는데 이제 RX로 두 개는 완주해요. 코치님이 자세를 계속 봐주셔서 어깨가 편해졌습니다.',
       mediaCaption: '한 달 기록',
       likes: 8,
       likedByMe: false,
       bookmarkedByMe: false,
+      recommendOptIn: true,
       comments: [],
       createdAt: ago(5 * HOUR)
     },
@@ -2566,7 +2569,7 @@ const defaultInitialState = {
       authorId: 'user_iron',
       authorName: '아이언',
       authorAvatarText: '아',
-      authorGradient: 'linear-gradient(135deg, #334155, #0F172A)',
+      authorGradient: 'linear-gradient(135deg, #C5CEDC, #8098D2)',
       tag: '3대측정',
       caption: '3대 500 도전 8주차. 스쿼트 170 / 벤치 115 / 데드 175 = 460kg. 다음 달에 500 찍고 인증샷 올립니다',
       mediaCaption: '8주차 · 460kg',
@@ -2585,13 +2588,14 @@ const defaultInitialState = {
       authorId: 'user_hold',
       authorName: '루프홀드',
       authorAvatarText: '루',
-      authorGradient: 'linear-gradient(135deg, #047857, #0B815A)',
+      authorGradient: 'linear-gradient(135deg, #06AE7E, #0FB57E)',
       tag: '완등인증',
       caption: '성수 블록스 빨강 V4 완등! 마지막 홀드에서 두 번 떨어지고 세 번째에 붙었습니다. 손가락 살리느라 테이핑 필수예요.',
       mediaCaption: '빨강 3트라이',
       likes: 19,
       likedByMe: true,
       bookmarkedByMe: false,
+      recommendOptIn: true,
       comments: [
         { id: 'c_cl_01_1', authorId: 'user_rookie', authorName: '루키', text: '이번 주말에 같이 가요! 저는 아직 파랑이에요', createdAt: ago(3 * HOUR) }
       ],
@@ -2603,13 +2607,14 @@ const defaultInitialState = {
       authorId: 'user_night',
       authorName: '야간비행',
       authorAvatarText: '야',
-      authorGradient: 'linear-gradient(135deg, #1E3A8A, #0B7CAF)',
+      authorGradient: 'linear-gradient(135deg, #7994E2, #76CFF6)',
       tag: '기록인증',
       caption: '여의도 샛강 10K 52분 31초. 밤에 달리면 강바람이 등에 붙어서 낮보다 30초는 빨라지는 것 같아요. 다음 주 화요일도 나옵니다.',
       mediaCaption: '샛강 코스',
       likes: 47,
       likedByMe: false,
       bookmarkedByMe: false,
+      recommendOptIn: true,
       comments: [
         { id: 'c_run_01_1', authorId: 'user_rookie', authorName: '루키', text: '여의도까지 가는 게 관건이네요 ㅋㅋ 다음 주 한번 가볼게요', createdAt: ago(4 * HOUR) }
       ],
@@ -2621,7 +2626,7 @@ const defaultInitialState = {
       authorId: 'user_faker',
       authorName: '미드장인',
       authorAvatarText: '미',
-      authorGradient: 'linear-gradient(135deg, #4C1D95, #7C3AED)',
+      authorGradient: 'linear-gradient(135deg, #AA83E7, #E0D0FB)',
       tag: '승급전',
       caption: '3연패 뒤에 3연승으로 골드 승급했습니다. 새벽 2시에 이기고 자면 다음 날이 제일 개운해요 ㅋㅋ 다들 승급전 화이팅!',
       mediaCaption: '승급전 3연승',
@@ -2654,7 +2659,7 @@ const defaultInitialState = {
       authorId: 'user_rookie',
       authorName: '루키',
       authorAvatarText: '루',
-      authorGradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)',
+      authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
       hobbyId: 'fitness',
       hobbyLabel: '크로스핏',
       tag: '한잔',
@@ -2679,7 +2684,7 @@ const defaultInitialState = {
       authorId: 'user_rookie',
       authorName: '루키',
       authorAvatarText: '루',
-      authorGradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)',
+      authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
       hobbyId: 'climb',
       hobbyLabel: '클라이밍',
       tag: '번개',
@@ -2703,7 +2708,7 @@ const defaultInitialState = {
       authorId: 'match_junho',
       authorName: '준호',
       authorAvatarText: '준',
-      authorGradient: 'linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)',
+      authorGradient: 'linear-gradient(135deg, #E0D0FB 0%, #AA83E7 100%)',
       hobbyId: 'game',
       hobbyLabel: '게임',
       tag: '퇴근후',
@@ -2727,7 +2732,7 @@ const defaultInitialState = {
       authorId: 'match_minwoo',
       authorName: '민우',
       authorAvatarText: '민',
-      authorGradient: 'linear-gradient(135deg, #0B7CAF 0%, #1E3A8A 100%)',
+      authorGradient: 'linear-gradient(135deg, #76CFF6 0%, #7994E2 100%)',
       hobbyId: 'run',
       hobbyLabel: '러닝',
       tag: '지금번개',
@@ -2751,7 +2756,7 @@ const defaultInitialState = {
       authorId: 'match_dohyun',
       authorName: '도현',
       authorAvatarText: '도',
-      authorGradient: 'linear-gradient(135deg, #9E6506 0%, #92400E 100%)',
+      authorGradient: 'linear-gradient(135deg, #F7A928 0%, #EB762F 100%)',
       hobbyId: 'cafe',
       hobbyLabel: '카페/맛집',
       tag: '1:1대화',
@@ -2774,7 +2779,7 @@ const defaultInitialState = {
       authorId: 'match_seongmin',
       authorName: '성민',
       authorAvatarText: '성',
-      authorGradient: 'linear-gradient(135deg, #64748B 0%, #1E293B 100%)',
+      authorGradient: 'linear-gradient(135deg, #E1E5EA 0%, #8098BE 100%)',
       hobbyId: 'climb',
       hobbyLabel: '클라이밍',
       tag: '지금번개',
@@ -2795,7 +2800,7 @@ const defaultInitialState = {
       authorId: 'match_taemin',
       authorName: '태민',
       authorAvatarText: '태',
-      authorGradient: 'linear-gradient(135deg, #0B7A8B 0%, #0E7490 100%)',
+      authorGradient: 'linear-gradient(135deg, #10B0C8 0%, #14A5CC 100%)',
       hobbyId: 'swim',
       hobbyLabel: '수영',
       tag: '새벽',
@@ -2818,7 +2823,7 @@ const defaultInitialState = {
       authorId: 'match_seojun',
       authorName: '서준',
       authorAvatarText: '서',
-      authorGradient: 'linear-gradient(135deg, #334155 0%, #0F172A 100%)',
+      authorGradient: 'linear-gradient(135deg, #C5CEDC 0%, #8098D2 100%)',
       hobbyId: 'movie',
       hobbyLabel: '영화·전시',
       tag: '영화',
@@ -2839,7 +2844,7 @@ const defaultInitialState = {
       authorId: 'match_hyunwoo',
       authorName: '현우',
       authorAvatarText: '현',
-      authorGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
+      authorGradient: 'linear-gradient(135deg, #F7A15F 0%, #E6783A 100%)',
       hobbyId: 'boardgame',
       hobbyLabel: '보드게임',
       tag: '번개',
@@ -2863,7 +2868,7 @@ const defaultInitialState = {
       authorId: 'match_jihun',
       authorName: '지훈',
       authorAvatarText: '지',
-      authorGradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)',
+      authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
       hobbyId: 'fitness',
       hobbyLabel: '크로스핏',
       tag: '운동후',
@@ -2886,7 +2891,7 @@ const defaultInitialState = {
       authorId: 'match_haram',
       authorName: '하람',
       authorAvatarText: '하',
-      authorGradient: 'linear-gradient(135deg, #C35305 0%, #9A3412 100%)',
+      authorGradient: 'linear-gradient(135deg, #FB9D5C 0%, #EB7750 100%)',
       hobbyId: 'cafe',
       hobbyLabel: '카페/맛집',
       tag: '아침',
@@ -2907,7 +2912,7 @@ const defaultInitialState = {
       authorId: 'user_faker',
       authorName: '미드장인',
       authorAvatarText: '미',
-      authorGradient: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)',
+      authorGradient: 'linear-gradient(135deg, #AA83E7 0%, #E0D0FB 100%)',
       hobbyId: 'game',
       hobbyLabel: '게임',
       tag: '심야',
@@ -2928,7 +2933,7 @@ const defaultInitialState = {
       authorId: 'user_kettle',
       authorName: '케틀벨러버',
       authorAvatarText: '케',
-      authorGradient: 'linear-gradient(135deg, #04825B 0%, #0B815A 100%)',
+      authorGradient: 'linear-gradient(135deg, #05AF7A 0%, #0FAB78 100%)',
       hobbyId: 'fitness',
       hobbyLabel: '크로스핏',
       tag: '수다',
@@ -2951,7 +2956,7 @@ const defaultInitialState = {
       authorId: 'user_night',
       authorName: '야간비행',
       authorAvatarText: '야',
-      authorGradient: 'linear-gradient(135deg, #1E3A8A 0%, #0B7CAF 100%)',
+      authorGradient: 'linear-gradient(135deg, #7994E2 0%, #76CFF6 100%)',
       hobbyId: 'run',
       hobbyLabel: '러닝',
       tag: '야간런',
@@ -2973,7 +2978,7 @@ const defaultInitialState = {
       authorId: 'match_jiwoo',
       authorName: '지우',
       authorAvatarText: '지',
-      authorGradient: 'linear-gradient(135deg, #4338CA 0%, #1E1B4B 100%)',
+      authorGradient: 'linear-gradient(135deg, #D9D7F4 0%, #9792D8 100%)',
       hobbyId: 'movie',
       hobbyLabel: '영화·전시',
       tag: '1:1대화',
@@ -2998,7 +3003,7 @@ const defaultInitialState = {
       authorId: 'match_seungho',
       authorName: '성호',
       authorAvatarText: '성',
-      authorGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
+      authorGradient: 'linear-gradient(135deg, #F7A15F 0%, #E6783A 100%)',
       hobbyId: 'cafe',
       hobbyLabel: '카페/맛집',
       tag: '카페',
@@ -3021,7 +3026,7 @@ const defaultInitialState = {
       authorId: 'match_taeho',
       authorName: '태호',
       authorAvatarText: '태',
-      authorGradient: 'linear-gradient(135deg, #78350F 0%, #451A03 100%)',
+      authorGradient: 'linear-gradient(135deg, #ED9D70 0%, #F67029 100%)',
       hobbyId: 'boardgame',
       hobbyLabel: '보드게임',
       tag: '번개',
@@ -3045,7 +3050,7 @@ const defaultInitialState = {
       authorId: 'match_iseul',
       authorName: '이슬',
       authorAvatarText: '이',
-      authorGradient: 'linear-gradient(135deg, #0F766E 0%, #134E4A 100%)',
+      authorGradient: 'linear-gradient(135deg, #1CDACB 0%, #29A8A0 100%)',
       hobbyId: 'climb',
       hobbyLabel: '클라이밍',
       tag: '한잔',
@@ -3068,7 +3073,7 @@ const defaultInitialState = {
       authorId: 'match_junseo',
       authorName: '준서',
       authorAvatarText: '준',
-      authorGradient: 'linear-gradient(135deg, #475569 0%, #1E293B 100%)',
+      authorGradient: 'linear-gradient(135deg, #C1C9D5 0%, #8098BE 100%)',
       hobbyId: 'run',
       hobbyLabel: '러닝',
       tag: '퇴근후',
@@ -3089,7 +3094,7 @@ const defaultInitialState = {
       authorId: 'match_boram',
       authorName: '보람',
       authorAvatarText: '보',
-      authorGradient: 'linear-gradient(135deg, #077995 0%, #155E75 100%)',
+      authorGradient: 'linear-gradient(135deg, #0EC6F4 0%, #25A3CB 100%)',
       hobbyId: 'swim',
       hobbyLabel: '수영',
       tag: '저녁',
@@ -3131,7 +3136,7 @@ const defaultInitialState = {
       ],
       bio: '성수박스에서 19:10반을 맡고 있습니다. 무게보다 자세 먼저, 부상 없이 오래 가는 게 목표예요.',
       avatarText: '준',
-      avatarGradient: 'linear-gradient(135deg, #0F172A 0%, #334155 100%)',
+      avatarGradient: 'linear-gradient(135deg, #8098D2 0%, #C5CEDC 100%)',
       badge: '박스 코치 8년차',
       ratio: 'tall',
       likesMe: false,
@@ -3158,7 +3163,7 @@ const defaultInitialState = {
       ],
       bio: '퇴근하면 디스코드부터 켭니다. 랭겜은 진지하게, 칼바람은 웃으면서 해요.',
       avatarText: '미',
-      avatarGradient: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)',
+      avatarGradient: 'linear-gradient(135deg, #AA83E7 0%, #E0D0FB 100%)',
       badge: '골드 미드 · 칼바람',
       ratio: 'mid',
       likesMe: false,
@@ -3209,7 +3214,7 @@ const defaultInitialState = {
       ],
       bio: '퇴근하고 디스코드 켜서 칼바람 몇 판 하실 분? 랭겜은 진지하게, 칼바람은 웃으면서 해요.',
       avatarText: '준',
-      avatarGradient: 'linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)',
+      avatarGradient: 'linear-gradient(135deg, #E0D0FB 0%, #AA83E7 100%)',
       badge: '롤 다이아 원딜',
       ratio: 'tall',
       likesMe: true,
@@ -3235,7 +3240,7 @@ const defaultInitialState = {
       ],
       bio: '뚝섬한강공원에서 화·목 저녁에 달려요. 같이 뛰면서 대화가 되는 속도로만 갑니다.',
       avatarText: '민',
-      avatarGradient: 'linear-gradient(135deg, #0B7CAF 0%, #1E3A8A 100%)',
+      avatarGradient: 'linear-gradient(135deg, #76CFF6 0%, #7994E2 100%)',
       badge: '10K 52분 러너',
       ratio: 'mid',
       likesMe: false,
@@ -3261,7 +3266,7 @@ const defaultInitialState = {
       ],
       bio: '주말마다 카페 두세 곳 돌면서 원두 이야기 하는 게 낙이에요. 사진은 제가 찍어드릴게요.',
       avatarText: '도',
-      avatarGradient: 'linear-gradient(135deg, #9E6506 0%, #92400E 100%)',
+      avatarGradient: 'linear-gradient(135deg, #F7A928 0%, #EB762F 100%)',
       badge: '핸드드립 3년차',
       ratio: 'square',
       likesMe: true,
@@ -3287,7 +3292,7 @@ const defaultInitialState = {
       ],
       bio: '금요일 밤 심야 영화 보고 근처 포차에서 30분만 이야기하는 코스 좋아해요. 스포는 안 합니다.',
       avatarText: '서',
-      avatarGradient: 'linear-gradient(135deg, #334155 0%, #0F172A 100%)',
+      avatarGradient: 'linear-gradient(135deg, #C5CEDC 0%, #8098D2 100%)',
       badge: '올해 84편 관람',
       ratio: 'tall',
       likesMe: false,
@@ -3313,7 +3318,7 @@ const defaultInitialState = {
       ],
       bio: '설명은 제가 친절하게 해드려요. 2인 전략게임 진지하게 꼬박 3시간 앉아 있을 수 있는 분 환영.',
       avatarText: '현',
-      avatarGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
+      avatarGradient: 'linear-gradient(135deg, #F7A15F 0%, #E6783A 100%)',
       badge: '아그리콜라 러버',
       ratio: 'square',
       likesMe: false,
@@ -3339,7 +3344,7 @@ const defaultInitialState = {
       ],
       bio: '레벨업 박스 19:10반 레귤러예요. 운동 끝나고 단백질 한 잔 같이 하실 분, 어색해도 먼저 말 걸게요.',
       avatarText: '지',
-      avatarGradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)',
+      avatarGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
       badge: '크로스핏 6개월차',
       ratio: 'tall',
       likesMe: false,
@@ -3365,7 +3370,7 @@ const defaultInitialState = {
       ],
       bio: '새벽 6시에 물에 들어가면 하루가 달라집니다. 같이 출근 전에 수영하실 분.',
       avatarText: '태',
-      avatarGradient: 'linear-gradient(135deg, #0B7A8B 0%, #0E7490 100%)',
+      avatarGradient: 'linear-gradient(135deg, #10B0C8 0%, #14A5CC 100%)',
       badge: '자유형 1,500m',
       ratio: 'mid',
       likesMe: false,
@@ -3391,7 +3396,7 @@ const defaultInitialState = {
       ],
       bio: '발쓰기만 제대로 해도 반은 먹고 들어가요. 성수 블록스 갈 때 같이 가실 분, 루트 읽어드립니다.',
       avatarText: '성',
-      avatarGradient: 'linear-gradient(135deg, #64748B 0%, #1E293B 100%)',
+      avatarGradient: 'linear-gradient(135deg, #E1E5EA 0%, #8098BE 100%)',
       badge: 'V4 볼더러',
       ratio: 'tall',
       likesMe: false,
@@ -3417,7 +3422,7 @@ const defaultInitialState = {
       ],
       bio: '성수에서 태어나서 성수만 아는 사람입니다. 순대국부터 보드게임까지 코스 찍어드릴게요.',
       avatarText: '하',
-      avatarGradient: 'linear-gradient(135deg, #C35305 0%, #9A3412 100%)',
+      avatarGradient: 'linear-gradient(135deg, #FB9D5C 0%, #EB7750 100%)',
       badge: '성수 맛집 지도',
       ratio: 'square',
       likesMe: false,
@@ -3443,7 +3448,7 @@ const defaultInitialState = {
       ],
       bio: '주말 아침에 산 오르고 내려와서 국밥 먹는 게 최고예요. 강남에서 출발해도 괜찮아요.',
       avatarText: '우',
-      avatarGradient: 'linear-gradient(135deg, #0F766E 0%, #064E3B 100%)',
+      avatarGradient: 'linear-gradient(135deg, #1BD0C2 0%, #0DAD83 100%)',
       badge: '3대 420 · 아차산',
       ratio: 'mid',
       likesMe: false,
@@ -3471,7 +3476,7 @@ const defaultInitialState = {
       ],
       bio: '합정에서 심야 상영 보고 걸어서 집에 오는 코스가 좋아요. 보고 나서 30분은 이야기하고 싶습니다.',
       avatarText: '지',
-      avatarGradient: 'linear-gradient(135deg, #4338CA 0%, #1E1B4B 100%)',
+      avatarGradient: 'linear-gradient(135deg, #D9D7F4 0%, #9792D8 100%)',
       badge: '올해 96편',
       ratio: 'mid',
       likesMe: false,
@@ -3498,7 +3503,7 @@ const defaultInitialState = {
       ],
       bio: '성수에서 5년 살았습니다. 줄 서는 집보다 조용한 집을 알아요. 같이 도장깨기 하실 분.',
       avatarText: '성',
-      avatarGradient: 'linear-gradient(135deg, #B45309 0%, #78350F 100%)',
+      avatarGradient: 'linear-gradient(135deg, #F7A15F 0%, #E6783A 100%)',
       badge: '핸드드립 5년차',
       ratio: 'tall',
       likesMe: false,
@@ -3525,7 +3530,7 @@ const defaultInitialState = {
       ],
       bio: '홍대 보드게임카페 단골입니다. 뉴비한테 설명하는 거 좋아해요. 무거운 게임도 천천히 같이 가요.',
       avatarText: '동',
-      avatarGradient: 'linear-gradient(135deg, #0E7490 0%, #164E63 100%)',
+      avatarGradient: 'linear-gradient(135deg, #37C5EC 0%, #2EA3CF 100%)',
       badge: '홍대 보겜 단골',
       ratio: 'square',
       likesMe: false,
@@ -3552,7 +3557,7 @@ const defaultInitialState = {
       ],
       bio: '아침에 5K만 뛰고 하루를 시작합니다. 속도보다 같이 나오는 게 어려운 거더라고요.',
       avatarText: '겨',
-      avatarGradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)',
+      avatarGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)',
       badge: '아침 5K 습관',
       ratio: 'mid',
       likesMe: false,
@@ -3579,7 +3584,7 @@ const defaultInitialState = {
       ],
       bio: '말 없이 한 판 두 시간 앉아 있는 걸 좋아합니다. 끝나고 한 잔 하면서 복기하는 것도요.',
       avatarText: '태',
-      avatarGradient: 'linear-gradient(135deg, #78350F 0%, #451A03 100%)',
+      avatarGradient: 'linear-gradient(135deg, #ED9D70 0%, #F67029 100%)',
       badge: '헤비 전략파',
       ratio: 'square',
       likesMe: false,
@@ -3606,7 +3611,7 @@ const defaultInitialState = {
       ],
       bio: '이태원에서 클라이밍 1년차예요. 잘하는 사람보다 꾸준한 사람이랑 같이 하고 싶습니다.',
       avatarText: '이',
-      avatarGradient: 'linear-gradient(135deg, #0F766E 0%, #134E4A 100%)',
+      avatarGradient: 'linear-gradient(135deg, #1CDACB 0%, #29A8A0 100%)',
       badge: 'V3 1년차',
       ratio: 'tall',
       likesMe: false,
@@ -3633,7 +3638,7 @@ const defaultInitialState = {
       ],
       bio: '판교에서 일합니다. 퇴근하고 6K 뛰고 집에 가는 게 하루 마무리예요. 주말엔 서울 나갑니다.',
       avatarText: '준',
-      avatarGradient: 'linear-gradient(135deg, #475569 0%, #1E293B 100%)',
+      avatarGradient: 'linear-gradient(135deg, #C1C9D5 0%, #8098BE 100%)',
       badge: '3대 380 · 퇴근런',
       ratio: 'mid',
       likesMe: false,
@@ -3660,7 +3665,7 @@ const defaultInitialState = {
       ],
       bio: '여의도에서 일하고 수영장 들렀다 집에 갑니다. 같이 레인 쓰실 분, 페이스 맞춰요.',
       avatarText: '보',
-      avatarGradient: 'linear-gradient(135deg, #077995 0%, #155E75 100%)',
+      avatarGradient: 'linear-gradient(135deg, #0EC6F4 0%, #25A3CB 100%)',
       badge: '자유형 1,000m',
       ratio: 'square',
       likesMe: false,
@@ -3685,7 +3690,7 @@ const defaultInitialState = {
       partnerName: '코치준',
       partnerHobby: '크로스핏 코치',
       partnerAvatarText: '준',
-      partnerGradient: 'linear-gradient(135deg, #0F172A 0%, #334155 100%)',
+      partnerGradient: 'linear-gradient(135deg, #8098D2 0%, #C5CEDC 100%)',
       lastMessage: '내일 스쿼트 클린 가요! 무게 조절해서 콜해드릴게요',
       lastTime: '어제 22:40',
       unreadCount: 1,
@@ -3702,7 +3707,7 @@ const defaultInitialState = {
       partnerName: '미드장인',
       partnerHobby: '롤 소환사',
       partnerAvatarText: '미',
-      partnerGradient: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)',
+      partnerGradient: 'linear-gradient(135deg, #AA83E7 0%, #E0D0FB 100%)',
       lastMessage: '오늘 롤드컵 결승 보고 칼바람 팟 짰습니다 ㅋㅋㅋ',
       lastTime: '11/09',
       unreadCount: 0,
@@ -3787,7 +3792,7 @@ const defaultInitialState = {
       applicantAge: 28,
       applicantHobby: '크로스핏 · 파머스워크 24kg',
       applicantAvatarText: '케',
-      applicantGradient: 'linear-gradient(135deg, #04825B, #0B815A)',
+      applicantGradient: 'linear-gradient(135deg, #05AF7A, #0FAB78)',
       answers: [
         { question: '취미 구력이나 참여 가능한 요일을 적어주세요!', answer: '성수동 28세 크로스핏터입니다. 주 3회 참여 희망합니다! 월·수·금 19:10반 위주로 나갈 수 있어요.' },
         { question: '이 모임에서 함께하고 싶은 걸 한 줄로 적어주세요', answer: '파머스워크 악력 훈련 같이 하고 오운완 인증 나누고 싶어요.' }
@@ -3807,7 +3812,7 @@ const defaultInitialState = {
       applicantAge: 31,
       applicantHobby: '크로스핏 · 푸시업 정자세 연습',
       applicantAvatarText: '토',
-      applicantGradient: 'linear-gradient(135deg, #117F4D, #0B815A)',
+      applicantGradient: 'linear-gradient(135deg, #17AC68, #0FB07B)',
       answers: [
         { question: '취미 구력이나 참여 가능한 요일을 적어주세요!', answer: '크로스핏 4개월차입니다. 19시 반에 도착해서 같이 WOD 돌고 싶습니다.' },
         { question: '이 모임에서 함께하고 싶은 걸 한 줄로 적어주세요', answer: '물구나무 푸시업이 목표예요. 자세 봐주시면 열심히 따라갈게요!' }
@@ -3908,23 +3913,23 @@ const defaultInitialState = {
     {
       groupId: 'grp_crossfit_1',
       messages: [
-        { id: 'gcm_cf_1', from: 'member', authorId: 'leader_jun', authorName: '코치준', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #0F172A, #334155)', text: '오늘 19:10 정규반 그대로 갑니다. 와드 화이트보드 사진 먼저 올려둘게요', at: ago(96 * MINUTE) },
-        { id: 'gcm_cf_2', from: 'member', authorId: 'user_kettle', authorName: '케틀벨러버', authorAvatarText: '케', authorGradient: 'linear-gradient(135deg, #04825B, #0B815A)', text: '저 오늘 10분 늦어요ㅠㅠ 스트레칭 먼저 하고 계세요', at: ago(78 * MINUTE) },
-        { id: 'gcm_cf_3', from: 'member', authorId: 'user_toe', authorName: '오늘의토우', authorAvatarText: '오', authorGradient: 'linear-gradient(135deg, #0B7CAF, #1E3A8A)', text: '끝나고 다들 술 한잔 어때요? 수요일이니까', at: ago(41 * MINUTE) },
-        { id: 'gcm_cf_4', from: 'member', authorId: 'leader_jun', authorName: '코치준', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #0F172A, #334155)', text: '좋아요. 아래 일정 카드에 [참석] 눌러주면 인원 맞춰서 자리 잡을게요', at: ago(36 * MINUTE) }
+        { id: 'gcm_cf_1', from: 'member', authorId: 'leader_jun', authorName: '코치준', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #8098D2, #C5CEDC)', text: '오늘 19:10 정규반 그대로 갑니다. 와드 화이트보드 사진 먼저 올려둘게요', at: ago(96 * MINUTE) },
+        { id: 'gcm_cf_2', from: 'member', authorId: 'user_kettle', authorName: '케틀벨러버', authorAvatarText: '케', authorGradient: 'linear-gradient(135deg, #05AF7A, #0FAB78)', text: '저 오늘 10분 늦어요ㅠㅠ 스트레칭 먼저 하고 계세요', at: ago(78 * MINUTE) },
+        { id: 'gcm_cf_3', from: 'member', authorId: 'user_toe', authorName: '오늘의토우', authorAvatarText: '오', authorGradient: 'linear-gradient(135deg, #76CFF6, #7994E2)', text: '끝나고 다들 술 한잔 어때요? 수요일이니까', at: ago(41 * MINUTE) },
+        { id: 'gcm_cf_4', from: 'member', authorId: 'leader_jun', authorName: '코치준', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #8098D2, #C5CEDC)', text: '좋아요. 아래 일정 카드에 [참석] 눌러주면 인원 맞춰서 자리 잡을게요', at: ago(36 * MINUTE) }
       ]
     },
     {
       groupId: 'grp_fitness_1',
       messages: [
-        { id: 'gcm_ft_1', from: 'member', authorId: 'user_iron', authorName: '아이언', authorAvatarText: '아', authorGradient: 'linear-gradient(135deg, #475569, #0F172A)', text: '이번 주 토요일 3대 측정 같이 하실 분? 스팟 서로 봐드려요', at: ago(5 * HOUR) },
-        { id: 'gcm_ft_2', from: 'member', authorId: 'user_hold', authorName: '홀드', authorAvatarText: '홀', authorGradient: 'linear-gradient(135deg, #0E7490, #0B7A8B)', text: '저 갈게요! 10시 어때요', at: ago(4 * HOUR) }
+        { id: 'gcm_ft_1', from: 'member', authorId: 'user_iron', authorName: '아이언', authorAvatarText: '아', authorGradient: 'linear-gradient(135deg, #DFE3E9, #8098D2)', text: '이번 주 토요일 3대 측정 같이 하실 분? 스팟 서로 봐드려요', at: ago(5 * HOUR) },
+        { id: 'gcm_ft_2', from: 'member', authorId: 'user_hold', authorName: '홀드', authorAvatarText: '홀', authorGradient: 'linear-gradient(135deg, #14A5CC, #10B0C8)', text: '저 갈게요! 10시 어때요', at: ago(4 * HOUR) }
       ]
     },
     {
       groupId: 'grp_climbing_1',
       messages: [
-        { id: 'gcm_cl_1', from: 'member', authorId: 'match_junseo', authorName: '준서', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #0B815A, #047857)', text: '블록스 성수 새 벽 세팅됐대요. 수요일 저녁에 갈 사람?', at: ago(9 * HOUR) }
+        { id: 'gcm_cl_1', from: 'member', authorId: 'match_junseo', authorName: '준서', authorAvatarText: '준', authorGradient: 'linear-gradient(135deg, #0FB57E, #06AE7E)', text: '블록스 성수 새 벽 세팅됐대요. 수요일 저녁에 갈 사람?', at: ago(9 * HOUR) }
       ]
     }
   ],
@@ -3939,13 +3944,14 @@ const defaultInitialState = {
       place: '성수 포차거리 · 2차는 노래방',
       note: '와드 끝나고 20:30에 모여요. 1인 2만원 안쪽으로 맞춰볼게요.',
       capacity: 12,
+      guestOpen: true,
       createdBy: 'leader_jun',
       createdByName: '코치준',
       rsvps: [
-        { memberId: 'leader_jun', name: '코치준', avatarText: '준', gradient: 'linear-gradient(135deg, #0F172A, #334155)', status: 'yes' },
-        { memberId: 'user_kettle', name: '케틀벨러버', avatarText: '케', gradient: 'linear-gradient(135deg, #04825B, #0B815A)', status: 'yes' },
-        { memberId: 'user_toe', name: '오늘의토우', avatarText: '오', gradient: 'linear-gradient(135deg, #0B7CAF, #1E3A8A)', status: 'yes' },
-        { memberId: 'user_iron', name: '아이언', avatarText: '아', gradient: 'linear-gradient(135deg, #475569, #0F172A)', status: 'maybe' }
+        { memberId: 'leader_jun', name: '코치준', avatarText: '준', gradient: 'linear-gradient(135deg, #8098D2, #C5CEDC)', status: 'yes' },
+        { memberId: 'user_kettle', name: '케틀벨러버', avatarText: '케', gradient: 'linear-gradient(135deg, #05AF7A, #0FAB78)', status: 'yes' },
+        { memberId: 'user_toe', name: '오늘의토우', avatarText: '오', gradient: 'linear-gradient(135deg, #76CFF6, #7994E2)', status: 'yes' },
+        { memberId: 'user_iron', name: '아이언', avatarText: '아', gradient: 'linear-gradient(135deg, #DFE3E9, #8098D2)', status: 'maybe' }
       ]
     },
     {
@@ -3957,12 +3963,13 @@ const defaultInitialState = {
       place: '레벨업 박스 성수점 2층',
       note: '정원 3명 마감된 클래스예요. 참석을 누르면 대기 명단에 들어가고, 자리가 나면 자동으로 올라갑니다.',
       capacity: 3,
+      guestOpen: true,
       createdBy: 'leader_jun',
       createdByName: '코치준',
       rsvps: [
-        { memberId: 'leader_jun', name: '코치준', avatarText: '준', gradient: 'linear-gradient(135deg, #0F172A, #334155)', status: 'yes' },
-        { memberId: 'user_kettle', name: '케틀벨러버', avatarText: '케', gradient: 'linear-gradient(135deg, #04825B, #0B815A)', status: 'yes' },
-        { memberId: 'user_toe', name: '오늘의토우', avatarText: '오', gradient: 'linear-gradient(135deg, #0B7CAF, #1E3A8A)', status: 'yes' }
+        { memberId: 'leader_jun', name: '코치준', avatarText: '준', gradient: 'linear-gradient(135deg, #8098D2, #C5CEDC)', status: 'yes' },
+        { memberId: 'user_kettle', name: '케틀벨러버', avatarText: '케', gradient: 'linear-gradient(135deg, #05AF7A, #0FAB78)', status: 'yes' },
+        { memberId: 'user_toe', name: '오늘의토우', avatarText: '오', gradient: 'linear-gradient(135deg, #76CFF6, #7994E2)', status: 'yes' }
       ]
     },
     {
@@ -3977,8 +3984,8 @@ const defaultInitialState = {
       createdBy: 'user_rookie',
       createdByName: '루키',
       rsvps: [
-        { memberId: 'user_rookie', name: '루키', avatarText: '루', gradient: 'linear-gradient(135deg, #0B815A, #04825B)', status: 'yes' },
-        { memberId: 'user_toe', name: '오늘의토우', avatarText: '오', gradient: 'linear-gradient(135deg, #0B7CAF, #1E3A8A)', status: 'yes' }
+        { memberId: 'user_rookie', name: '루키', avatarText: '루', gradient: 'linear-gradient(135deg, #0FAB78, #05AF7A)', status: 'yes' },
+        { memberId: 'user_toe', name: '오늘의토우', avatarText: '오', gradient: 'linear-gradient(135deg, #76CFF6, #7994E2)', status: 'yes' }
       ]
     },
     {
@@ -3993,8 +4000,8 @@ const defaultInitialState = {
       createdBy: 'user_iron',
       createdByName: '아이언',
       rsvps: [
-        { memberId: 'user_iron', name: '아이언', avatarText: '아', gradient: 'linear-gradient(135deg, #475569, #0F172A)', status: 'yes' },
-        { memberId: 'user_hold', name: '홀드', avatarText: '홀', gradient: 'linear-gradient(135deg, #0E7490, #0B7A8B)', status: 'maybe' }
+        { memberId: 'user_iron', name: '아이언', avatarText: '아', gradient: 'linear-gradient(135deg, #DFE3E9, #8098D2)', status: 'yes' },
+        { memberId: 'user_hold', name: '홀드', avatarText: '홀', gradient: 'linear-gradient(135deg, #14A5CC, #10B0C8)', status: 'maybe' }
       ]
     },
     {
@@ -4009,7 +4016,7 @@ const defaultInitialState = {
       createdBy: 'match_junseo',
       createdByName: '준서',
       rsvps: [
-        { memberId: 'match_junseo', name: '준서', avatarText: '준', gradient: 'linear-gradient(135deg, #0B815A, #047857)', status: 'yes' }
+        { memberId: 'match_junseo', name: '준서', avatarText: '준', gradient: 'linear-gradient(135deg, #0FB57E, #06AE7E)', status: 'yes' }
       ]
     }
   ],
@@ -4108,12 +4115,12 @@ applyRegionIds(defaultInitialState);
  *  · 테스트·미리보기는 seedDemoAccount() 로 예전 데모 계정(#demo)을 되살린다.
  * ========================================================================== */
 const SIGNUP_AVATAR_GRADIENTS = [
-  'linear-gradient(135deg, #10B981 0%, #059669 55%, #047857 100%)',
-  'linear-gradient(135deg, #0EA5E9 0%, #1E3A8A 100%)',
-  'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
-  'linear-gradient(135deg, #8B5CF6 0%, #4C1D95 100%)',
-  'linear-gradient(135deg, #EC4899 0%, #9D174D 100%)',
-  'linear-gradient(135deg, #475569 0%, #0F172A 100%)'
+  'linear-gradient(135deg, #16EBA4 0%, #07CC8F 55%, #06AE7E 100%)',
+  'linear-gradient(135deg, #AFE3FA 0%, #7994E2 100%)',
+  'linear-gradient(135deg, #F8B74B 0%, #F3700C 100%)',
+  'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
+  'linear-gradient(135deg, #FAD1E5 0%, #EA6EA0 100%)',
+  'linear-gradient(135deg, #DFE3E9 0%, #8098D2 100%)'
 ];
 const SIGNUP_LIMITS = {
   nicknameMin: 2, nicknameMax: 12, passwordMin: 4, passwordMax: 64, ageMin: 14, ageMax: 99,
@@ -4261,7 +4268,7 @@ function samplePeople(regionId) {
     {
       id: 'sample_p_mora', nickname: '모래', age: 28, hobbyIds: ['run'], hobbyLabel: '러닝',
       hobbyStyle: '아침 러닝 · 5K', badge: '아침 러닝 3년', ratio: 'mid',
-      avatarText: '모', avatarGradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)',
+      avatarText: '모', avatarGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)',
       bio: '출근 전에 5K만 뛰고 하루를 시작해요. 속도보다 같이 나오는 게 어려운 거더라고요.',
       hobbies: ['아침러닝', '한강', '기록'],
       specChips: [
@@ -4274,7 +4281,7 @@ function samplePeople(regionId) {
     {
       id: 'sample_p_haru', nickname: '하루', age: 31, hobbyIds: ['fitness'], hobbyLabel: '크로스핏',
       hobbyStyle: '퇴근 후 와드 · 3년차', badge: '와드 3년차', ratio: 'square',
-      avatarText: '하', avatarGradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)',
+      avatarText: '하', avatarGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
       bio: '퇴근하고 한 시간 땀 흘리면 그날 있었던 일이 다 정리돼요. 초보자 질문 환영합니다.',
       hobbies: ['크로스핏', '오운완', '스쿼트'],
       specChips: [
@@ -4287,7 +4294,7 @@ function samplePeople(regionId) {
     {
       id: 'sample_p_danchu', nickname: '단추', age: 26, hobbyIds: ['boardgame'], hobbyLabel: '보드게임',
       hobbyStyle: '전략게임 · 뉴비 환영', badge: '설명 잘해요', ratio: 'wide',
-      avatarText: '단', avatarGradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)',
+      avatarText: '단', avatarGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
       bio: '주말 오후에 보드게임 카페에서 두어 판 합니다. 처음 하는 사람에게 설명하는 걸 좋아해요.',
       hobbies: ['전략게임', '파티게임', '보드게임카페'],
       specChips: [
@@ -4300,7 +4307,7 @@ function samplePeople(regionId) {
     {
       id: 'sample_p_choko', nickname: '초코', age: 33, hobbyIds: ['hike'], hobbyLabel: '등산',
       hobbyStyle: '주말 산행 · 천천히', badge: '하산 맛집 담당', ratio: 'square',
-      avatarText: '초', avatarGradient: 'linear-gradient(135deg, #9E6506 0%, #B45309 100%)',
+      avatarText: '초', avatarGradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)',
       bio: '일요일 아침에 가까운 산 하나 오르고 내려와서 국밥 한 그릇. 그게 제 주말입니다.',
       hobbies: ['주말산행', '둘레길', '하산맛집'],
       specChips: [
@@ -4395,8 +4402,8 @@ function sampleGroups(regionId, areaId) {
       joinPolicy: ['토 08:00 정기런'], joinMode: 'open', joinQuestions: [],
       createdAt: ago(42 * 24 * HOUR),
       members: [
-        { id: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)', hobbies: ['크로스핏'], joinedAt: ago(21 * 24 * HOUR) },
-        { id: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)', hobbies: ['보드게임'], joinedAt: ago(9 * 24 * HOUR) }
+        { id: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', hobbies: ['크로스핏'], joinedAt: ago(21 * 24 * HOUR) },
+        { id: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', hobbies: ['보드게임'], joinedAt: ago(9 * 24 * HOUR) }
       ]
     },
     {
@@ -4415,7 +4422,7 @@ function sampleGroups(regionId, areaId) {
       joinPolicy: ['토·일 15:00'],
       createdAt: ago(60 * 24 * HOUR),
       members: [
-        { id: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #9E6506 0%, #B45309 100%)', hobbies: ['등산'], joinedAt: ago(30 * 24 * HOUR) }
+        { id: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)', hobbies: ['등산'], joinedAt: ago(30 * 24 * HOUR) }
       ]
     },
     {
@@ -4471,7 +4478,7 @@ function sampleFeedPosts() {
   return [
     {
       id: 'sample_post_run_1', groupId: 'sample_grp_run', authorId: 'sample_p_mora',
-      authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)',
+      authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)',
       tag: '오운완', caption: '오늘 아침 5K 완주. 어제보다 20초 빨랐습니다. 같이 나온 강아지도 신나서 앞장섰네요. 다음 주 토요일도 같은 시간에 출발해요.',
       photoUrl: EXAMPLE_PHOTOS.dogFace, mediaCaption: '같이 뛴 강아지',
       likes: 6, likedByMe: false, bookmarkedByMe: false,
@@ -4483,14 +4490,14 @@ function sampleFeedPosts() {
     },
     {
       id: 'sample_post_run_2', groupId: 'sample_grp_run', authorId: 'sample_p_haru',
-      authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)',
+      authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
       tag: '후기', caption: '러닝 끝나고 다 같이 커피 마셨는데 그 10분이 제일 좋네요. 다음엔 코스 좀 길게 가요.',
       mediaCaption: '', likes: 4, likedByMe: false, bookmarkedByMe: false, comments: [],
       sample: true, createdAt: ago(28 * HOUR)
     },
     {
       id: 'sample_post_board_1', groupId: 'sample_grp_board', authorId: 'sample_p_danchu',
-      authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)',
+      authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
       tag: '게임후기', caption: '오늘 3인 전략게임 한 판. 처음 하신 분이 마지막에 1등 했습니다. 설명이 통했네요.',
       photoUrl: EXAMPLE_PHOTOS.gameScreen, mediaCaption: '마지막 판',
       likes: 5, likedByMe: false, bookmarkedByMe: false,
@@ -4656,8 +4663,8 @@ function sampleGroupEvents() {
       when: atClock(3, 8, 0), place: '동네 공원 입구', note: '가볍게 5K. 끝나고 근처에서 커피 한 잔 해요.',
       capacity: 10, createdBy: 'sample_p_mora', createdByName: '모래',
       rsvps: [
-        { memberId: 'sample_p_mora', name: '모래', avatarText: '모', gradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)', status: 'yes' },
-        { memberId: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)', status: 'yes' }
+        { memberId: 'sample_p_mora', name: '모래', avatarText: '모', gradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)', status: 'yes' },
+        { memberId: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', status: 'yes' }
       ],
       guestOpen: true,
       sample: true, createdAt: ago(30 * HOUR)
@@ -4667,8 +4674,8 @@ function sampleGroupEvents() {
       when: atClock(4, 15, 0), place: '동네 보드게임 카페', note: '2~3판 예정. 처음 오셔도 설명 들으면서 바로 하실 수 있어요.',
       capacity: 6, createdBy: 'sample_p_danchu', createdByName: '단추',
       rsvps: [
-        { memberId: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)', status: 'yes' },
-        { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #9E6506 0%, #B45309 100%)', status: 'maybe' }
+        { memberId: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', status: 'yes' },
+        { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)', status: 'maybe' }
       ],
       guestOpen: true,
       sample: true, createdAt: ago(2 * 24 * HOUR)
@@ -4678,7 +4685,7 @@ function sampleGroupEvents() {
       when: atClock(6, 8, 30), place: '동네 뒷산 입구', note: '1시간 반 코스로 천천히 올라요. 처음 오셔도 괜찮습니다.',
       capacity: 8, createdBy: 'sample_p_choko', createdByName: '초코',
       rsvps: [
-        { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #9E6506 0%, #B45309 100%)', status: 'yes' }
+        { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)', status: 'yes' }
       ],
       guestOpen: true,
       sample: true, createdAt: ago(20 * HOUR)
@@ -4691,14 +4698,14 @@ function sampleGroupChats() {
     {
       groupId: 'sample_grp_run', sample: true,
       messages: [
-        { id: 'sample_gc_run_1', from: 'member', authorId: 'sample_p_mora', authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)', text: '토요일 08시 공원 입구요. 날씨 괜찮대요', at: ago(3 * HOUR) },
-        { id: 'sample_gc_run_2', from: 'member', authorId: 'sample_p_haru', authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)', text: '저는 5분 일찍 나가서 스트레칭하고 있을게요', at: ago(2 * HOUR) }
+        { id: 'sample_gc_run_1', from: 'member', authorId: 'sample_p_mora', authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)', text: '토요일 08시 공원 입구요. 날씨 괜찮대요', at: ago(3 * HOUR) },
+        { id: 'sample_gc_run_2', from: 'member', authorId: 'sample_p_haru', authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', text: '저는 5분 일찍 나가서 스트레칭하고 있을게요', at: ago(2 * HOUR) }
       ]
     },
     {
       groupId: 'sample_grp_board', sample: true,
       messages: [
-        { id: 'sample_gc_board_1', from: 'member', authorId: 'sample_p_danchu', authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)', text: '토요일 15시, 카페 자리 미리 잡아둘게요', at: ago(20 * HOUR) }
+        { id: 'sample_gc_board_1', from: 'member', authorId: 'sample_p_danchu', authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', text: '토요일 15시, 카페 자리 미리 잡아둘게요', at: ago(20 * HOUR) }
       ]
     }
   ];
@@ -4714,7 +4721,7 @@ function sampleExplorePosts(regionId) {
   const rows = [
     {
       id: 'sample_ex_1', authorId: 'sample_p_mora', authorName: '모래', authorAvatarText: '모',
-      authorGradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)', hobbyId: 'run', hobbyLabel: '러닝',
+      authorGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)', hobbyId: 'run', hobbyLabel: '러닝',
       ...style('now'), tag: '번개',
       caption: '지금 동네 공원 한 바퀴 가볍게 뛰실 분? 30분이면 끝나요.',
       likes: 7, comments: [{ id: 'sample_ex_c1', authorId: 'sample_p_haru', authorName: '하루', text: '지금 나갈 수 있어요!', createdAt: ago(20 * MINUTE) }],
@@ -4722,7 +4729,7 @@ function sampleExplorePosts(regionId) {
     },
     {
       id: 'sample_ex_2', authorId: 'sample_p_haru', authorName: '하루', authorAvatarText: '하',
-      authorGradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)', hobbyId: 'fitness', hobbyLabel: '크로스핏',
+      authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', hobbyId: 'fitness', hobbyLabel: '크로스핏',
       ...style('comfortable'), tag: '편한만남',
       caption: '퇴근하고 같이 운동하실 분 있나요. 저는 초보라 무게보다 자세 위주로 해요.',
       likes: 5, comments: [], createdAt: ago(4 * HOUR)
@@ -4730,7 +4737,7 @@ function sampleExplorePosts(regionId) {
     {
       /* v33.3 — 거리 축제 사진(예시 사진 8장 중 하나)을 쓴 동네 글. 1:1 디엠 답장 유도 샘플은 그대로. */
       id: 'sample_ex_3', authorId: 'sample_p_danchu', authorName: '단추', authorAvatarText: '단',
-      authorGradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)', hobbyId: 'photo', hobbyLabel: '사진',
+      authorGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', hobbyId: 'photo', hobbyLabel: '사진',
       ...style('dm'), tag: '1:1',
       caption: '주말 거리 축제 사진 찍으러 같이 가실 분. 사람 많은 시간은 피해 낮에 천천히 돌아요.',
       photoUrl: EXAMPLE_PHOTOS.paradeDay, mediaCaption: '주말 거리 풍경',
@@ -4738,7 +4745,7 @@ function sampleExplorePosts(regionId) {
     },
     {
       id: 'sample_ex_4', authorId: 'sample_p_choko', authorName: '초코', authorAvatarText: '초',
-      authorGradient: 'linear-gradient(135deg, #9E6506 0%, #B45309 100%)', hobbyId: 'hike', hobbyLabel: '등산',
+      authorGradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)', hobbyId: 'hike', hobbyLabel: '등산',
       ...style('drink'), tag: '한잔',
       caption: '일요일 산행 끝나고 국밥 드실 분. 코스는 짧게 잡아요.',
       likes: 4, comments: [], createdAt: ago(22 * HOUR)
@@ -4756,7 +4763,7 @@ function sampleChatRooms() {
   return [
     {
       id: 'sample_chat_mora', partnerId: 'sample_p_mora', partnerName: '모래', partnerHobby: '러닝',
-      partnerAvatarText: '모', partnerGradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)',
+      partnerAvatarText: '모', partnerGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)',
       lastMessage: '토요일 아침 같이 뛰어요!', lastTime: '오늘', unreadCount: 1, isNewMatch: false, sample: true,
       messages: [
         { id: 'sample_m_mora_1', from: 'them', text: '같은 동네라 반가워요. 토요일 아침 러닝 같이 하실래요?', at: ago(3 * HOUR + 20 * MINUTE) },
@@ -4766,7 +4773,7 @@ function sampleChatRooms() {
     },
     {
       id: 'sample_chat_danchu', partnerId: 'sample_p_danchu', partnerName: '단추', partnerHobby: '보드게임',
-      partnerAvatarText: '단', partnerGradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)',
+      partnerAvatarText: '단', partnerGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
       lastMessage: '설명은 제가 할게요, 편하게 오세요', lastTime: '어제', unreadCount: 0, isNewMatch: false, sample: true,
       messages: [
         { id: 'sample_m_dan_1', from: 'them', text: '보드게임 처음이시라고 들었어요. 어려운 게임은 빼고 갈게요', at: ago(28 * HOUR) },
@@ -4977,7 +4984,7 @@ const STORY_ARCHIVE_SEED = [
     authorId: 'user_rookie',
     authorName: '루키',
     authorAvatarText: '루',
-    authorGradient: 'linear-gradient(135deg, #0B815A, #047857)',
+    authorGradient: 'linear-gradient(135deg, #0FB57E, #06AE7E)',
     mediaCaption: '10월 마지막 와드',
     caption: '10월 마지막 날 와드 완주 기록',
     createdAt: ago(30 * HOUR),
@@ -4989,7 +4996,7 @@ const STORY_ARCHIVE_SEED = [
     authorId: 'user_rookie',
     authorName: '루키',
     authorAvatarText: '루',
-    authorGradient: 'linear-gradient(135deg, #0B815A, #047857)',
+    authorGradient: 'linear-gradient(135deg, #0FB57E, #06AE7E)',
     mediaCaption: 'PR 90kg',
     caption: '데드리프트 90kg 갱신한 날',
     createdAt: ago(58 * HOUR),
@@ -5476,6 +5483,32 @@ class Store {
     return { liked: post.likedByMe, likes: post.likes };
   }
 
+  /**
+   * Sprint 33 — 좋아요를 **원하는 상태**로 맞춘다(API 경계 `post.like` 와 화면이 같은 규칙을 쓴다).
+   *  같은 값으로 두 번 불러도 결과가 같다(재시도·오프라인 큐 flush 안전).
+   * @param {string} postId
+   * @param {boolean} liked 원하는 상태
+   * @param {'feed'|'explore'} kind
+   */
+  setPostLike(postId, liked, kind) {
+    const post = kind === 'explore' ? this.getExplorePost(postId) : this.getPost(postId);
+    if (!post) return null;
+    const want = !!liked;
+    const before = { liked: !!post.likedByMe, likes: Math.max(0, Number(post.likes) || 0) };
+    if (!!post.likedByMe !== want) {
+      post.likedByMe = want;
+      post.likes = Math.max(0, (Number(post.likes) || 0) + (want ? 1 : -1));
+      this.saveState();
+    }
+    return { liked: !!post.likedByMe, likes: Math.max(0, Number(post.likes) || 0), changed: before.liked !== want, before, kind: kind || 'feed' };
+  }
+
+  /** Sprint 33 — 경계가 실패했을 때 되돌릴 좋아요 상태 복원. */
+  restorePostLike(postId, before, kind) {
+    if (!before) return null;
+    return this.setPostLike(postId, !!before.liked, kind);
+  }
+
   toggleBookmark(postId) {
     const post = this.getPost(postId);
     if (!post) return null;
@@ -5486,10 +5519,17 @@ class Store {
 
   /** 댓글 추가 — 빈 문자열은 무시. 성공 시 새 댓글 객체 반환.
    *  Sprint 15 — parentId 를 주면 답글(1단계까지)이다. */
-  addComment(postId, text, parentId = null) {
+  addComment(postId, text, parentId = null, options = {}) {
     const post = this.getPost(postId);
     const body = (text || '').trim();
     if (!post || !body) return null;
+    if (!Array.isArray(post.comments)) post.comments = [];
+    /* Sprint 33 — 경계가 같은 commentId 로 다시 부르면 같은 댓글을 돌려준다(중복 없음). */
+    const wanted = options && options.commentId;
+    if (wanted) {
+      const already = post.comments.find((c) => c.id === wanted);
+      if (already) return already;
+    }
     const user = this.state.currentUser;
     let parent = null;
     if (parentId) {
@@ -5498,7 +5538,7 @@ class Store {
       parent = found ? (found.parentId ? (post.comments || []).find((c) => c.id === found.parentId) || found : found) : null;
     }
     const comment = {
-      id: `c_${postId}_${Date.now()}`,
+      id: (options && options.commentId) || `c_${postId}_${Date.now()}`,
       authorId: user.id,
       authorName: user.nickname,
       text: body.slice(0, 300),
@@ -5513,6 +5553,49 @@ class Store {
     return comment;
   }
 
+  /** Sprint 33 — 댓글을 걷어낸다(경계 실패 롤백). */
+  removeComment(postId, commentId) {
+    const post = this.getPost(postId);
+    if (!post || !Array.isArray(post.comments)) return { ok: false, reason: 'not_found' };
+    const idx = post.comments.findIndex((c) => c.id === commentId);
+    if (idx < 0) return { ok: false, reason: 'not_found' };
+    const [removed] = post.comments.splice(idx, 1);
+    this.saveState();
+    return { ok: true, comment: removed, index: idx };
+  }
+
+  /** Sprint 33 — 동네 글 댓글 걷어내기(롤백). */
+  removeExplorePostComment(postId, commentId) {
+    const post = this.getExplorePost(postId);
+    if (!post || !Array.isArray(post.comments)) return { ok: false, reason: 'not_found' };
+    const idx = post.comments.findIndex((c) => c.id === commentId);
+    if (idx < 0) return { ok: false, reason: 'not_found' };
+    const [removed] = post.comments.splice(idx, 1);
+    this.saveState();
+    return { ok: true, comment: removed, index: idx };
+  }
+
+  /** Sprint 33 — 글을 걷어낸다(글 작성 경계 실패 롤백). */
+  removePost(postId) {
+    const list = this.state.feedPosts || [];
+    const idx = list.findIndex((p) => p.id === postId);
+    if (idx < 0) return { ok: false, reason: 'not_found' };
+    const [removed] = list.splice(idx, 1);
+    this.saveState();
+    return { ok: true, post: removed, index: idx };
+  }
+
+  /** Sprint 33 — 걷어낸 글을 원래 자리로 되돌린다. */
+  restorePost(post, index) {
+    if (!post) return { ok: false, reason: 'not_found' };
+    const list = this.state.feedPosts || (this.state.feedPosts = []);
+    if (list.some((p) => p.id === post.id)) return { ok: true, post, index: list.findIndex((p) => p.id === post.id) };
+    const at = Number.isFinite(index) ? Math.max(0, Math.min(index, list.length)) : 0;
+    list.splice(at, 0, post);
+    this.saveState();
+    return { ok: true, post, index: at };
+  }
+
   /**
    * 새 글 작성 (인스타형 피드).
    * @param {{groupId:string, tag:string|null, caption:string, photoUrl?:string, mediaCaption?:string}} data
@@ -5523,6 +5606,12 @@ class Store {
     const group = this.getGroup(groupId);
     if (!group) return null;
     if (!this.isGroupJoined(groupId)) return null;          // 가입한 모임에만 작성
+    /* Sprint 33 — 경계(`post.create`)가 같은 postId 로 다시 부르면 그 글을 돌려준다(중복 없음). */
+    const wantedId = data && data.id;
+    if (wantedId) {
+      const already = (this.state.feedPosts || []).find((p) => p.id === wantedId);
+      if (already) return already;
+    }
     const caption = (data.caption || '').trim();
     /* Sprint 17 — 사진 주소(https) 또는 **기기 앨범·카메라로 고른 사진(Data URL)** 둘 다 받는다. */
     const rawPhoto = String(data.photoUrl || '').trim();
@@ -5532,8 +5621,9 @@ class Store {
     const tag = data.tag && group.customTags.includes(data.tag) ? data.tag : null;
     const user = this.state.currentUser;
     const post = {
-      /* 같은 1ms 안에 두 글을 써도 id 가 겹치지 않게 뒤에 짧은 난수를 붙인다(32.5). */
-      id: `post_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
+      /* 같은 1ms 안에 두 글을 써도 id 가 겹치지 않게 뒤에 짧은 난수를 붙인다(32.5).
+         Sprint 33 — 화면이 먼저 만든 글(낙관적 업데이트)의 id 를 그대로 쓴다. */
+      id: wantedId || `post_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
       groupId,
       authorId: user.id,
       authorName: user.nickname,
@@ -7419,13 +7509,19 @@ class Store {
     return { liked: post.likedByMe, likes: post.likes };
   }
 
-  addExplorePostComment(postId, text) {
+  addExplorePostComment(postId, text, options = {}) {
     const post = this.getExplorePost(postId);
     const body = String(text || '').trim();
     if (!post || !body) return null;
     if (!Array.isArray(post.comments)) post.comments = [];
+    /* Sprint 33 — 경계가 같은 commentId 로 다시 부르면 그 댓글을 돌려준다(중복 없음). */
+    const wanted = options && options.commentId;
+    if (wanted) {
+      const already = post.comments.find((c) => c.id === wanted);
+      if (already) return already;
+    }
     const comment = {
-      id: `pc_${postId}_${Date.now()}`,
+      id: wanted || `pc_${postId}_${Date.now()}`,
       authorId: this.state.currentUser.id,
       authorName: this.state.currentUser.nickname,
       text: body.slice(0, 200),
@@ -7570,6 +7666,61 @@ class Store {
     room.lastTime = last ? '방금' : '';
     this.saveState();
     return { ok: true, removed };
+  }
+
+  /**
+   * Sprint 33 — 전송 실패: 말풍선을 **남기고** '실패'로 표시한다.
+   *  (32일차까지는 말풍선을 거두고 입력창에 되돌렸다. 루키 님은 말풍선 옆 '재전송' 버튼을 골랐다 — 11/21 `#20892` 4번 '후자'.)
+   *  화면은 `failed` 인 말풍선 옆에 재전송 버튼을 그린다.
+   */
+  markPendingChatMessageFailed(roomId, messageId) {
+    const room = this.getChatRoom(roomId);
+    if (!room || !Array.isArray(room.messages)) return { ok: false, reason: 'not_found' };
+    const message = room.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.pending = false;
+    message.queued = false;
+    message.failed = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  /** 재전송 준비 — 실패 표시를 지우고 다시 '전송 중'으로 되돌린다. */
+  retryPendingChatMessage(roomId, messageId) {
+    const room = this.getChatRoom(roomId);
+    if (!room || !Array.isArray(room.messages)) return { ok: false, reason: 'not_found' };
+    const message = room.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.failed = false;
+    message.pending = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  /** 오프라인 큐에 들어간 말(=경계가 큐에 넣고 성공으로 답한 경우) — '전송 대기'로 표시한다. */
+  markQueuedChatMessage(roomId, messageId) {
+    const room = this.getChatRoom(roomId);
+    if (!room || !Array.isArray(room.messages)) return { ok: false, reason: 'not_found' };
+    const message = room.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.pending = false;
+    message.queued = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  /** 연결이 돌아와 큐를 다 비웠을 때 — 남아 있던 '전송 대기' 표시를 모두 지운다. */
+  clearQueuedChatMessages() {
+    let cleared = 0;
+    const rooms = (this.state.chatRooms || []);
+    rooms.forEach((room) => (room.messages || []).forEach((m) => {
+      if (m.queued) { m.queued = false; cleared += 1; }
+    }));
+    (this.state.groupChats || []).forEach((chat) => (chat.messages || []).forEach((m) => {
+      if (m.queued) { m.queued = false; cleared += 1; }
+    }));
+    if (cleared) this.saveState();
+    return cleared;
   }
 
   /** 상대의 취미에 맞는 웰컴 답장 문구를 고른다(같은 문구가 연속되지 않게 순환). */
@@ -8134,7 +8285,7 @@ class Store {
       specChips: [],
       bio: me.bio || '',
       avatarText: me.avatarText || String(me.nickname || '나').charAt(0),
-      avatarGradient: me.avatarGradient || 'linear-gradient(135deg, #10B981, #047857)',
+      avatarGradient: me.avatarGradient || 'linear-gradient(135deg, #16EBA4, #06AE7E)',
       photoUrl: me.photoUrl || null,
       badge: '나',
       ratio: 'mid',
@@ -8164,7 +8315,7 @@ class Store {
       specChips: [],
       bio: hobbyLabel ? `${hobbyLabel}에서 함께해요.` : '',
       avatarText: avatarText || nickname.charAt(0),
-      avatarGradient: avatarGradient || 'linear-gradient(135deg, #10B981, #047857)',
+      avatarGradient: avatarGradient || 'linear-gradient(135deg, #16EBA4, #06AE7E)',
       photoUrl: photoUrl || null,
       badge: hobbyLabel || '모임 사람',
       ratio: 'mid',
@@ -8529,7 +8680,7 @@ class Store {
       partnerName: profile ? profile.nickname : '새 메이트',
       partnerHobby: profile ? `${profile.hobbyIcon || ''} ${profile.hobbyLabel || ''}`.trim() || '모임 사람' : '취미 메이트',
       partnerAvatarText: profile ? profile.avatarText || profile.nickname.charAt(0) : '?',
-      partnerGradient: profile ? profile.avatarGradient : 'linear-gradient(135deg, #0B815A, #047857)',
+      partnerGradient: profile ? profile.avatarGradient : 'linear-gradient(135deg, #0FB57E, #06AE7E)',
       lastMessage: profile && profile.isMe ? '나와의 대화' : '먼저 인사해 보세요',
       lastTime: '방금',
       unreadCount: 1,
@@ -10310,6 +10461,43 @@ class Store {
     return { ok: true, message };
   }
 
+  /** 단체 채팅 전송 실패 — 말풍선을 남기고 '실패'로 표시한다(옆에 '재전송' — Sprint 33). */
+  markPendingGroupChatMessageFailed(groupId, messageId) {
+    const chat = this.getGroupChat(groupId);
+    if (!chat || !Array.isArray(chat.messages)) return { ok: false, reason: 'not_found' };
+    const message = chat.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.pending = false;
+    message.queued = false;
+    message.failed = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  /** 단체 채팅 재전송 준비 — 실패 표시를 지우고 다시 '전송 중'으로. */
+  retryPendingGroupChatMessage(groupId, messageId) {
+    const chat = this.getGroupChat(groupId);
+    if (!chat || !Array.isArray(chat.messages)) return { ok: false, reason: 'not_found' };
+    const message = chat.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.failed = false;
+    message.pending = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  /** 단체 채팅 오프라인 큐 표시. */
+  markQueuedGroupChatMessage(groupId, messageId) {
+    const chat = this.getGroupChat(groupId);
+    if (!chat || !Array.isArray(chat.messages)) return { ok: false, reason: 'not_found' };
+    const message = chat.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.pending = false;
+    message.queued = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
   /** 단체 채팅 전송 실패 — 낙관적으로 띄운 말풍선을 거둔다. */
   dropPendingGroupChatMessage(groupId, messageId) {
     const chat = this.getGroupChat(groupId);
@@ -10551,6 +10739,29 @@ class Store {
       promoted,
       summary: this.getGroupEventSummary(eventId)
     };
+  }
+
+  /**
+   * Sprint 33 — 경계 실패 롤백: 내 참석 상태를 **이전 값으로** 되돌린다(null 이면 명단에서 뺀다).
+   *  (정원·대기열 계산을 다시 돌리지 않고 저장 전 상태를 그대로 복원한다.)
+   */
+  restoreGroupEventRsvp(eventId, prevStatus) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    const me = this.currentUser;
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const prevEntry = rsvps.find((r) => r.memberId === me.id) || null;
+    if (!prevStatus) {
+      ev.rsvps = rsvps.filter((r) => r.memberId !== me.id);
+    } else {
+      const rest = rsvps.filter((r) => r.memberId !== me.id);
+      rest.push(prevEntry
+        ? { ...prevEntry, status: prevStatus }
+        : { memberId: me.id, name: me.nickname, avatarText: me.avatarText, gradient: me.avatarGradient, status: prevStatus });
+      ev.rsvps = rest;
+    }
+    this.saveState();
+    return { ok: true, eventId, status: prevStatus || null };
   }
 
   /** 술모임·번개 만들기 — 제목 2~30자, 종류는 4종, 시각은 지금 이후. */

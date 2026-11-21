@@ -23621,7 +23621,9 @@ button.ig-caption-author { font-size: inherit; font-weight: var(--fw-display); c
   border-radius: 999px;
 }
 button.ig-comment-name { font-size: var(--fs-caption); font-weight: var(--fw-display); color: var(--text-strong); }
-.ig-comment-text { flex: 1 1 auto; min-width: 0; }
+.ig-comment-text { flex: 1 1 auto; min-width: 0; font-weight: var(--fw-meta); }
+/* 11px 캡션은 600 이상(가독 규칙) — 댓글·'댓글 달기'도 예외가 아니다. */
+.ig-comment-text, .ig-add-comment { font-weight: 600; }
 
 /* (7) 추천 피드 댓글 시트 — 아바타 + 이름 + 문장 */
 .feed-comment-row {
@@ -24057,3 +24059,317 @@ button.caption-author::after {
 #create-group-cats .create-cat { white-space: nowrap; }
 #create-group-hobbies .tag-pick .pick-badge,
 #create-group-cats .create-cat .pick-badge { flex: 0 0 auto; }
+
+/* ============================================================================
+   Sprint 33 — 아바타 = 밝은 배경 + **진한 잉크 이니셜**
+   --------------------------------------------------------------------------
+   32일차에는 흰 이니셜이 4.5:1 이 되도록 배경 그라디언트를 어둡게 내렸다.
+   루키 님은 그 반대로 정했다(11/21 `#20892` 1번 '후자로') — **배경은 밝게, 이니셜은 진한 잉크.**
+   · 배경: store.js 의 아바타 그라디언트를 밝게 되돌렸다(tools/s33_avatar_ink.py · 잉크 6:1 기준).
+   · 글자: 아래 `--avatar-ink` 하나. 밝은 면 위에서 6:1 이상 나온다(AA 4.5:1 여유).
+   · 사진이 든 아바타는 img 가 덮으므로 영향이 없고, 짝의 어두운 면(.match-avatar)은 흰 글자를 그대로 쓴다.
+   ========================================================================== */
+:root {
+  --avatar-ink: #111827;
+  --avatar-ink-sub: #1F2937;
+}
+
+.header-avatar,
+.feed-avatar,
+.post-avatar,
+.post-detail-avatar,
+.drawer-avatar,
+.drawer-member-avatar,
+.profile-avatar-large,
+.avatar-letter,
+.chat-avatar,
+.chat-partner-avatar,
+.chat-msg-avatar,
+.chat-request-avatar,
+.member-avatar,
+.member-row-avatar,
+.event-avatar,
+.event-person-avatar,
+.story-avatar,
+.story-viewer-avatar,
+.notice-reader-avatar,
+.comment-avatar,
+.post-comment-avatar,
+.feed-comment-avatar,
+.ig-comment-avatar,
+.ig-avatar-person,
+.liker-avatar,
+.apply-avatar,
+.ob-name-avatar,
+.myprofile-avatar {
+  color: var(--avatar-ink);
+}
+
+/* 사진 자리에 그라디언트가 깔리는 큰 이니셜도 같은 잉크(배경이 밝아졌으므로). */
+.detail-photo-initial { color: var(--avatar-ink); }
+
+/* 짝의 어두운 면(진한 네이비)과 내 면(진한 초록 그라디언트)은 지금처럼 흰 글자. */
+.match-avatar,
+.match-avatar.me,
+.match-avatar.them { color: #FFFFFF; }
+
+/* 사진 없는 내 큰 아바타(중립 면)는 이미 --text-sub — 잉크로 통일한다. */
+.profile-avatar-large .avatar-letter,
+.myprofile-avatar .avatar-letter { color: var(--avatar-ink); }
+:root[data-theme="dark"] .profile-avatar-large .avatar-letter,
+:root[data-theme="dark"] .myprofile-avatar .avatar-letter { color: var(--avatar-ink); }
+
+/* ============================================================================
+   Sprint 33 — MATCH 팝업 추천 멘트 칩: **2열**
+   루키 님 11/21 `#20892` 2번 '후자로' — 32일차에 18px 길어진 팝업을 칩 2열로 더 조인다.
+   · 3개 중 앞의 2개가 한 줄, 마지막 하나는 두 칸을 다 쓴다(줄마다 폭이 들쭉날쭉하지 않게).
+   · 칩은 최소 44px(손가락 하한) — 글자는 두 줄까지, 넘치면 말줄임(팝업이 길어지지 않게).
+   · 제목은 두 칸을 가로지른다.
+   ========================================================================== */
+.msg-suggest {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.msg-suggest-title { grid-column: 1 / -1; }
+.msg-suggest .msg-suggest-chip {
+  height: auto;
+  min-height: 44px;
+  padding: 6px 12px;
+  justify-content: flex-start;
+  text-align: left;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: keep-all;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.msg-suggest .msg-suggest-chip:last-child { grid-column: 1 / -1; }
+/* 두 줄로 늘어난 만큼 위아래 여백은 지킨다 — ::after 44px 는 그대로 손가락 영역. */
+.msg-suggest .msg-suggest-chip::after { top: 0; bottom: 0; }
+
+/* ============================================================================
+   Sprint 33 — 채팅 말풍선 '전송 실패' + 옆 '재전송' 버튼
+   루키 님 11/21 `#20892` 4번 '후자' — 입력창 되돌림 대신 **말풍선 옆에서 한 번에 재시도**.
+   · 말풍선은 그대로 보이고(대화 흐름 유지), 아래에 '전송 실패' 한 줄.
+   · '재전송'은 말풍선 바로 옆 44px 터치, 알약 30px(칩 규격) — 새 박스는 만들지 않는다.
+   ========================================================================== */
+.chat-msg.is-failed .chat-bubble {
+  background: var(--fill-subtle);
+  color: var(--text);
+  border: 1px dashed var(--border-strong);
+}
+.chat-failed-label { color: #B42318; font-weight: var(--fw-label); }
+:root[data-theme="dark"] .chat-failed-label { color: #FCA5A5; }
+
+.chat-resend {
+  position: relative;
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--btn-h-chip, 30px);
+  min-height: var(--btn-h-chip, 30px);
+  margin-bottom: 2px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--fill-subtle);
+  color: var(--green-text);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-title);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chat-resend .oo-ic { width: 13px; height: 13px; }
+.chat-resend::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -7px;
+  bottom: -7px;
+  border-radius: inherit;
+}
+.chat-resend:active { background: var(--bg-soft); }
+
+/* ============================================================================
+   Sprint 33 — 상세 화면 = 풀스크린 페이지 (바텀시트 → 화면 전환)
+   루키 님 #21873: 모임 상세·새 모임 위저드·글 상세·일정 상세·사람 프로필·좋아요 목록이
+   시트로 떠서 스크롤할 때 시트가 끌려 내려가 불편했다.
+   · 오른쪽에서 왼쪽으로 미끄러져 들어오고, 위에 '<' 뒤로가기 + 제목 한 줄.
+   · 본문은 화면 전체 세로 스크롤 — 아래로 밀어도 닫히지 않는다.
+   · 댓글 시트·확인/입력용 미니 시트는 그대로 바텀시트.
+   ========================================================================== */
+.modal-overlay.is-page {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  background: var(--bg-app);
+  animation: pageOverlayIn 0.2s ease both;
+}
+.modal-overlay.is-page .modal-sheet {
+  width: 100%;
+  max-width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
+  box-shadow: none;
+  padding-top: 0;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
+  animation: pageIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform;
+}
+.modal-overlay.is-page.is-closing .modal-sheet { animation: pageOut 0.22s var(--ease-in-soft) both; }
+.modal-overlay.is-page .sheet-grabber,
+.modal-overlay.is-page .sheet-close-btn { display: none; }
+
+.page-head {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 52px;
+  margin: -0px -18px 6px;
+  padding: calc(env(safe-area-inset-top) + 2px) 12px 2px 6px;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--divider);
+}
+.page-back {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-strong);
+  cursor: pointer;
+}
+.page-back:active { background: var(--bg-soft); }
+.page-back .oo-ic,
+.page-back svg { width: 22px; height: 22px; }
+.page-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-section);
+  font-weight: var(--fw-display);
+  letter-spacing: -0.2px;
+  color: var(--text-strong);
+}
+@keyframes pageIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes pageOut { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes pageOverlayIn { from { opacity: 0.4; } to { opacity: 1; } }
+
+/* 스와이프 중/제자리 복귀 — 손가락을 따라온 뒤 부드럽게 돌아온다. */
+.modal-sheet.is-swipe-settling,
+.subscreen.is-swipe-settling,
+.group-space.is-swipe-settling {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ============================================================================
+   Sprint 33 — 홈 통합 피드: 글 사이에 끼어드는 가로 레일 (추천 그룹 · 추천 일정)
+   루키 님 #21895: 인스타그램처럼 피드를 내리다가 릴스처럼 가로로 넘겨 보는 레일이
+   중간중간 나온다. 좌우 드래그는 레일이 먹고(touch-action: pan-x) 스와이프 뒤로가기는
+   가로로 넘치는 영역에서 시작한 손을 건너뛴다.
+   ========================================================================== */
+.feed-rail {
+  margin: 16px 0 12px;
+  padding: 0;
+}
+.feed-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px 8px;
+}
+.feed-rail-title {
+  font-size: var(--fs-section);
+  font-weight: var(--fw-display);
+  letter-spacing: -0.2px;
+  color: var(--text-strong);
+}
+.feed-rail-sub {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  font-weight: var(--fw-meta);
+}
+.feed-rail-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  min-height: 44px;
+  padding: 0 0 0 8px;
+  border: 0;
+  background: none;
+  color: var(--green-text);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.feed-rail-more svg,
+.feed-rail-more .oo-ic { width: 14px; height: 14px; }
+.feed-rail-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  scrollbar-width: none;
+  padding: 0 14px 6px;
+}
+.feed-rail-track::-webkit-scrollbar { display: none; }
+.feed-rail-card {
+  flex: 0 0 46%;
+  max-width: 210px;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+.feed-rail-card .group-card { width: 100%; margin: 0; }
+.feed-rail-event {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  min-height: 118px;
+  padding: 14px;
+  border-radius: var(--r-card);
+  background: var(--fill-subtle);
+  cursor: pointer;
+}
+.feed-rail-event-when {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  color: var(--green-text);
+}
+.feed-rail-event-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-title);
+  color: var(--text-strong);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.feed-rail-event-meta {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
