@@ -10301,9 +10301,12 @@ class Store {
   }
 
   /* ------------------------------------------------ 15-2. 부방장 */
+  /* H5 — memberId 를 주지 않으면 '나'로 본다. getDeputyPermissions 가 인자 없이 부르는데
+     기본값이 없어서 부방장이 늘 false 로 읽히던 버그를 함께 고쳤다. */
   isGroupDeputy(groupId, memberId) {
     const g = this.getGroup(groupId);
-    return !!(g && Array.isArray(g.deputyIds) && memberId && g.deputyIds.includes(memberId));
+    const who = memberId || (this.state.currentUser && this.state.currentUser.id);
+    return !!(g && Array.isArray(g.deputyIds) && who && g.deputyIds.includes(who));
   }
 
   getGroupDeputies(groupId) {

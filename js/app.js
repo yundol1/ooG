@@ -7892,13 +7892,18 @@ document.addEventListener('DOMContentLoaded', () => {
       </section>`;
   }
 
-  /* Sprint 15 — 모임 운영: 공지 권한 · 부방장 · 모임 내 1:1 대화 허용 */
-  function renderGroupOpsBlock(grp, isLeader, joined) {
+  /* Sprint 15 — 모임 운영: 공지 권한 · 부방장 · 모임 내 1:1 대화 허용
+     H5(11/21 밤) — 이 설정은 **운영진(모임장·부방장)의 것**이다. 비멤버와 일반 멤버에게는
+     그리지 않는다. 부방장은 스위치 대신 상태 알약을 본다(바꾸는 건 모임장만).
+     설명도 두 줄 → 한 줄로 줄여 제목과 설정만 읽히게 했다. */
+  function renderGroupOpsBlock(grp) {
+    const perms = store.getDeputyPermissions(grp.id);
+    const isLeader = perms.isLeader;
+    const isDeputy = perms.isDeputy;
+    if (!isLeader && !isDeputy) return '';
     const perm = store.getGroupNoticePermission(grp.id);
     const deputies = store.getGroupDeputies(grp.id);
     const dm = store.getGroupDmPolicy(grp.id);
-    /* Sprint 16 — 부방장에게 '멤버 승인·강퇴'까지 맡길지(모임장만 바꿈) */
-    const perms = store.getDeputyPermissions(grp.id);
     return `
       <section class="sheet-block group-ops" data-sheet-block="ops">
         <div class="sheet-section-head">
@@ -7908,7 +7913,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="ops-row">
           <span class="ops-label">공지·일정 작성</span>
-          <span class="ops-value">${perm.canManage ? '쓸 수 있어요' : '모임장·부방장만'}</span>
+          <span class="ops-value">${perm.canManage ? '가능' : '모임장만'}</span>
         </div>
         <div class="ops-row">
           <span class="ops-label">부방장</span>
@@ -7916,13 +7921,13 @@ document.addEventListener('DOMContentLoaded', () => {
             ? deputies.map((d) => `${escapeHtml(d.name)}${d.isMe ? ' (나)' : ''}`).join(', ')
             : '아직 없음'}</span>
         </div>
-        ${isLeader && joined
+        ${isLeader
           ? `<button class="btn-secondary ops-deputy-btn" data-open-members="${grp.id}" type="button">멤버에서 부방장 지정</button>`
           : ''}
         <div class="ops-toggle-row">
           <span class="ops-toggle-text">
-            <span class="ops-toggle-title">부방장에게 멤버 승인·강퇴까지 맡기기</span>
-            <span class="ops-toggle-desc">끄면 부방장은 공지·일정만 쓸 수 있고, 승인·강퇴는 모임장만 해요</span>
+            <span class="ops-toggle-title">부방장 권한 위임</span>
+            <span class="ops-toggle-desc">멤버 승인·강퇴 허용</span>
           </span>
           ${isLeader
             ? `<button class="switch-toggle ${perms.deputyCanModerate ? 'on' : ''}" data-deputy-moderate-toggle="${grp.id}"
@@ -7932,8 +7937,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="ops-toggle-row">
           <span class="ops-toggle-text">
-            <span class="ops-toggle-title">모임 내 1:1 대화 허용</span>
-            <span class="ops-toggle-desc">끄면 멤버끼리 1:1 대화를 시작할 수 없어요 · 모임 전체방은 그대로예요</span>
+            <span class="ops-toggle-title">1:1 대화</span>
+            <span class="ops-toggle-desc">멤버끼리 DM 허용</span>
           </span>
           ${isLeader
             ? `<button class="switch-toggle ${dm.enabled ? 'on' : ''}" data-group-dm-toggle="${grp.id}"
@@ -7943,14 +7948,81 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="ops-toggle-row">
           <span class="ops-toggle-text">
-            <span class="ops-toggle-title">가입 카드 표지 사진</span>
-            <span class="ops-toggle-desc">갤러리 카드에 보일 사진을 모임장이 직접 고를 수 있어요</span>
+            <span class="ops-toggle-title">가입 카드 표지</span>
+            <span class="ops-toggle-desc">카드에 보일 사진 선택</span>
           </span>
           ${isLeader
             ? `<button class="btn-secondary ops-cover-btn" data-cover-open="${grp.id}" type="button">표지 고르기</button>`
-            : `<span class="ops-state">${(store.getGroupCover(grp.id) || {}).custom ? '모임장이 고름' : '최근 사진'}</span>`}
+            : `<span class="ops-state ${(store.getGroupCover(grp.id) || {}).custom ? 'on' : 'off'}">${(store.getGroupCover(grp.id) || {}).custom ? '모임장이 고름' : '최근 사진'}</span>`}
         </div>
       </section>`;
+  }
+
+  /* H5(11/21 밤) — 비멤버(가입 전) 모임 상세.
+     네이버 카페·당근 모임의 가입 화면처럼 **가입을 정하는 데 필요한 것만** 남긴다:
+       ① 대표 이미지 ② 모임명·아지트·멤버 수 ③ 한 줄 소개 ④ 취미 태그
+       ⑤ 가입 안내(가입 방식 · 나이 조건 · 활동 아지트 · 가입 질문 수) ⑥ 가입 버튼
+     모임 운영(공지 권한·부방장·1:1 허용)·말머리 관리·멤버 목록·피드 미리보기처럼
+     모임 안 사람에게나 쓸모 있는 것은 그리지 않는다. */
+  function renderGuestGroupDetail(grp) {
+    const vis = groupCoverVisual(grp);
+    const azit = store.getGroupAzit(grp);
+    const mode = store.getGroupJoinMode(grp);
+    const range = store.getGroupAgeRange(grp);
+    const questions = store.getGroupJoinQuestions(grp.id);
+    const place = azit ? azit.name : (grp.location || '온라인');
+    const rows = [
+      { label: '가입 방식', value: mode === 'approval' ? '승인제' : '바로 가입' },
+      { label: '나이 조건', value: ageSliderLabel(range.min, range.max) }
+    ];
+    if (mode === 'approval') rows.push({ label: '가입 질문', value: `${questions.length}개` });
+    const tags = (Array.isArray(grp.tags) ? grp.tags : []).slice(0, 4);
+
+    return `
+      <div class="guest-cover tone-${escapeHtml(vis.tone || 'neutral')}">
+        ${vis.photoUrl
+          ? `<img class="guest-cover-photo" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
+          : `<span class="guest-cover-tile" aria-hidden="true">${ic(vis.icon)}</span>`}
+      </div>
+
+      <div class="sheet-group-header guest-head">
+        <span class="group-category-tag"><span>${escapeHtml(grp.categoryName || '')}</span></span>
+        <h2 class="sheet-title">${escapeHtml(grp.name)}</h2>
+        <div class="sheet-meta">
+          <span>아지트 ${escapeHtml(place)}</span>
+          <span>멤버 ${grp.memberCount}명</span>
+        </div>
+        <p class="sheet-desc">${escapeHtml(grp.description)}</p>
+      </div>
+
+      ${tags.length ? `<div class="guest-tag-row">
+        ${tags.map((t) => `<span class="group-tag-pill">${escapeHtml(t)}</span>`).join('')}
+      </div>` : ''}
+
+      <section class="join-policy-card guest-join" data-join-policy="${grp.id}">
+        <h4 class="join-policy-title">가입 안내</h4>
+        <dl class="guest-join-rows">
+          ${rows.map((r) => `
+            <div class="guest-join-row">
+              <dt class="guest-join-label">${escapeHtml(r.label)}</dt>
+              <dd class="guest-join-value">${escapeHtml(r.value)}</dd>
+            </div>`).join('')}
+        </dl>
+      </section>
+
+      ${grp.rules ? `<div class="sheet-rule-card guest-rule">
+        <div class="rule-title"><span>모임 규칙</span></div>
+        <p class="rule-desc">${escapeHtml(grp.rules)}</p>
+      </div>` : ''}
+
+      <div class="sheet-actions guest-actions">
+        ${renderJoinCta(grp)}
+      </div>
+      ${store.getJoinState(grp.id) === 'none' && mode === 'approval'
+        && store.isAgeEligible(grp.id).ok && !store.isGroupFull(grp.id)
+        ? '<p class="join-cta-hint">모임장이 소개서를 보고 수락하면 멤버가 돼요.</p>'
+        : ''}
+    `;
   }
 
   function renderGroupDetail(grp) {
@@ -7960,6 +8032,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const joinState = store.getJoinState(grp.id);
     const pending = isLeader ? store.getPendingApplications(grp.id) : [];
     const mode = store.getGroupJoinMode(grp);
+
+    /* H5 — 가입 전에는 간결한 가입 화면만 */
+    if (!joined) {
+      el.groupModalBody.innerHTML = renderGuestGroupDetail(grp);
+      return;
+    }
 
     el.groupModalBody.innerHTML = `
       ${isLeader ? `
@@ -7984,14 +8062,14 @@ document.addEventListener('DOMContentLoaded', () => {
       <!-- Sprint 13 — 상세는 구획으로: 일정 · 멤버 · 규칙 · 가입 -->
       ${renderGroupScheduleBlock(grp)}
       ${renderGroupMemberBlock(grp)}
-      ${renderGroupOpsBlock(grp, isLeader, joined)}
+      ${renderGroupOpsBlock(grp)}
 
       <div class="sheet-rule-card">
         <div class="rule-title"><span>모임 규칙 및 프라이버시</span></div>
         <p class="rule-desc">${escapeHtml(grp.rules)}</p>
       </div>
 
-      ${renderJoinPolicySection(grp, isLeader)}
+      ${isLeader ? renderJoinPolicySection(grp, isLeader) : ''}
       ${isLeader ? renderApplicationList(grp) : ''}
 
       <!-- ===== 말머리 태그 관리 ===== -->
@@ -8046,9 +8124,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <div class="sheet-actions">
         ${renderJoinCta(grp)}
-        ${joinState === 'none' && mode === 'approval'
-          ? `<p class="join-cta-hint">소개서를 보고 모임장이 수락하면 멤버가 돼요.</p>`
-          : ''}
       </div>
     `;
   }
@@ -12526,10 +12601,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (mode === 'approval') {
       return `<button class="btn-primary-action" data-apply-group="${grp.id}">
-        ${joinState === 'rejected' ? '가입 신청 다시 하기' : '가입 신청하기'} · 소개서 심사
+        ${joinState === 'rejected' ? '가입 신청 다시 하기' : '가입 신청하기'}
       </button>`;
     }
-    return `<button class="btn-primary-action" data-modal-join="${grp.id}">참여하기</button>`;
+    return `<button class="btn-primary-action" data-modal-join="${grp.id}">가입하기</button>`;
   }
 
   /* 가입 신청서 모달 */
@@ -12550,7 +12625,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h2 class="sheet-title">가입 신청서</h2>
         <p class="apply-modal-group">${escapeHtml(grp.name)}</p>
         <div class="join-policy-badges">${policyBadgesHTML(grp.id)}</div>
-        <p class="apply-modal-note">모임장 <strong>${escapeHtml(grp.leaderName)}</strong>님이 소개서를 읽고 수락하면 멤버가 돼요. 정성껏 쓸수록 수락이 빨라요.</p>
+        <p class="apply-modal-note">모임장 <strong>${escapeHtml(grp.leaderName)}</strong>님이 답변을 읽고 수락하면 멤버가 돼요.</p>
       </div>
       <div class="apply-form">
         ${questions.map((q, i) => `

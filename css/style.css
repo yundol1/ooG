@@ -23131,3 +23131,161 @@ body.subscreen-open { overflow: hidden; }
 
 /* H2 — 위자드 헤더의 '취소'도 눌림 영역 44×44 (글자 폭이 좁아 가로만 넓힌다) */
 .wizard-header .text-btn { min-width: 44px; min-height: 44px; }
+
+/* ============================================================================
+   H5 (11/21 밤) — 비멤버 가입 화면: 네이버 카페 · 당근 모임처럼
+   ----------------------------------------------------------------------------
+   · 대표 이미지 → 모임명·아지트·멤버 수 → 소개 → 취미 태그 → 가입 안내 → 버튼
+   · 상자를 더하지 않는다: 이미지 12px · 칩 999px · 가입 안내 행은 1px 구분선
+   · 닫기 ×(top 16 + 32) 아래에서 이미지가 시작하도록 위 여백 26px
+   ========================================================================== */
+.guest-cover {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-height: 200px;
+  margin: 26px 0 14px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+
+.guest-cover-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.guest-cover-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--tone-from, var(--bg-soft)) 0%, var(--bg-subtle) 100%);
+  color: var(--tone-ink, var(--text-muted));
+}
+.guest-cover-tile .oo-ic { width: 56px; height: 56px; }
+
+.guest-head { margin: 0 0 8px; }
+.guest-head .sheet-title { margin: 6px 0 8px; }
+.guest-head .sheet-meta { margin-bottom: 8px; }
+
+.guest-tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 4px;
+}
+
+.guest-join { margin: 12px 0 4px; gap: 4px; }
+
+.guest-join-rows { display: flex; flex-direction: column; margin: 0; }
+.guest-join-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--divider);
+}
+.guest-join-row:last-child { border-bottom: 0; }
+.guest-join-label {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-sub);
+}
+.guest-join-value {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  color: var(--text-strong);
+  text-align: right;
+}
+
+.guest-rule { margin: 12px 0 0; }
+
+.guest-actions {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* 다크 — 상태 알약은 어두운 바탕에 맞춘다(흰 칩 금지) */
+:root[data-theme="dark"] .ops-state.off { background: #33240F; color: #FCD9A8; }
+:root[data-theme="dark"] .policy-badge.policy-age { background: #33240F; color: #FCD9A8; }
+:root[data-theme="dark"] .member-role-badge.leader { background: #33240F; color: #FCD9A8; }
+:root[data-theme="dark"] .member-role-badge.deputy,
+:root[data-theme="dark"] .drawer-badge.deputy,
+:root[data-theme="dark"] .deputy-btn.on {
+  background: #1A1F3D;
+  color: #A5B4FC;
+  border-color: #2E3A63;
+}
+
+/* ============================================================================
+   H5 (11/21 밤) — 토스트: 오른쪽으로 밀려 뜨던 것을 가로 중앙의 반투명 말풍선으로
+   ----------------------------------------------------------------------------
+   원인: `@keyframes clayPop` 이 `transform: scale()` 만 지정하는데
+   `.toast.show { animation: clayPop … both }` 라서 마지막 프레임이 남아
+   `translate(-50%, 0)`(가로 중앙)을 덮어썼다 → 토스트가 자기 폭의 절반만큼 오른쪽으로.
+   그리고 `bottom` 이 nav 높이에 홈 인디케이터 여백(safe-area)을 더하지 않아
+   아이폰에서 하단 탭바를 가렸다.
+   ⇒ ① 중앙 정렬을 지키는 전용 키프레임 ② 탭바 + 안전 여백 위 16px
+      ③ 반투명 유리 말풍선(blur) ④ 좌우 16px 여백으로 390px 에서도 잘리지 않게
+   ========================================================================== */
+.toast {
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: calc(var(--nav-h, 56px) + env(safe-area-inset-bottom, 0px) + 16px);
+  transform: translate(-50%, 12px);
+  max-width: calc(100vw - 32px);
+  width: max-content;
+  padding: 11px 18px;
+  border-radius: 20px;
+  background: rgba(24, 24, 27, 0.78);
+  color: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: 0 12px 30px -12px rgba(2, 6, 12, 0.55);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.toast.show {
+  transform: translate(-50%, 0);
+  animation: toastBubbleIn 0.28s var(--ease-out-soft, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+@keyframes toastBubbleIn {
+  0%   { opacity: 0; transform: translate(-50%, 14px) scale(0.96); }
+  62%  { opacity: 1; transform: translate(-50%, -2px) scale(1.01); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
+/* 종류별 색은 유리 질감 위에 옅게만 얹는다 */
+.toast.info { background: rgba(24, 32, 46, 0.80); }
+.toast.warning { background: rgba(146, 64, 14, 0.82); }
+
+.toast .toast-action {
+  border-color: rgba(255, 255, 255, 0.30);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast.show { animation: none !important; transform: translate(-50%, 0); }
+}
+
+/* 다크도 같은 유리 말풍선 — 바탕이 어두우니 테두리만 조금 밝게 */
+:root[data-theme="dark"] .toast {
+  background: rgba(38, 42, 48, 0.80);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 14px 32px -14px rgba(0, 0, 0, 0.8);
+}
+:root[data-theme="dark"] .toast.warning { background: rgba(146, 64, 14, 0.84); }
+:root[data-theme="dark"] .toast.info { background: rgba(44, 52, 64, 0.84); }
