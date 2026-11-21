@@ -11,7 +11,7 @@
  *  · index.html 을 직접 열었다면(file://) Service Worker 는 등록되지 않는다 — 그때도 앱은 그대로 동작한다.
  * ========================================================================== */
 
-const CACHE_VERSION = 'oog-shell-v32_5-1';
+const CACHE_VERSION = 'oog-shell-v33-0';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -22,6 +22,9 @@ const SHELL_ASSETS = [
   './js/store.js',
   './js/api.js',
   './js/app.js',
+  /* H2 — 지역·아지트 목록(http 로 열렸을 때 fetch). 없으면 앱 내장본을 쓴다. */
+  './data/regions.json',
+  './data/hangouts.json',
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',

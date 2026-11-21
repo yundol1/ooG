@@ -95,10 +95,7 @@
         <span class="brand-tag">Our Own Group</span>
       </button>
       <div class="header-actions">
-        <button class="icon-btn" id="btn-header-profile" aria-label="내정보 — 내 프로필과 설정">
-          <span class="header-avatar" id="header-avatar">루</span>
-        </button>
-        <button class="icon-btn" id="btn-header-search" aria-label="검색">
+        <button class="icon-btn" id="btn-header-search" aria-label="모임 찾기 — 이름·아지트로 검색">
           <span class="oo-icon-20" aria-hidden="true" data-oog-icon="search"></span>
         </button>
         <button class="icon-btn" id="btn-header-notif" aria-label="알림">
@@ -139,135 +136,64 @@
            모임을 탭해서 들어가면 그 모임 전용 공간(피드·게시판·디엠·내정보 4탭)으로 전환". -->
       <section class="tab-view active" id="tab-home">
 
-        <!-- (1) 바깥 홈 = 내 그룹 허브 (Sprint 32.5 — 네이버 카페형) -->
+        <!-- (1) 바깥 홈 — H1 확정 요소만 남긴다.
+             헤더 · 안내 배너 · 하단 4탭은 앱 셸에 있고, 여기에는 아래 세 영역만 둔다.
+             (모임 찾기는 홈에서 빠져 전용 화면 #find-screen 으로 갔다.) -->
         <div class="group-gallery" id="group-gallery">
-          <!-- 상단 진입 — '모임 찾기 · 모임 둘러보기'를 맨 위로. 바로 아래가 내 그룹. -->
-          <section class="home-top" id="home-top" aria-label="모임 찾기와 만들기">
-            <div class="home-top-row">
-              <button class="home-top-search" id="btn-home-top-search" type="button">
-                <span class="oo-icon-20" aria-hidden="true" data-oog-icon="search"></span>
-                <span class="home-top-search-text">모임 찾기 · 아지트로 찾기</span>
-                <span class="home-top-search-go" aria-hidden="true">찾기</span>
-              </button>
-              <button class="home-top-create" id="btn-home-top-create" type="button" aria-label="새 그룹 만들기">
-                <span class="oo-icon-20" aria-hidden="true" data-oog-icon="plus"></span>
-              </button>
-            </div>
 
-            <!-- 내 아지트 — 이 근처 모임만 골라 보는 가로 칩 -->
-            <div class="home-azit-strip" id="home-azit-strip" role="group" aria-label="내 아지트로 모임 찾기"><!-- JS --></div>
-          </section>
-
-          <!-- 내 그룹 — 네이버 카페 '내 카페' 자리. 원형 아이콘 가로 레일 + 새 글 점 -->
+          <!-- ① 내 그룹 — [내 그룹 전체] · 가입한 모임(대표 이미지 원형·2줄 이름·새 글 점) · [+ 새 모임] -->
           <section class="my-groups" id="my-groups" aria-labelledby="my-groups-title">
             <div class="my-groups-head">
               <h2 class="my-groups-title" id="my-groups-title">내 그룹</h2>
               <span class="my-groups-sub" id="my-groups-sub"></span>
-              <button class="my-groups-more" id="btn-my-groups-more" type="button">전체보기
+              <button class="my-groups-more" id="btn-my-groups-more" type="button">전체 보기
                 <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronRight"></span>
               </button>
             </div>
             <div class="my-groups-rail" id="my-groups-rail" aria-live="polite"><!-- JS --></div>
           </section>
 
-          <div class="gallery-head">
-            <div class="gallery-head-text">
-              <h2 class="gallery-title" id="gallery-title">내 그룹 전체</h2>
-              <p class="gallery-sub" id="gallery-sub"></p>
+          <!-- ② 추천 그룹 — 가입하지 않은 모임만 · 칩 3개 · 2열 이미지 카드(박스 없이) -->
+          <section class="home-recommend" id="home-recommend" aria-labelledby="home-recommend-title">
+            <div class="home-recommend-head">
+              <div class="home-recommend-head-text">
+                <h3 class="home-recommend-title" id="home-recommend-title">추천 그룹</h3>
+                <p class="home-recommend-sub" id="home-recommend-sub"></p>
+              </div>
+              <button class="home-recommend-more" id="btn-home-recommend-more" type="button">더 보기
+                <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronRight"></span>
+              </button>
             </div>
-          </div>
-          <!-- Sprint 17 — 갤러리 정렬(최근 활동순 · 가나다순 · 내가 모임장) -->
-          <!-- Sprint 28.5 — 가입 직후 프로필 사진 안내 카드(가입 흐름에서 사진 질문을 뺐다) -->
-          <button class="home-photo-guide" id="home-photo-guide" type="button" hidden>
-            <span class="home-photo-guide-face" aria-hidden="true" data-oog-icon="person"></span>
-            <span class="home-photo-guide-text">
-              <strong>프로필 사진 추가하기</strong>
-              <span>사진을 올리면 이웃이 알아봐요</span>
-            </span>
-            <span class="home-photo-guide-cta" aria-hidden="true">추가</span>
-          </button>
-
-          <!-- Sprint 28.5 — 이번 주 내 모임 일정(가로 스크롤) · 없으면 추천 모임 -->
-          <section class="home-week" id="home-week" aria-labelledby="home-week-title" hidden>
-            <div class="home-week-head">
-              <h3 class="home-week-title" id="home-week-title">이번 주 내 모임 일정</h3>
-              <span class="home-week-sub" id="home-week-sub"></span>
-            </div>
-            <div class="home-week-rail" id="home-week-rail"><!-- JS --></div>
+            <div class="home-recommend-chips" id="home-recommend-chips" role="group" aria-label="추천 그룹 순서"><!-- JS --></div>
+            <div class="home-recommend-grid" id="home-recommend-grid" aria-live="polite"><!-- JS --></div>
           </section>
 
-          <div class="gallery-sort" id="gallery-sort" role="group" aria-label="갤러리 정렬"><!-- JS --></div>
-          <div class="gallery-grid" id="group-gallery-grid" aria-live="polite"><!-- JS --></div>
-          <div class="gallery-empty" id="group-gallery-empty" hidden><!-- JS --></div>
-
-          <!-- Sprint 23 — '추천 모임' + '모임 둘러보기'를 **하나의 통합 영역**으로.
-               11/16 23:47 사용자: "홈 탭에서 추천 모임과 모임 둘러보기를 하나로 합쳐줘.
-               위쪽은 추천 모임을 왼쪽에서 오른쪽으로 가로 슬라이드로, 바로 아래에
-               검색·분류·정렬·2열 카드·더 보기가 이어지게." -->
-          <section class="home-discover" id="home-discover" aria-labelledby="home-discover-title">
-            <div class="home-discover-head">
-              <h3 class="home-discover-title" id="home-discover-title">모임 찾기</h3>
-            </div>
-
-            <div class="home-recommend" id="home-recommend" aria-labelledby="home-recommend-title">
-              <div class="home-recommend-head">
-                <div class="home-recommend-head-text">
-                  <h4 class="home-recommend-title" id="home-recommend-title">추천 그룹</h4>
-                  <p class="home-recommend-sub" id="home-recommend-sub"></p>
-                </div>
-                <button class="home-recommend-taste" id="btn-home-recommend-taste" type="button">취미 다시 고르기</button>
-              </div>
-              <div class="home-recommend-grid" id="home-recommend-grid" aria-live="polite"><!-- JS --></div>
-            </div>
-
-            <!-- Sprint 32.5 — 추천 일정: '게스트 참여 가능'을 켠 일정만 -->
-            <section class="home-suggest home-suggest-events" id="home-suggest-events" aria-labelledby="home-suggest-events-title">
-              <div class="home-suggest-head">
-                <div class="home-suggest-head-text">
-                  <h4 class="home-suggest-title" id="home-suggest-events-title">추천 일정</h4>
-                  <p class="home-suggest-sub" id="home-suggest-events-sub"></p>
-                </div>
-              </div>
-              <div class="home-suggest-rail" id="home-suggest-events-rail" aria-live="polite"><!-- JS --></div>
-            </section>
-
-            <!-- Sprint 32.5 — 추천 피드: 글을 쓸 때 '추천 피드 공개'를 고른 글만 -->
-            <section class="home-suggest home-suggest-feed" id="home-suggest-feed" aria-labelledby="home-suggest-feed-title">
-              <div class="home-suggest-head">
-                <div class="home-suggest-head-text">
-                  <h4 class="home-suggest-title" id="home-suggest-feed-title">추천 피드</h4>
-                  <p class="home-suggest-sub" id="home-suggest-feed-sub"></p>
-                </div>
-              </div>
-              <div class="home-suggest-feed-list" id="home-suggest-feed-list" aria-live="polite"><!-- JS --></div>
-            </section>
-
-            <div class="home-recommend-more" id="home-recommend-more">
-              <p class="home-recommend-more-title">추천에 없는 모임은 아래에서</p>
-              <p class="home-recommend-more-desc">검색·분야·아지트·정렬로 바로 찾을 수 있어요</p>
-            </div>
-
-            <div class="home-browse" id="home-browse" aria-labelledby="home-browse-title">
-              <div class="home-browse-head">
-                <div class="home-browse-head-text">
-                  <h4 class="home-browse-title" id="home-browse-title">모임 둘러보기</h4>
-                  <p class="home-browse-sub" id="home-browse-sub"></p>
-                </div>
-                <button class="home-browse-new" id="btn-home-browse-new" type="button">모임 만들기</button>
-              </div>
-              <div class="home-browse-search">
-                <span class="home-browse-search-icon" aria-hidden="true" data-oog-icon="search"></span>
-                <input type="search" id="home-browse-search" placeholder="모임 이름이나 아지트로 찾기" aria-label="모임 검색" autocomplete="off">
-                <button class="home-browse-clear hide" id="home-browse-clear" type="button" aria-label="검색어 지우기">&times;</button>
-              </div>
-              <div class="home-browse-azits" id="home-browse-azits" role="group" aria-label="아지트로 거르기"><!-- JS --></div>
-              <div class="home-browse-chips" id="home-browse-chips" role="group" aria-label="취미 대분류"><!-- JS --></div>
-              <div class="home-browse-sorts" id="home-browse-sorts" role="group" aria-label="모임 정렬"><!-- JS --></div>
-              <div class="home-browse-grid" id="home-browse-grid" aria-live="polite"><!-- JS --></div>
-              <div class="home-browse-more-wrap">
-                <button class="home-browse-more" id="btn-home-browse-more" type="button">모임 더 보기</button>
+          <!-- ③ 추천 일정 — '게스트 참여 가능'을 켠 일정만 · 행 + 얇은 구분선 -->
+          <section class="home-suggest home-suggest-events" id="home-suggest-events" aria-labelledby="home-suggest-events-title" hidden>
+            <div class="home-suggest-head">
+              <div class="home-suggest-head-text">
+                <h3 class="home-suggest-title" id="home-suggest-events-title">추천 일정</h3>
+                <p class="home-suggest-sub" id="home-suggest-events-sub"></p>
               </div>
             </div>
+            <div class="home-suggest-list" id="home-suggest-events-list" aria-live="polite"><!-- JS --></div>
+          </section>
+
+          <!-- ④ 추천 피드 — '추천 피드 노출'을 허용한 글만 · 이미지 + 제목 + 모임명 -->
+          <section class="home-suggest home-suggest-feed" id="home-suggest-feed" aria-labelledby="home-suggest-feed-title" hidden>
+            <div class="home-suggest-head">
+              <div class="home-suggest-head-text">
+                <h3 class="home-suggest-title" id="home-suggest-feed-title">추천 피드</h3>
+                <p class="home-suggest-sub" id="home-suggest-feed-sub"></p>
+              </div>
+            </div>
+            <!-- H2 — 인스타그램형: 이미지 · 본문 · 좋아요 · 댓글 · 모임명·아지트, 아래로 무제한 스크롤 -->
+            <div class="home-suggest-feed-list ig-feed" id="home-suggest-feed-list" aria-live="polite"><!-- JS --></div>
+            <div class="ig-feed-status" id="home-feed-status" hidden>
+              <span class="ig-feed-spinner" aria-hidden="true"></span>
+              <p class="ig-feed-status-text" id="home-feed-status-text">불러오는 중</p>
+            </div>
+            <button class="ig-feed-more" id="btn-home-feed-more" type="button" hidden>추천 피드 더 보기</button>
           </section>
 
         </div>
@@ -314,6 +240,76 @@
             </div>
             <div class="home-chat-card" id="home-chat-preview"><!-- JS --></div>
           </section>
+        </div>
+      </section>
+
+      <!-- ========== 0-H1-A. 내 그룹 전체 화면 (H1) ==========
+           '내 그룹' 첫 칸과 '전체 보기'로 들어간다. 맨 위가 내 일정,
+           아래가 가입한 모임 목록이다(홈에 있던 2열 갤러리와 이번 주 일정이 여기로 왔다). -->
+      <section class="subscreen" id="my-groups-screen" hidden aria-label="내 그룹 전체">
+        <header class="subscreen-head">
+          <button class="subscreen-back" id="btn-mygroups-back" type="button" aria-label="홈으로 돌아가기">
+            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
+          </button>
+          <h2 class="subscreen-title" id="mygroups-title">내 그룹 전체</h2>
+          <button class="subscreen-act" id="btn-mygroups-new" type="button">
+            <span class="oo-icon-17" aria-hidden="true" data-oog-icon="plus"></span>새 모임
+          </button>
+        </header>
+        <div class="subscreen-body" id="mygroups-body">
+          <!-- 내 일정 — 홈의 '이번 주 내 모임 일정' 카드가 이 화면 상단으로 이동 -->
+          <section class="mygroups-week" id="mygroups-week" aria-labelledby="mygroups-week-title">
+            <div class="mygroups-week-head">
+              <h3 class="mygroups-week-title" id="mygroups-week-title">내 일정</h3>
+              <span class="mygroups-week-sub" id="mygroups-week-sub"></span>
+            </div>
+            <div class="mygroups-week-list" id="mygroups-week-list" aria-live="polite"><!-- JS --></div>
+          </section>
+
+          <div class="mygroups-list-head">
+            <h3 class="mygroups-list-title">가입한 모임 <span class="section-count" id="mygroups-count">0</span></h3>
+          </div>
+          <div class="group-card-grid" id="mygroups-list" aria-live="polite"><!-- JS --></div>
+          <div class="mygroups-empty" id="mygroups-empty" hidden><!-- JS --></div>
+        </div>
+      </section>
+
+      <!-- ========== 0-H1-B. 모임 찾기 전용 화면 (H1) ==========
+           홈에서 모임 찾기·모임 둘러보기를 빼고 여기로 모았다.
+           헤더 검색 아이콘과 추천 그룹 '더 보기'로 들어온다. -->
+      <section class="subscreen" id="find-screen" hidden aria-label="모임 찾기">
+        <header class="subscreen-head find-head">
+          <button class="subscreen-back" id="btn-find-back" type="button" aria-label="홈으로 돌아가기">
+            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
+          </button>
+          <div class="subscreen-search">
+            <span class="subscreen-search-icon" aria-hidden="true" data-oog-icon="search"></span>
+            <input type="search" id="find-search" placeholder="모임 이름이나 아지트로 찾기" aria-label="모임 검색" autocomplete="off">
+            <button class="subscreen-search-clear hide" id="find-search-clear" type="button" aria-label="검색어 지우기">&times;</button>
+          </div>
+        </header>
+        <div class="subscreen-body" id="find-body">
+          <!-- H2 — 지역(시·도/시·군·구) · 아지트 필터. 누르면 시트에서 목록으로만 고른다. -->
+          <div class="find-filter-bar">
+            <button class="find-filter-btn" id="btn-find-region" type="button" aria-haspopup="dialog">
+              <span class="find-filter-kicker">지역</span>
+              <span class="find-filter-value" id="find-region-label">전체</span>
+              <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronDown"></span>
+            </button>
+            <button class="find-filter-btn" id="btn-find-hangout" type="button" aria-haspopup="dialog">
+              <span class="find-filter-kicker">아지트</span>
+              <span class="find-filter-value" id="find-hangout-label">전체</span>
+              <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronDown"></span>
+            </button>
+            <button class="text-btn find-filter-reset hide" id="btn-find-reset" type="button">초기화</button>
+          </div>
+          <div class="find-cats" id="find-cats" role="group" aria-label="취미 대분류"><!-- JS --></div>
+          <div class="find-sorts" id="find-sorts" role="group" aria-label="모임 정렬"><!-- JS --></div>
+          <p class="find-sub" id="find-sub"></p>
+          <div class="group-card-grid" id="find-grid" aria-live="polite"><!-- JS --></div>
+          <div class="find-more-wrap">
+            <button class="find-more" id="btn-find-more" type="button">모임 더 보기</button>
+          </div>
         </div>
       </section>
 
@@ -594,6 +590,12 @@
            11/17 00:30 루키 님: "바깥 탭에 내 프로필 탭 추가 + 공개 이미지 4장 / 비밀앨범 4장".
            · 공개 앨범은 누구나 보고, 비밀앨범은 1:1 대화방에서 공개한 상대만 본다. -->
       <section class="tab-view" id="tab-myprofile">
+        <!-- H1 — 홈에 있던 '프로필 사진 추가' 안내 카드를 이 화면 맨 위 한 줄로 옮겼다. -->
+        <button class="myprofile-photo-line" id="myprofile-photo-line" type="button" hidden>
+          <span class="myprofile-photo-line-face" aria-hidden="true" data-oog-icon="person"></span>
+          <span class="myprofile-photo-line-text">사진을 올리면 이웃이 알아봐요</span>
+          <span class="myprofile-photo-line-cta" aria-hidden="true">프로필 사진 추가</span>
+        </button>
         <div class="myprofile-head" id="myprofile-head">
           <div class="myprofile-avatar" id="myprofile-avatar">
             <span class="avatar-letter" id="myprofile-avatar-letter">나</span>
@@ -666,7 +668,7 @@
         <div class="sheet-grabber"></div>
         <div class="composer-header">
           <button class="text-btn ghost" id="btn-composer-cancel">취소</button>
-          <h3 class="composer-title">새 게시물</h3>
+          <h3 class="composer-title" id="composer-title">새 게시물</h3>
           <button class="btn-publish" id="btn-publish" disabled>게시</button>
         </div>
         <div class="composer-body">
@@ -720,17 +722,15 @@
             <div class="caption-counter"><span id="caption-count">0</span> / 500</div>
           </div>
 
-          <!-- Sprint 32.5 — 추천 피드 공개 (기본 꺼짐: 모임 밖 사람도 보는 자리) -->
-          <div class="feed-optin" id="composer-recommend-row">
+          <!-- Sprint 32.5 — 추천 피드 공개 (H3: 체크박스 · 기본 꺼짐 · 올린 뒤 수정에서도 바꿀 수 있음) -->
+          <label class="feed-optin optin-row" id="composer-recommend-row" for="composer-recommend-check">
             <span class="feed-optin-text">
-              <span class="feed-optin-title">추천 피드에도 보여주기</span>
-              <span class="feed-optin-desc">홈 '추천 피드'에 올라가요. 켜지 않으면 이 모임 안에서만 보여요.</span>
+              <span class="feed-optin-title">추천 피드에 노출해도 괜찮아요</span>
+              <span class="feed-optin-desc">홈 '추천 피드'에 올라가요. 체크하지 않으면 이 모임 안에서만 보여요.</span>
             </span>
-            <button class="switch-toggle" id="composer-recommend-toggle" role="switch" aria-checked="false"
-                    aria-label="추천 피드에도 보여주기" type="button">
-              <span class="switch-knob" aria-hidden="true"></span>
-            </button>
-          </div>
+            <input type="checkbox" class="optin-check" id="composer-recommend-check"
+                   aria-label="추천 피드에 노출해도 괜찮아요">
+          </label>
         </div>
       </div>
     </div>
@@ -872,23 +872,29 @@
         <div class="sheet-grabber"></div>
         <div class="composer-header wizard-header">
           <button class="text-btn ghost" id="btn-create-group-cancel">취소</button>
-          <h3 class="composer-title">새 그룹 만들기</h3>
+          <h3 class="composer-title">새 모임 만들기</h3>
           <button class="btn-publish" id="btn-create-group-submit">다음</button>
         </div>
 
         <div class="wizard-progress">
           <div class="wizard-track" id="create-group-progress" role="progressbar"
-               aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" aria-label="만들기 단계">
+               aria-valuemin="1" aria-valuemax="6" aria-valuenow="1" aria-label="만들기 단계">
             <span class="wizard-seg"></span><span class="wizard-seg"></span><span class="wizard-seg"></span>
-            <span class="wizard-seg"></span><span class="wizard-seg"></span>
+            <span class="wizard-seg"></span><span class="wizard-seg"></span><span class="wizard-seg"></span>
           </div>
-          <p class="wizard-step" id="create-group-step-label">1 / 5 · 이름</p>
+          <p class="wizard-step" id="create-group-step-label">1 / 6 · 이름</p>
           <h4 class="wizard-step-title" id="create-group-step-title">모임 이름을 정해 주세요</h4>
           <p class="wizard-step-desc" id="create-group-step-desc">이름과 한 줄 소개면 충분해요. 나머지는 다음 단계에서 하나씩 물을게요.</p>
         </div>
 
+        <!-- H2 — 중간에 나가도 이어 쓸 수 있게 임시저장(localStorage)해 두고, 새로 시작할 수 있다. -->
+        <div class="wizard-resume" id="create-group-resume" hidden>
+          <p class="wizard-resume-text">쓰던 모임이 있어 이어서 열었어요</p>
+          <button class="text-btn" id="btn-create-group-restart" type="button">새로 시작</button>
+        </div>
+
         <div class="composer-body wizard-body">
-          <!-- 1. 이름 -->
+          <!-- 1. 이름 · 한 줄 소개 -->
           <section class="wizard-panel" data-create-step="1">
             <div class="field-group">
               <label class="field-label" for="create-group-name">모임명 <span class="field-hint">2~30자</span></label>
@@ -900,10 +906,33 @@
             </div>
           </section>
 
-          <!-- 2. 대표 이미지 -->
+          <!-- 2. 취미 — 대분류 → 세부, 직접 입력도 허용 -->
           <section class="wizard-panel" data-create-step="2" hidden>
+            <div class="create-cat-row" id="create-group-cats" role="group" aria-label="취미 대분류"><!-- JS --></div>
+            <div class="composer-tag-list" id="create-group-hobbies"><!-- JS --></div>
+            <div class="hobby-custom hobby-custom-inline" data-hobby-custom-scope="group">
+              <div class="hobby-custom-row">
+                <input class="hobby-custom-input" data-hobby-custom-input="group" type="text" maxlength="12"
+                       placeholder="목록에 없으면 직접 쓰기 (예: 파쿠르)" autocomplete="off">
+                <button class="hobby-custom-add" data-hobby-custom-add="group" type="button">추가</button>
+              </div>
+            </div>
+            <p class="wizard-picked" id="create-group-hobby-picked" aria-live="polite"></p>
+          </section>
+
+          <!-- 3. 대표 이미지 — 한 번 크롭해 1:1 원형용 + 4:3 카드용을 함께 만든다 -->
+          <section class="wizard-panel" data-create-step="3" hidden>
             <div class="cover-pick">
-              <div class="cover-pick-preview" id="create-group-cover-preview" aria-live="polite"><!-- JS --></div>
+              <div class="cover-pick-previews">
+                <div class="cover-preview-item">
+                  <div class="cover-pick-preview is-circle" id="create-group-cover-circle" aria-live="polite"><!-- JS --></div>
+                  <span class="cover-preview-label">원형용 1:1</span>
+                </div>
+                <div class="cover-preview-item">
+                  <div class="cover-pick-preview is-card" id="create-group-cover-preview" aria-live="polite"><!-- JS --></div>
+                  <span class="cover-preview-label">카드용 4:3</span>
+                </div>
+              </div>
               <div class="cover-pick-actions">
                 <label class="cover-pick-btn" for="create-group-cover-album">
                   <span class="oo-icon-17" aria-hidden="true" data-oog-icon="image"></span>앨범에서
@@ -915,50 +944,91 @@
                 <input type="file" id="create-group-cover-camera" accept="image/*" capture="environment" hidden>
                 <button class="cover-pick-btn ghost" id="btn-create-group-cover-remove" type="button" hidden>지우기</button>
               </div>
-              <p class="cover-pick-note" id="create-group-cover-note">긴 변 720px JPEG로 줄여 저장해요. 사진은 이 기기에만 저장되고 밖으로 나가지 않아요.</p>
+              <p class="cover-pick-note">사진은 한 번만 잘라 원형(1:1)과 카드(4:3)로 함께 만들어요. 위치 정보(EXIF)는 지우고 다시 저장해요.</p>
             </div>
 
-            <p class="wizard-panel-lead">사진이 없으면 기본 아이콘으로 정해요.</p>
+            <!-- 크롭 — 고른 사진을 끌어 옮기고 확대로 맞춘다 -->
+            <div class="cover-crop" id="create-group-crop" hidden>
+              <div class="cover-crop-stage" id="create-group-crop-stage">
+                <img id="create-group-crop-img" alt="대표 사진 자르기" draggable="false">
+                <span class="cover-crop-frame" aria-hidden="true"></span>
+              </div>
+              <div class="cover-crop-controls">
+                <label class="cover-crop-zoom-label" for="create-group-crop-zoom">확대</label>
+                <input type="range" id="create-group-crop-zoom" min="100" max="300" step="5" value="100" aria-label="사진 확대">
+                <div class="cover-crop-actions btn-pair">
+                  <button class="btn-secondary" id="btn-create-group-crop-cancel" type="button">취소</button>
+                  <button class="btn-primary" id="btn-create-group-crop-apply" type="button">이 영역으로</button>
+                </div>
+              </div>
+            </div>
+
+            <p class="wizard-panel-lead">사진이 없으면 기본 커버 8종 중 하나로 정해요.</p>
             <div class="cover-preset-grid" id="create-group-cover-presets" role="group" aria-label="기본 대표 이미지"><!-- JS --></div>
           </section>
 
-          <!-- 3. 아지트 -->
-          <section class="wizard-panel" data-create-step="3" hidden>
+          <!-- 4. 활동 지역 — 시·도 → 시·군·구 (목록에서만, 직접 입력 없음) -->
+          <section class="wizard-panel" data-create-step="4" hidden>
+            <div class="region-pick">
+              <div class="region-pick-row" id="create-group-region-sido" role="group" aria-label="시·도"><!-- JS --></div>
+              <div class="region-pick-grid" id="create-group-region-sigungu" role="group" aria-label="시·군·구"><!-- JS --></div>
+            </div>
+            <p class="wizard-picked" id="create-group-region-picked" aria-live="polite"></p>
+          </section>
+
+          <!-- 5. 아지트 — 역·대학교·랜드마크 1~3곳 (직접 입력 없음) -->
+          <section class="wizard-panel" data-create-step="5" hidden>
             <div class="azit-search">
               <span class="azit-search-icon" aria-hidden="true" data-oog-icon="search"></span>
-              <input type="search" id="create-group-azit-search" placeholder="역·학교·동네 이름으로 찾기" aria-label="아지트 검색" autocomplete="off">
+              <input type="search" id="create-group-azit-search" placeholder="역·학교·랜드마크 이름으로 찾기" aria-label="아지트 검색" autocomplete="off">
               <button class="azit-search-clear hide" id="create-group-azit-clear" type="button" aria-label="검색어 지우기">&times;</button>
             </div>
-            <div class="azit-areas" id="create-group-azit-areas" role="group" aria-label="권역"><!-- JS --></div>
-            <p class="azit-chosen" id="create-group-azit-chosen"><!-- JS --></p>
+            <p class="wizard-panel-lead" id="create-group-hangout-lead"></p>
+            <div class="azit-chosen" id="create-group-azit-chosen"><!-- JS --></div>
             <div class="azit-list" id="create-group-azit-list" aria-live="polite"><!-- JS --></div>
           </section>
 
-          <!-- 4. 취미 -->
-          <section class="wizard-panel" data-create-step="4" hidden>
-            <p class="wizard-panel-lead">이 모임의 취미를 하나 골라 주세요. 색과 아이콘이 아지트 목록에서 이 모임을 구분해 줘요.</p>
-            <div class="composer-tag-list" id="create-group-hobbies"><!-- JS --></div>
-          </section>
-
-          <!-- 5. 운영 -->
-          <section class="wizard-panel" data-create-step="5" hidden>
-            <div class="field-group">
-              <label class="field-label" for="create-group-meet">정기 모임 일시 <span class="field-hint">선택</span></label>
-              <input type="text" class="text-input" id="create-group-meet" maxlength="24" autocomplete="off" placeholder="예: 토 08:00 · 주말 반개">
-            </div>
+          <!-- 6. 공개 설정과 확인 -->
+          <section class="wizard-panel" data-create-step="6" hidden>
             <div class="field-group">
               <label class="field-label">가입 방식 <span class="field-hint">나중에 바꿀 수 있어요</span></label>
               <div class="composer-tag-list" id="create-group-privacy"><!-- JS --></div>
             </div>
-            <div class="field-group">
-              <label class="field-label">나이 제한</label>
-              <div class="composer-tag-list" id="create-group-age"><!-- JS --></div>
+
+            <div class="wizard-ops">
+              <!-- H4 — 나이 제한은 4개 칩이 아니라 **19~99세 듀얼 레인지 슬라이더**로 고른다.
+                   양끝이면 '제한 없음'. 끌면 위쪽 문구가 실시간으로 바뀌고, 요약에도 바로 반영된다. -->
+              <div class="field-group">
+                <span class="field-label" id="create-group-age-title">나이 제한 <span class="field-hint">끌어서 범위를 정해요</span></span>
+                <div class="age-range" id="create-group-age" data-age-slider="wizard"
+                     role="group" aria-labelledby="create-group-age-title">
+                  <div class="age-range-head">
+                    <span class="age-range-label" id="create-group-age-label" data-age-readout="1" aria-live="polite">제한 없음</span>
+                    <button class="age-range-clear" id="btn-create-group-age-clear" type="button"
+                            data-age-clear="1" aria-label="나이 조건 없음" hidden>나이 조건 없음</button>
+                  </div>
+                  <div class="age-range-track">
+                    <span class="age-range-fill" id="create-group-age-fill" data-age-fill="1" aria-hidden="true"></span>
+                    <input class="age-range-input" id="create-group-age-min" type="range" min="19" max="99" step="1" value="19"
+                           aria-label="최소 나이" data-age-min>
+                    <input class="age-range-input" id="create-group-age-max" type="range" min="19" max="99" step="1" value="99"
+                           aria-label="최대 나이" data-age-max>
+                  </div>
+                  <div class="age-range-foot" aria-hidden="true"><span>19세</span><span>99세</span></div>
+                </div>
+                <p class="policy-hint">양끝이면 나이 제한이 없어요. 나이를 모르는 신청자는 막지 않아요.</p>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="create-group-question">가입 질문 <span class="field-hint">승인제일 때 신청자에게 물어요</span></label>
+                <div class="composer-tag-list" id="create-group-question-presets"><!-- JS --></div>
+                <input type="text" class="text-input" id="create-group-question" maxlength="60" autocomplete="off" placeholder="예: 취미 구력이나 선호 요일을 적어주세요!">
+                <p class="policy-hint">비워두면 기본 질문을 씁니다. 질문은 모임 설정에서 더 바꿀 수 있어요.</p>
+              </div>
             </div>
-            <div class="field-group">
-              <label class="field-label" for="create-group-question">가입 질문 <span class="field-hint">승인제일 때 신청자에게 물어요</span></label>
-              <div class="composer-tag-list" id="create-group-question-presets"><!-- JS --></div>
-              <input type="text" class="text-input" id="create-group-question" maxlength="60" autocomplete="off" placeholder="예: 취미 구력이나 선호 요일을 적어주세요!">
-              <p class="policy-hint">비워두면 기본 질문을 씁니다. 질문은 모임 설정에서 더 바꿀 수 있어요.</p>
+
+            <div class="wizard-summary-wrap">
+              <h5 class="wizard-summary-title">이렇게 만들어요</h5>
+              <dl class="wizard-summary" id="create-group-summary" aria-live="polite"><!-- JS --></dl>
             </div>
           </section>
         </div>
@@ -967,6 +1037,56 @@
           <button class="wizard-prev" id="btn-create-group-prev" type="button">이전</button>
           <p class="wizard-foot-hint" id="create-group-foot-hint"></p>
         </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 8-B. 모임 찾기 · 지역 선택 (H2) ==================== -->
+    <div class="modal-overlay" id="find-region-modal" role="dialog" aria-modal="true" aria-label="지역 선택">
+      <div class="modal-sheet region-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-find-region" aria-label="닫기">&times;</button>
+        <div class="filter-head">
+          <h2 class="sheet-title">지역</h2>
+          <p class="filter-current" id="find-region-current">전체 지역</p>
+        </div>
+        <div class="region-sheet-body">
+          <div class="region-pick-row" id="find-region-sido" role="group" aria-label="시·도"><!-- JS --></div>
+          <div class="region-pick-grid" id="find-region-sigungu" role="group" aria-label="시·군·구"><!-- JS --></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 8-C. 모임 찾기 · 아지트 선택 (H2) ==================== -->
+    <div class="modal-overlay" id="find-hangout-modal" role="dialog" aria-modal="true" aria-label="아지트 선택">
+      <div class="modal-sheet region-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-find-hangout" aria-label="닫기">&times;</button>
+        <div class="filter-head">
+          <h2 class="sheet-title">아지트</h2>
+          <p class="filter-current" id="find-hangout-current">전체 아지트</p>
+        </div>
+        <div class="azit-search">
+          <span class="azit-search-icon" aria-hidden="true" data-oog-icon="search"></span>
+          <input type="search" id="find-hangout-search" placeholder="역·학교·랜드마크 이름으로 찾기" aria-label="아지트 검색" autocomplete="off">
+          <button class="azit-search-clear hide" id="find-hangout-clear" type="button" aria-label="검색어 지우기">&times;</button>
+        </div>
+        <div class="azit-list" id="find-hangout-list" aria-live="polite"><!-- JS --></div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 8-D. 추천 피드 댓글 (H2) ==================== -->
+    <div class="modal-overlay" id="feed-comment-modal" role="dialog" aria-modal="true" aria-label="댓글">
+      <div class="modal-sheet feed-comment-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-feed-comment" aria-label="닫기">&times;</button>
+        <h2 class="sheet-title">댓글</h2>
+        <p class="feed-comment-sub" id="feed-comment-sub"></p>
+        <div class="feed-comment-list" id="feed-comment-list" aria-live="polite"><!-- JS --></div>
+        <form class="feed-comment-form" id="feed-comment-form">
+          <input class="feed-comment-input" id="feed-comment-input" type="text" maxlength="300"
+                 placeholder="댓글 달기" autocomplete="off" aria-label="댓글 입력">
+          <button class="feed-comment-send" id="btn-feed-comment-send" type="submit">게시</button>
+        </form>
       </div>
     </div>
 

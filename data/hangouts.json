@@ -1,0 +1,2020 @@
+{
+ "version": 2,
+ "updatedAt": "2026-11-21",
+ "kinds": [
+  "station",
+  "university",
+  "landmark"
+ ],
+ "hangouts": [
+  {
+   "id": "azit-gwanghwamun",
+   "name": "광화문역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jongno",
+   "lat": 37.572,
+   "lng": 126.977,
+   "aliases": [
+    "광화문",
+    "5호선",
+    "시청"
+   ]
+  },
+  {
+   "id": "azit-gyeongbokgung",
+   "name": "경복궁역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jongno",
+   "lat": 37.576,
+   "lng": 126.974,
+   "aliases": [
+    "경복궁",
+    "3호선"
+   ]
+  },
+  {
+   "id": "azit-jongno3ga",
+   "name": "종로3가역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jongno",
+   "lat": 37.571,
+   "lng": 126.992,
+   "aliases": [
+    "종로",
+    "익선동",
+    "1호선",
+    "3호선"
+   ]
+  },
+  {
+   "id": "azit-bukchon",
+   "name": "북촌한옥마을",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jongno",
+   "lat": 37.582,
+   "lng": 126.985,
+   "aliases": [
+    "북촌",
+    "한옥마을",
+    "삼청동"
+   ]
+  },
+  {
+   "id": "azit-daehakro",
+   "name": "대학로",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jongno",
+   "lat": 37.582,
+   "lng": 127.002,
+   "aliases": [
+    "대학로",
+    "혜화",
+    "연극"
+   ]
+  },
+  {
+   "id": "azit-seoulstation",
+   "name": "서울역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jung",
+   "lat": 37.555,
+   "lng": 126.972,
+   "aliases": [
+    "서울역",
+    "1호선",
+    "4호선",
+    "KTX"
+   ]
+  },
+  {
+   "id": "azit-myeongdong",
+   "name": "명동역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jung",
+   "lat": 37.563,
+   "lng": 126.985,
+   "aliases": [
+    "명동",
+    "4호선"
+   ]
+  },
+  {
+   "id": "azit-euljiro",
+   "name": "을지로입구역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jung",
+   "lat": 37.566,
+   "lng": 126.982,
+   "aliases": [
+    "을지로",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-ddp",
+   "name": "동대문역사문화공원역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jung",
+   "lat": 37.565,
+   "lng": 127.007,
+   "aliases": [
+    "동대문",
+    "DDP",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-dongguk",
+   "name": "동국대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jung",
+   "lat": 37.558,
+   "lng": 127.0,
+   "aliases": [
+    "동국대",
+    "충무로"
+   ]
+  },
+  {
+   "id": "azit-yongsan",
+   "name": "용산역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yongsan",
+   "lat": 37.529,
+   "lng": 126.965,
+   "aliases": [
+    "용산",
+    "1호선",
+    "아이파크몰"
+   ]
+  },
+  {
+   "id": "azit-itaewon",
+   "name": "이태원역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yongsan",
+   "lat": 37.534,
+   "lng": 126.995,
+   "aliases": [
+    "이태원",
+    "6호선",
+    "경리단"
+   ]
+  },
+  {
+   "id": "azit-hangangjin",
+   "name": "한강진역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yongsan",
+   "lat": 37.539,
+   "lng": 127.001,
+   "aliases": [
+    "한강진",
+    "6호선",
+    "리움"
+   ]
+  },
+  {
+   "id": "azit-namsan",
+   "name": "남산공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yongsan",
+   "lat": 37.551,
+   "lng": 126.988,
+   "aliases": [
+    "남산",
+    "N서울타워",
+    "케이블카"
+   ]
+  },
+  {
+   "id": "azit-seongsu",
+   "name": "성수역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongdong",
+   "lat": 37.544,
+   "lng": 127.056,
+   "aliases": [
+    "성수",
+    "성수동",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-seoulforest",
+   "name": "서울숲",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongdong",
+   "lat": 37.544,
+   "lng": 127.037,
+   "aliases": [
+    "서울숲",
+    "뚝섬",
+    "수변공원"
+   ]
+  },
+  {
+   "id": "azit-wangsimni",
+   "name": "왕십리역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongdong",
+   "lat": 37.561,
+   "lng": 127.037,
+   "aliases": [
+    "왕십리",
+    "2호선",
+    "5호선",
+    "경의중앙"
+   ]
+  },
+  {
+   "id": "azit-ttukseom",
+   "name": "뚝섬한강공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongdong",
+   "lat": 37.53,
+   "lng": 127.067,
+   "aliases": [
+    "뚝섬",
+    "한강공원",
+    "자벌레"
+   ]
+  },
+  {
+   "id": "azit-kondae",
+   "name": "건대입구역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwangjin",
+   "lat": 37.54,
+   "lng": 127.07,
+   "aliases": [
+    "건대",
+    "건국대",
+    "2호선",
+    "7호선"
+   ]
+  },
+  {
+   "id": "azit-childrenpark",
+   "name": "어린이대공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwangjin",
+   "lat": 37.548,
+   "lng": 127.074,
+   "aliases": [
+    "어린이대공원",
+    "능동"
+   ]
+  },
+  {
+   "id": "azit-jayang",
+   "name": "자양한강공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwangjin",
+   "lat": 37.527,
+   "lng": 127.086,
+   "aliases": [
+    "자양",
+    "한강",
+    "구의"
+   ]
+  },
+  {
+   "id": "azit-cheongnyangni",
+   "name": "청량리역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongdaemun",
+   "lat": 37.58,
+   "lng": 127.047,
+   "aliases": [
+    "청량리",
+    "1호선",
+    "경의중앙",
+    "KTX"
+   ]
+  },
+  {
+   "id": "azit-janghanpyeong",
+   "name": "장한평역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongdaemun",
+   "lat": 37.561,
+   "lng": 127.065,
+   "aliases": [
+    "장한평",
+    "5호선"
+   ]
+  },
+  {
+   "id": "azit-kyunghee",
+   "name": "경희대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongdaemun",
+   "lat": 37.596,
+   "lng": 127.052,
+   "aliases": [
+    "경희대",
+    "회기"
+   ]
+  },
+  {
+   "id": "azit-uos",
+   "name": "서울시립대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongdaemun",
+   "lat": 37.584,
+   "lng": 127.059,
+   "aliases": [
+    "시립대",
+    "전농"
+   ]
+  },
+  {
+   "id": "azit-sangbong",
+   "name": "상봉역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jungnang",
+   "lat": 37.596,
+   "lng": 127.085,
+   "aliases": [
+    "상봉",
+    "7호선",
+    "경의중앙",
+    "경춘선"
+   ]
+  },
+  {
+   "id": "azit-mangu",
+   "name": "망우역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-jungnang",
+   "lat": 37.6,
+   "lng": 127.102,
+   "aliases": [
+    "망우",
+    "경의중앙",
+    "경춘선"
+   ]
+  },
+  {
+   "id": "azit-sungshin",
+   "name": "성신여대입구역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongbuk",
+   "lat": 37.593,
+   "lng": 127.016,
+   "aliases": [
+    "성신여대",
+    "4호선",
+    "우이신설"
+   ]
+  },
+  {
+   "id": "azit-anam",
+   "name": "안암역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongbuk",
+   "lat": 37.586,
+   "lng": 127.029,
+   "aliases": [
+    "안암",
+    "고려대",
+    "6호선"
+   ]
+  },
+  {
+   "id": "azit-korea-univ",
+   "name": "고려대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongbuk",
+   "lat": 37.589,
+   "lng": 127.032,
+   "aliases": [
+    "고대",
+    "안암"
+   ]
+  },
+  {
+   "id": "azit-gireum",
+   "name": "길음역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongbuk",
+   "lat": 37.603,
+   "lng": 127.025,
+   "aliases": [
+    "길음",
+    "4호선"
+   ]
+  },
+  {
+   "id": "azit-kookmin",
+   "name": "국민대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongbuk",
+   "lat": 37.61,
+   "lng": 126.997,
+   "aliases": [
+    "국민대",
+    "정릉"
+   ]
+  },
+  {
+   "id": "azit-hansung",
+   "name": "한성대입구역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seongbuk",
+   "lat": 37.588,
+   "lng": 127.006,
+   "aliases": [
+    "한성대",
+    "4호선",
+    "삼선교"
+   ]
+  },
+  {
+   "id": "azit-suyu",
+   "name": "수유역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangbuk",
+   "lat": 37.639,
+   "lng": 127.025,
+   "aliases": [
+    "수유",
+    "4호선"
+   ]
+  },
+  {
+   "id": "azit-ui",
+   "name": "우이동",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangbuk",
+   "lat": 37.663,
+   "lng": 127.011,
+   "aliases": [
+    "우이동",
+    "북한산",
+    "솔밭공원"
+   ]
+  },
+  {
+   "id": "azit-dobongsan",
+   "name": "도봉산역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dobong",
+   "lat": 37.689,
+   "lng": 127.046,
+   "aliases": [
+    "도봉산",
+    "1호선",
+    "7호선"
+   ]
+  },
+  {
+   "id": "azit-changdong",
+   "name": "창동역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dobong",
+   "lat": 37.653,
+   "lng": 127.047,
+   "aliases": [
+    "창동",
+    "1호선",
+    "4호선"
+   ]
+  },
+  {
+   "id": "azit-nowon",
+   "name": "노원역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-nowon",
+   "lat": 37.655,
+   "lng": 127.061,
+   "aliases": [
+    "노원",
+    "4호선",
+    "7호선"
+   ]
+  },
+  {
+   "id": "azit-gongneung",
+   "name": "공릉역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-nowon",
+   "lat": 37.626,
+   "lng": 127.073,
+   "aliases": [
+    "공릉",
+    "7호선"
+   ]
+  },
+  {
+   "id": "azit-seoultech",
+   "name": "서울과학기술대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-nowon",
+   "lat": 37.632,
+   "lng": 127.077,
+   "aliases": [
+    "과기대",
+    "공릉"
+   ]
+  },
+  {
+   "id": "azit-kwangwoon",
+   "name": "광운대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-nowon",
+   "lat": 37.62,
+   "lng": 127.058,
+   "aliases": [
+    "광운대",
+    "월계"
+   ]
+  },
+  {
+   "id": "azit-yonsinnae",
+   "name": "연신내역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-eunpyeong",
+   "lat": 37.619,
+   "lng": 126.921,
+   "aliases": [
+    "연신내",
+    "3호선",
+    "6호선"
+   ]
+  },
+  {
+   "id": "azit-bulgwang",
+   "name": "불광역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-eunpyeong",
+   "lat": 37.61,
+   "lng": 126.929,
+   "aliases": [
+    "불광",
+    "3호선",
+    "6호선"
+   ]
+  },
+  {
+   "id": "azit-eunpyeonghanok",
+   "name": "은평한옥마을",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-eunpyeong",
+   "lat": 37.638,
+   "lng": 126.94,
+   "aliases": [
+    "한옥마을",
+    "진관동"
+   ]
+  },
+  {
+   "id": "azit-sinchon",
+   "name": "신촌역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seodaemun",
+   "lat": 37.555,
+   "lng": 126.937,
+   "aliases": [
+    "신촌",
+    "2호선",
+    "연세대"
+   ]
+  },
+  {
+   "id": "azit-yonsei",
+   "name": "연세대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seodaemun",
+   "lat": 37.559,
+   "lng": 126.942,
+   "aliases": [
+    "연대",
+    "신촌"
+   ]
+  },
+  {
+   "id": "azit-hongje",
+   "name": "홍제역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seodaemun",
+   "lat": 37.589,
+   "lng": 126.944,
+   "aliases": [
+    "홍제",
+    "3호선"
+   ]
+  },
+  {
+   "id": "azit-ewha",
+   "name": "이대역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seodaemun",
+   "lat": 37.557,
+   "lng": 126.946,
+   "aliases": [
+    "이대",
+    "이화여대",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-hongdae",
+   "name": "홍대입구역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-mapo",
+   "lat": 37.557,
+   "lng": 126.924,
+   "aliases": [
+    "홍대",
+    "2호선",
+    "공항철도"
+   ]
+  },
+  {
+   "id": "azit-hapjeong",
+   "name": "합정역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-mapo",
+   "lat": 37.55,
+   "lng": 126.914,
+   "aliases": [
+    "합정",
+    "2호선",
+    "6호선"
+   ]
+  },
+  {
+   "id": "azit-sangsu",
+   "name": "상수역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-mapo",
+   "lat": 37.548,
+   "lng": 126.923,
+   "aliases": [
+    "상수",
+    "6호선"
+   ]
+  },
+  {
+   "id": "azit-mangwon",
+   "name": "망원한강공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-mapo",
+   "lat": 37.555,
+   "lng": 126.896,
+   "aliases": [
+    "망원",
+    "한강",
+    "한강공원"
+   ]
+  },
+  {
+   "id": "azit-hongik",
+   "name": "홍익대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-mapo",
+   "lat": 37.55,
+   "lng": 126.925,
+   "aliases": [
+    "홍익대",
+    "홍대"
+   ]
+  },
+  {
+   "id": "azit-gongdeok",
+   "name": "공덕역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-mapo",
+   "lat": 37.544,
+   "lng": 126.951,
+   "aliases": [
+    "공덕",
+    "5호선",
+    "6호선",
+    "공항철도"
+   ]
+  },
+  {
+   "id": "azit-worldcup",
+   "name": "월드컵공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-mapo",
+   "lat": 37.568,
+   "lng": 126.883,
+   "aliases": [
+    "월드컵",
+    "하늘공원",
+    "난지"
+   ]
+  },
+  {
+   "id": "azit-mokdong",
+   "name": "목동역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yangcheon",
+   "lat": 37.526,
+   "lng": 126.875,
+   "aliases": [
+    "목동",
+    "5호선"
+   ]
+  },
+  {
+   "id": "azit-omokgyo",
+   "name": "오목교역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yangcheon",
+   "lat": 37.524,
+   "lng": 126.875,
+   "aliases": [
+    "오목교",
+    "5호선"
+   ]
+  },
+  {
+   "id": "azit-magong",
+   "name": "마곡나루역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangseo",
+   "lat": 37.567,
+   "lng": 126.827,
+   "aliases": [
+    "마곡",
+    "9호선",
+    "공항철도"
+   ]
+  },
+  {
+   "id": "azit-gimpoairport",
+   "name": "김포공항역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangseo",
+   "lat": 37.562,
+   "lng": 126.801,
+   "aliases": [
+    "김포공항",
+    "5호선",
+    "9호선",
+    "공항철도"
+   ]
+  },
+  {
+   "id": "azit-botanic",
+   "name": "서울식물원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangseo",
+   "lat": 37.569,
+   "lng": 126.833,
+   "aliases": [
+    "식물원",
+    "마곡",
+    "호수공원"
+   ]
+  },
+  {
+   "id": "azit-hwagok",
+   "name": "화곡역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangseo",
+   "lat": 37.541,
+   "lng": 126.84,
+   "aliases": [
+    "화곡",
+    "5호선"
+   ]
+  },
+  {
+   "id": "azit-gurodigital",
+   "name": "구로디지털단지역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-guro",
+   "lat": 37.485,
+   "lng": 126.902,
+   "aliases": [
+    "구디",
+    "구로디지털",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-sindorim",
+   "name": "신도림역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-guro",
+   "lat": 37.508,
+   "lng": 126.891,
+   "aliases": [
+    "신도림",
+    "1호선",
+    "2호선",
+    "디큐브시티"
+   ]
+  },
+  {
+   "id": "azit-gocheok",
+   "name": "고척스카이돔",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-guro",
+   "lat": 37.498,
+   "lng": 126.867,
+   "aliases": [
+    "고척",
+    "야구장",
+    "스카이돔"
+   ]
+  },
+  {
+   "id": "azit-gasan",
+   "name": "가산디지털단지역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-geumcheon",
+   "lat": 37.481,
+   "lng": 126.882,
+   "aliases": [
+    "가산",
+    "구디",
+    "1호선",
+    "7호선"
+   ]
+  },
+  {
+   "id": "azit-doksan",
+   "name": "독산역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-geumcheon",
+   "lat": 37.466,
+   "lng": 126.887,
+   "aliases": [
+    "독산",
+    "1호선"
+   ]
+  },
+  {
+   "id": "azit-yeouido",
+   "name": "여의도한강공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yeongdeungpo",
+   "lat": 37.528,
+   "lng": 126.933,
+   "aliases": [
+    "여의도",
+    "한강",
+    "한강공원"
+   ]
+  },
+  {
+   "id": "azit-yeongdeungpo",
+   "name": "영등포역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yeongdeungpo",
+   "lat": 37.516,
+   "lng": 126.907,
+   "aliases": [
+    "영등포",
+    "1호선",
+    "타임스퀘어"
+   ]
+  },
+  {
+   "id": "azit-dangsan",
+   "name": "당산역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yeongdeungpo",
+   "lat": 37.534,
+   "lng": 126.902,
+   "aliases": [
+    "당산",
+    "2호선",
+    "9호선"
+   ]
+  },
+  {
+   "id": "azit-mullae",
+   "name": "문래역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yeongdeungpo",
+   "lat": 37.512,
+   "lng": 126.9,
+   "aliases": [
+    "문래",
+    "문래창작촌",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-noryangjin",
+   "name": "노량진역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.514,
+   "lng": 126.942,
+   "aliases": [
+    "노량진",
+    "1호선",
+    "9호선"
+   ]
+  },
+  {
+   "id": "azit-sadang",
+   "name": "왕십리역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.476,
+   "lng": 126.981,
+   "aliases": [
+    "왕십리",
+    "2호선",
+    "4호선"
+   ]
+  },
+  {
+   "id": "azit-boramae",
+   "name": "뚝섬한강공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.492,
+   "lng": 126.925,
+   "aliases": [
+    "뚝섬한강",
+    "공원",
+    "신대방"
+   ]
+  },
+  {
+   "id": "azit-cau",
+   "name": "중앙대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.504,
+   "lng": 126.957,
+   "aliases": [
+    "중앙대",
+    "옥수"
+   ]
+  },
+  {
+   "id": "azit-ssu",
+   "name": "숭실대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.496,
+   "lng": 126.957,
+   "aliases": [
+    "숭실대",
+    "상도"
+   ]
+  },
+  {
+   "id": "azit-gyodae",
+   "name": "교대역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seocho",
+   "lat": 37.493,
+   "lng": 126.994,
+   "aliases": [
+    "교대",
+    "2호선",
+    "3호선"
+   ]
+  },
+  {
+   "id": "azit-banpo",
+   "name": "반포한강공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seocho",
+   "lat": 37.512,
+   "lng": 126.995,
+   "aliases": [
+    "반포",
+    "한강",
+    "달빛무지개분수"
+   ]
+  },
+  {
+   "id": "azit-yangjae",
+   "name": "양재시민의숲",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seocho",
+   "lat": 37.47,
+   "lng": 127.038,
+   "aliases": [
+    "양재",
+    "시민의숲",
+    "매헌"
+   ]
+  },
+  {
+   "id": "azit-seocho-art",
+   "name": "예술의전당",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seocho",
+   "lat": 37.479,
+   "lng": 126.981,
+   "aliases": [
+    "예술의전당",
+    "서초",
+    "공연"
+   ]
+  },
+  {
+   "id": "azit-gangnam",
+   "name": "강남역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangnam",
+   "lat": 37.498,
+   "lng": 127.028,
+   "aliases": [
+    "강남",
+    "2호선",
+    "신분당선"
+   ]
+  },
+  {
+   "id": "azit-seolleung",
+   "name": "선릉역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangnam",
+   "lat": 37.504,
+   "lng": 127.049,
+   "aliases": [
+    "선릉",
+    "2호선",
+    "수인분당"
+   ]
+  },
+  {
+   "id": "azit-sinnonhyeon",
+   "name": "신논현역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangnam",
+   "lat": 37.504,
+   "lng": 127.024,
+   "aliases": [
+    "신논현",
+    "9호선",
+    "논현"
+   ]
+  },
+  {
+   "id": "azit-coex",
+   "name": "코엑스",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangnam",
+   "lat": 37.512,
+   "lng": 127.059,
+   "aliases": [
+    "코엑스",
+    "삼성동",
+    "별마당"
+   ]
+  },
+  {
+   "id": "azit-jamsil",
+   "name": "잠실역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-songpa",
+   "lat": 37.513,
+   "lng": 127.1,
+   "aliases": [
+    "잠실",
+    "2호선",
+    "8호선",
+    "롯데월드"
+   ]
+  },
+  {
+   "id": "azit-seokchon",
+   "name": "석촌호수",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-songpa",
+   "lat": 37.508,
+   "lng": 127.104,
+   "aliases": [
+    "석촌",
+    "호수",
+    "잠실"
+   ]
+  },
+  {
+   "id": "azit-munjeong",
+   "name": "문정역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-songpa",
+   "lat": 37.486,
+   "lng": 127.122,
+   "aliases": [
+    "문정",
+    "8호선",
+    "가든파이브"
+   ]
+  },
+  {
+   "id": "azit-olympic",
+   "name": "올림픽공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-songpa",
+   "lat": 37.52,
+   "lng": 127.121,
+   "aliases": [
+    "올림픽공원",
+    "몽촌",
+    "방이"
+   ]
+  },
+  {
+   "id": "azit-cheonho",
+   "name": "천호역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangdong",
+   "lat": 37.538,
+   "lng": 127.123,
+   "aliases": [
+    "천호",
+    "5호선",
+    "8호선"
+   ]
+  },
+  {
+   "id": "azit-gangdonggu",
+   "name": "강동구청역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangdong",
+   "lat": 37.531,
+   "lng": 127.127,
+   "aliases": [
+    "강동구청",
+    "8호선"
+   ]
+  },
+  {
+   "id": "azit-gwangnaru",
+   "name": "광나루한강공원",
+   "kind": "landmark",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangdong",
+   "lat": 37.545,
+   "lng": 127.118,
+   "aliases": [
+    "광나루",
+    "한강",
+    "자전거"
+   ]
+  },
+  {
+   "id": "azit-ilsanlake",
+   "name": "일산호수공원",
+   "kind": "landmark",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-goyang",
+   "lat": 37.658,
+   "lng": 126.77,
+   "aliases": [
+    "일산",
+    "호수공원",
+    "고양"
+   ]
+  },
+  {
+   "id": "azit-baekseok",
+   "name": "백석역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-goyang",
+   "lat": 37.641,
+   "lng": 126.787,
+   "aliases": [
+    "백석",
+    "3호선",
+    "일산"
+   ]
+  },
+  {
+   "id": "azit-kintex",
+   "name": "킨텍스",
+   "kind": "landmark",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-goyang",
+   "lat": 37.668,
+   "lng": 126.748,
+   "aliases": [
+    "킨텍스",
+    "일산",
+    "전시장"
+   ]
+  },
+  {
+   "id": "azit-unjeong",
+   "name": "운정역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-paju",
+   "lat": 37.725,
+   "lng": 126.767,
+   "aliases": [
+    "운정",
+    "파주",
+    "경의중앙"
+   ]
+  },
+  {
+   "id": "azit-geumchon",
+   "name": "금촌역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-paju",
+   "lat": 37.766,
+   "lng": 126.774,
+   "aliases": [
+    "금촌",
+    "파주",
+    "경의중앙"
+   ]
+  },
+  {
+   "id": "azit-sau",
+   "name": "사우역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-gimpo",
+   "lat": 37.719,
+   "lng": 126.719,
+   "aliases": [
+    "사우",
+    "김포",
+    "김포골드라인"
+   ]
+  },
+  {
+   "id": "azit-janggi",
+   "name": "장기역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-gimpo",
+   "lat": 37.652,
+   "lng": 126.671,
+   "aliases": [
+    "장기",
+    "김포",
+    "김포골드라인"
+   ]
+  },
+  {
+   "id": "azit-bucheon",
+   "name": "부천역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-bucheon",
+   "lat": 37.484,
+   "lng": 126.783,
+   "aliases": [
+    "부천",
+    "1호선",
+    "부천대"
+   ]
+  },
+  {
+   "id": "azit-sangdong",
+   "name": "상동역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-bucheon",
+   "lat": 37.506,
+   "lng": 126.752,
+   "aliases": [
+    "상동",
+    "7호선",
+    "부천시청"
+   ]
+  },
+  {
+   "id": "azit-suwon",
+   "name": "수원역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.266,
+   "lng": 127.0,
+   "aliases": [
+    "수원",
+    "1호선",
+    "수인분당"
+   ]
+  },
+  {
+   "id": "azit-gwanggyo",
+   "name": "광교호수공원",
+   "kind": "landmark",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.285,
+   "lng": 127.057,
+   "aliases": [
+    "광교",
+    "호수공원",
+    "경기대"
+   ]
+  },
+  {
+   "id": "azit-suwonhwaseong",
+   "name": "수원화성",
+   "kind": "landmark",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.287,
+   "lng": 127.014,
+   "aliases": [
+    "화성",
+    "수원",
+    "행궁동"
+   ]
+  },
+  {
+   "id": "azit-skkku",
+   "name": "성균관대역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.3,
+   "lng": 126.971,
+   "aliases": [
+    "성균관대",
+    "율전",
+    "1호선"
+   ]
+  },
+  {
+   "id": "azit-dongtan",
+   "name": "동탄역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-hwaseong",
+   "lat": 37.201,
+   "lng": 127.096,
+   "aliases": [
+    "동탄",
+    "SRT",
+    "GTX"
+   ]
+  },
+  {
+   "id": "azit-byeongjeom",
+   "name": "병점역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-hwaseong",
+   "lat": 37.207,
+   "lng": 127.033,
+   "aliases": [
+    "병점",
+    "1호선"
+   ]
+  },
+  {
+   "id": "azit-pyeongtaek",
+   "name": "평택역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-pyeongtaek",
+   "lat": 36.992,
+   "lng": 127.085,
+   "aliases": [
+    "평택",
+    "1호선",
+    "SRT"
+   ]
+  },
+  {
+   "id": "azit-jije",
+   "name": "평택지제역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-pyeongtaek",
+   "lat": 37.018,
+   "lng": 127.07,
+   "aliases": [
+    "지제",
+    "평택",
+    "SRT"
+   ]
+  },
+  {
+   "id": "azit-suji",
+   "name": "수지구청역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-yongin",
+   "lat": 37.322,
+   "lng": 127.095,
+   "aliases": [
+    "수지",
+    "신분당선",
+    "용인"
+   ]
+  },
+  {
+   "id": "azit-giheung",
+   "name": "기흥역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-yongin",
+   "lat": 37.275,
+   "lng": 127.115,
+   "aliases": [
+    "기흥",
+    "용인",
+    "에버라인"
+   ]
+  },
+  {
+   "id": "azit-everland",
+   "name": "에버랜드",
+   "kind": "landmark",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-yongin",
+   "lat": 37.294,
+   "lng": 127.203,
+   "aliases": [
+    "에버랜드",
+    "용인",
+    "놀이공원"
+   ]
+  },
+  {
+   "id": "azit-pangyo",
+   "name": "판교역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-seongnam",
+   "lat": 37.394,
+   "lng": 127.111,
+   "aliases": [
+    "판교",
+    "신분당선",
+    "경강선"
+   ]
+  },
+  {
+   "id": "azit-seohyeon",
+   "name": "서현역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-seongnam",
+   "lat": 37.385,
+   "lng": 127.123,
+   "aliases": [
+    "서현",
+    "분당",
+    "수인분당"
+   ]
+  },
+  {
+   "id": "azit-moran",
+   "name": "모란역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-seongnam",
+   "lat": 37.432,
+   "lng": 127.129,
+   "aliases": [
+    "모란",
+    "성남",
+    "8호선"
+   ]
+  },
+  {
+   "id": "azit-yatap",
+   "name": "야탑역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-seongnam",
+   "lat": 37.411,
+   "lng": 127.128,
+   "aliases": [
+    "야탑",
+    "분당",
+    "수인분당"
+   ]
+  },
+  {
+   "id": "azit-hanam-city",
+   "name": "하남시청역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-hanam",
+   "lat": 37.542,
+   "lng": 127.207,
+   "aliases": [
+    "하남",
+    "5호선",
+    "미사"
+   ]
+  },
+  {
+   "id": "azit-dasan",
+   "name": "다산역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-namyangju",
+   "lat": 37.608,
+   "lng": 127.156,
+   "aliases": [
+    "다산",
+    "남양주",
+    "경의중앙"
+   ]
+  },
+  {
+   "id": "azit-byeollae",
+   "name": "별내역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-namyangju",
+   "lat": 37.642,
+   "lng": 127.127,
+   "aliases": [
+    "별내",
+    "남양주",
+    "경춘선"
+   ]
+  },
+  {
+   "id": "azit-uijeongbu",
+   "name": "의정부역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-uijeongbu",
+   "lat": 37.738,
+   "lng": 127.046,
+   "aliases": [
+    "의정부",
+    "1호선",
+    "의정부경전철"
+   ]
+  },
+  {
+   "id": "azit-hoeryong",
+   "name": "회룡역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-uijeongbu",
+   "lat": 37.724,
+   "lng": 127.047,
+   "aliases": [
+    "회룡",
+    "1호선",
+    "의정부경전철"
+   ]
+  },
+  {
+   "id": "azit-gapyeong",
+   "name": "가평역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-gapyeong",
+   "lat": 37.814,
+   "lng": 127.511,
+   "aliases": [
+    "가평",
+    "경춘선",
+    "남이섬"
+   ]
+  },
+  {
+   "id": "azit-yangpyeong",
+   "name": "양평역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-yangpyeong",
+   "lat": 37.492,
+   "lng": 127.492,
+   "aliases": [
+    "양평",
+    "경의중앙",
+    "두물머리"
+   ]
+  },
+  {
+   "id": "azit-beomgye",
+   "name": "범계역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-anyang",
+   "lat": 37.39,
+   "lng": 126.951,
+   "aliases": [
+    "범계",
+    "평촌",
+    "4호선"
+   ]
+  },
+  {
+   "id": "azit-anyang",
+   "name": "안양역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-anyang",
+   "lat": 37.401,
+   "lng": 126.922,
+   "aliases": [
+    "안양",
+    "1호선"
+   ]
+  },
+  {
+   "id": "azit-seoulgrand",
+   "name": "서울대공원역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-gwacheon",
+   "lat": 37.427,
+   "lng": 127.017,
+   "aliases": [
+    "대공원",
+    "과천",
+    "동물원"
+   ]
+  },
+  {
+   "id": "azit-siheung-city",
+   "name": "시흥시청역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-siheung",
+   "lat": 37.383,
+   "lng": 126.803,
+   "aliases": [
+    "시흥",
+    "서해선",
+    "배곧"
+   ]
+  },
+  {
+   "id": "azit-jungang",
+   "name": "중앙역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-ansan",
+   "lat": 37.316,
+   "lng": 126.838,
+   "aliases": [
+    "중앙",
+    "안산",
+    "4호선"
+   ]
+  },
+  {
+   "id": "azit-hanyang-erica",
+   "name": "한양대에리카",
+   "kind": "university",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-ansan",
+   "lat": 37.3,
+   "lng": 126.835,
+   "aliases": [
+    "한양대",
+    "에리카",
+    "안산"
+   ]
+  },
+  {
+   "id": "azit-gwangmyeong",
+   "name": "광명역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-gwangmyeong",
+   "lat": 37.416,
+   "lng": 126.885,
+   "aliases": [
+    "광명",
+    "KTX",
+    "1호선"
+   ]
+  },
+  {
+   "id": "azit-guri",
+   "name": "구리역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-guri",
+   "lat": 37.603,
+   "lng": 127.143,
+   "aliases": [
+    "구리",
+    "경의중앙",
+    "8호선"
+   ]
+  },
+  {
+   "id": "azit-osan",
+   "name": "오산역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-osan",
+   "lat": 37.146,
+   "lng": 127.067,
+   "aliases": [
+    "오산",
+    "1호선",
+    "SRT"
+   ]
+  },
+  {
+   "id": "azit-incheon",
+   "name": "인천역",
+   "kind": "station",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-jung",
+   "lat": 37.476,
+   "lng": 126.616,
+   "aliases": [
+    "인천",
+    "1호선",
+    "수인분당"
+   ]
+  },
+  {
+   "id": "azit-wolmido",
+   "name": "월미도",
+   "kind": "landmark",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-jung",
+   "lat": 37.476,
+   "lng": 126.596,
+   "aliases": [
+    "월미도",
+    "인천",
+    "바다"
+   ]
+  },
+  {
+   "id": "azit-chinatown",
+   "name": "인천차이나타운",
+   "kind": "landmark",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-jung",
+   "lat": 37.475,
+   "lng": 126.618,
+   "aliases": [
+    "차이나타운",
+    "인천",
+    "송월동"
+   ]
+  },
+  {
+   "id": "azit-dongincheon",
+   "name": "동인천역",
+   "kind": "station",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-dong",
+   "lat": 37.473,
+   "lng": 126.632,
+   "aliases": [
+    "동인천",
+    "1호선"
+   ]
+  },
+  {
+   "id": "azit-juan",
+   "name": "주안역",
+   "kind": "station",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-michuhol",
+   "lat": 37.465,
+   "lng": 126.681,
+   "aliases": [
+    "주안",
+    "1호선",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-inha",
+   "name": "인하대학교",
+   "kind": "university",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-michuhol",
+   "lat": 37.45,
+   "lng": 126.654,
+   "aliases": [
+    "인하대",
+    "용현동"
+   ]
+  },
+  {
+   "id": "azit-songdo",
+   "name": "송도센트럴파크",
+   "kind": "landmark",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-yeonsu",
+   "lat": 37.392,
+   "lng": 126.638,
+   "aliases": [
+    "송도",
+    "센트럴파크",
+    "인천"
+   ]
+  },
+  {
+   "id": "azit-incheon-univ",
+   "name": "인천대학교",
+   "kind": "university",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-yeonsu",
+   "lat": 37.375,
+   "lng": 126.634,
+   "aliases": [
+    "인천대",
+    "송도"
+   ]
+  },
+  {
+   "id": "azit-guweol",
+   "name": "구월동",
+   "kind": "landmark",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-namdong",
+   "lat": 37.45,
+   "lng": 126.701,
+   "aliases": [
+    "구월",
+    "인천",
+    "롯데백화점"
+   ]
+  },
+  {
+   "id": "azit-incheon-cityhall",
+   "name": "인천시청역",
+   "kind": "station",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-namdong",
+   "lat": 37.457,
+   "lng": 126.702,
+   "aliases": [
+    "인천시청",
+    "1호선",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-bupyeong",
+   "name": "부평역",
+   "kind": "station",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-bupyeong",
+   "lat": 37.489,
+   "lng": 126.724,
+   "aliases": [
+    "부평",
+    "1호선",
+    "인천1호선"
+   ]
+  },
+  {
+   "id": "azit-bupyeong-gu",
+   "name": "부평구청역",
+   "kind": "station",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-bupyeong",
+   "lat": 37.507,
+   "lng": 126.721,
+   "aliases": [
+    "부평구청",
+    "7호선",
+    "인천1호선"
+   ]
+  },
+  {
+   "id": "azit-gyeyang",
+   "name": "계양역",
+   "kind": "station",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-gyeyang",
+   "lat": 37.571,
+   "lng": 126.737,
+   "aliases": [
+    "계양",
+    "공항철도",
+    "인천1호선"
+   ]
+  },
+  {
+   "id": "azit-geomam",
+   "name": "검암역",
+   "kind": "station",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-seo",
+   "lat": 37.569,
+   "lng": 126.673,
+   "aliases": [
+    "검암",
+    "공항철도",
+    "인천2호선"
+   ]
+  },
+  {
+   "id": "azit-arabetgil",
+   "name": "아라뱃길",
+   "kind": "landmark",
+   "sidoId": "incheon",
+   "sigunguId": "incheon-seo",
+   "lat": 37.556,
+   "lng": 126.677,
+   "aliases": [
+    "아라뱃길",
+    "인천",
+    "자전거"
+   ]
+  }
+ ]
+}

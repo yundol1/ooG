@@ -223,6 +223,11 @@ const GROUP_DEPUTY_SEED = {
    · 스토리는 **모임 단위**다(groupId). 그 모임 피드 맨 위 스토리 바에만 나온다.
    · 저장은 남겨도 되지만 **읽을 때 24시간이 지난 것은 절대 보이지 않는다**
      (앱을 다시 열었을 때도 만료된 스토리가 되살아나지 않게 pruneExpiredStories 가 정리한다). */
+/* H4 — 모임 나이 제한은 **19~99세 듀얼 레인지 슬라이더**로 고른다(앱의 성인 기준과 같은 아래·위 끝).
+ *      양끝(19~99)이면 '제한 없음'이고, 저장은 ageMin·ageMax 두 숫자 + 옛 코드 호환이자 배지용 ageLimit id. */
+const GROUP_AGE_MIN = 19;
+const GROUP_AGE_MAX = 99;
+
 const STORY_TTL_HOURS = 24;
 const STORY_SEED = [
   {
@@ -788,6 +793,12 @@ const EXPLORE_MEET_STYLES = [
  *  · 모임은 아지트를 하나 고르고, 찾는 사람은 아지트로 가까운 모임을 거른다.
  *  · 좌표·집 주소는 받지 않는다. 이름만 고른다(사생활 보호).
  * ------------------------------------------------------------------------- */
+/* ==== GEO DATA BEGIN (tools/gen_geo_data.py 가 data/*.json 에서 만든 내장본 — 손으로 고치지 말 것) ==== */
+/* 시·도 17곳 · 시·군·구 229곳 · 아지트 150곳 — data/regions.json · data/hangouts.json 과 같은 내용 */
+const GEO_REGIONS = {"version":2,"updatedAt":"2026-11-21","sido":[{"id":"seoul","name":"서울특별시","short":"서울","lat":37.566,"lng":126.978,"sigungu":[{"id":"seoul-jongno","name":"종로구","regionId":"seoul-jongno-junggu","lat":37.573,"lng":126.979},{"id":"seoul-jung","name":"중구","regionId":"seoul-jongno-junggu","lat":37.564,"lng":126.998},{"id":"seoul-yongsan","name":"용산구","regionId":"seoul-mapo-yongsan","lat":37.532,"lng":126.99},{"id":"seoul-seongdong","name":"성동구","regionId":"seoul-seongdong-gwangjin","lat":37.563,"lng":127.037},{"id":"seoul-gwangjin","name":"광진구","regionId":"seoul-seongdong-gwangjin","lat":37.538,"lng":127.082},{"id":"seoul-dongdaemun","name":"동대문구","regionId":"seoul-dongdaemun-seongbuk","lat":37.574,"lng":127.04},{"id":"seoul-jungnang","name":"중랑구","regionId":"seoul-nowon-jungnang","lat":37.606,"lng":127.093},{"id":"seoul-seongbuk","name":"성북구","regionId":"seoul-dongdaemun-seongbuk","lat":37.589,"lng":127.017},{"id":"seoul-gangbuk","name":"강북구","regionId":"seoul-gangbuk-dobong","lat":37.64,"lng":127.026},{"id":"seoul-dobong","name":"도봉구","regionId":"seoul-gangbuk-dobong","lat":37.669,"lng":127.047},{"id":"seoul-nowon","name":"노원구","regionId":"seoul-nowon-jungnang","lat":37.654,"lng":127.057},{"id":"seoul-eunpyeong","name":"은평구","regionId":"seoul-seodaemun-eunpyeong","lat":37.603,"lng":126.929},{"id":"seoul-seodaemun","name":"서대문구","regionId":"seoul-seodaemun-eunpyeong","lat":37.579,"lng":126.937},{"id":"seoul-mapo","name":"마포구","regionId":"seoul-mapo-yongsan","lat":37.566,"lng":126.902},{"id":"seoul-yangcheon","name":"양천구","regionId":"seoul-gangseo-yangcheon","lat":37.517,"lng":126.866},{"id":"seoul-gangseo","name":"강서구","regionId":"seoul-gangseo-yangcheon","lat":37.551,"lng":126.85},{"id":"seoul-guro","name":"구로구","regionId":"seoul-yeongdeungpo-guro-geumcheon","lat":37.495,"lng":126.887},{"id":"seoul-geumcheon","name":"금천구","regionId":"seoul-yeongdeungpo-guro-geumcheon","lat":37.457,"lng":126.895},{"id":"seoul-yeongdeungpo","name":"영등포구","regionId":"seoul-yeongdeungpo-guro-geumcheon","lat":37.526,"lng":126.896},{"id":"seoul-dongjak","name":"동작구","regionId":"seoul-dongjak-gwanak","lat":37.512,"lng":126.939},{"id":"seoul-seocho","name":"서초구","regionId":"seoul-seocho-gangnam","lat":37.484,"lng":127.032},{"id":"seoul-gangnam","name":"강남구","regionId":"seoul-seocho-gangnam","lat":37.517,"lng":127.047},{"id":"seoul-songpa","name":"송파구","regionId":"seoul-gangdong-songpa","lat":37.514,"lng":127.106},{"id":"seoul-gangdong","name":"강동구","regionId":"seoul-gangdong-songpa","lat":37.53,"lng":127.124}]},{"id":"busan","name":"부산광역시","short":"부산","lat":35.18,"lng":129.076,"sigungu":[{"id":"busan-jung","name":"중구","regionId":"gyeongsang-busan"},{"id":"busan-seo","name":"서구","regionId":"gyeongsang-busan"},{"id":"busan-dong","name":"동구","regionId":"gyeongsang-busan"},{"id":"busan-yeongdo","name":"영도구","regionId":"gyeongsang-busan"},{"id":"busan-busanjin","name":"부산진구","regionId":"gyeongsang-busan"},{"id":"busan-dongnae","name":"동래구","regionId":"gyeongsang-busan"},{"id":"busan-nam","name":"남구","regionId":"gyeongsang-busan"},{"id":"busan-buk","name":"북구","regionId":"gyeongsang-busan"},{"id":"busan-haeundae","name":"해운대구","regionId":"gyeongsang-busan"},{"id":"busan-saha","name":"사하구","regionId":"gyeongsang-busan"},{"id":"busan-geumjeong","name":"금정구","regionId":"gyeongsang-busan"},{"id":"busan-gangseo","name":"강서구","regionId":"gyeongsang-busan"},{"id":"busan-yeonje","name":"연제구","regionId":"gyeongsang-busan"},{"id":"busan-suyeong","name":"수영구","regionId":"gyeongsang-busan"},{"id":"busan-sasang","name":"사상구","regionId":"gyeongsang-busan"},{"id":"busan-gijang","name":"기장군","regionId":"gyeongsang-busan"}]},{"id":"daegu","name":"대구광역시","short":"대구","lat":35.871,"lng":128.601,"sigungu":[{"id":"daegu-jung","name":"중구","regionId":"gyeongsang-daegu"},{"id":"daegu-dong","name":"동구","regionId":"gyeongsang-daegu"},{"id":"daegu-seo","name":"서구","regionId":"gyeongsang-daegu"},{"id":"daegu-nam","name":"남구","regionId":"gyeongsang-daegu"},{"id":"daegu-buk","name":"북구","regionId":"gyeongsang-daegu"},{"id":"daegu-suseong","name":"수성구","regionId":"gyeongsang-daegu"},{"id":"daegu-dalseo","name":"달서구","regionId":"gyeongsang-daegu"},{"id":"daegu-dalseong","name":"달성군","regionId":"gyeongsang-daegu"},{"id":"daegu-gunwi","name":"군위군","regionId":"gyeongsang-daegu"}]},{"id":"incheon","name":"인천광역시","short":"인천","lat":37.456,"lng":126.705,"sigungu":[{"id":"incheon-jung","name":"중구","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.474,"lng":126.621},{"id":"incheon-dong","name":"동구","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.474,"lng":126.643},{"id":"incheon-michuhol","name":"미추홀구","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.464,"lng":126.65},{"id":"incheon-yeonsu","name":"연수구","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.418,"lng":126.664},{"id":"incheon-namdong","name":"남동구","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.42,"lng":126.72},{"id":"incheon-bupyeong","name":"부평구","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.507,"lng":126.722},{"id":"incheon-gyeyang","name":"계양구","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.537,"lng":126.738},{"id":"incheon-seo","name":"서구","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.545,"lng":126.676},{"id":"incheon-ganghwa","name":"강화군","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.746,"lng":126.488},{"id":"incheon-ongjin","name":"옹진군","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.447,"lng":126.637}]},{"id":"gwangju","name":"광주광역시","short":"광주","lat":35.16,"lng":126.853,"sigungu":[{"id":"gwangju-dong","name":"동구","regionId":"jeolla-gwangju"},{"id":"gwangju-seo","name":"서구","regionId":"jeolla-gwangju"},{"id":"gwangju-nam","name":"남구","regionId":"jeolla-gwangju"},{"id":"gwangju-buk","name":"북구","regionId":"jeolla-gwangju"},{"id":"gwangju-gwangsan","name":"광산구","regionId":"jeolla-gwangju"}]},{"id":"daejeon","name":"대전광역시","short":"대전","lat":36.35,"lng":127.385,"sigungu":[{"id":"daejeon-dong","name":"동구","regionId":"chungcheong-daejeon"},{"id":"daejeon-jung","name":"중구","regionId":"chungcheong-daejeon"},{"id":"daejeon-seo","name":"서구","regionId":"chungcheong-daejeon"},{"id":"daejeon-yuseong","name":"유성구","regionId":"chungcheong-daejeon"},{"id":"daejeon-daedeok","name":"대덕구","regionId":"chungcheong-daejeon"}]},{"id":"ulsan","name":"울산광역시","short":"울산","lat":35.538,"lng":129.311,"sigungu":[{"id":"ulsan-jung","name":"중구","regionId":"gyeongsang-ulsan"},{"id":"ulsan-nam","name":"남구","regionId":"gyeongsang-ulsan"},{"id":"ulsan-dong","name":"동구","regionId":"gyeongsang-ulsan"},{"id":"ulsan-buk","name":"북구","regionId":"gyeongsang-ulsan"},{"id":"ulsan-ulju","name":"울주군","regionId":"gyeongsang-ulsan"}]},{"id":"sejong","name":"세종특별자치시","short":"세종","lat":36.48,"lng":127.289,"sigungu":[{"id":"sejong-sejong","name":"세종시","regionId":"chungcheong-sejong"}]},{"id":"gyeonggi","name":"경기도","short":"경기","lat":37.264,"lng":127.029,"sigungu":[{"id":"gyeonggi-suwon","name":"수원시","regionId":"gyeonggi-suwon-yongin-uiwang","lat":37.264,"lng":127.029},{"id":"gyeonggi-seongnam","name":"성남시","regionId":"gyeonggi-seongnam-gwangju","lat":37.42,"lng":127.126},{"id":"gyeonggi-uijeongbu","name":"의정부시","regionId":"gyeonggi-uijeongbu-yangju-dongducheon","lat":37.738,"lng":127.034},{"id":"gyeonggi-anyang","name":"안양시","regionId":"gyeonggi-anyang-gunpo-gwacheon","lat":37.392,"lng":126.927},{"id":"gyeonggi-bucheon","name":"부천시","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.503,"lng":126.766},{"id":"gyeonggi-gwangmyeong","name":"광명시","regionId":"gyeonggi-ansan-siheung-gwangmyeong","lat":37.479,"lng":126.865},{"id":"gyeonggi-pyeongtaek","name":"평택시","regionId":"gyeonggi-pyeongtaek-anseong","lat":36.992,"lng":127.113},{"id":"gyeonggi-dongducheon","name":"동두천시","regionId":"gyeonggi-uijeongbu-yangju-dongducheon","lat":37.904,"lng":127.061},{"id":"gyeonggi-ansan","name":"안산시","regionId":"gyeonggi-ansan-siheung-gwangmyeong","lat":37.322,"lng":126.831},{"id":"gyeonggi-goyang","name":"고양시","regionId":"gyeonggi-goyang-paju","lat":37.658,"lng":126.832},{"id":"gyeonggi-gwacheon","name":"과천시","regionId":"gyeonggi-anyang-gunpo-gwacheon","lat":37.429,"lng":126.988},{"id":"gyeonggi-guri","name":"구리시","regionId":"gyeonggi-guri-hanam-namyangju","lat":37.594,"lng":127.13},{"id":"gyeonggi-namyangju","name":"남양주시","regionId":"gyeonggi-guri-hanam-namyangju","lat":37.636,"lng":127.216},{"id":"gyeonggi-osan","name":"오산시","regionId":"gyeonggi-hwaseong-osan","lat":37.152,"lng":127.07},{"id":"gyeonggi-siheung","name":"시흥시","regionId":"gyeonggi-ansan-siheung-gwangmyeong","lat":37.38,"lng":126.803},{"id":"gyeonggi-gunpo","name":"군포시","regionId":"gyeonggi-anyang-gunpo-gwacheon","lat":37.362,"lng":126.935},{"id":"gyeonggi-uiwang","name":"의왕시","regionId":"gyeonggi-suwon-yongin-uiwang","lat":37.345,"lng":126.968},{"id":"gyeonggi-hanam","name":"하남시","regionId":"gyeonggi-guri-hanam-namyangju","lat":37.539,"lng":127.215},{"id":"gyeonggi-yongin","name":"용인시","regionId":"gyeonggi-suwon-yongin-uiwang","lat":37.241,"lng":127.178},{"id":"gyeonggi-paju","name":"파주시","regionId":"gyeonggi-goyang-paju","lat":37.76,"lng":126.78},{"id":"gyeonggi-icheon","name":"이천시","regionId":"gyeonggi-yeoju-icheon","lat":37.272,"lng":127.435},{"id":"gyeonggi-anseong","name":"안성시","regionId":"gyeonggi-pyeongtaek-anseong","lat":37.008,"lng":127.28},{"id":"gyeonggi-gimpo","name":"김포시","regionId":"gyeonggi-incheon-bucheon-gimpo","lat":37.615,"lng":126.716},{"id":"gyeonggi-hwaseong","name":"화성시","regionId":"gyeonggi-hwaseong-osan","lat":37.2,"lng":126.831},{"id":"gyeonggi-gwangju","name":"광주시","regionId":"gyeonggi-seongnam-gwangju","lat":37.429,"lng":127.255},{"id":"gyeonggi-yangju","name":"양주시","regionId":"gyeonggi-uijeongbu-yangju-dongducheon","lat":37.785,"lng":127.046},{"id":"gyeonggi-pocheon","name":"포천시","regionId":"gyeonggi-pocheon-yeoncheon","lat":37.895,"lng":127.201},{"id":"gyeonggi-yeoju","name":"여주시","regionId":"gyeonggi-yeoju-icheon","lat":37.298,"lng":127.637},{"id":"gyeonggi-yeoncheon","name":"연천군","regionId":"gyeonggi-pocheon-yeoncheon","lat":38.097,"lng":127.075},{"id":"gyeonggi-gapyeong","name":"가평군","regionId":"gyeonggi-yangpyeong-gapyeong","lat":37.831,"lng":127.51},{"id":"gyeonggi-yangpyeong","name":"양평군","regionId":"gyeonggi-yangpyeong-gapyeong","lat":37.492,"lng":127.488}]},{"id":"gangwon","name":"강원특별자치도","short":"강원","lat":37.881,"lng":127.73,"sigungu":[{"id":"gangwon-chuncheon","name":"춘천시","regionId":"gangwon-chuncheon"},{"id":"gangwon-wonju","name":"원주시","regionId":"gangwon-wonju"},{"id":"gangwon-gangneung","name":"강릉시","regionId":"gangwon-gangneung"},{"id":"gangwon-donghae","name":"동해시","regionId":"gangwon-etc"},{"id":"gangwon-taebaek","name":"태백시","regionId":"gangwon-etc"},{"id":"gangwon-sokcho","name":"속초시","regionId":"gangwon-sokcho"},{"id":"gangwon-samcheok","name":"삼척시","regionId":"gangwon-etc"},{"id":"gangwon-hongcheon","name":"홍천군","regionId":"gangwon-etc"},{"id":"gangwon-hoengseong","name":"횡성군","regionId":"gangwon-etc"},{"id":"gangwon-yeongwol","name":"영월군","regionId":"gangwon-etc"},{"id":"gangwon-pyeongchang","name":"평창군","regionId":"gangwon-etc"},{"id":"gangwon-jeongseon","name":"정선군","regionId":"gangwon-etc"},{"id":"gangwon-cheorwon","name":"철원군","regionId":"gangwon-etc"},{"id":"gangwon-hwacheon","name":"화천군","regionId":"gangwon-etc"},{"id":"gangwon-yanggu","name":"양구군","regionId":"gangwon-etc"},{"id":"gangwon-inje","name":"인제군","regionId":"gangwon-etc"},{"id":"gangwon-goseong","name":"고성군","regionId":"gangwon-etc"},{"id":"gangwon-yangyang","name":"양양군","regionId":"gangwon-etc"}]},{"id":"chungbuk","name":"충청북도","short":"충북","lat":36.642,"lng":127.489,"sigungu":[{"id":"chungbuk-cheongju","name":"청주시","regionId":"chungcheong-cheongju"},{"id":"chungbuk-chungju","name":"충주시","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-jecheon","name":"제천시","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-boeun","name":"보은군","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-okcheon","name":"옥천군","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-yeongdong","name":"영동군","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-jeungpyeong","name":"증평군","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-jincheon","name":"진천군","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-goesan","name":"괴산군","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-eumseong","name":"음성군","regionId":"chungcheong-chungbuk"},{"id":"chungbuk-danyang","name":"단양군","regionId":"chungcheong-chungbuk"}]},{"id":"chungnam","name":"충청남도","short":"충남","lat":36.601,"lng":126.661,"sigungu":[{"id":"chungnam-cheonan","name":"천안시","regionId":"chungcheong-cheonan-asan"},{"id":"chungnam-gongju","name":"공주시","regionId":"chungcheong-chungnam"},{"id":"chungnam-boryeong","name":"보령시","regionId":"chungcheong-chungnam"},{"id":"chungnam-asan","name":"아산시","regionId":"chungcheong-cheonan-asan"},{"id":"chungnam-seosan","name":"서산시","regionId":"chungcheong-chungnam"},{"id":"chungnam-nonsan","name":"논산시","regionId":"chungcheong-chungnam"},{"id":"chungnam-gyeryong","name":"계룡시","regionId":"chungcheong-chungnam"},{"id":"chungnam-dangjin","name":"당진시","regionId":"chungcheong-chungnam"},{"id":"chungnam-geumsan","name":"금산군","regionId":"chungcheong-chungnam"},{"id":"chungnam-buyeo","name":"부여군","regionId":"chungcheong-chungnam"},{"id":"chungnam-seocheon","name":"서천군","regionId":"chungcheong-chungnam"},{"id":"chungnam-cheongyang","name":"청양군","regionId":"chungcheong-chungnam"},{"id":"chungnam-hongseong","name":"홍성군","regionId":"chungcheong-chungnam"},{"id":"chungnam-yesan","name":"예산군","regionId":"chungcheong-chungnam"},{"id":"chungnam-taean","name":"태안군","regionId":"chungcheong-chungnam"}]},{"id":"jeonbuk","name":"전북특별자치도","short":"전북","lat":35.824,"lng":127.148,"sigungu":[{"id":"jeonbuk-jeonju","name":"전주시","regionId":"jeolla-jeonju"},{"id":"jeonbuk-gunsan","name":"군산시","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-iksan","name":"익산시","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-jeongeup","name":"정읍시","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-namwon","name":"남원시","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-gimje","name":"김제시","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-wanju","name":"완주군","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-jinan","name":"진안군","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-muju","name":"무주군","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-jangsu","name":"장수군","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-imsil","name":"임실군","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-sunchang","name":"순창군","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-gochang","name":"고창군","regionId":"jeolla-jeonbuk"},{"id":"jeonbuk-buan","name":"부안군","regionId":"jeolla-jeonbuk"}]},{"id":"jeonnam","name":"전라남도","short":"전남","lat":34.99,"lng":126.482,"sigungu":[{"id":"jeonnam-mokpo","name":"목포시","regionId":"jeolla-jeonnam"},{"id":"jeonnam-yeosu","name":"여수시","regionId":"jeolla-jeonnam"},{"id":"jeonnam-suncheon","name":"순천시","regionId":"jeolla-jeonnam"},{"id":"jeonnam-naju","name":"나주시","regionId":"jeolla-jeonnam"},{"id":"jeonnam-gwangyang","name":"광양시","regionId":"jeolla-jeonnam"},{"id":"jeonnam-damyang","name":"담양군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-gokseong","name":"곡성군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-gurye","name":"구례군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-goheung","name":"고흥군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-boseong","name":"보성군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-hwasun","name":"화순군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-jangheung","name":"장흥군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-gangjin","name":"강진군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-haenam","name":"해남군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-yeongam","name":"영암군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-muan","name":"무안군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-hampyeong","name":"함평군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-yeonggwang","name":"영광군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-jangseong","name":"장성군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-wando","name":"완도군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-jindo","name":"진도군","regionId":"jeolla-jeonnam"},{"id":"jeonnam-sinan","name":"신안군","regionId":"jeolla-jeonnam"}]},{"id":"gyeongbuk","name":"경상북도","short":"경북","lat":36.568,"lng":128.729,"sigungu":[{"id":"gyeongbuk-pohang","name":"포항시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-gyeongju","name":"경주시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-gimcheon","name":"김천시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-andong","name":"안동시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-gumi","name":"구미시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-yeongju","name":"영주시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-yeongcheon","name":"영천시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-sangju","name":"상주시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-mungyeong","name":"문경시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-gyeongsan","name":"경산시","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-uiseong","name":"의성군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-cheongsong","name":"청송군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-yeongyang","name":"영양군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-yeongdeok","name":"영덕군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-cheongdo","name":"청도군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-goryeong","name":"고령군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-seongju","name":"성주군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-chilgok","name":"칠곡군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-yecheon","name":"예천군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-bonghwa","name":"봉화군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-uljin","name":"울진군","regionId":"gyeongsang-gyeongbuk"},{"id":"gyeongbuk-ulleung","name":"울릉군","regionId":"gyeongsang-gyeongbuk"}]},{"id":"gyeongnam","name":"경상남도","short":"경남","lat":35.228,"lng":128.681,"sigungu":[{"id":"gyeongnam-changwon","name":"창원시","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-jinju","name":"진주시","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-tongyeong","name":"통영시","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-sacheon","name":"사천시","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-gimhae","name":"김해시","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-miryang","name":"밀양시","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-geoje","name":"거제시","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-yangsan","name":"양산시","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-uiryeong","name":"의령군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-haman","name":"함안군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-changnyeong","name":"창녕군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-goseong","name":"고성군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-namhae","name":"남해군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-hadong","name":"하동군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-sancheong","name":"산청군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-hamyang","name":"함양군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-geochang","name":"거창군","regionId":"gyeongsang-gyeongnam"},{"id":"gyeongnam-hapcheon","name":"합천군","regionId":"gyeongsang-gyeongnam"}]},{"id":"jeju","name":"제주특별자치도","short":"제주","lat":33.5,"lng":126.531,"sigungu":[{"id":"jeju-jejusi","name":"제주시","regionId":"jeju"},{"id":"jeju-seogwipo","name":"서귀포시","regionId":"jeju"}]}]};
+const GEO_HANGOUTS = {"version":2,"updatedAt":"2026-11-21","kinds":["station","university","landmark"],"hangouts":[{"id":"azit-gwanghwamun","name":"광화문역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jongno","lat":37.572,"lng":126.977,"aliases":["광화문","5호선","시청"]},{"id":"azit-gyeongbokgung","name":"경복궁역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jongno","lat":37.576,"lng":126.974,"aliases":["경복궁","3호선"]},{"id":"azit-jongno3ga","name":"종로3가역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jongno","lat":37.571,"lng":126.992,"aliases":["종로","익선동","1호선","3호선"]},{"id":"azit-bukchon","name":"북촌한옥마을","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-jongno","lat":37.582,"lng":126.985,"aliases":["북촌","한옥마을","삼청동"]},{"id":"azit-daehakro","name":"대학로","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-jongno","lat":37.582,"lng":127.002,"aliases":["대학로","혜화","연극"]},{"id":"azit-seoulstation","name":"서울역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jung","lat":37.555,"lng":126.972,"aliases":["서울역","1호선","4호선","KTX"]},{"id":"azit-myeongdong","name":"명동역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jung","lat":37.563,"lng":126.985,"aliases":["명동","4호선"]},{"id":"azit-euljiro","name":"을지로입구역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jung","lat":37.566,"lng":126.982,"aliases":["을지로","2호선"]},{"id":"azit-ddp","name":"동대문역사문화공원역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jung","lat":37.565,"lng":127.007,"aliases":["동대문","DDP","2호선"]},{"id":"azit-dongguk","name":"동국대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-jung","lat":37.558,"lng":127.0,"aliases":["동국대","충무로"]},{"id":"azit-yongsan","name":"용산역","kind":"station","sidoId":"seoul","sigunguId":"seoul-yongsan","lat":37.529,"lng":126.965,"aliases":["용산","1호선","아이파크몰"]},{"id":"azit-itaewon","name":"이태원역","kind":"station","sidoId":"seoul","sigunguId":"seoul-yongsan","lat":37.534,"lng":126.995,"aliases":["이태원","6호선","경리단"]},{"id":"azit-hangangjin","name":"한강진역","kind":"station","sidoId":"seoul","sigunguId":"seoul-yongsan","lat":37.539,"lng":127.001,"aliases":["한강진","6호선","리움"]},{"id":"azit-namsan","name":"남산공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-yongsan","lat":37.551,"lng":126.988,"aliases":["남산","N서울타워","케이블카"]},{"id":"azit-seongsu","name":"성수역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seongdong","lat":37.544,"lng":127.056,"aliases":["성수","성수동","2호선"]},{"id":"azit-seoulforest","name":"서울숲","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-seongdong","lat":37.544,"lng":127.037,"aliases":["서울숲","뚝섬","수변공원"]},{"id":"azit-wangsimni","name":"왕십리역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seongdong","lat":37.561,"lng":127.037,"aliases":["왕십리","2호선","5호선","경의중앙"]},{"id":"azit-ttukseom","name":"뚝섬한강공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-seongdong","lat":37.53,"lng":127.067,"aliases":["뚝섬","한강공원","자벌레"]},{"id":"azit-kondae","name":"건대입구역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gwangjin","lat":37.54,"lng":127.07,"aliases":["건대","건국대","2호선","7호선"]},{"id":"azit-childrenpark","name":"어린이대공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-gwangjin","lat":37.548,"lng":127.074,"aliases":["어린이대공원","능동"]},{"id":"azit-jayang","name":"자양한강공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-gwangjin","lat":37.527,"lng":127.086,"aliases":["자양","한강","구의"]},{"id":"azit-cheongnyangni","name":"청량리역","kind":"station","sidoId":"seoul","sigunguId":"seoul-dongdaemun","lat":37.58,"lng":127.047,"aliases":["청량리","1호선","경의중앙","KTX"]},{"id":"azit-janghanpyeong","name":"장한평역","kind":"station","sidoId":"seoul","sigunguId":"seoul-dongdaemun","lat":37.561,"lng":127.065,"aliases":["장한평","5호선"]},{"id":"azit-kyunghee","name":"경희대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-dongdaemun","lat":37.596,"lng":127.052,"aliases":["경희대","회기"]},{"id":"azit-uos","name":"서울시립대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-dongdaemun","lat":37.584,"lng":127.059,"aliases":["시립대","전농"]},{"id":"azit-sangbong","name":"상봉역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jungnang","lat":37.596,"lng":127.085,"aliases":["상봉","7호선","경의중앙","경춘선"]},{"id":"azit-mangu","name":"망우역","kind":"station","sidoId":"seoul","sigunguId":"seoul-jungnang","lat":37.6,"lng":127.102,"aliases":["망우","경의중앙","경춘선"]},{"id":"azit-sungshin","name":"성신여대입구역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seongbuk","lat":37.593,"lng":127.016,"aliases":["성신여대","4호선","우이신설"]},{"id":"azit-anam","name":"안암역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seongbuk","lat":37.586,"lng":127.029,"aliases":["안암","고려대","6호선"]},{"id":"azit-korea-univ","name":"고려대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-seongbuk","lat":37.589,"lng":127.032,"aliases":["고대","안암"]},{"id":"azit-gireum","name":"길음역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seongbuk","lat":37.603,"lng":127.025,"aliases":["길음","4호선"]},{"id":"azit-kookmin","name":"국민대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-seongbuk","lat":37.61,"lng":126.997,"aliases":["국민대","정릉"]},{"id":"azit-hansung","name":"한성대입구역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seongbuk","lat":37.588,"lng":127.006,"aliases":["한성대","4호선","삼선교"]},{"id":"azit-suyu","name":"수유역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangbuk","lat":37.639,"lng":127.025,"aliases":["수유","4호선"]},{"id":"azit-ui","name":"우이동","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-gangbuk","lat":37.663,"lng":127.011,"aliases":["우이동","북한산","솔밭공원"]},{"id":"azit-dobongsan","name":"도봉산역","kind":"station","sidoId":"seoul","sigunguId":"seoul-dobong","lat":37.689,"lng":127.046,"aliases":["도봉산","1호선","7호선"]},{"id":"azit-changdong","name":"창동역","kind":"station","sidoId":"seoul","sigunguId":"seoul-dobong","lat":37.653,"lng":127.047,"aliases":["창동","1호선","4호선"]},{"id":"azit-nowon","name":"노원역","kind":"station","sidoId":"seoul","sigunguId":"seoul-nowon","lat":37.655,"lng":127.061,"aliases":["노원","4호선","7호선"]},{"id":"azit-gongneung","name":"공릉역","kind":"station","sidoId":"seoul","sigunguId":"seoul-nowon","lat":37.626,"lng":127.073,"aliases":["공릉","7호선"]},{"id":"azit-seoultech","name":"서울과학기술대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-nowon","lat":37.632,"lng":127.077,"aliases":["과기대","공릉"]},{"id":"azit-kwangwoon","name":"광운대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-nowon","lat":37.62,"lng":127.058,"aliases":["광운대","월계"]},{"id":"azit-yonsinnae","name":"연신내역","kind":"station","sidoId":"seoul","sigunguId":"seoul-eunpyeong","lat":37.619,"lng":126.921,"aliases":["연신내","3호선","6호선"]},{"id":"azit-bulgwang","name":"불광역","kind":"station","sidoId":"seoul","sigunguId":"seoul-eunpyeong","lat":37.61,"lng":126.929,"aliases":["불광","3호선","6호선"]},{"id":"azit-eunpyeonghanok","name":"은평한옥마을","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-eunpyeong","lat":37.638,"lng":126.94,"aliases":["한옥마을","진관동"]},{"id":"azit-sinchon","name":"신촌역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seodaemun","lat":37.555,"lng":126.937,"aliases":["신촌","2호선","연세대"]},{"id":"azit-yonsei","name":"연세대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-seodaemun","lat":37.559,"lng":126.942,"aliases":["연대","신촌"]},{"id":"azit-hongje","name":"홍제역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seodaemun","lat":37.589,"lng":126.944,"aliases":["홍제","3호선"]},{"id":"azit-ewha","name":"이대역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seodaemun","lat":37.557,"lng":126.946,"aliases":["이대","이화여대","2호선"]},{"id":"azit-hongdae","name":"홍대입구역","kind":"station","sidoId":"seoul","sigunguId":"seoul-mapo","lat":37.557,"lng":126.924,"aliases":["홍대","2호선","공항철도"]},{"id":"azit-hapjeong","name":"합정역","kind":"station","sidoId":"seoul","sigunguId":"seoul-mapo","lat":37.55,"lng":126.914,"aliases":["합정","2호선","6호선"]},{"id":"azit-sangsu","name":"상수역","kind":"station","sidoId":"seoul","sigunguId":"seoul-mapo","lat":37.548,"lng":126.923,"aliases":["상수","6호선"]},{"id":"azit-mangwon","name":"망원한강공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-mapo","lat":37.555,"lng":126.896,"aliases":["망원","한강","한강공원"]},{"id":"azit-hongik","name":"홍익대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-mapo","lat":37.55,"lng":126.925,"aliases":["홍익대","홍대"]},{"id":"azit-gongdeok","name":"공덕역","kind":"station","sidoId":"seoul","sigunguId":"seoul-mapo","lat":37.544,"lng":126.951,"aliases":["공덕","5호선","6호선","공항철도"]},{"id":"azit-worldcup","name":"월드컵공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-mapo","lat":37.568,"lng":126.883,"aliases":["월드컵","하늘공원","난지"]},{"id":"azit-mokdong","name":"목동역","kind":"station","sidoId":"seoul","sigunguId":"seoul-yangcheon","lat":37.526,"lng":126.875,"aliases":["목동","5호선"]},{"id":"azit-omokgyo","name":"오목교역","kind":"station","sidoId":"seoul","sigunguId":"seoul-yangcheon","lat":37.524,"lng":126.875,"aliases":["오목교","5호선"]},{"id":"azit-magong","name":"마곡나루역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangseo","lat":37.567,"lng":126.827,"aliases":["마곡","9호선","공항철도"]},{"id":"azit-gimpoairport","name":"김포공항역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangseo","lat":37.562,"lng":126.801,"aliases":["김포공항","5호선","9호선","공항철도"]},{"id":"azit-botanic","name":"서울식물원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-gangseo","lat":37.569,"lng":126.833,"aliases":["식물원","마곡","호수공원"]},{"id":"azit-hwagok","name":"화곡역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangseo","lat":37.541,"lng":126.84,"aliases":["화곡","5호선"]},{"id":"azit-gurodigital","name":"구로디지털단지역","kind":"station","sidoId":"seoul","sigunguId":"seoul-guro","lat":37.485,"lng":126.902,"aliases":["구디","구로디지털","2호선"]},{"id":"azit-sindorim","name":"신도림역","kind":"station","sidoId":"seoul","sigunguId":"seoul-guro","lat":37.508,"lng":126.891,"aliases":["신도림","1호선","2호선","디큐브시티"]},{"id":"azit-gocheok","name":"고척스카이돔","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-guro","lat":37.498,"lng":126.867,"aliases":["고척","야구장","스카이돔"]},{"id":"azit-gasan","name":"가산디지털단지역","kind":"station","sidoId":"seoul","sigunguId":"seoul-geumcheon","lat":37.481,"lng":126.882,"aliases":["가산","구디","1호선","7호선"]},{"id":"azit-doksan","name":"독산역","kind":"station","sidoId":"seoul","sigunguId":"seoul-geumcheon","lat":37.466,"lng":126.887,"aliases":["독산","1호선"]},{"id":"azit-yeouido","name":"여의도한강공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-yeongdeungpo","lat":37.528,"lng":126.933,"aliases":["여의도","한강","한강공원"]},{"id":"azit-yeongdeungpo","name":"영등포역","kind":"station","sidoId":"seoul","sigunguId":"seoul-yeongdeungpo","lat":37.516,"lng":126.907,"aliases":["영등포","1호선","타임스퀘어"]},{"id":"azit-dangsan","name":"당산역","kind":"station","sidoId":"seoul","sigunguId":"seoul-yeongdeungpo","lat":37.534,"lng":126.902,"aliases":["당산","2호선","9호선"]},{"id":"azit-mullae","name":"문래역","kind":"station","sidoId":"seoul","sigunguId":"seoul-yeongdeungpo","lat":37.512,"lng":126.9,"aliases":["문래","문래창작촌","2호선"]},{"id":"azit-noryangjin","name":"노량진역","kind":"station","sidoId":"seoul","sigunguId":"seoul-dongjak","lat":37.514,"lng":126.942,"aliases":["노량진","1호선","9호선"]},{"id":"azit-sadang","name":"왕십리역","kind":"station","sidoId":"seoul","sigunguId":"seoul-dongjak","lat":37.476,"lng":126.981,"aliases":["왕십리","2호선","4호선"]},{"id":"azit-boramae","name":"뚝섬한강공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-dongjak","lat":37.492,"lng":126.925,"aliases":["뚝섬한강","공원","신대방"]},{"id":"azit-cau","name":"중앙대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-dongjak","lat":37.504,"lng":126.957,"aliases":["중앙대","옥수"]},{"id":"azit-ssu","name":"숭실대학교","kind":"university","sidoId":"seoul","sigunguId":"seoul-dongjak","lat":37.496,"lng":126.957,"aliases":["숭실대","상도"]},{"id":"azit-gyodae","name":"교대역","kind":"station","sidoId":"seoul","sigunguId":"seoul-seocho","lat":37.493,"lng":126.994,"aliases":["교대","2호선","3호선"]},{"id":"azit-banpo","name":"반포한강공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-seocho","lat":37.512,"lng":126.995,"aliases":["반포","한강","달빛무지개분수"]},{"id":"azit-yangjae","name":"양재시민의숲","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-seocho","lat":37.47,"lng":127.038,"aliases":["양재","시민의숲","매헌"]},{"id":"azit-seocho-art","name":"예술의전당","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-seocho","lat":37.479,"lng":126.981,"aliases":["예술의전당","서초","공연"]},{"id":"azit-gangnam","name":"강남역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangnam","lat":37.498,"lng":127.028,"aliases":["강남","2호선","신분당선"]},{"id":"azit-seolleung","name":"선릉역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangnam","lat":37.504,"lng":127.049,"aliases":["선릉","2호선","수인분당"]},{"id":"azit-sinnonhyeon","name":"신논현역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangnam","lat":37.504,"lng":127.024,"aliases":["신논현","9호선","논현"]},{"id":"azit-coex","name":"코엑스","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-gangnam","lat":37.512,"lng":127.059,"aliases":["코엑스","삼성동","별마당"]},{"id":"azit-jamsil","name":"잠실역","kind":"station","sidoId":"seoul","sigunguId":"seoul-songpa","lat":37.513,"lng":127.1,"aliases":["잠실","2호선","8호선","롯데월드"]},{"id":"azit-seokchon","name":"석촌호수","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-songpa","lat":37.508,"lng":127.104,"aliases":["석촌","호수","잠실"]},{"id":"azit-munjeong","name":"문정역","kind":"station","sidoId":"seoul","sigunguId":"seoul-songpa","lat":37.486,"lng":127.122,"aliases":["문정","8호선","가든파이브"]},{"id":"azit-olympic","name":"올림픽공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-songpa","lat":37.52,"lng":127.121,"aliases":["올림픽공원","몽촌","방이"]},{"id":"azit-cheonho","name":"천호역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangdong","lat":37.538,"lng":127.123,"aliases":["천호","5호선","8호선"]},{"id":"azit-gangdonggu","name":"강동구청역","kind":"station","sidoId":"seoul","sigunguId":"seoul-gangdong","lat":37.531,"lng":127.127,"aliases":["강동구청","8호선"]},{"id":"azit-gwangnaru","name":"광나루한강공원","kind":"landmark","sidoId":"seoul","sigunguId":"seoul-gangdong","lat":37.545,"lng":127.118,"aliases":["광나루","한강","자전거"]},{"id":"azit-ilsanlake","name":"일산호수공원","kind":"landmark","sidoId":"gyeonggi","sigunguId":"gyeonggi-goyang","lat":37.658,"lng":126.77,"aliases":["일산","호수공원","고양"]},{"id":"azit-baekseok","name":"백석역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-goyang","lat":37.641,"lng":126.787,"aliases":["백석","3호선","일산"]},{"id":"azit-kintex","name":"킨텍스","kind":"landmark","sidoId":"gyeonggi","sigunguId":"gyeonggi-goyang","lat":37.668,"lng":126.748,"aliases":["킨텍스","일산","전시장"]},{"id":"azit-unjeong","name":"운정역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-paju","lat":37.725,"lng":126.767,"aliases":["운정","파주","경의중앙"]},{"id":"azit-geumchon","name":"금촌역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-paju","lat":37.766,"lng":126.774,"aliases":["금촌","파주","경의중앙"]},{"id":"azit-sau","name":"사우역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-gimpo","lat":37.719,"lng":126.719,"aliases":["사우","김포","김포골드라인"]},{"id":"azit-janggi","name":"장기역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-gimpo","lat":37.652,"lng":126.671,"aliases":["장기","김포","김포골드라인"]},{"id":"azit-bucheon","name":"부천역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-bucheon","lat":37.484,"lng":126.783,"aliases":["부천","1호선","부천대"]},{"id":"azit-sangdong","name":"상동역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-bucheon","lat":37.506,"lng":126.752,"aliases":["상동","7호선","부천시청"]},{"id":"azit-suwon","name":"수원역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-suwon","lat":37.266,"lng":127.0,"aliases":["수원","1호선","수인분당"]},{"id":"azit-gwanggyo","name":"광교호수공원","kind":"landmark","sidoId":"gyeonggi","sigunguId":"gyeonggi-suwon","lat":37.285,"lng":127.057,"aliases":["광교","호수공원","경기대"]},{"id":"azit-suwonhwaseong","name":"수원화성","kind":"landmark","sidoId":"gyeonggi","sigunguId":"gyeonggi-suwon","lat":37.287,"lng":127.014,"aliases":["화성","수원","행궁동"]},{"id":"azit-skkku","name":"성균관대역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-suwon","lat":37.3,"lng":126.971,"aliases":["성균관대","율전","1호선"]},{"id":"azit-dongtan","name":"동탄역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-hwaseong","lat":37.201,"lng":127.096,"aliases":["동탄","SRT","GTX"]},{"id":"azit-byeongjeom","name":"병점역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-hwaseong","lat":37.207,"lng":127.033,"aliases":["병점","1호선"]},{"id":"azit-pyeongtaek","name":"평택역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-pyeongtaek","lat":36.992,"lng":127.085,"aliases":["평택","1호선","SRT"]},{"id":"azit-jije","name":"평택지제역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-pyeongtaek","lat":37.018,"lng":127.07,"aliases":["지제","평택","SRT"]},{"id":"azit-suji","name":"수지구청역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-yongin","lat":37.322,"lng":127.095,"aliases":["수지","신분당선","용인"]},{"id":"azit-giheung","name":"기흥역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-yongin","lat":37.275,"lng":127.115,"aliases":["기흥","용인","에버라인"]},{"id":"azit-everland","name":"에버랜드","kind":"landmark","sidoId":"gyeonggi","sigunguId":"gyeonggi-yongin","lat":37.294,"lng":127.203,"aliases":["에버랜드","용인","놀이공원"]},{"id":"azit-pangyo","name":"판교역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-seongnam","lat":37.394,"lng":127.111,"aliases":["판교","신분당선","경강선"]},{"id":"azit-seohyeon","name":"서현역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-seongnam","lat":37.385,"lng":127.123,"aliases":["서현","분당","수인분당"]},{"id":"azit-moran","name":"모란역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-seongnam","lat":37.432,"lng":127.129,"aliases":["모란","성남","8호선"]},{"id":"azit-yatap","name":"야탑역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-seongnam","lat":37.411,"lng":127.128,"aliases":["야탑","분당","수인분당"]},{"id":"azit-hanam-city","name":"하남시청역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-hanam","lat":37.542,"lng":127.207,"aliases":["하남","5호선","미사"]},{"id":"azit-dasan","name":"다산역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-namyangju","lat":37.608,"lng":127.156,"aliases":["다산","남양주","경의중앙"]},{"id":"azit-byeollae","name":"별내역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-namyangju","lat":37.642,"lng":127.127,"aliases":["별내","남양주","경춘선"]},{"id":"azit-uijeongbu","name":"의정부역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-uijeongbu","lat":37.738,"lng":127.046,"aliases":["의정부","1호선","의정부경전철"]},{"id":"azit-hoeryong","name":"회룡역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-uijeongbu","lat":37.724,"lng":127.047,"aliases":["회룡","1호선","의정부경전철"]},{"id":"azit-gapyeong","name":"가평역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-gapyeong","lat":37.814,"lng":127.511,"aliases":["가평","경춘선","남이섬"]},{"id":"azit-yangpyeong","name":"양평역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-yangpyeong","lat":37.492,"lng":127.492,"aliases":["양평","경의중앙","두물머리"]},{"id":"azit-beomgye","name":"범계역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-anyang","lat":37.39,"lng":126.951,"aliases":["범계","평촌","4호선"]},{"id":"azit-anyang","name":"안양역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-anyang","lat":37.401,"lng":126.922,"aliases":["안양","1호선"]},{"id":"azit-seoulgrand","name":"서울대공원역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-gwacheon","lat":37.427,"lng":127.017,"aliases":["대공원","과천","동물원"]},{"id":"azit-siheung-city","name":"시흥시청역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-siheung","lat":37.383,"lng":126.803,"aliases":["시흥","서해선","배곧"]},{"id":"azit-jungang","name":"중앙역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-ansan","lat":37.316,"lng":126.838,"aliases":["중앙","안산","4호선"]},{"id":"azit-hanyang-erica","name":"한양대에리카","kind":"university","sidoId":"gyeonggi","sigunguId":"gyeonggi-ansan","lat":37.3,"lng":126.835,"aliases":["한양대","에리카","안산"]},{"id":"azit-gwangmyeong","name":"광명역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-gwangmyeong","lat":37.416,"lng":126.885,"aliases":["광명","KTX","1호선"]},{"id":"azit-guri","name":"구리역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-guri","lat":37.603,"lng":127.143,"aliases":["구리","경의중앙","8호선"]},{"id":"azit-osan","name":"오산역","kind":"station","sidoId":"gyeonggi","sigunguId":"gyeonggi-osan","lat":37.146,"lng":127.067,"aliases":["오산","1호선","SRT"]},{"id":"azit-incheon","name":"인천역","kind":"station","sidoId":"incheon","sigunguId":"incheon-jung","lat":37.476,"lng":126.616,"aliases":["인천","1호선","수인분당"]},{"id":"azit-wolmido","name":"월미도","kind":"landmark","sidoId":"incheon","sigunguId":"incheon-jung","lat":37.476,"lng":126.596,"aliases":["월미도","인천","바다"]},{"id":"azit-chinatown","name":"인천차이나타운","kind":"landmark","sidoId":"incheon","sigunguId":"incheon-jung","lat":37.475,"lng":126.618,"aliases":["차이나타운","인천","송월동"]},{"id":"azit-dongincheon","name":"동인천역","kind":"station","sidoId":"incheon","sigunguId":"incheon-dong","lat":37.473,"lng":126.632,"aliases":["동인천","1호선"]},{"id":"azit-juan","name":"주안역","kind":"station","sidoId":"incheon","sigunguId":"incheon-michuhol","lat":37.465,"lng":126.681,"aliases":["주안","1호선","2호선"]},{"id":"azit-inha","name":"인하대학교","kind":"university","sidoId":"incheon","sigunguId":"incheon-michuhol","lat":37.45,"lng":126.654,"aliases":["인하대","용현동"]},{"id":"azit-songdo","name":"송도센트럴파크","kind":"landmark","sidoId":"incheon","sigunguId":"incheon-yeonsu","lat":37.392,"lng":126.638,"aliases":["송도","센트럴파크","인천"]},{"id":"azit-incheon-univ","name":"인천대학교","kind":"university","sidoId":"incheon","sigunguId":"incheon-yeonsu","lat":37.375,"lng":126.634,"aliases":["인천대","송도"]},{"id":"azit-guweol","name":"구월동","kind":"landmark","sidoId":"incheon","sigunguId":"incheon-namdong","lat":37.45,"lng":126.701,"aliases":["구월","인천","롯데백화점"]},{"id":"azit-incheon-cityhall","name":"인천시청역","kind":"station","sidoId":"incheon","sigunguId":"incheon-namdong","lat":37.457,"lng":126.702,"aliases":["인천시청","1호선","2호선"]},{"id":"azit-bupyeong","name":"부평역","kind":"station","sidoId":"incheon","sigunguId":"incheon-bupyeong","lat":37.489,"lng":126.724,"aliases":["부평","1호선","인천1호선"]},{"id":"azit-bupyeong-gu","name":"부평구청역","kind":"station","sidoId":"incheon","sigunguId":"incheon-bupyeong","lat":37.507,"lng":126.721,"aliases":["부평구청","7호선","인천1호선"]},{"id":"azit-gyeyang","name":"계양역","kind":"station","sidoId":"incheon","sigunguId":"incheon-gyeyang","lat":37.571,"lng":126.737,"aliases":["계양","공항철도","인천1호선"]},{"id":"azit-geomam","name":"검암역","kind":"station","sidoId":"incheon","sigunguId":"incheon-seo","lat":37.569,"lng":126.673,"aliases":["검암","공항철도","인천2호선"]},{"id":"azit-arabetgil","name":"아라뱃길","kind":"landmark","sidoId":"incheon","sigunguId":"incheon-seo","lat":37.556,"lng":126.677,"aliases":["아라뱃길","인천","자전거"]}]};
+/* ==== GEO DATA END ==== */
+
 const AZIT_KINDS = {
   station: { label: '지하철역', icon: 'train' },
   school: { label: '대학교', icon: 'building' },
@@ -796,7 +807,7 @@ const AZIT_KINDS = {
 };
 
 /** 아지트의 큰 분류 — 기존 지역 권역 id 를 그대로 쓴다(지역 필터와 같은 자). */
-const AZIT_AREAS = [
+const AZIT_LEGACY_AREAS = [
   { id: 'seoul-jongno-junggu', name: '종로·중구', groupId: 'seoul' },
   { id: 'seoul-dongdaemun-seongbuk', name: '동대문·성북', groupId: 'seoul' },
   { id: 'seoul-mapo-yongsan', name: '마포·용산', groupId: 'seoul' },
@@ -829,7 +840,7 @@ const AZIT_AREAS = [
  * 아지트 한 곳 — 이름만 고른다. 좌표·주소는 저장하지 않는다.
  * aliases 는 검색어(옛 동네 이름·노선 이름)다.
  */
-const AZIT_SPOTS = [
+const AZIT_LEGACY_SPOTS = [
   /* ---------------------------------------------- 서울 · 종로·중구 */
   { id: 'azit-gwanghwamun', areaId: 'seoul-jongno-junggu', name: '광화문역', kind: 'station', aliases: ['광화문', '5호선', '시청'] },
   { id: 'azit-euljiro', areaId: 'seoul-jongno-junggu', name: '을지로입구역', kind: 'station', aliases: ['을지로', '2호선'] },
@@ -950,6 +961,163 @@ const AZIT_SPOTS = [
   { id: 'azit-seogwipo', areaId: 'jeju', name: '서귀포', kind: 'area', aliases: ['서귀포', '제주', '중문'] }
 ];
 
+/* ---------------------------------------------------------------------------
+ * H2 (11/21) — 지역(시·도 → 시·군·구)과 아지트 150곳
+ * -------------------------------------------------------------------------
+ *  루키 님 지시서 2단계(H2): 활동 지역은 **목록에서만** 고르고(시·도 → 시·군·구),
+ *  만나는 곳은 **아지트 1~3곳**을 고른다. 정확한 주소·집 주소는 받지 않는다.
+ *
+ *  · 원본은 `data/regions.json` · `data/hangouts.json` 이고, 이 파일의 GEO_REGIONS ·
+ *    GEO_HANGOUTS 는 같은 내용의 내장본이다(단일 HTML 번들·file:// 에서 fetch 가 막혀도
+ *    그대로 동작해야 하므로). tools/gen_geo_data.py 가 둘을 함께 만든다.
+ *  · http 로 열리면 loadGeoData() 가 data/*.json 을 fetch 해 같은 값으로 다시 채운다.
+ *  · 옛 아지트(AZIT_LEGACY_SPOTS)는 새 목록에 없는 것만 'legacy'로 남긴다 — 예전에
+ *    만들어진 모임의 azitId 가 가리키는 곳이 사라지면 그 모임이 깨지기 때문이다.
+ *  · 좌표는 소수점 3자리 대략값(약 100m)이다. 주소 필드는 만들지도 저장하지도 않는다.
+ * ------------------------------------------------------------------------- */
+
+/** 시·군·구 하나 — 시·도 이름까지 붙여 둔다. */
+function geoBuildSigungu(regions) {
+  const map = {};
+  (regions && regions.sido ? regions.sido : []).forEach((s) => {
+    (s.sigungu || []).forEach((g) => {
+      map[g.id] = {
+        id: g.id, name: g.name, regionId: g.regionId,
+        sidoId: s.id, sidoName: s.name, sidoShort: s.short,
+        lat: g.lat == null ? s.lat : g.lat,
+        lng: g.lng == null ? s.lng : g.lng,
+        sidoLat: s.lat, sidolng: s.lng
+      };
+    });
+  });
+  return map;
+}
+
+/** 아지트 한 곳을 내부 모양으로 — 좌표는 대략값, areaId 는 탐색 권역 id. */
+function geoHangoutRow(h, sigunguMap) {
+  const sg = sigunguMap[h.sigunguId] || null;
+  return {
+    id: h.id, name: h.name, kind: h.kind,
+    aliases: h.aliases || [],
+    sidoId: h.sidoId || (sg ? sg.sidoId : null),
+    sigunguId: h.sigunguId || null,
+    lat: h.lat == null ? null : Number(h.lat),
+    lng: h.lng == null ? null : Number(h.lng),
+    areaId: sg ? sg.regionId : (h.areaId || null),
+    legacy: false
+  };
+}
+
+/** 지금 쓰는 지역·아지트 묶음 — loadGeoData() 가 fetch 로 갈아 끼울 수 있게 let. */
+let GEO_CURRENT = { regions: GEO_REGIONS, hangouts: GEO_HANGOUTS.hangouts || [] };
+let GEO_SIGUNGU_MAP = geoBuildSigungu(GEO_REGIONS);
+let AZIT_SPOTS = [];
+let AZIT_AREAS = [];
+
+function geoRebuild() {
+  const sigunguMap = geoBuildSigungu(GEO_CURRENT.regions);
+  GEO_SIGUNGU_MAP = sigunguMap;
+  const primary = (GEO_CURRENT.hangouts || []).map((h) => geoHangoutRow(h, sigunguMap));
+  const taken = new Set(primary.map((p) => p.id));
+  const takenNames = new Set(primary.map((p) => p.name));
+  const legacy = AZIT_LEGACY_SPOTS
+    .filter((s) => !taken.has(s.id) && !takenNames.has(s.name))
+    .map((s) => ({
+      id: s.id, name: s.name, kind: s.kind, aliases: s.aliases || [],
+      sidoId: null, sigunguId: null, lat: null, lng: null,
+      areaId: s.areaId, legacy: true
+    }));
+  AZIT_SPOTS = primary.concat(legacy);
+  /* 큰 분류(권역) — 아지트가 있는 권역만, 탐색 지역 이름 그대로. */
+  const byRegion = {};
+  AZIT_SPOTS.forEach((s) => {
+    if (!s.areaId) return;
+    byRegion[s.areaId] = (byRegion[s.areaId] || 0) + 1;
+  });
+  AZIT_AREAS = EXPLORE_REGIONS
+    .filter((r) => byRegion[r.id])
+    .map((r) => ({ id: r.id, name: r.name.replace(/\./g, '·'), groupId: r.groupId, count: byRegion[r.id] }));
+}
+
+geoRebuild();
+
+/**
+ * http 로 열렸을 때 data/*.json 을 읽어 내장본을 같은 값으로 맞춘다.
+ *  · file:// · 단일 번들에서는 fetch 가 실패하므로 조용히 내장본을 그대로 쓴다.
+ *  · 값이 다르면(데이터를 고친 뒤) 다시 그려야 하므로 true 를 돌려준다.
+ */
+async function loadGeoData() {
+  if (typeof fetch !== 'function') return false;
+  try {
+    const [rr, hr] = await Promise.all([
+      fetch('data/regions.json', { cache: 'no-store' }),
+      fetch('data/hangouts.json', { cache: 'no-store' })
+    ]);
+    if (!rr.ok || !hr.ok) return false;
+    const regions = await rr.json();
+    const hangouts = await hr.json();
+    if (!regions || !Array.isArray(regions.sido) || !hangouts || !Array.isArray(hangouts.hangouts)) return false;
+    GEO_CURRENT = { regions, hangouts: hangouts.hangouts };
+    geoRebuild();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** 시·군·구 하나(id) */
+function geoAreaView(areaId) {
+  if (!areaId) return null;
+  const g = GEO_SIGUNGU_MAP[areaId];
+  return g ? {
+    id: g.id, sigunguId: g.id, name: g.name, sidoId: g.sidoId, sidoName: g.sidoName,
+    sidoShort: g.sidoShort, regionId: g.regionId, lat: g.lat, lng: g.lng,
+    label: `${g.sidoShort} ${g.name}`
+  } : null;
+}
+
+/** 주소 글과 권역 id 로 시·군·구를 찾는다(' 서울 성동구 성수동' → seoul-gwanak). */
+function geoAreaIdFor(location, regionId) {
+  const loc = String(location || '');
+  if (loc) {
+    const rows = Object.keys(GEO_SIGUNGU_MAP).map((id) => GEO_SIGUNGU_MAP[id]);
+    const named = rows.filter((g) => loc.includes(g.name));
+    if (named.length) {
+      const both = named.find((g) => loc.includes(g.sidoShort) || loc.includes(g.sidoName));
+      return (both || named[0]).id;
+    }
+  }
+  if (regionId) {
+    const spot = AZIT_SPOTS.find((s) => !s.legacy && s.sigunguId && s.areaId === regionId);
+    if (spot) return spot.sigunguId;
+  }
+  return null;
+}
+
+/** 두 좌표 사이 대략 거리(km) — 하버사인. */
+function geoKm(lat1, lng1, lat2, lng2) {
+  if ([lat1, lng1, lat2, lng2].some((v) => v == null || !Number.isFinite(Number(v)))) return null;
+  const R = 6371;
+  const toRad = (d) => (Number(d) * Math.PI) / 180;
+  const dLat = toRad(lat2) - toRad(lat1);
+  const dLng = toRad(lng2) - toRad(lng1);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** 거리 구간 표기 — 정확한 km 대신 '약 1~2km' 처럼 구간으로만 보여 준다. */
+function distanceBucket(km) {
+  if (km == null || !Number.isFinite(Number(km))) return '';
+  const d = Number(km);
+  if (d < 1) return '1km 이내';
+  if (d < 2) return '약 1~2km';
+  if (d < 3) return '약 2~3km';
+  if (d < 5) return '약 3~5km';
+  if (d < 10) return '약 5~10km';
+  return '10km 이상';
+}
+
 /** 아지트 큰 분류 하나 */
 function azitAreaDef(areaId) {
   return AZIT_AREAS.find((a) => a.id === areaId) || null;
@@ -961,11 +1129,21 @@ function azitDef(azitId) {
   return AZIT_SPOTS.find((s) => s.id === azitId) || null;
 }
 
+/** 글에 들어 있는 아지트 이름·별칭으로 한 곳 찾기(옛 모임의 활동 지역 글). */
+function azitFromText(text) {
+  const hay = String(text || '').toLowerCase().trim();
+  if (!hay) return null;
+  return AZIT_SPOTS.find((s) => !s.legacy && hay.includes(s.name.toLowerCase()))
+    || AZIT_SPOTS.find((s) => !s.legacy && (s.aliases || []).some((a) => a.length >= 2 && hay.includes(a.toLowerCase())))
+    || null;
+}
+
 /** 아지트 표시 정보 — 이름·큰 분류·종류 라벨. */
 function azitView(spot) {
   if (!spot) return null;
   const area = azitAreaDef(spot.areaId);
   const kind = AZIT_KINDS[spot.kind] || AZIT_KINDS.area;
+  const sg = spot.sigunguId ? geoAreaView(spot.sigunguId) : null;
   return {
     id: spot.id,
     name: spot.name,
@@ -974,7 +1152,15 @@ function azitView(spot) {
     icon: kind.icon,
     areaId: spot.areaId,
     areaName: area ? area.name : '우리 동네',
-    regionId: spot.areaId
+    regionId: spot.areaId,
+    /* H2 — 시·도/시·군·구와 대략 좌표(주소 아님). */
+    sidoId: spot.sidoId || (sg ? sg.sidoId : null),
+    sidoName: sg ? sg.sidoName : null,
+    sigunguId: spot.sigunguId || null,
+    sigunguName: sg ? sg.name : null,
+    lat: spot.lat == null ? null : spot.lat,
+    lng: spot.lng == null ? null : spot.lng,
+    legacy: spot.legacy === true
   };
 }
 
@@ -3970,17 +4156,54 @@ function samplePeople(regionId) {
 }
 
 /** 예시 모임 — 내가 가입한 2개(run·boardgame)와 둘러볼 3개(climb·cafe·hike). */
-function sampleGroups(regionId) {
+function sampleGroups(regionId, areaId) {
   const area = (regionDef(regionId) || {}).name || '우리 동네';
-  /* Sprint 32.5 — 예시 모임도 '아지트'에서 만난다(가입 동네의 아지트를 돌려 쓴다). */
-  const spots = AZIT_SPOTS.filter((s) => s.areaId === regionId);
-  const azitOf = (i) => {
-    const spot = spots.length ? spots[i % spots.length] : azitDef('azit-sillim');
-    return { azitId: spot.id, azitName: spot.name, location: spot.name.slice(0, 24), regionId: spot.areaId };
+  /* H2 — 예시 모임도 가입 동네의 아지트 1~2곳에서 만난다(고정 좌표·주소 없음).
+     같은 시·군·구 아지트를 먼저 쓰고, 모자라면 같은 권역의 다른 구를 쓴다. */
+  const allSpots = AZIT_SPOTS.filter((s) => !s.legacy && s.areaId === regionId && s.sigunguId);
+  const mineSpots = areaId ? allSpots.filter((s) => s.sigunguId === areaId) : [];
+  const spots = mineSpots.length >= 3
+    ? mineSpots.concat(allSpots.filter((s) => s.sigunguId !== areaId))
+    : allSpots;
+  const pick = (i, n = 1) => {
+    const out = [];
+    for (let k = 0; k < n && spots.length; k += 1) {
+      const s = spots[(i + k) % spots.length];
+      if (s && !out.some((x) => x.id === s.id)) out.push(s);
+    }
+    if (!out.length) {
+      const fallback = AZIT_SPOTS.find((s) => s.id === 'azit-sillim');
+      if (fallback) out.push(fallback);
+    }
+    return out;
   };
+  const azitOf = (i, n = 1) => {
+    const hs = pick(i, n);
+    const first = hs[0];
+    const sg = first && first.sigunguId ? geoAreaView(first.sigunguId) : null;
+    return {
+      hangouts: hs.map((s) => ({ id: s.id, name: s.name, kind: s.kind })),
+      azitId: first ? first.id : null,
+      azitName: first ? first.name : null,
+      hangoutNames: hs.map((s) => s.name),
+      location: first ? first.name.slice(0, 24) : area,
+      regionId: first ? first.areaId : regionId,
+      region: sg ? { sidoId: sg.sidoId, sidoName: sg.sidoName, sigunguId: sg.sigunguId, sigunguName: sg.name } : null
+    };
+  };
+  /* H2 — 예시 모임도 기본 대표 이미지(점토 프리셋)를 갖는다. 사진은 사용자가 올린다. */
+  const PRESETS = {
+    'green-run': { id: 'green-run', icon: 'run', tone: 'green' },
+    'violet-game': { id: 'violet-game', icon: 'gamepad', tone: 'violet' },
+    'amber-cup': { id: 'amber-cup', icon: 'cup', tone: 'amber' },
+    'sky-mountain': { id: 'sky-mountain', icon: 'mountain', tone: 'sky' },
+    'neutral-star': { id: 'neutral-star', icon: 'sparkle', tone: 'neutral' }
+  };
+  const presetOf = (id) => PRESETS[id] || PRESETS['neutral-star'];
   const base = {
     location: area, regionId, sample: true, ageLimit: 'all', joinMode: 'approval',
     deputyIds: [], dmEnabled: true, deputyCanModerate: false, members: [],
+    defaultGuestOpen: false, defaultRecommendOptIn: false, coverImage: null,
     joinQuestions: ['이 취미는 얼마나 해보셨어요? 편한 요일도 알려주세요']
   };
   return [
@@ -3989,6 +4212,7 @@ function sampleGroups(regionId) {
       ...azitOf(0),
       id: 'sample_grp_run', name: '토요일 아침 동네 러닝팟', category: 'run', categoryName: '러닝',
       hobbyId: 'run', meetLabel: '토 08:00 · 5K', ratio: 'wide', icon: 'run',
+      coverIconPreset: presetOf('green-run'),
       coverGradient: 'linear-gradient(135deg, #4676A4 0%, #0678C4 100%)',
       distanceKm: 0.5, memberCount: 8, maxMembers: 20, privacyType: 'open', privacyLabel: '자유 가입',
       description: '토요일 아침에 동네 한 바퀴 5K 가볍게 뛰고 커피 한 잔 합니다. 페이스는 각자.',
@@ -4003,7 +4227,8 @@ function sampleGroups(regionId) {
     },
     {
       ...base,
-      ...azitOf(1),
+      ...azitOf(1, 2),
+      coverIconPreset: presetOf('violet-game'),
       id: 'sample_grp_board', name: '동네 보드게임 한 판', category: 'boardgame', categoryName: '보드게임',
       hobbyId: 'boardgame', meetLabel: '토·일 15:00', ratio: 'square', icon: 'dice',
       coverGradient: 'linear-gradient(135deg, #856A00 0%, #866C02 100%)',
@@ -4021,6 +4246,7 @@ function sampleGroups(regionId) {
     {
       ...base,
       ...azitOf(2),
+      coverIconPreset: presetOf('neutral-star'),
       id: 'sample_grp_climb', name: '퇴근 후 볼더링 같이', category: 'climb', categoryName: '클라이밍',
       hobbyId: 'climb', meetLabel: '평일 20:00', ratio: 'wide', icon: 'climb',
       coverGradient: 'linear-gradient(135deg, #0E814A 0%, #118134 100%)',
@@ -4033,7 +4259,8 @@ function sampleGroups(regionId) {
     },
     {
       ...base,
-      ...azitOf(0),
+      ...azitOf(4),
+      coverIconPreset: presetOf('amber-cup'),
       id: 'sample_grp_cafe', name: '주말 카페 한 곳씩', category: 'cafe', categoryName: '카페/맛집',
       hobbyId: 'cafe', meetLabel: '일 11:00', ratio: 'square', icon: 'cup',
       coverGradient: 'linear-gradient(135deg, #856A00 0%, #866C02 100%)',
@@ -4046,7 +4273,8 @@ function sampleGroups(regionId) {
     },
     {
       ...base,
-      ...azitOf(3),
+      ...azitOf(3, 2),
+      coverIconPreset: presetOf('sky-mountain'),
       id: 'sample_grp_hike', name: '일요 아침 가까운 산', category: 'hike', categoryName: '등산·트레킹',
       hobbyId: 'hike', meetLabel: '일 08:00', ratio: 'square', icon: 'mountain',
       coverGradient: 'linear-gradient(135deg, #118134 0%, #0B8636 100%)',
@@ -4104,15 +4332,34 @@ function upgradeSampleData(state) {
   if (!state) return state;
   const regionId = (state.sampleData && state.sampleData.regionId)
     || (state.currentUser && state.currentUser.regionId) || SAMPLE_FALLBACK_REGION;
-  const spots = AZIT_SPOTS.filter((s) => s.areaId === regionId);
+  const spots = AZIT_SPOTS.filter((s) => !s.legacy && s.areaId === regionId && s.sigunguId);
   let i = 0;
   (state.groups || []).filter((g) => g && g.sample === true).forEach((g) => {
-    if (g.azitId) return;
-    const spot = spots.length ? spots[i % spots.length] : azitDef('azit-sillim');
-    g.azitId = spot.id;
-    g.azitName = spot.name;
-    g.regionId = g.regionId || spot.areaId;
-    i += 1;
+    /* H2 — 예전 예시 모임에 아지트 1~3곳 · 지역 · 기본값을 채운다(있던 것은 그대로). */
+    if (!Array.isArray(g.hangouts) || !g.hangouts.length) {
+      const keep = g.azitId ? azitDef(g.azitId) : null;
+      const list = keep && !keep.legacy ? [keep]
+        : (spots.length ? [spots[i % spots.length]] : [azitDef('azit-seongsu')]);
+      g.hangouts = list.filter(Boolean).map((s) => ({ id: s.id, name: s.name, kind: s.kind }));
+      const first = g.hangouts[0];
+      if (first) {
+        g.azitId = first.id;
+        g.azitName = first.name;
+        if (!g.location) g.location = first.name.slice(0, 24);
+      }
+      i += 1;
+    }
+    if (!g.region && g.hangouts && g.hangouts[0]) {
+      const spot = azitDef(g.hangouts[0].id);
+      const sg = spot && spot.sigunguId ? geoAreaView(spot.sigunguId) : null;
+      if (sg) g.region = { sidoId: sg.sidoId, sidoName: sg.sidoName, sigunguId: sg.sigunguId, sigunguName: sg.name };
+    }
+    if (g.defaultGuestOpen == null) g.defaultGuestOpen = false;
+    if (g.defaultRecommendOptIn == null) g.defaultRecommendOptIn = false;
+    if (g.regionId == null && g.azitId) {
+      const spot = azitDef(g.azitId);
+      if (spot) g.regionId = spot.areaId;
+    }
   });
   (state.feedPosts || []).filter((p) => p && p.sample === true).forEach((p, idx) => {
     if (p.recommendOptIn == null) p.recommendOptIn = idx < 2;
@@ -4126,6 +4373,37 @@ function upgradeSampleData(state) {
   if (!hasHike && hasHikeGroup) {
     state.groupEvents = (state.groupEvents || []).concat(sampleGroupEvents().filter((e) => e.id === 'sample_evt_hike'));
   }
+  return state;
+}
+
+/**
+ * H2 — 예전에 저장된 모임(아지트·지역·기본값 없음)을 지금 모양으로 손본다.
+ *  · 활동 지역 글에 아지트 이름이 있으면 그 아지트로 잇는다(주소를 새로 받지 않는다).
+ *  · 이름을 못 찾으면 건드리지 않는다 — 엉뚱한 곳으로 옮기지 않기 위해서.
+ */
+function upgradeGroupGeo(state) {
+  if (!state) return state;
+  (state.groups || []).forEach((g) => {
+    if (!g) return;
+    if (!Array.isArray(g.hangouts) || !g.hangouts.length) {
+      const hit = azitFromText(g.location);
+      if (hit) {
+        g.hangouts = [{ id: hit.id, name: hit.name, kind: hit.kind }];
+        g.azitId = g.azitId || hit.id;
+        g.azitName = g.azitName || hit.name;
+        g.regionId = g.regionId || hit.areaId;
+      }
+    }
+    if (!g.region && g.hangouts && g.hangouts[0]) {
+      const spot = azitDef(g.hangouts[0].id);
+      const sg = spot && spot.sigunguId ? geoAreaView(spot.sigunguId) : null;
+      if (sg) {
+        g.region = { sidoId: sg.sidoId, sidoName: sg.sidoName, sigunguId: sg.sigunguId, sigunguName: sg.name };
+      }
+    }
+    if (g.defaultGuestOpen == null) g.defaultGuestOpen = false;
+    if (g.defaultRecommendOptIn == null) g.defaultRecommendOptIn = false;
+  });
   return state;
 }
 
@@ -4272,9 +4550,9 @@ function sampleChatRooms() {
 }
 
 /** 예시 한 묶음 — regionId 의 동네로 사람·글·모임의 지역을 맞춘다. */
-function buildSampleContent(regionId) {
+function buildSampleContent(regionId, areaId) {
   return {
-    groups: sampleGroups(regionId),
+    groups: sampleGroups(regionId, areaId),
     feedPosts: sampleFeedPosts(),
     explorePosts: sampleExplorePosts(regionId),
     matchProfiles: samplePeople(regionId),
@@ -4299,7 +4577,8 @@ function applySampleData(state, options = {}) {
   const regionId = options.regionId
     || (me.registered && me.regionId ? me.regionId : null)
     || SAMPLE_FALLBACK_REGION;
-  const block = buildSampleContent(regionId);
+  const areaId = options.areaId || geoAreaIdFor(me.location, regionId);
+  const block = buildSampleContent(regionId, areaId);
   state.groups = (state.groups || []).concat(block.groups);
   state.feedPosts = (state.feedPosts || []).concat(block.feedPosts);
   state.explorePosts = (state.explorePosts || []).concat(block.explorePosts);
@@ -4379,17 +4658,27 @@ function retargetSampleRegion(state, regionId) {
     if (p.sample) { p.regionId = regionId; p.location = area; p.groupName = `${area} ${p.hobbyLabel || ''}`.trim(); }
   });
   (state.matchProfiles || []).forEach((p) => { if (p.sample) { p.regionId = regionId; p.location = area; } });
-  /* Sprint 32.5 — 예시 모임의 아지트도 가입한 동네 아지트로 옮긴다(이름만 바뀐다). */
-  const spots = AZIT_SPOTS.filter((s) => s.areaId === regionId);
+  /* H2 — 예시 모임의 아지트도 가입한 동네(같은 시·군·구 우선) 아지트 1~2곳으로 옮긴다. */
+  const areaId = geoAreaIdFor(state.currentUser && state.currentUser.location, regionId);
+  const regionSpots = AZIT_SPOTS.filter((s) => !s.legacy && s.areaId === regionId && s.sigunguId);
+  const mineSpots = areaId ? regionSpots.filter((s) => s.sigunguId === areaId) : [];
+  const spots = mineSpots.length >= 3
+    ? mineSpots.concat(regionSpots.filter((s) => s.sigunguId !== areaId))
+    : regionSpots;
   let i = 0;
   (state.groups || []).forEach((g) => {
     if (!g.sample) return;
     g.regionId = regionId;
     if (spots.length) {
-      const spot = spots[i % spots.length];
-      g.azitId = spot.id;
-      g.azitName = spot.name;
-      g.location = spot.name;
+      const list = [spots[i % spots.length]];
+      const second = spots.length > 2 ? spots[(i + 2) % spots.length] : null;
+      if (second && second.id !== list[0].id) list.push(second);
+      g.hangouts = list.map((s) => ({ id: s.id, name: s.name, kind: s.kind }));
+      g.azitId = list[0].id;
+      g.azitName = list[0].name;
+      g.location = list[0].name;
+      const sg = geoAreaView(list[0].sigunguId);
+      if (sg) g.region = { sidoId: sg.sidoId, sidoName: sg.sidoName, sigunguId: sg.sigunguId, sigunguName: sg.name };
       i += 1;
     } else {
       g.location = area;
@@ -4636,6 +4925,14 @@ class Store {
         ...p,
         comments: Array.isArray(p.comments) ? p.comments : []
       }));
+      /* H3 — 일정마다 게스트 신청 목록을 갖춘다(옛 저장 상태에는 없다).
+         guestOpen 은 **켜 둔 일정만** 홈 추천 일정에 오르도록 true/false 로 맞춘다. */
+      merged.groupEvents = merged.groupEvents.map((e) => ({
+        ...e,
+        rsvps: Array.isArray(e.rsvps) ? e.rsvps : [],
+        guestRequests: Array.isArray(e.guestRequests) ? e.guestRequests : [],
+        guestOpen: e.guestOpen === true
+      }));
       merged.explorePosts = merged.explorePosts.map((p) => ({
         ...p,
         comments: Array.isArray(p.comments) ? p.comments : []
@@ -4683,6 +4980,8 @@ class Store {
         && Number(merged.sampleData.version || 1) < SAMPLE_DATA_VERSION) {
         upgradeSampleData(merged);
       }
+      /* H2 — 저장된 모임에 아지트·지역·기본값이 없으면(옛 상태) 조용히 채운다. */
+      upgradeGroupGeo(merged);
       merged.sampleData = {
         seeded: merged.sampleData ? merged.sampleData.seeded === true : false,
         version: merged.sampleData ? SAMPLE_DATA_VERSION : SAMPLE_DATA_VERSION,
@@ -5021,13 +5320,41 @@ class Store {
       likedByMe: false,
       bookmarkedByMe: false,
       comments: [],
-      /* Sprint 32.5 — 홈 '추천 피드'에 보여도 된다고 고른 글만 (기본은 모임 안에만). */
+      /* Sprint 32.5 — 홈 '추천 피드'에 보여도 된다고 고른 글만 (기본은 모임 안에만).
+         H3(11/21) — **모임 기본값을 따르지 않는다.** 글을 쓸 때마다 기본은 꺼짐(false)이고,
+         '추천 피드에 노출해도 괜찮아요'를 체크한 글만 홈 추천 피드에 오른다. */
       recommendOptIn: data.recommendOptIn === true,
       createdAt: new Date().toISOString()
     };
     this.state.feedPosts.unshift(post);
     this.saveState();
     return post;
+  }
+
+  /**
+   * H3 — 글 수정(작성자 본인만). 올린 뒤에도 '추천 피드에 노출해도 괜찮아요'를 바꿀 수 있고,
+   * 저장하면 홈 추천 피드에 바로 나타나거나 바로 빠진다.
+   * @returns {{ok:boolean, post?:object, reason?:string}}
+   */
+  updatePost(postId, patch = {}) {
+    const post = (this.state.feedPosts || []).find((p) => p.id === postId);
+    if (!post) return { ok: false, reason: 'not_found' };
+    if (post.authorId !== this.state.currentUser.id) return { ok: false, reason: 'permission' };
+    const group = this.getGroup(post.groupId);
+    const caption = patch.caption == null ? post.caption : String(patch.caption).trim();
+    const rawPhoto = patch.photoUrl == null ? post.photoUrl : String(patch.photoUrl || '').trim();
+    const photoUrl = /^https?:\/\//i.test(rawPhoto) || /^data:image\//i.test(rawPhoto) ? rawPhoto : null;
+    if (!caption && !photoUrl) return { ok: false, reason: 'empty' };
+    post.caption = caption.slice(0, 500);
+    if (patch.mediaCaption != null) post.mediaCaption = String(patch.mediaCaption).trim().slice(0, 40);
+    post.photoUrl = photoUrl;
+    if (patch.tag !== undefined) {
+      post.tag = patch.tag && group && group.customTags.includes(patch.tag) ? patch.tag : null;
+    }
+    if (patch.recommendOptIn != null) post.recommendOptIn = patch.recommendOptIn === true;
+    post.editedAt = new Date().toISOString();
+    this.saveState();
+    return { ok: true, post };
   }
 
   /**
@@ -5196,7 +5523,7 @@ class Store {
   ageRangeAllowsGroup(group) {
     const range = this.getExploreAgeRange();
     if (!range.active) return true;
-    const limit = this.getAgeLimit((group && group.ageLimit) || 'all') || { min: 0, max: 200 };
+    const limit = this.getGroupAgeRange(group);   // H4 — 슬라이더로 정한 범위도 같은 기준
     return range.min <= limit.max && range.max >= limit.min;
   }
 
@@ -5379,11 +5706,18 @@ class Store {
     return base == null ? null : base;
   }
 
-  /** 모임 카드까지의 거리(km) — 설정값 → 생활권 대표 거리 + 아이디 기반 오프셋. */
+  /** 모임 카드까지의 거리(km) — H2 는 내 동네 기준점과 모임 아지트 좌표로 계산. */
   getGroupDistanceKm(group) {
     if (!group) return null;
     const regionId = this.getGroupRegionId(group);
     if (regionId === 'online') return null;
+    /* H2 — 아지트(1~3곳)의 대략 좌표 중 내 동네와 가장 가까운 곳. */
+    const hs = this.getGroupHangouts(group).filter((h) => h.lat != null && h.lng != null);
+    const anchor = this.getMyAnchorCoords();
+    if (hs.length && anchor) {
+      const dists = hs.map((h) => geoKm(anchor.lat, anchor.lng, h.lat, h.lng)).filter((v) => v != null);
+      if (dists.length) return Math.round(Math.min(...dists) * 10) / 10;
+    }
     const explicit = Number(group.distanceKm);
     if (group.distanceKm != null && Number.isFinite(explicit)) {
       return Math.round(explicit * 10) / 10;
@@ -5391,6 +5725,11 @@ class Store {
     const base = REGION_DISTANCE_KM[regionId];
     if (base == null) return null;
     return Math.round((base + fallbackDistanceKm(group.id) * 0.6) * 10) / 10;
+  }
+
+  /** 거리 구간 표기 — 화면에는 '약 1~2km' 처럼 구간만 (정확한 거리 금지). */
+  getGroupDistanceLabel(group) {
+    return distanceBucket(this.getGroupDistanceKm(group));
   }
 
   /** 공개 글까지의 거리(km) — 작성자 거리(내 글이면 내 동네) → 글의 생활권. */
@@ -5598,8 +5937,25 @@ class Store {
     if (!ageFilter || ageFilter === 'all') return true;
     const limit = (group && group.ageLimit) || 'all';
     if (ageFilter === 'none') return limit === 'all';
-    if (ageFilter === 'for_me') return this.getForMeAgeProfile().limitIds.includes(limit);
-    return limit === ageFilter;
+    if (ageFilter === 'for_me') {
+      const me = this.getForMeAgeProfile();
+      if (!me.bands.length) return true;
+      /* H4 — 직접 정한 범위는 '내 나이가 그 안에 있는가'로 본다. */
+      if (limit === 'custom') {
+        const r = this.getGroupAgeRange(group);
+        return me.myAge >= r.min && me.myAge <= r.max;
+      }
+      return me.limitIds.includes(limit);
+    }
+    if (limit === ageFilter) return true;
+    /* H4 — 슬라이더 범위(예: 20~35세)는 필터 구간(2030)과 **겹치면** 보여 준다. */
+    if (limit === 'custom') {
+      const opt = this.getAgeLimit(ageFilter);
+      if (!opt) return true;
+      const r = this.getGroupAgeRange(group);
+      return r.min <= opt.max && r.max >= opt.min;
+    }
+    return false;
   }
 
   /** 게시글 작성자의 나이 — 내 글이면 내 나이, 아니면 매칭 프로필에서 찾는다. 없으면 null. */
@@ -5667,6 +6023,13 @@ class Store {
    *          age?:string, radius?:string, sort?:string, offset?:number, limit?:number}} options
    * @returns {{items:Array, total:number, hasMore:boolean}}
    */
+  /**
+   * H2 — 모임 찾기의 지역(시·도/시·군·구)·아지트 필터와 거리 구간 정렬을 더한다.
+   * @param {{query?:string, categoryId?:string, hobbyId?:string, region?:string,
+   *          sidoId?:string, sigunguId?:string, hangoutId?:string, azitId?:string,
+   *          age?:string, radius?:string, sort?:string, offset?:number, limit?:number}} options
+   * @returns {{items:Array, total:number, hasMore:boolean}}
+   */
   getGroupBrowse(options = {}) {
     const o = options || {};
     const q = String(o.query || '').trim().toLowerCase();
@@ -5675,12 +6038,26 @@ class Store {
     /* Sprint 32.5 — 아지트로 가까운 모임만 (없는 id 는 전체). */
     const azitId = o.azitId && azitDef(o.azitId) ? o.azitId : 'all';
     const azit = azitId === 'all' ? null : this.findAzit(azitId);
+    /* H2 — 지역(시·도 · 시·군·구) 필터와 아지트(한 곳) 필터. */
+    const sidoId = o.sidoId && this.getRegionSido().some((s) => s.id === o.sidoId) ? o.sidoId : 'all';
+    const sigunguId = o.sigunguId && GEO_SIGUNGU_MAP[o.sigunguId] ? o.sigunguId : 'all';
+    const hangoutId = o.hangoutId && o.hangoutId !== 'all' && azitDef(o.hangoutId) ? o.hangoutId : 'all';
     const azitMatch = (g) => {
       if (azitId === 'all') return true;
       const mine = this.getGroupAzit(g);
       if (mine && mine.id === azitId) return true;
       /* 아지트를 안 골랐던 옛 모임 — 같은 권역이면 그 아지트 모임으로 본다. */
       return !mine && azit != null && this.getGroupRegionId(g) === azit.areaId;
+    };
+    const geoMatch = (g) => {
+      if (sidoId === 'all' && sigunguId === 'all' && hangoutId === 'all') return true;
+      const hs = this.getGroupHangouts(g);
+      if (hangoutId !== 'all' && !hs.some((h) => h.id === hangoutId)) return false;
+      if (sidoId === 'all' && sigunguId === 'all') return true;
+      const area = this.getGroupRegion(g);
+      if (sidoId !== 'all' && (!area || area.sidoId !== sidoId)) return false;
+      if (sigunguId !== 'all' && (!area || area.sigunguId !== sigunguId)) return false;
+      return true;
     };
     const regionArg = o.region || 'all';
     const regionId = regionArg === 'all' || regionArg === 'nearby'
@@ -5698,6 +6075,7 @@ class Store {
       if (categoryId !== 'all' && (!chip || chip.categoryId !== categoryId)) return false;
       if (hobbyId !== 'all' && g.hobbyId !== hobbyId) return false;
       if (!azitMatch(g)) return false;
+      if (!geoMatch(g)) return false;
       if (!this.ageFilterAllowsGroup(age, g)) return false;
       if (!this.ageRangeAllowsGroup(g)) return false;
       if (!inRegion(this.getGroupRegionId(g))) return false;
@@ -5711,21 +6089,27 @@ class Store {
       const sameTone = !!(chip && myCats.includes(chip.tone));
       let score = sameHobby ? 3 : (sameTone ? 1 : 0);
       score += Math.min(2, Math.floor((g.memberCount || 0) / 12));
+      const distanceKm = this.getGroupDistanceKm(g);
       return {
         type: 'group', id: g.id, ratio: g.ratio || 'wide', group: g,
         joined: joined.includes(g.id),
-        distanceKm: this.getGroupDistanceKm(g),
+        distanceKm,
+        distanceLabel: distanceBucket(distanceKm),
         tone: this.getHobbyTone(g.hobbyId || g.category),
         hobbyName: chip ? chip.name : (g.categoryName || '취미'),
         azit: this.getGroupAzit(g),
+        hangouts: this.getGroupHangouts(g),
+        region: this.getGroupRegion(g),
         score
       };
     });
 
-    const sort = ['recommend', 'near', 'members', 'name'].includes(o.sort) ? o.sort : 'recommend';
+    const sort = ['recommend', 'near', 'members', 'new', 'name'].includes(o.sort) ? o.sort : 'recommend';
     list.sort((a, b) => {
-      if (sort === 'near') return (a.distanceKm || 99) - (b.distanceKm || 99);
+      if (sort === 'near') return ((a.distanceKm == null ? 99 : a.distanceKm) - (b.distanceKm == null ? 99 : b.distanceKm))
+        || ((b.group.memberCount || 0) - (a.group.memberCount || 0));
       if (sort === 'members') return (b.group.memberCount || 0) - (a.group.memberCount || 0);
+      if (sort === 'new') return new Date(b.group.createdAt || 0).getTime() - new Date(a.group.createdAt || 0).getTime();
       if (sort === 'name') return String(a.group.name).localeCompare(String(b.group.name), 'ko');
       return (b.score - a.score)
         || ((a.distanceKm || 99) - (b.distanceKm || 99))
@@ -5751,6 +6135,7 @@ class Store {
       { id: 'recommend', label: '추천순' },
       { id: 'near', label: '가까운순' },
       { id: 'members', label: '인원순' },
+      { id: 'new', label: '새로 생긴' },
       { id: 'name', label: '이름순' }
     ];
   }
@@ -5783,26 +6168,27 @@ class Store {
   }
 
   /**
-   * 아지트 목록 — 큰 분류·검색어로 좁힌다.
+   * 아지트 목록 — 큰 분류·시·도·시·군·구·검색어로 좁힌다. (H2 는 getHangouts 를 쓴다 — 이 메서드는 호환용)
    * @param {{areaId?:string, query?:string, limit?:number}} options
    * @returns {Array} 아지트 표시 정보 + 내 동네 여부
    */
   getAzitSpots(options = {}) {
     /* 같은 이름의 아지트가 둘 이상이면 앞의 하나만 보여준다(공개용 사본의 가명 치환 뒤에도 목록이 깔끔하게). */
-
     const o = options || {};
     const q = String(o.query || '').trim().toLowerCase();
     /* 검색어가 있으면 권역을 넘어 전부에서 찾는다('성수'를 기본 권역 안에서만 뒤지지 않게). */
     const areaId = (!q && o.areaId && o.areaId !== 'all') ? o.areaId : null;
-    const myRegion = this.currentUser.regionId || null;
+    const my = this.getMyArea();
     const list = AZIT_SPOTS.filter((s) => {
+      if (s.legacy && o.includeLegacy !== true) return false;
       if (areaId && s.areaId !== areaId) return false;
       if (!q) return true;
       const hay = [s.name, ...(s.aliases || []), azitView(s).areaName].join(' ').toLowerCase();
       return hay.includes(q);
     }).map((s) => ({
       ...azitView(s),
-      isMyArea: !!myRegion && s.areaId === myRegion,
+      isMyArea: !!(my && s.sigunguId === my.sigunguId)
+        || (!s.legacy && !!this.currentUser.regionId && s.areaId === this.currentUser.regionId),
       groupCount: (this.state.groups || []).filter((g) => {
         const a = this.getGroupAzit(g);
         return !!a && a.id === s.id;
@@ -5823,12 +6209,16 @@ class Store {
     return azitView(azitDef(azitId));
   }
 
-  /** 내 동네의 첫 아지트 — '내 아지트' 기본값. 동네를 모르면 성수역. */
+  /** 내 동네의 첫 아지트 — '내 아지트' 기본값. 같은 시·군·구 → 같은 권역 → 성수역 순. */
   getMyAzit() {
+    const area = this.getMyArea();
+    const primary = AZIT_SPOTS.filter((s) => !s.legacy);
+    const sameArea = area ? primary.filter((s) => s.sigunguId === area.sigunguId) : [];
+    if (sameArea.length) return azitView(sameArea[0]);
     const regionId = this.currentUser.regionId || null;
-    const spot = AZIT_SPOTS.find((s) => s.areaId === regionId)
-      || AZIT_SPOTS.find((s) => s.id === 'azit-sillim');
-    return azitView(spot);
+    const sameRegion = primary.filter((s) => s.areaId === regionId);
+    if (sameRegion.length) return azitView(sameRegion[0]);
+    return azitView(primary.find((s) => s.id === 'azit-sillim') || primary[0]);
   }
 
   /**
@@ -5837,8 +6227,8 @@ class Store {
    */
   getGroupAzit(group) {
     if (!group) return null;
-    const direct = azitDef(group.azitId);
-    if (direct) return azitView(direct);
+    const first = this.getGroupHangouts(group)[0];
+    if (first) return first;
     const hay = String(group.location || '').toLowerCase();
     if (!hay) return null;
     const hit = AZIT_SPOTS.find((s) => hay.includes(s.name.toLowerCase())
@@ -5848,19 +6238,19 @@ class Store {
 
   /** 홈 '모임 찾기' 의 아지트 칩 — 내 동네 먼저, 그다음 모임이 있는 아지트. */
   getAzitChips(limit = 8) {
-    const myRegion = this.currentUser.regionId || null;
+    const my = this.getMyArea();
     const mine = this.getMyAzit();
-    const rows = AZIT_SPOTS.map((s) => {
+    const rows = AZIT_SPOTS.filter((s) => !s.legacy).map((s) => {
       const view = azitView(s);
       const groupCount = (this.state.groups || []).filter((g) => {
         const a = this.getGroupAzit(g);
         return !!a && a.id === s.id;
       }).length;
-      return { ...view, isMyArea: !!myRegion && s.areaId === myRegion, groupCount };
+      return { ...view, isMyArea: !!(my && s.sigunguId === my.sigunguId), groupCount };
     });
     rows.sort((a, b) => ((b.isMyArea ? 1 : 0) - (a.isMyArea ? 1 : 0))
       || (b.groupCount - a.groupCount)
-      || (a.id === mine.id ? -1 : 0) - (b.id === mine.id ? -1 : 0));
+      || (a.id === (mine && mine.id) ? -1 : 0) - (b.id === (mine && mine.id) ? -1 : 0));
     const seen = new Set();
     return rows.filter((a) => {
       if (seen.has(a.name)) return false;
@@ -5888,9 +6278,175 @@ class Store {
     return this.getCoverIconPresets().find((p) => p.id === presetId) || null;
   }
 
+  /* ==========================================================================
+   * H2 — 지역(시·도 → 시·군·구) · 아지트 1~3곳 · 거리 구간
+   * ------------------------------------------------------------------------
+   *  · 활동 지역은 목록에서만 고른다(직접 입력 없음).
+   *  · 아지트는 지하철역·대학교·랜드마크 150곳 중 1~3곳. 정확한 주소는 받지 않는다.
+   *  · 거리는 대략 좌표(소수점 3자리)로 계산하고, 화면에는 '약 1~2km' 같은 구간만 쓴다.
+   * ========================================================================== */
+
+  /** 시·도 목록 — 시·군·구 수를 함께. */
+  getRegionSido() {
+    return (GEO_CURRENT.regions.sido || []).map((s) => ({
+      id: s.id, name: s.name, short: s.short, count: (s.sigungu || []).length
+    }));
+  }
+
+  /** 한 시·도의 시·군·구 목록 */
+  getRegionSigungu(sidoId) {
+    const sido = (GEO_CURRENT.regions.sido || []).find((s) => s.id === sidoId);
+    if (!sido) return [];
+    return (sido.sigungu || []).map((g) => geoAreaView(g.id)).filter(Boolean);
+  }
+
+  /** 시·군·구 하나 */
+  findSigungu(sigunguId) {
+    return geoAreaView(sigunguId);
+  }
+
+  /** http 로 열렸을 때 data/regions.json · data/hangouts.json 을 다시 읽어 내장본을 맞춘다. */
+  async loadGeoData() {
+    const changed = await loadGeoData();
+    return { ok: changed !== false, data: { regions: GEO_CURRENT.regions, hangouts: GEO_CURRENT.hangouts } };
+  }
+
+  /**
+   * 내 동네(가입 때 고른 지역)의 시·군·구.
+   *  저장된 areaId → 주소 글의 구 이름 → 내 아지트 순서로 찾는다.
+   */
+  getMyArea() {
+    const u = this.currentUser || {};
+    if (u.areaId && GEO_SIGUNGU_MAP[u.areaId]) return geoAreaView(u.areaId);
+    const areaId = geoAreaIdFor(u.location, u.regionId)
+      || (AZIT_SPOTS.find((s) => !s.legacy && s.id === 'azit-sillim') || {}).sigunguId;
+    return areaId ? geoAreaView(areaId) : null;
+  }
+
+  /** 거리 계산의 기준점 — 내 동네 대표 아지트(같은 시·군·구) 아니면 시·군·구 중심. */
+  getMyAnchorCoords() {
+    const area = this.getMyArea();
+    if (!area) return null;
+    const spot = AZIT_SPOTS.find((s) => !s.legacy && s.sigunguId === area.sigunguId && s.lat != null)
+      || AZIT_SPOTS.find((s) => !s.legacy && s.areaId === area.regionId && s.lat != null);
+    if (spot && spot.sigunguId === area.sigunguId) return { lat: spot.lat, lng: spot.lng, name: spot.name };
+    return area.lat == null ? null : { lat: area.lat, lng: area.lng, name: area.name };
+  }
+
+  /** 아지트 종류 3가지(지하철역·대학교·랜드마크) */
+  getHangoutKinds() {
+    return ['station', 'university', 'landmark'].map((id) => ({ id, ...AZIT_KINDS[id] }));
+  }
+
+  /**
+   * 아지트 목록 — 시·도/시·군·구·검색어로 좁힌다. 4단계에서 고른 지역 후보를 먼저 보여 준다.
+   * @param {{sidoId?:string, sigunguId?:string, areaId?:string, query?:string,
+   *          limit?:number, includeLegacy?:boolean}} options
+   */
+  getHangouts(options = {}) {
+    const o = options || {};
+    const q = String(o.query || '').trim().toLowerCase();
+    const sidoId = o.sidoId && o.sidoId !== 'all' ? o.sidoId : null;
+    const sigunguId = o.sigunguId && o.sigunguId !== 'all' ? o.sigunguId : null;
+    const areaId = (!q && o.areaId && o.areaId !== 'all') ? o.areaId : null;
+    const my = this.getMyArea();
+    return AZIT_SPOTS
+      .filter((s) => {
+        if (s.legacy && o.includeLegacy !== true) return false;
+        if (sidoId && s.sidoId !== sidoId) return false;
+        if (sigunguId && s.sigunguId !== sigunguId) return false;
+        if (areaId && s.areaId !== areaId) return false;
+        if (!q) return true;
+        const hay = [s.name, ...(s.aliases || []), azitView(s).areaName].join(' ').toLowerCase();
+        return hay.includes(q);
+      })
+      .map((s) => ({
+        ...azitView(s),
+        isMyArea: !!(my && s.sigunguId === my.sigunguId),
+        groupCount: (this.state.groups || []).filter((g) => {
+          const a = this.getGroupAzit(g);
+          return !!a && a.id === s.id;
+        }).length
+      }))
+      .sort((a, b) => ((b.isMyArea ? 1 : 0) - (a.isMyArea ? 1 : 0))
+        || (b.groupCount - a.groupCount)
+        || ((b.id === (my && my.id) ? 1 : 0) - (a.id === (my && my.id) ? 1 : 0))
+        || String(a.name).localeCompare(String(b.name), 'ko'))
+      .slice(0, o.limit == null ? undefined : Math.max(1, Number(o.limit)));
+  }
+
+  /** 모임의 아지트들 — 저장된 hangouts(1~3) → 옛 azitId 순. */
+  getGroupHangouts(group) {
+    if (!group) return [];
+    const rows = Array.isArray(group.hangouts) ? group.hangouts : [];
+    const out = [];
+    rows.forEach((h) => {
+      const view = azitView(azitDef(typeof h === 'string' ? h : (h && h.id)));
+      if (view && !out.some((x) => x.id === view.id)) out.push(view);
+    });
+    if (!out.length && group.azitId) {
+      const view = azitView(azitDef(group.azitId));
+      if (view) out.push(view);
+    }
+    /* H2 — 아지트 없이 저장된 옛 모임: 활동 지역 글에 아지트 이름이 있으면 그곳으로 본다. */
+    if (!out.length) {
+      const hit = azitFromText(group.location);
+      if (hit) out.push(azitView(hit));
+    }
+    return out.slice(0, 3);
+  }
+
+  /** 모임의 지역(시·도/시·군·구) — 저장된 region → 첫 아지트 → 권역 순. */
+  getGroupRegion(group) {
+    if (!group) return null;
+    if (group.region && group.region.sigunguId) {
+      const view = geoAreaView(group.region.sigunguId);
+      if (view) return view;
+    }
+    const hs = this.getGroupHangouts(group);
+    const withArea = hs.find((h) => !!h.sigunguId);
+    if (withArea) return geoAreaView(withArea.sigunguId);
+    const regionId = this.getGroupRegionId(group);
+    const spot = AZIT_SPOTS.find((s) => !s.legacy && s.sigunguId && s.areaId === regionId);
+    return spot ? geoAreaView(spot.sigunguId) : null;
+  }
+
+  /**
+   * H3 — 게스트 신청 상태 한 사람분: 'pending'(승인 대기) | 'approved'(승인됨) | 'rejected'(거절) | null.
+   *  · 승인되면 참석 명단(rsvps, guest:true)에 오르고, 대기 신청은 guestRequests 에 남긴다.
+   */
+  getMyGuestStatus(ev) {
+    if (!ev) return null;
+    const me = this.currentUser;
+    const seated = (Array.isArray(ev.rsvps) ? ev.rsvps : [])
+      .find((r) => r.memberId === me.id && r.guest === true && r.status === 'yes');
+    if (seated) return 'approved';
+    const req = (Array.isArray(ev.guestRequests) ? ev.guestRequests : [])
+      .find((r) => r.memberId === me.id);
+    return req ? req.status : null;
+  }
+
+  /** 일정의 게스트 신청 목록 — 모임장이 보는 승인 대기/처리 결과. */
+  getGuestRequests(eventId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return [];
+    return (Array.isArray(ev.guestRequests) ? ev.guestRequests : []).map((r) => ({ ...r }));
+  }
+
+  /** 이 일정의 게스트 신청을 내가 처리할 수 있나 — 모임장 · (허용된) 부방장 · 일정 만든 사람. */
+  canReviewGuestRequests(eventId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return false;
+    if (ev.createdBy === this.currentUser.id) return true;
+    if (this.isGroupLeader(ev.groupId)) return true;
+    const grp = this.getGroup(ev.groupId);
+    return !!grp && grp.deputyCanModerate === true
+      && Array.isArray(grp.deputyIds) && grp.deputyIds.includes(this.currentUser.id);
+  }
+
   /**
    * 홈 '추천 일정' — **게스트 참여 가능**을 켠 일정만.
-   * 모임에 가입하지 않은 사람도 참석을 신청할 수 있다(모임장이 승인하는 승인제와는 별개).
+   * 모임에 가입하지 않은 사람도 참석을 **신청**할 수 있고, 모임장이 수락해야 참석이 된다(H3).
    */
   getRecommendedEvents(options = {}) {
     const o = options || {};
@@ -5902,56 +6458,155 @@ class Store {
       .map((e) => {
         const grp = this.getGroup(e.groupId);
         const chip = grp ? this.getHobbyChip(grp.hobbyId) : null;
+        const azit = grp ? this.getGroupAzit(grp) : null;
+        const summary = this.getGroupEventSummary(e.id);
         return {
           event: e,
           group: grp,
           groupName: grp ? grp.name : '모임',
+          /* H3 — 추천 일정에는 아지트 이름만. 정확한 주소(place)는 넣지 않는다. */
+          azitName: azit ? azit.name : '',
+          azit,
           hobbyName: chip ? chip.name : (grp ? grp.categoryName : '취미'),
           tone: grp ? this.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
           joined: grp ? joined.includes(grp.id) : false,
-          myRsvp: (e.rsvps || []).some((r) => r.memberId === this.currentUser.id && r.status === 'yes') ? 'yes' : null,
-          whenLabel: this.getGroupEventSummary(e.id).whenLabel
+          myRsvp: summary.myRsvp === 'yes' ? 'yes' : null,
+          myGuestStatus: this.getMyGuestStatus(e),
+          guestPending: summary.guestPending,
+          whenLabel: summary.whenLabel
         };
       })
       .sort((a, b) => new Date(a.event.when).getTime() - new Date(b.event.when).getTime())
       .slice(0, limit);
   }
 
-  /** 게스트 참석 신청 — 가입 없이, 게스트 참여를 켠 일정에만. */
+  /**
+   * H3 — 게스트 참석 **신청**(가입 없이). 바로 참석이 아니라 '승인 대기'로 들어가고,
+   * 모임장이 수락하면 그때 참석 명단에 오른다. 서버 없이 로컬 상태로 도는 흐름이다.
+   */
   requestGuestSeat(eventId) {
     const ev = this.getGroupEvent(eventId);
     if (!ev) return { ok: false, reason: 'not_found' };
     if (ev.guestOpen !== true) return { ok: false, reason: 'guest_closed' };
     if (new Date(ev.when).getTime() < Date.now()) return { ok: false, reason: 'past' };
+    if (this.isGroupJoined(ev.groupId)) return { ok: false, reason: 'member' };
     const me = this.currentUser;
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
-    const already = rsvps.find((r) => r.memberId === me.id && r.status === 'yes');
-    if (already) return { ok: true, already: true, eventId, summary: this.getGroupEventSummary(eventId) };
+    const already = rsvps.find((r) => r.memberId === me.id && r.guest === true && r.status === 'yes');
+    if (already) {
+      return { ok: true, already: true, status: 'approved', eventId, summary: this.getGroupEventSummary(eventId) };
+    }
+    const requests = Array.isArray(ev.guestRequests) ? ev.guestRequests : [];
+    const prev = requests.find((r) => r.memberId === me.id);
+    if (prev && prev.status === 'pending') {
+      return { ok: true, already: true, status: 'pending', eventId, summary: this.getGroupEventSummary(eventId) };
+    }
     const capacity = Number(ev.capacity) || 0;
     const yes = rsvps.filter((r) => r.status === 'yes').length;
     if (capacity && yes >= capacity) return { ok: false, reason: 'full' };
-    ev.rsvps = rsvps.filter((r) => r.memberId !== me.id).concat({
+    const entry = {
       memberId: me.id,
       name: me.nickname,
       avatarText: me.avatarText,
       gradient: me.avatarGradient,
-      status: 'yes',
-      guest: true
-    });
+      status: 'pending',
+      requestedAt: new Date().toISOString()
+    };
+    ev.guestRequests = requests.filter((r) => r.memberId !== me.id).concat(entry);
     this.saveState();
-    return { ok: true, guest: true, eventId, summary: this.getGroupEventSummary(eventId) };
+    return { ok: true, status: 'pending', pending: true, eventId, summary: this.getGroupEventSummary(eventId) };
   }
 
-  /** 게스트 참석 취소 */
+  /** 모임장 — 게스트 신청 수락. 자리가 있으면 참석, 정원이 찾으면 대기 1순위로 올린다. */
+  approveGuestSeat(eventId, memberId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    if (!this.canReviewGuestRequests(eventId)) return { ok: false, reason: 'permission' };
+    const requests = Array.isArray(ev.guestRequests) ? ev.guestRequests : [];
+    const req = requests.find((r) => r.memberId === memberId && r.status === 'pending');
+    if (!req) return { ok: false, reason: 'no_request' };
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const capacity = Number(ev.capacity) || 0;
+    const yes = rsvps.filter((r) => r.status === 'yes').length;
+    const status = capacity && yes >= capacity ? 'maybe' : 'yes';
+    const seat = {
+      memberId: req.memberId,
+      name: req.name,
+      avatarText: req.avatarText,
+      gradient: req.gradient,
+      status,
+      guest: true,
+      approvedAt: new Date().toISOString()
+    };
+    if (status === 'maybe') seat.waitingAt = new Date().toISOString();
+    ev.rsvps = rsvps.filter((r) => r.memberId !== memberId).concat(seat);
+    req.status = 'approved';
+    req.decidedAt = new Date().toISOString();
+    req.decidedBy = this.currentUser.id;
+    this.saveState();
+    return { ok: true, eventId, memberId, status, summary: this.getGroupEventSummary(eventId) };
+  }
+
+  /** 모임장 — 게스트 신청 거절. 신청자에게 '거절됨'으로 남는다. */
+  rejectGuestSeat(eventId, memberId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    if (!this.canReviewGuestRequests(eventId)) return { ok: false, reason: 'permission' };
+    const req = (Array.isArray(ev.guestRequests) ? ev.guestRequests : [])
+      .find((r) => r.memberId === memberId && r.status === 'pending');
+    if (!req) return { ok: false, reason: 'no_request' };
+    req.status = 'rejected';
+    req.decidedAt = new Date().toISOString();
+    req.decidedBy = this.currentUser.id;
+    this.saveState();
+    return { ok: true, eventId, memberId, summary: this.getGroupEventSummary(eventId) };
+  }
+
+  /** 게스트 신청 취소 — 승인 대기든, 이미 수락된 참석이든. */
   cancelGuestSeat(eventId) {
     const ev = this.getGroupEvent(eventId);
     if (!ev) return { ok: false, reason: 'not_found' };
     const me = this.currentUser;
-    const before = (ev.rsvps || []).length;
+    const before = (Array.isArray(ev.rsvps) ? ev.rsvps : []).length;
     ev.rsvps = (ev.rsvps || []).filter((r) => !(r.memberId === me.id && r.guest === true));
-    if (ev.rsvps.length === before) return { ok: false, reason: 'not_guest' };
+    const hadRequest = (Array.isArray(ev.guestRequests) ? ev.guestRequests : [])
+      .some((r) => r.memberId === me.id);
+    ev.guestRequests = (Array.isArray(ev.guestRequests) ? ev.guestRequests : [])
+      .filter((r) => r.memberId !== me.id);
+    if (ev.rsvps.length === before && !hadRequest) return { ok: false, reason: 'not_guest' };
     this.saveState();
     return { ok: true, eventId };
+  }
+
+  /**
+   * 시연·데모용 — **다른 사람이** 게스트 참석을 신청한 것처럼 만든다.
+   *  · 서버가 없는 지금은 모임장 화면(게스트 승인 대기)을 확인할 방법이 이것뿐이다.
+   *  · 실제 서비스에서는 이 자리를 서버가 채운다(다른 사람의 신청은 내 기기에서 생기지 않는다).
+   * @param {string} eventId
+   * @param {{memberId?:string, name?:string, avatarText?:string, gradient?:string}|string} guest
+   */
+  simulateGuestRequest(eventId, guest) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    if (ev.guestOpen !== true) return { ok: false, reason: 'guest_closed' };
+    const g = typeof guest === 'string' ? { name: guest } : (guest || {});
+    const name = String(g.name || '모래').trim().slice(0, 12) || '모래';
+    const memberId = g.memberId || `guest_${name}_${Date.now().toString(36)}`;
+    const requests = Array.isArray(ev.guestRequests) ? ev.guestRequests : [];
+    if (requests.some((r) => r.memberId === memberId && r.status === 'pending')) {
+      return { ok: true, already: true, memberId, status: 'pending' };
+    }
+    ev.guestRequests = requests.filter((r) => r.memberId !== memberId).concat({
+      memberId,
+      name,
+      avatarText: g.avatarText || name.charAt(0),
+      gradient: g.gradient || 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)',
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+      simulated: true
+    });
+    this.saveState();
+    return { ok: true, memberId, status: 'pending', summary: this.getGroupEventSummary(eventId) };
   }
 
   /**
@@ -5965,20 +6620,67 @@ class Store {
       .filter((p) => p && p.recommendOptIn === true)
       .map((p) => {
         const grp = this.getGroup(p.groupId);
+        const azit = grp ? this.getGroupAzit(grp) : null;
+        const hangouts = grp ? this.getGroupHangouts(grp) : [];
         return {
           post: p,
           group: grp,
           groupName: grp ? grp.name : '모임',
-          azitName: grp ? (this.getGroupAzit(grp) || {}).name || '' : '',
+          azitName: azit ? azit.name : '',
+          azit,
+          hangouts,
+          region: grp ? this.getGroupRegion(grp) : null,
           hobbyName: grp ? grp.categoryName : '취미',
           hobbyIcon: grp ? ((this.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle',
           tone: grp ? this.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
+          likeCount: p.likes || 0,
+          likedByMe: p.likedByMe === true,
+          commentCount: (p.comments || []).length,
+          /* 방금 올린 글(30분 안)은 추천 순서와 상관없이 맨 위에 — 올린 사람이 바로 확인할 수 있게. */
+          fresh: Date.now() - new Date(p.createdAt).getTime() < 30 * 60 * 1000,
           score: (p.likes || 0) * 2 + (p.comments || []).length * 3
         };
       })
-      .sort((a, b) => (b.score - a.score)
+      .sort((a, b) => ((b.fresh ? 1 : 0) - (a.fresh ? 1 : 0))
+        || (b.score - a.score)
         || (new Date(b.post.createdAt).getTime() - new Date(a.post.createdAt).getTime()))
       .slice(0, limit);
+  }
+
+  /**
+   * H2 — 홈 추천 피드를 **무제한으로 이어 보는** 페이지.
+   *  · 글을 다 보여 준 뒤에는 같은 글을 다른 순서로 돌려(순환) 끊김 없이 이어진다.
+   *  · 같은 글이라도 카드 키(uid)가 라운드마다 달라서 목록이 중복으로 깨지지 않는다.
+   *  · 라운드 상한(25)은 실수로 끝없이 그리지 않도록 둔 안전판이다(글 1개면 100장).
+   * @returns {{items:Array, page:number, round:number, total:number, hasMore:boolean}}
+   */
+  getRecommendedFeedPage(options = {}) {
+    const o = options || {};
+    const limit = Math.max(1, Math.min(10, Number(o.limit) || 4));
+    const page = Math.max(0, Number(o.page) || 0);
+    const all = this.getRecommendedFeed({ limit: 9999 });
+    const total = all.length;
+    const maxRounds = 25;
+    if (!total) return { items: [], page, round: 0, total: 0, hasMore: false, nextOffset: 0 };
+    /* offset 이 있으면 그 자리에서 이어 붙인다(배치가 라운드 경계에서 잘려도 다음 시작이 정확). */
+    const start = Math.max(0, o.offset != null ? Number(o.offset) || 0 : page * limit);
+    const items = [];
+    const startRound = Math.floor(start / total);
+    /* 한 배치가 라운드 경계를 넘지 않게 한다 — 글 수보다 배치가 크면 첫 화면에 같은 글이 두 번 나온다. */
+    const room = Math.max(0, (startRound + 1) * total - start);
+    const size = Math.min(limit, room);
+    for (let i = 0; i < size; i += 1) {
+      const idx = start + i;
+      const round = startRound;
+      const src = all[(idx - round) % total];
+      items.push({ ...src, uid: `${src.post.id}#${round}`, round, index: idx });
+    }
+    return {
+      items, page, total,
+      round: startRound,
+      nextOffset: start + items.length,
+      hasMore: (startRound + 1) < maxRounds || (start + items.length) < total * maxRounds
+    };
   }
 
   getExploreFeed(filter = 'all', query = '', options = null, ageFilter = 'all', region = 'all', radius = 'all') {
@@ -6871,6 +7573,8 @@ class Store {
    */
   getRecommendedGroups(options = {}) {
     const limit = options.limit == null ? 4 : options.limit;
+    /* H1 — 홈 추천 그룹 칩 3개: 가까운 순(near) · 인기(popular) · 새로 생긴(new). */
+    const sort = ['near', 'popular', 'new'].includes(options.sort) ? options.sort : 'recommend';
     const mine = this.getTasteHobbyIds();
     const myCats = mine.map((id) => this.getHobbyTone(id));
     const joined = this.state.currentUser ? this.state.currentUser.joinedGroupIds || [] : [];
@@ -6891,11 +7595,16 @@ class Store {
         if (sameAzit) score += 2;
         else if (sameArea) score += 1;
         score += Math.min(2, Math.floor((g.memberCount || 0) / 12));
+        const distanceKm = this.getGroupDistanceKm(g);
         return {
           group: g,
           hobbyName: chip ? chip.name : (g.categoryName || '취미'),
           tone: this.getHobbyTone(g.hobbyId || g.category),
           azit,
+          hangouts: this.getGroupHangouts(g),
+          region: this.getGroupRegion(g),
+          distanceKm,
+          distanceLabel: distanceBucket(distanceKm),
           reason: sameHobby && (sameAzit || sameArea) ? '내 취미 · 아지트가 가까워요'
             : (sameAzit ? '내 아지트에서 만나요'
               : (sameArea ? '같은 동네 아지트'
@@ -6904,9 +7613,17 @@ class Store {
           score
         };
       });
-    scored.sort((a, b) => (b.score - a.score)
-      || ((a.group.distanceKm || 99) - (b.group.distanceKm || 99))
-      || (b.group.memberCount || 0) - (a.group.memberCount || 0));
+    scored.sort((a, b) => {
+      if (sort === 'near') return ((a.distanceKm == null ? 99 : a.distanceKm) - (b.distanceKm == null ? 99 : b.distanceKm))
+        || ((b.group.memberCount || 0) - (a.group.memberCount || 0));
+      if (sort === 'popular') return ((b.group.memberCount || 0) - (a.group.memberCount || 0))
+        || ((a.distanceKm == null ? 99 : a.distanceKm) - (b.distanceKm == null ? 99 : b.distanceKm));
+      if (sort === 'new') return (new Date(b.group.createdAt || 0).getTime() - new Date(a.group.createdAt || 0).getTime())
+        || ((b.group.memberCount || 0) - (a.group.memberCount || 0));
+      return (b.score - a.score)
+        || ((a.distanceKm == null ? 99 : a.distanceKm) - (b.distanceKm == null ? 99 : b.distanceKm))
+        || (b.group.memberCount || 0) - (a.group.memberCount || 0);
+    });
     return scored.slice(0, limit);
   }
 
@@ -7055,10 +7772,28 @@ class Store {
     if (name.length < 2 || name.length > 30) return { ok: false, reason: 'name' };
     const chip = this.getHobbyChip(d.hobbyId);
     if (!chip) return { ok: false, reason: 'hobby' };
-    /* Sprint 32.5 — 장소는 자유 입력 대신 '아지트'. 만들기 화면에서는 골라야 넘어가고,
+    /* H2 — 아지트 1~3곳(직접 입력 없음). 만들기 화면은 4~5단계에서 골라야 넘어가고,
        경계(API)로 바로 들어온 요청은 내 동네 아지트를 기본으로 받는다. */
-    const azit = this.findAzit(d.azitId) || this.getMyAzit();
-    if (!azit) return { ok: false, reason: 'azit' };
+    const askedIds = (Array.isArray(d.hangouts) ? d.hangouts
+      : (Array.isArray(d.hangoutIds) ? d.hangoutIds : (d.azitId ? [d.azitId] : [])))
+      .map((h) => (typeof h === 'string' ? h : (h && h.id)))
+      .filter(Boolean);
+    let hangouts = [];
+    askedIds.forEach((id) => {
+      const view = this.findAzit(id);
+      if (view && !hangouts.some((h) => h.id === view.id)) hangouts.push(view);
+    });
+    if (askedIds.length && !hangouts.length) return { ok: false, reason: 'hangout' };
+    if (hangouts.length > 3) return { ok: false, reason: 'too_many_hangouts' };
+    if (!hangouts.length) {
+      const my = this.getMyAzit();
+      if (my) hangouts = [my];
+    }
+    if (!hangouts.length) return { ok: false, reason: 'hangout' };
+    /* H2 — 활동 지역(시·도/시·군·구). 고른 지역을 우선하고, 없으면 첫 아지트의 지역. */
+    const wantedArea = d.region && d.region.sigunguId ? geoAreaView(d.region.sigunguId) : null;
+    const firstWithArea = hangouts.find((h) => !!h.sigunguId);
+    const area = wantedArea || (firstWithArea ? geoAreaView(firstWithArea.sigunguId) : null);
     const user = this.state.currentUser;
     const meetLabel = String(d.meetLabel || '').trim().slice(0, 24) || '일정 조율 중';
     const description = String(d.description || '').trim().slice(0, 300)
@@ -7067,16 +7802,26 @@ class Store {
     const joinMode = (d.joinMode === 'approval' || d.privacyType === 'approval_private')
       ? 'approval' : 'open';
     const privacyType = joinMode === 'open' ? 'open' : 'approval_private';
-    const ageLimitOption = this.getAgeLimit(d.ageLimit) || this.getAgeLimit('all');
+    const ageLimitOption = (d.ageMin != null || d.ageMax != null)
+      ? this.ageRangeOption(d.ageMin, d.ageMax)
+      : (this.getAgeLimit(d.ageLimit) || this.getAgeLimit('all'));
+    const ageRange = this.normalizeGroupAgeRange(ageLimitOption.min, ageLimitOption.max);
     const asked = Array.isArray(d.joinQuestions)
       ? d.joinQuestions.map((q) => String(q || '').trim()).filter(Boolean).slice(0, 2)
       : [];
     const joinQuestions = joinMode === 'approval' && !asked.length
       ? ['취미 구력이나 선호 요일을 적어주세요!']
       : (joinMode === 'approval' ? asked : []);
-    /* Sprint 32.5 — 대표 이미지: 올린 사진(720px JPEG) 또는 기본 점토 프리셋. */
-    const rawPhoto = String(d.photoUrl || '').trim();
-    const photoUrl = /^https?:\/\//i.test(rawPhoto) || /^data:image\//i.test(rawPhoto) ? rawPhoto : null;
+    /* H2 — 대표 이미지: 한 번 크롭해서 만든 1:1(원형용)·4:3(카드용) 두 장, 또는 기본 프리셋.
+       사진은 Canvas 로 다시 저장해 EXIF(위치 정보)를 지운 Data URL 만 받는다. */
+    const dataUrlOk = (v) => {
+      const s = String(v || '').trim();
+      return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) ? s : null;
+    };
+    const coverIn = d.coverImage || {};
+    const coverCard = dataUrlOk(coverIn.card || d.coverCard || d.photoUrl);
+    const coverCircle = dataUrlOk(coverIn.circle || d.coverCircle) || coverCard;
+    const photoUrl = coverCard;
     const preset = d.coverIconPresetId ? this.getCoverIconPreset(d.coverIconPresetId) : null;
     const coverIcon = (preset && preset.icon) || chip.icon;
 
@@ -7087,24 +7832,29 @@ class Store {
       categoryName: chip.name,
       hobbyId: chip.id,
       meetLabel,
-      ratio: this.state.groups.length % 2 === 0 ? 'wide' : 'square',
+      ratio: 'wide',
       icon: coverIcon,
       coverGradient: 'linear-gradient(135deg, #0E814A 0%, #0E8146 100%)',
-      /* 아지트 — 이름만 저장한다(집 주소·좌표 없음). */
-      azitId: azit.id,
-      azitName: azit.name,
-      location: azit.name.slice(0, 24),
-      regionId: azit.areaId,
-      distanceKm: azit.areaId === (user.regionId || '') ? 0.4 : 3.4,
+      /* 아지트 1~3곳 — 이름·종류만 저장한다(집 주소·정확한 위치 없음). */
+      hangouts: hangouts.map((h) => ({ id: h.id, name: h.name, kind: h.kind })),
+      azitId: hangouts[0].id,
+      azitName: hangouts[0].name,
+      location: hangouts[0].name.slice(0, 24),
+      region: area ? { sidoId: area.sidoId, sidoName: area.sidoName, sigunguId: area.sigunguId, sigunguName: area.name } : null,
+      regionId: (firstWithArea && firstWithArea.areaId) || (area && area.regionId) || (hangouts[0].areaId || ''),
+      distanceKm: this.getGroupDistanceKm({ hangouts: hangouts.map((h) => ({ id: h.id })), regionId: (firstWithArea && firstWithArea.areaId) || null, distanceKm: null }),
       memberCount: 1,
       maxMembers: 30,
       privacyType,
       privacyLabel: privacyType === 'open' ? '자유 가입' : '비공개 승인제',
       joinMode,
+      /* H4 — 슬라이더로 고른 나이 범위. ageLimit 은 배지·옛 코드 호환용 id. */
+      ageMin: ageRange.min,
+      ageMax: ageRange.max,
       ageLimit: ageLimitOption.id,
       joinQuestions,
       description,
-      tags: [`#${chip.name}`, `#${azit.name.replace(/\s+/g, '')}`],
+      tags: [`#${chip.name}`, `#${hangouts[0].name.replace(/\s+/g, '')}`],
       rules: '서로의 취미와 시간을 존중합니다. 모임 사진은 멤버에게만 공유해요.',
       leaderId: user.id,
       leaderName: user.nickname,
@@ -7113,6 +7863,12 @@ class Store {
       members: [],
       isMine: true,
       photoUrl,
+      coverCircle,
+      coverImage: photoUrl ? { circle: coverCircle, card: coverCard } : null,
+      /* H3 — 6단계에서 두 기본값 입력을 걷어냈다. 필드는 옛 저장 상태 호환용으로만 남고
+         (항상 false), 일정·글의 시작값으로는 쓰지 않는다. */
+      defaultGuestOpen: d.defaultGuestOpen === true,
+      defaultRecommendOptIn: d.defaultRecommendOptIn === true,
       ...(preset ? { coverIconPreset: { id: preset.id, icon: preset.icon, tone: preset.tone } } : {}),
       createdAt: new Date().toISOString()
     };
@@ -8121,6 +8877,59 @@ class Store {
     return this.getAgeLimitOptions().find((o) => o.id === limitId) || null;
   }
 
+  /** H4 — 19~99 밖으로 나가지 않게 다듬고, 두 값의 순서를 바로잡는다. */
+  normalizeGroupAgeRange(min, max) {
+    const toAge = (v, fallback) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return fallback;
+      return Math.min(GROUP_AGE_MAX, Math.max(GROUP_AGE_MIN, Math.round(n)));
+    };
+    const lo = toAge(min, GROUP_AGE_MIN);
+    const hi = toAge(max, GROUP_AGE_MAX);
+    return { min: Math.min(lo, hi), max: Math.max(lo, hi) };
+  }
+
+  /**
+   * H4 — 나이 범위를 배지·판정에 쓰는 옵션 모양으로 만든다.
+   *   · 양끝(19~99)      → '제한 없음'(all)
+   *   · 옛 프리셋과 같다  → 그 프리셋(20대만·2030·30대+)
+   *   · 그 밖의 범위      → id 'custom' + 표기 '25세 ~ 35세' · '30세 이상' · '29세 이하'
+   */
+  ageRangeOption(min, max) {
+    const r = this.normalizeGroupAgeRange(min, max);
+    if (r.min <= GROUP_AGE_MIN && r.max >= GROUP_AGE_MAX) return this.getAgeLimit('all');
+    const preset = this.getAgeLimitOptions()
+      .filter((o) => o.id !== 'all')
+      .find((o) => {
+        /* '30대 이상'은 max 200 이라 99 와 비교하면 늘 어긋난다 — 같은 19~99 로 맞춰 견준다. */
+        const pr = this.normalizeGroupAgeRange(o.min, o.max);
+        return pr.min === r.min && pr.max === r.max;
+      });
+    if (preset) return preset;
+    const label = r.min <= GROUP_AGE_MIN ? `${r.max}세 이하`
+      : (r.max >= GROUP_AGE_MAX ? `${r.min}세 이상` : `${r.min}세 ~ ${r.max}세`);
+    return {
+      id: 'custom', label, short: label, badge: label, cardBadge: label,
+      tone: 'custom', min: r.min, max: r.max
+    };
+  }
+
+  /**
+   * 모임의 나이 범위 — 저장된 ageMin·ageMax 를 먼저 읽고, 옛 모임은 ageLimit id 에서 되살린다.
+   * @returns {{min:number, max:number, active:boolean, option:object}}
+   */
+  getGroupAgeRange(group) {
+    const g = typeof group === 'string' ? this.getGroup(group) : group;
+    const all = this.getAgeLimit('all');
+    if (!g) return { min: GROUP_AGE_MIN, max: GROUP_AGE_MAX, active: false, option: all };
+    const saved = Number.isFinite(Number(g.ageMin)) && Number.isFinite(Number(g.ageMax))
+      ? this.normalizeGroupAgeRange(g.ageMin, g.ageMax)
+      : this.normalizeGroupAgeRange((this.getAgeLimit(g.ageLimit) || all).min,
+        (this.getAgeLimit(g.ageLimit) || all).max);
+    const option = this.ageRangeOption(saved.min, saved.max) || all;
+    return { min: saved.min, max: saved.max, active: option.id !== 'all', option };
+  }
+
   /** 모임의 가입 방식 — 필드가 없는 옛 상태도 privacyType 에서 해석한다. */
   getGroupJoinMode(group) {
     const g = typeof group === 'string' ? this.getGroup(group) : group;
@@ -8133,7 +8942,8 @@ class Store {
     const g = this.getGroup(groupId);
     const fallback = this.getAgeLimit('all') || { id: 'all', label: '제한 없음', short: '전 연령', badge: '', cardBadge: '전 연령', tone: 'all', min: 0, max: 200 };
     if (!g) return fallback;
-    return this.getAgeLimit(g.ageLimit) || fallback;
+    /* H4 — 슬라이더로 고른 범위(ageMin·ageMax)가 있으면 그 범위의 옵션을 돌려준다. */
+    return this.getGroupAgeRange(g).option || fallback;
   }
 
   /**
@@ -8167,8 +8977,11 @@ class Store {
    * 나이 제한 판정. 나이를 모르면(null) 막지 않는다.
    * @returns {{ok:boolean, reason:string|null, message:string, option:object}}
    */
-  ageAllowed(age, limitId) {
-    const option = this.getAgeLimit(limitId) || this.getAgeLimit('all');
+  ageAllowed(age, limit) {
+    /* 한계값은 옵션 id('20s'…) 이거나, 이미 풀어 둔 옵션 객체(슬라이더 범위)일 수 있다. */
+    const option = (limit && typeof limit === 'object')
+      ? limit
+      : (this.getAgeLimit(limit) || this.getAgeLimit('all'));
     const n = Number(age);
     if (!Number.isFinite(n) || n <= 0) {
       return { ok: true, reason: null, message: '', option };
@@ -8187,7 +9000,7 @@ class Store {
   /** 모임 가입 가능 여부 (나이 제한 + 현재 상태). */
   isAgeEligible(groupId, age) {
     const target = age == null ? this.state.currentUser.age : age;
-    return this.ageAllowed(target, this.getGroupAgeLimit(groupId).id);
+    return this.ageAllowed(target, this.getGroupAgeLimit(groupId));
   }
 
   /**
@@ -8384,7 +9197,7 @@ class Store {
   /**
    * 모임장만 — 가입 정책(가입 방식 · 나이 제한 · 가입 질문)을 바꾼다.
    * @param {string} groupId
-   * @param {{joinMode?:'open'|'approval', ageLimit?:string, joinQuestions?:string[]}} patch
+   * @param {{joinMode?:'open'|'approval', ageLimit?:string, ageMin?:number, ageMax?:number, joinQuestions?:string[]}} patch
    */
   updateGroupJoinPolicy(groupId, patch) {
     const group = this.getGroup(groupId);
@@ -8397,10 +9210,25 @@ class Store {
     let nextQuestions = Array.isArray(d.joinQuestions)
       ? d.joinQuestions.map((q) => String(q || '').trim()).filter(Boolean).slice(0, 2)
       : (Array.isArray(group.joinQuestions) ? group.joinQuestions.filter(Boolean) : []);
-    const nextAge = d.ageLimit == null ? this.getGroupAgeLimit(groupId).id : d.ageLimit;
     if (d.ageLimit != null && !this.getAgeLimit(d.ageLimit)) {
       return { ok: false, reason: 'age_limit' };
     }
+    /* H4 — 나이 제한은 슬라이더의 두 숫자(ageMin·ageMax)로도 바꿀 수 있다. */
+    const currentRange = this.getGroupAgeRange(group);
+    let nextRange = { min: currentRange.min, max: currentRange.max };
+    if (d.ageMin != null || d.ageMax != null) {
+      const rawMin = Number(d.ageMin);
+      const rawMax = Number(d.ageMax);
+      if (!Number.isFinite(rawMin) || !Number.isFinite(rawMax)
+          || rawMin < GROUP_AGE_MIN || rawMax > GROUP_AGE_MAX || rawMin > rawMax) {
+        return { ok: false, reason: 'age_limit' };
+      }
+      nextRange = this.normalizeGroupAgeRange(rawMin, rawMax);
+    } else if (d.ageLimit != null) {
+      const opt = this.getAgeLimit(d.ageLimit);
+      nextRange = this.normalizeGroupAgeRange(opt.min, opt.max);
+    }
+    const nextOption = this.ageRangeOption(nextRange.min, nextRange.max) || this.getAgeLimit('all');
     if (nextMode === 'approval' && !nextQuestions.length) {
       return { ok: false, reason: 'questions' };
     }
@@ -8411,7 +9239,9 @@ class Store {
     group.joinMode = nextMode;
     group.privacyType = nextMode === 'open' ? 'open' : 'approval_private';
     group.privacyLabel = nextMode === 'open' ? '자유 가입' : '비공개 승인제';
-    group.ageLimit = nextAge;
+    group.ageMin = nextRange.min;
+    group.ageMax = nextRange.max;
+    group.ageLimit = nextOption.id;
     /* 모드를 바꿔도 질문은 보존한다 — 다시 승인제로 돌리면 그대로 쓴다. */
     group.joinQuestions = nextQuestions;
     this.setStateChanged();
@@ -8983,7 +9813,8 @@ class Store {
   /** 일정 한 건의 요약 — 참석·대기(대기열 순서)·불참 수, 내 선택, 정원 마감 여부. */
   getGroupEventSummary(eventId) {
     const empty = { yes: 0, maybe: 0, no: 0, total: 0, capacity: 0, seatsLeft: 0,
-      attendees: [], waiters: [], noList: [], myRsvp: null, myWaitOrder: 0, full: false, whenLabel: '' };
+      attendees: [], waiters: [], noList: [], myRsvp: null, myWaitOrder: 0, full: false, whenLabel: '',
+      guestPending: 0, guestRequests: [], myGuestStatus: null };
     const ev = this.getGroupEvent(eventId);
     if (!ev) return empty;
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
@@ -9007,6 +9838,10 @@ class Store {
     const capacity = Number(ev.capacity) || 0;
     const myWaitIndex = maybe.findIndex((r) => r.memberId === me.id);
     const person = (r) => ({ name: r.name, avatarText: r.avatarText, gradient: r.gradient, memberId: r.memberId });
+    /* H3 — 게스트 신청(승인 대기) · 내 신청 상태 */
+    const requests = Array.isArray(ev.guestRequests) ? ev.guestRequests : [];
+    const pendingGuests = requests.filter((r) => r.status === 'pending');
+    const myRequest = requests.find((r) => r.memberId === me.id) || null;
     return {
       yes: yes.length,
       maybe: maybe.length,
@@ -9015,11 +9850,16 @@ class Store {
       capacity,
       seatsLeft: capacity ? Math.max(0, capacity - yes.length) : 0,
       full: !!capacity && yes.length >= capacity,
-      attendees: yes.map(person),
-      waiters: maybe.map((r, i) => ({ ...person(r), order: i + 1, waitingAt: r.waitingAt || null })),
+      attendees: yes.map((r) => ({ ...person(r), guest: r.guest === true })),
+      waiters: maybe.map((r, i) => ({ ...person(r), order: i + 1, waitingAt: r.waitingAt || null, guest: r.guest === true })),
       noList: no.map(person),
       myRsvp: mine ? mine.status : null,
       myWaitOrder: myWaitIndex >= 0 ? myWaitIndex + 1 : 0,
+      /* H3 — 모임장 화면의 '게스트 승인 대기' 목록 · 내가 낸 신청의 상태 */
+      guestPending: pendingGuests.length,
+      guestRequests: pendingGuests.map((r) => ({ ...person(r), status: r.status, requestedAt: r.requestedAt || null })),
+      myGuestStatus: (mine && mine.guest === true && mine.status === 'yes')
+        ? 'approved' : (myRequest ? myRequest.status : null),
       whenLabel: this.getGroupEventWhenLabel(ev.when)
     };
   }
@@ -9186,12 +10026,16 @@ class Store {
       place: String(payload.place == null ? '' : payload.place).trim().slice(0, 40),
       note: String(payload.note == null ? '' : payload.note).trim().slice(0, 140),
       capacity,
-      /* Sprint 32.5 — 게스트 참여 가능. 켜 두면 모임 밖 사람도 홈 '추천 일정'에서 참석을 신청한다. */
+      /* Sprint 32.5 — 게스트 참여 가능. 켜 두면 모임 밖 사람도 홈 '추천 일정'에서 참석을 신청한다.
+         H3(11/21) — **모임 기본값을 따르지 않는다.** 일정을 만들 때마다 기본은 꺼짐(false)이고,
+         만든 사람이 일정 만들기/수정에서 직접 켜야만 홈 추천 일정에 오른다. */
       guestOpen: payload.guestOpen === true,
       createdBy: me.id,
       createdByName: me.nickname,
       createdAt: new Date().toISOString(),
-      rsvps: [{ memberId: me.id, name: me.nickname, avatarText: me.avatarText, gradient: me.avatarGradient, status: 'yes' }]
+      rsvps: [{ memberId: me.id, name: me.nickname, avatarText: me.avatarText, gradient: me.avatarGradient, status: 'yes' }],
+      /* H3 — 게스트 참석 신청은 '승인 대기'로 여기에 적히고, 모임장이 수락/거절한다. */
+      guestRequests: []
     };
     this.state.groupEvents.push(event);
     this.saveState();
@@ -10632,7 +11476,7 @@ class Store {
 
   /** 테스트·미리보기 전용 — 예전 데모 계정(내 모임·내 글·내 디엠)으로 되돌린다. */
   seedDemoAccount() {
-    this.state = buildDemoState();
+    this.state = upgradeGroupGeo(buildDemoState());
     this.saveState();
     return { ok: true, user: this.state.currentUser };
   }

@@ -40,6 +40,17 @@ document.addEventListener('DOMContentLoaded', () => {
   /* Sprint 17 — 테스트·미리보기 전용 #demo: 예전 데모 계정(내 모임·글·디엠)으로 시작한다.
      실사용 배포 주소(해시 없음)는 언제나 회원가입 화면부터 시작한다. */
   if (window.location.hash === '#demo' && !store.isDemoAccount()) store.seedDemoAccount();
+  /* H2 — http(s) 로 열렸으면 data/regions.json · data/hangouts.json 을 읽어 내장본과 맞춘다.
+     file:// · 단일 HTML 번들에서는 fetch 가 막히므로 조용히 내장본을 그대로 쓴다. */
+  if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+    store.loadGeoData().then((res) => {
+      if (!res || !res.ok) return;
+      try {
+        renderGallery();
+        if (subscreenOpen()) renderFindScreen();
+      } catch (e) { /* 첫 화면을 그리기 전이면 다음 렌더에서 반영된다 */ }
+    }).catch(() => {});
+  }
   /* 해시만 바뀌어 들어온 경우(#demo)에도 한 번 새로 열어 데모 상태로 맞춘다. */
   window.addEventListener('hashchange', () => {
     if (window.location.hash === '#demo' && !window.appStore.isDemoAccount()) window.location.reload();
@@ -211,41 +222,39 @@ document.addEventListener('DOMContentLoaded', () => {
     navButtons: $$('.nav-tab-item'),
     navIndicator: $('#nav-indicator'),
     tabViews: $$('.tab-view'),
-    /* Sprint 16 — 바깥 홈 갤러리 · 모임 전용 공간 · 스토리 · 게시판 · 나이 슬라이더 · 쪽지 */
+    /* Sprint 16 — 바깥 홈 · 모임 전용 공간 · 스토리 · 게시판 · 나이 슬라이더 · 쪽지 */
     groupGallery: $('#group-gallery'),
-    galleryGrid: $('#group-gallery-grid'),
-    gallerySub: $('#gallery-sub'),
-    galleryEmpty: $('#group-gallery-empty'),
-    /* Sprint 21 — 홈 하단 추천 모임 · 가입 후 스포트라이트 가이드 */
-    homeRecommend: $('#home-recommend'),
-    homeRecommendSub: $('#home-recommend-sub'),
-    homeRecommendGrid: $('#home-recommend-grid'),
-    btnHomeRecommendTaste: $('#btn-home-recommend-taste'),
-    /* Sprint 22 — 홈의 '모임 둘러보기'(탐색에서 옮겨온 모임 목록·검색·필터·정렬) */
-    homeBrowse: $('#home-browse'),
-    homeBrowseSub: $('#home-browse-sub'),
-    homeBrowseSearch: $('#home-browse-search'),
-    homeBrowseClear: $('#home-browse-clear'),
-    homeBrowseChips: $('#home-browse-chips'),
-    homeBrowseSorts: $('#home-browse-sorts'),
-    homeBrowseGrid: $('#home-browse-grid'),
-    btnHomeBrowseMore: $('#btn-home-browse-more'),
-    btnHomeBrowseNew: $('#btn-home-browse-new'),
-    /* Sprint 32.5 — 홈 상단 진입 · 내 그룹 레일 · 아지트 칩 · 추천 일정/피드 */
-    homeTop: $('#home-top'),
-    btnHomeTopSearch: $('#btn-home-top-search'),
-    btnHomeTopCreate: $('#btn-home-top-create'),
-    homeAzitStrip: $('#home-azit-strip'),
+    /* H1 — 홈: 내 그룹 원형 줄 · 추천 그룹(칩 3) · 추천 일정 · 추천 피드 */
     myGroupsRail: $('#my-groups-rail'),
     myGroupsSub: $('#my-groups-sub'),
     btnMyGroupsMore: $('#btn-my-groups-more'),
+    homeRecommend: $('#home-recommend'),
+    homeRecommendSub: $('#home-recommend-sub'),
+    homeRecommendGrid: $('#home-recommend-grid'),
+    homeRecommendChips: $('#home-recommend-chips'),
+    btnHomeRecommendMore: $('#btn-home-recommend-more'),
     homeSuggestEvents: $('#home-suggest-events'),
     homeSuggestEventsSub: $('#home-suggest-events-sub'),
-    homeSuggestEventsRail: $('#home-suggest-events-rail'),
+    homeSuggestEventsList: $('#home-suggest-events-list'),
     homeSuggestFeed: $('#home-suggest-feed'),
     homeSuggestFeedSub: $('#home-suggest-feed-sub'),
     homeSuggestFeedList: $('#home-suggest-feed-list'),
-    homeBrowseAzits: $('#home-browse-azits'),
+    /* H1 — 내 그룹 전체 화면 · 모임 찾기 전용 화면 */
+    myGroupsScreen: $('#my-groups-screen'),
+    myGroupsList: $('#mygroups-list'),
+    myGroupsCount: $('#mygroups-count'),
+    myGroupsEmpty: $('#mygroups-empty'),
+    myGroupsWeek: $('#mygroups-week'),
+    myGroupsWeekSub: $('#mygroups-week-sub'),
+    myGroupsWeekList: $('#mygroups-week-list'),
+    findScreen: $('#find-screen'),
+    findSearch: $('#find-search'),
+    findSearchClear: $('#find-search-clear'),
+    findCats: $('#find-cats'),
+    findSorts: $('#find-sorts'),
+    findSub: $('#find-sub'),
+    findGrid: $('#find-grid'),
+    btnFindMore: $('#btn-find-more'),
     spotlight: $('#spotlight'),
     spotlightHole: $('#spotlight-hole'),
     spotlightVeil: $('#spotlight-veil'),
@@ -257,7 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
     spotlightNext: $('#btn-spotlight-next'),
     spotlightPrev: $('#btn-spotlight-prev'),
     spotlightSkip: $('#btn-spotlight-skip'),
-    gallerySort: $('#gallery-sort'),
     btnNoticeMore: $('#btn-notice-more'),
     btnBoardPhoto: $('#btn-board-photo'),
     btnBoardReview: $('#btn-board-review'),
@@ -562,10 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
     regionSheetCurrent: $('#region-sheet-current'),
     filterBearChip: $('#filter-bear-chip'),
     groupTopTabs: $('#group-top-tabs'),
-    homePhotoGuide: $('#home-photo-guide'),
-    homeWeek: $('#home-week'),
-    homeWeekRail: $('#home-week-rail'),
-    homeWeekSub: $('#home-week-sub'),
+    myProfilePhotoLine: $('#myprofile-photo-line'),
     dmRequestSection: $('#dm-request-section'),
     dmRequestList: $('#dm-request-list'),
     dmRequestCount: $('#chat-request-count'),
@@ -586,7 +591,6 @@ document.addEventListener('DOMContentLoaded', () => {
     createGroupName: $('#create-group-name'),
     createGroupHobbies: $('#create-group-hobbies'),
     createGroupDesc: $('#create-group-desc'),
-    createGroupMeet: $('#create-group-meet'),
     createGroupPrivacy: $('#create-group-privacy'),
     /* Sprint 32.5 — 만들기 마법사 */
     createGroupPanels: $$('#group-create-modal .wizard-panel'),
@@ -601,13 +605,50 @@ document.addEventListener('DOMContentLoaded', () => {
     createGroupCoverAlbum: $('#create-group-cover-album'),
     createGroupCoverCamera: $('#create-group-cover-camera'),
     createGroupCoverRemove: $('#btn-create-group-cover-remove'),
-    createGroupAzitAreas: $('#create-group-azit-areas'),
     createGroupAzitList: $('#create-group-azit-list'),
     createGroupAzitSearch: $('#create-group-azit-search'),
     createGroupAzitClear: $('#create-group-azit-clear'),
     createGroupAzitChosen: $('#create-group-azit-chosen'),
+    /* H2 — 6단계 위자드(취미 대분류 · 크롭 · 지역 · 아지트 · 기본값 · 요약 · 임시저장) */
+    createGroupCats: $('#create-group-cats'),
+    createGroupHobbyPicked: $('#create-group-hobby-picked'),
+    createGroupCoverCircle: $('#create-group-cover-circle'),
+    createGroupCrop: $('#create-group-crop'),
+    createGroupCropStage: $('#create-group-crop-stage'),
+    createGroupCropImg: $('#create-group-crop-img'),
+    createGroupCropZoom: $('#create-group-crop-zoom'),
+    createGroupRegionSido: $('#create-group-region-sido'),
+    createGroupRegionSigungu: $('#create-group-region-sigungu'),
+    createGroupRegionPicked: $('#create-group-region-picked'),
+    createGroupHangoutLead: $('#create-group-hangout-lead'),
+    createGroupSummary: $('#create-group-summary'),
+    createGroupResume: $('#create-group-resume'),
+    /* H2 — 홈 인스타형 추천 피드 · 모임 찾기 지역·아지트 필터 · 댓글 시트 */
+    homeFeedStatus: $('#home-feed-status'),
+    homeFeedStatusText: $('#home-feed-status-text'),
+    homeFeedMore: $('#btn-home-feed-more'),
+    findRegionBtn: $('#btn-find-region'),
+    findHangoutBtn: $('#btn-find-hangout'),
+    findRegionLabel: $('#find-region-label'),
+    findHangoutLabel: $('#find-hangout-label'),
+    findReset: $('#btn-find-reset'),
+    findRegionModal: $('#find-region-modal'),
+    findRegionSido: $('#find-region-sido'),
+    findRegionSigungu: $('#find-region-sigungu'),
+    findRegionCurrent: $('#find-region-current'),
+    findHangoutModal: $('#find-hangout-modal'),
+    findHangoutSearch: $('#find-hangout-search'),
+    findHangoutClear: $('#find-hangout-clear'),
+    findHangoutList: $('#find-hangout-list'),
+    findHangoutCurrent: $('#find-hangout-current'),
+    feedCommentModal: $('#feed-comment-modal'),
+    feedCommentSub: $('#feed-comment-sub'),
+    feedCommentList: $('#feed-comment-list'),
+    feedCommentForm: $('#feed-comment-form'),
+    feedCommentInput: $('#feed-comment-input'),
     eventGuestToggle: $('#event-guest-toggle'),
-    composerRecommendToggle: $('#composer-recommend-toggle'),
+    composerTitle: $('#composer-title'),
+    composerRecommendCheck: $('#composer-recommend-check'),
     chatRoomModal: $('#chat-room-modal'),
     chatMessages: $('#chat-messages'),
     chatRoomAvatar: $('#chat-room-avatar'),
@@ -690,20 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function paintMyAvatars() {
     const u = store.currentUser || {};
     const text = myAvatarText();
-    const header = $('#header-avatar');
-    if (header) {
-      if (u.photoUrl) {
-        header.innerHTML = avatarImgHTML(u.photoUrl, u.nickname);
-        header.classList.add('has-photo');
-        header.style.background = 'transparent';
-      } else {
-        header.textContent = text;
-        header.classList.remove('has-photo');
-        /* R3 — 사진이 없을 때의 기본 아바타는 초록 그라디언트가 아니라 중립 면.
-           (초록은 행동·선택의 색으로 남기고, 사람 얼굴 자리는 조용히 둔다) */
-        header.style.background = 'var(--bg-soft)';
-      }
-    }
+    /* H1 — 헤더에는 로고·검색·알림만 둔다(프로필 아바타는 하단 '내 프로필' 탭이 맡는다). */
     if (el.profileAvatarLetter) {
       el.profileAvatarLetter.hidden = !!u.photoUrl;
       el.profileAvatarLetter.textContent = u.photoUrl ? '' : text;
@@ -1812,6 +1840,8 @@ document.addEventListener('DOMContentLoaded', () => {
    * ======================================================================== */
   function switchTab(tabId) {
     closeAllPostMenus();
+    /* H1 — 전용 화면(내 그룹 전체·모임 찾기)은 탭을 옮기면 닫는다. */
+    if (subscreenOpen()) closeSubscreens();
     /* Sprint 28.5 — 모임 밖 화면(탐색·내 프로필)으로 가면 모임 문맥을 닫는다. */
     if ((tabId === 'tab-explore' || tabId === 'tab-myprofile') && isGroupMode()) {
       ui.groupSpaceId = null;
@@ -1837,6 +1867,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* 탭별 부가 렌더링 (필요할 때만)
        Sprint 16 — 홈은 '갤러리 ↔ 모임 피드' 두 화면을 한 탭 안에서 오간다. */
+    /* 탐색에 들어오면 상단(검색·지역·필터)을 펼친 채로 시작한다 — 돌아왔는데 사라져 있지 않게. */
+    if (tabId === 'tab-explore') {
+      const top = document.querySelector('.explore-top');
+      if (top) top.classList.remove('is-tucked');
+    }
     if (tabId === 'tab-home') { renderHome(); }
     if (tabId === 'tab-board') { renderBoard(); }
     if (tabId === 'tab-explore' && !ui.exploreRendered) { renderExplore(); }
@@ -1957,7 +1992,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.bottomNavEl) el.bottomNavEl.setAttribute('aria-hidden', 'false');
     if (el.groupTopTabs) el.groupTopTabs.hidden = !on;
     syncGroupTopTabs();
-    renderHomeWeek();
     moveNavIndicator({ instant: true });
   }
 
@@ -1985,6 +2019,8 @@ document.addEventListener('DOMContentLoaded', () => {
    * 상단 뒤로가기(data-group-back)로 갤러리로 돌아온다.
    */
   function enterGroupSpace(groupId, tabId) {
+    /* H1 — 전용 화면에서 모임을 열면 화면을 닫고 그 모임으로 들어간다. */
+    if (subscreenOpen()) closeSubscreens();
     if (!store.isGroupJoined(groupId)) {
       showToast('가입한 모임만 들어갈 수 있어요', 'warning');
       return { ok: false, reason: 'not_member' };
@@ -2058,67 +2094,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 바깥 홈 — 내가 가입한 모임이 2열만 가득 차 늘어선다(ㅁ ㅁ / ㅁ ㅁ).
-   *  Sprint 17 — 정렬(최근 활동순/가나다순/내가 모임장) + 갤러리 안 '새 모임 만들기'. */
-  function renderGallery() {
-    renderHomePhotoGuide();
-    renderHomeWeek();
-    renderHomeHub();
-    if (!el.galleryGrid) return;
-    renderHomeRecommend();
-    renderHomeBrowse();
-    const items = store.getGroupGallery();
-    const stories = items.reduce((sum, it) => sum + it.storyCount, 0);
-    if (el.gallerySub) {
-      el.gallerySub.textContent = items.length
-        ? (SHOW_STORIES ? `${items.length}개 모임 · 지금 올라온 스토리 ${stories}개` : `${items.length}개 모임 · 취미로 이어진 우리들`)
-        : '아직 가입한 모임이 없어요';
-    }
-    renderGallerySort(items.length > 0);
-    if (!items.length) {
-      el.galleryGrid.innerHTML = '';
-      if (el.galleryEmpty) {
-        el.galleryEmpty.hidden = false;
-        el.galleryEmpty.innerHTML = `
-          <div class="home-empty">
-            ${emptyArt('explore')}
-            <p class="empty-title">아직 내 모임이 없어요</p>
-            <p class="empty-desc">취미가 맞는 모임에 가입하면 이곳이 우리 모임의 사진과 약속으로 채워져요.</p>
-            <div class="empty-actions">
-              <button class="btn-primary" data-home-find="1" type="button">모임 둘러보기</button>
-              <button class="btn-secondary" data-gallery-new="1" type="button">새 모임 만들기</button>
-            </div>
-          </div>`;
-      }
-      return;
-    }
-    if (el.galleryEmpty) { el.galleryEmpty.hidden = true; el.galleryEmpty.innerHTML = ''; }
-    el.galleryGrid.innerHTML = items.map(galleryCardHTML).join('') + newGroupTileHTML();
-  }
-
-  /** Sprint 17 — 갤러리 정렬 세그먼트. */
   /* ==========================================================================
-   * Sprint 32.5 — 홈을 네이버 카페처럼
+   * H1 (11/21) — 홈은 아래 요소만 남긴다
    * ------------------------------------------------------------------------
-   *  11/21 16:41 루키 님 지시(#21060 · 첨부 IMG_4556 캡처):
-   *   · 맨 위에 '모임 찾기' 진입을 올리고, 바로 아래 '내 그룹' 원형 아이콘 가로 레일.
-   *   · 아이콘에는 대표 이미지 + 모임명 + 새 소식 빨간 점.
-   *   · 아래로 추천 그룹 · 추천 일정(게스트 참여 가능만) · 추천 피드(공개 허용 글만).
+   *  루키 님 지시서 1단계(H1): 헤더·안내 배너(앱 셸) 아래에
+   *   ① 내 그룹 원형 줄([내 그룹 전체] · 가입 모임 · [+ 새 모임])
+   *   ② 추천 그룹 — 가입하지 않은 모임만 · 칩 3개 · 2열 이미지 카드(박스 없이)
+   *   ③ 추천 일정 — '게스트 참여 가능' 일정만 · 행 + 얇은 구분선
+   *   ④ 추천 피드 — '추천 피드 노출' 허용 글만 · 이미지 + 제목 + 모임명
+   *  모임 찾기는 홈에서 빠져 전용 화면(#find-screen)으로 갔다.
+   *  '내 일정'과 가입 모임 전체 목록은 '내 그룹 전체'(#my-groups-screen)로,
+   *  '프로필 사진 추가' 안내는 내 프로필 탭 맨 위 한 줄로 옮겼다.
+   *  모임 카드는 groupCardHTML() 하나로 그린다(추천·내 그룹 전체·모임 찾기).
    * ======================================================================== */
 
-  /** 모임의 대표 그림 — 올린 사진 → 기본 프리셋 → 취미 아이콘 순. */
-  function groupCoverVisual(group) {
+  /**
+   * 모임의 대표 그림 — H2 는 두 장을 쓴다.
+   *  · 카드(4:3) = coverImage.card (예전 모임은 photoUrl)
+   *  · 원형(1:1) = coverImage.circle (없으면 카드로 대신)
+   *  사진이 없으면 기본 프리셋 → 취미 아이콘 순.
+   */
+  function groupCoverVisual(group, variant) {
     const preset = group.coverIconPreset || null;
     const chip = store.getHobbyChip(group.hobbyId || group.category);
+    const img = group.coverImage || {};
+    const circle = group.coverCircle || img.circle || null;
+    const card = group.photoUrl || img.card || circle || null;
     return {
-      photoUrl: group.photoUrl || null,
+      photoUrl: variant === 'circle' ? (circle || card) : card,
       preset,
       tone: (preset && preset.tone) || store.getHobbyTone(group.hobbyId || group.category),
       icon: (preset && preset.icon) || group.icon || (chip && chip.icon) || 'sparkle'
     };
   }
 
-  /** '내 그룹' 원형 레일 — [내 그룹 전체] + 가입한 모임들(대표 이미지·이름·빨간 점). */
+  /** 바깥 홈 — H1의 네 영역만 그린다. */
+  function renderGallery() {
+    renderHomeHub();
+  }
+
+  /** 홈의 네 영역을 한 번에 — 내 그룹 · 추천 그룹 · 추천 일정 · 추천 피드 */
+  function renderHomeHub() {
+    renderMyGroups();
+    renderHomeRecommend();
+    renderHomeSuggestEvents();
+    renderHomeSuggestFeed();
+  }
+
+  /* ---------------------------------------- H1-① 내 그룹 원형 줄 */
+
+  /** '내 그룹' 원형 레일 — [내 그룹 전체] · 가입한 모임들 · [+ 새 모임] (마지막 칸 고정). */
   function renderMyGroups() {
     if (!el.myGroupsRail) return;
     const items = store.getGroupGallery();
@@ -2127,17 +2152,6 @@ document.addEventListener('DOMContentLoaded', () => {
       el.myGroupsSub.textContent = items.length
         ? (updates ? `새 소식 ${updates}곳` : `${items.length}곳`)
         : '';
-    }
-    if (el.btnMyGroupsMore) el.btnMyGroupsMore.hidden = items.length === 0;
-    if (!items.length) {
-      el.myGroupsRail.innerHTML = `
-        <button class="my-group-item" data-my-group-create="1" type="button">
-          <span class="my-group-ring">
-            <span class="my-group-face is-new" aria-hidden="true">${ic('plus')}</span>
-          </span>
-          <span class="my-group-name">첫 그룹<br>만들기</span>
-        </button>`;
-      return;
     }
     const all = `
       <button class="my-group-item" data-my-group-all="1" type="button" aria-label="내 그룹 전체 보기">
@@ -2148,7 +2162,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </button>`;
     const rows = items.map((it) => {
       const g = it.group;
-      const vis = groupCoverVisual(g);
+      const vis = groupCoverVisual(g, 'circle');
       const face = vis.photoUrl
         ? `<img class="my-group-img" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
         : `<span class="my-group-tile tone-${escapeHtml(vis.tone)}" aria-hidden="true">${ic(vis.icon)}</span>`;
@@ -2162,478 +2176,921 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="my-group-name">${escapeHtml(g.name)}</span>
         </button>`;
     }).join('');
-    el.myGroupsRail.innerHTML = all + rows;
-  }
-
-  /** 홈 상단 '내 아지트' 칩 — 내 동네 아지트 먼저, 누르면 그 아지트 모임만. */
-  function renderHomeAzits() {
-    if (!el.homeAzitStrip) return;
-    const mine = store.getMyAzit();
-    const chips = store.getAzitChips(6);
-    const active = ui.homeAzitId;
-    const chipHTML = (id, label, count, icon, extra = '') => `
-      <button class="home-azit-chip ${active === id ? 'active' : ''}" data-home-azit="${escapeHtml(id)}"
-              type="button" aria-pressed="${active === id}">
-        ${icon ? `<span class="home-azit-ic" aria-hidden="true">${ic(icon)}</span>` : ''}
-        <span class="home-azit-name">${escapeHtml(label)}</span>
-        ${count ? `<span class="home-azit-count">${count}</span>` : ''}${extra}
+    const create = `
+      <button class="my-group-item is-create" data-my-group-create="1" type="button" aria-label="새 모임 만들기">
+        <span class="my-group-ring">
+          <span class="my-group-face is-new" aria-hidden="true">${ic('plus')}</span>
+        </span>
+        <span class="my-group-name">새 모임</span>
       </button>`;
-    const mineCount = store.getGroupBrowse({ azitId: mine.id }).total;
-    const parts = [chipHTML(mine.id, `내 아지트 · ${mine.name}`, mineCount, mine.icon)];
-    parts.push(chipHTML('all', '아지트 전체', 0, 'map'));
-    chips.filter((c) => c.id !== mine.id).slice(0, 4).forEach((c) => {
-      parts.push(chipHTML(c.id, c.name, c.groupCount, c.icon));
-    });
-    el.homeAzitStrip.innerHTML = parts.join('');
+    el.myGroupsRail.innerHTML = all + rows + create;
   }
 
-  /** 홈 '추천 일정' — 게스트 참여 가능을 켠 일정만. */
-  function renderHomeSuggestEvents() {
-    if (!el.homeSuggestEventsRail) return;
-    const items = store.getRecommendedEvents({ limit: 5 });
+  /* ---------------------------------------- 모임 카드 컴포넌트 (1개) */
+
+  /**
+   * 모임 카드 — 홈 추천 그룹 · 내 그룹 전체 · 모임 찾기가 모두 이 함수 하나로 그린다.
+   *  · 박스(테두리·그림자) 없이 이미지를 둥글게, 글자는 이미지 아래에.
+   *  · 대표 이미지가 없으면 취미 대분류 색 + 아이콘 타일.
+   */
+  function groupCardHTML(item) {
+    const g = item.group;
+    const vis = groupCoverVisual(g);
+    const azit = item.azit || store.getGroupAzit(g);
+    const joined = item.joined != null ? item.joined : store.isGroupJoined(g.id);
+    /* H2 — 화면에는 정확한 거리 대신 '약 1~2km' 같은 구간만 쓴다. */
+    const distText = item.distanceLabel || store.getGroupDistanceLabel(g);
+    const dist = distText ? ` · ${distText}` : '';
+    const place = (azit && azit.name) || g.location || '온라인';
+    return `
+      <article class="group-card tone-${escapeHtml(item.tone || vis.tone)}"
+               data-group-card="1" data-group-id="${g.id}" data-joined="${joined ? '1' : '0'}"
+               role="button" tabindex="0"
+               aria-label="${escapeHtml(g.name)} · ${joined ? '내 그룹 열기' : '모임 둘러보기'}">
+        <div class="group-card-cover">
+          ${vis.photoUrl
+            ? `<img class="group-card-photo" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
+            : `<span class="group-card-tile" aria-hidden="true">${ic(vis.icon)}</span>`}
+          ${item.isLeader ? '<span class="group-card-badge">모임장</span>' : ''}
+        </div>
+        <h4 class="group-card-name">${escapeHtml(g.name)}</h4>
+        <p class="group-card-meta">${escapeHtml(place)} · 멤버 ${g.memberCount}${dist}</p>
+      </article>`;
+  }
+
+  /* ---------------------------------------- H1-② 추천 그룹 */
+
+  const RECOMMEND_SORTS = [
+    { id: 'near', label: '가까운 순' },
+    { id: 'popular', label: '인기' },
+    { id: 'new', label: '새로 생긴' }
+  ];
+
+  function homeRecommendSort() {
+    return RECOMMEND_SORTS.some((s) => s.id === ui.homeRecSort) ? ui.homeRecSort : 'near';
+  }
+
+  /** 추천 그룹 — 가입하지 않은 모임만. 칩 3개가 순서를 바꾼다. */
+  function renderHomeRecommend() {
+    if (!el.homeRecommendGrid) return;
+    const sort = homeRecommendSort();
+    if (el.homeRecommendChips) {
+      el.homeRecommendChips.innerHTML = RECOMMEND_SORTS.map((s) => `
+        <button class="home-chip ${sort === s.id ? 'active' : ''}" data-home-rec-sort="${s.id}"
+                type="button" aria-pressed="${sort === s.id}">${escapeHtml(s.label)}</button>`).join('');
+    }
+    if (el.homeRecommendSub) {
+      const taste = store.getTaste();
+      const picked = (taste.goalIds.length ? taste.goalIds : taste.hobbyIds.length ? taste.hobbyIds : store.getTasteHobbyIds());
+      const names = picked.map((id) => store.getHobbyChip(id)).filter(Boolean).map((h) => h.name).slice(0, 2);
+      const mine = store.getMyAzit();
+      el.homeRecommendSub.textContent = names.length
+        ? `${mine ? `${mine.name} 근처 · ` : ''}${names.join(' · ')} 취미로 골랐어요`
+        : '아직 가입하지 않은 모임을 골라 왔어요';
+    }
+    const items = store.getRecommendedGroups({ limit: 4, sort });
     if (!items.length) {
-      if (el.homeSuggestEvents) el.homeSuggestEvents.hidden = true;
-      el.homeSuggestEventsRail.innerHTML = '';
+      el.homeRecommendGrid.innerHTML = `
+        <div class="home-empty-line">
+          <p class="home-empty-title">지금은 추천할 모임이 없어요</p>
+          <button class="btn-text" data-home-find="1" type="button">모임 찾기</button>
+        </div>`;
       return;
     }
-    if (el.homeSuggestEvents) el.homeSuggestEvents.hidden = false;
-    if (el.homeSuggestEventsSub) {
-      el.homeSuggestEventsSub.textContent = '게스트로 열린 일정이에요 · 가입 없이도 참석 신청';
+    el.homeRecommendGrid.innerHTML = items.map((it) => groupCardHTML({
+      group: it.group, tone: it.tone, azit: it.azit, joined: false
+    })).join('');
+  }
+
+  /* ---------------------------------------- H1-③ 추천 일정 */
+
+  /** H3 — 홈 추천 일정 한 줄의 버튼 글자·상태. 승인 대기/승인됨을 그대로 보여 준다. */
+  function suggestEventJoinState(it) {
+    const summary = store.getGroupEventSummary(it.event.id);
+    if (it.joined) {
+      return summary.myRsvp === 'yes'
+        ? { key: 'joined', label: '참석함', pressed: true }
+        : { key: 'mine', label: '내 일정', pressed: false };
     }
-    el.homeSuggestEventsRail.innerHTML = items.map((it) => {
+    const st = it.myGuestStatus || summary.myGuestStatus;
+    if (st === 'approved') return { key: 'approved', label: '참석 승인됨', pressed: true };
+    if (st === 'pending') return { key: 'pending', label: '승인 대기', pressed: false };
+    if (st === 'rejected') return { key: 'rejected', label: '다시 신청', pressed: false };
+    return { key: 'none', label: '게스트 참석', pressed: false };
+  }
+
+  /** 추천 일정 — '게스트 참여 가능'을 켠 일정만. 한 줄 행 + 얇은 구분선.
+   *  H3 — 모임명과 **아지트 이름**만 적고 정확한 주소(place)는 적지 않는다. */
+  function renderHomeSuggestEvents() {
+    if (!el.homeSuggestEventsList) return;
+    const items = store.getRecommendedEvents({ limit: 4 });
+    el.homeSuggestEvents.hidden = items.length === 0;
+    if (!items.length) { el.homeSuggestEventsList.innerHTML = ''; return; }
+    if (el.homeSuggestEventsSub) el.homeSuggestEventsSub.textContent = '게스트로 참여할 수 있는 일정이에요 · 모임장이 수락하면 참석돼요';
+    el.homeSuggestEventsList.innerHTML = items.map((it) => {
       const ev = it.event;
-      const s = store.getGroupEventSummary(ev.id);
-      const joined = s.myRsvp === 'yes';
+      const join = suggestEventJoinState(it);
+      const d = new Date(ev.when);
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      const day = `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
+      const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const azit = it.azit || (it.group ? store.getGroupAzit(it.group) : null);
       return `
-        <article class="suggest-event tone-${escapeHtml(it.tone)}" data-suggest-event="${ev.id}">
-          <div class="suggest-event-top">
-            <span class="suggest-event-kind">${ic(store.getGroupEventKindsLabel(ev.kind).icon)} ${escapeHtml(store.getGroupEventKindsLabel(ev.kind).label)}</span>
-            <span class="suggest-event-when">${escapeHtml(it.whenLabel)}</span>
+        <article class="suggest-row" data-suggest-event="${ev.id}">
+          <div class="suggest-row-when">
+            <span class="suggest-row-date">${escapeHtml(day)}</span>
+            <span class="suggest-row-time">${escapeHtml(time)}</span>
           </div>
-          <h5 class="suggest-event-title">${escapeHtml(ev.title)}</h5>
-          <p class="suggest-event-group">${escapeHtml(it.groupName)}${ev.place ? ` · ${escapeHtml(ev.place)}` : ''}</p>
-          <div class="suggest-event-foot">
-            <span class="suggest-event-seats">참석 ${s.yes}${ev.capacity ? `/${ev.capacity}` : ''}</span>
-            <button class="suggest-event-join ${joined ? 'is-joined' : ''}" data-guest-event="${ev.id}"
-                    data-guest-joined="${joined}" type="button" aria-pressed="${joined}">
-              ${joined ? `${ic('check')} 참석함` : '게스트 참석'}
-            </button>
+          <div class="suggest-row-body">
+            <h4 class="suggest-row-title">${escapeHtml(ev.title || '모임 일정')}</h4>
+            <p class="suggest-row-meta">${escapeHtml(it.groupName)}${azit ? ` · ${escapeHtml(azit.name)}` : ''}</p>
           </div>
+          <button class="suggest-row-join is-${join.key}" data-guest-event="${ev.id}"
+                  data-guest-state="${join.key}" type="button" aria-pressed="${join.pressed}">
+            ${join.label}
+          </button>
         </article>`;
     }).join('');
   }
 
-  /** 홈 '추천 피드' — '추천 피드 공개'를 고른 글만. */
+  /* ---------------------------------------- 추천 피드 (H2 — 인스타그램형 · 무제한 스크롤) */
+
+  const HOME_FEED_BATCH = 3;
+
+  function homeFeedState() {
+    if (!ui.homeFeed) ui.homeFeed = { page: 0, offset: 0, items: [], hasMore: true, loading: false, openComments: null };
+    return ui.homeFeed;
+  }
+
+  /** 인스타그램형 카드 한 장 — 이미지 · 좋아요 · 댓글 · 모임명·아지트(정확한 주소 없음). */
+  function igPostHTML(it) {
+    const p = it.post;
+    const grp = it.group;
+    const tone = it.tone || 'neutral';
+    const vis = grp ? groupCoverVisual(grp) : { photoUrl: null, tone, icon: it.hobbyIcon || 'sparkle' };
+    const avatar = vis.photoUrl
+      ? `<img class="ig-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
+      : `<span class="ig-avatar-tile tone-${escapeHtml(vis.tone)}" aria-hidden="true">${ic(vis.icon)}</span>`;
+    const media = p.photoUrl
+      ? `<img class="ig-media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
+      : `<span class="ig-media-tile tone-${escapeHtml(tone)}" aria-hidden="true">${ic(it.hobbyIcon || 'sparkle')}</span>`;
+    const comments = (p.comments || []);
+    const shown = comments.slice(-2);
+    /* 모임명은 위 헤더에 이미 있으니, 아래 줄에는 만나는 곳(아지트)만 적는다 — 정확한 주소는 쓰지 않는다. */
+    const place = it.azitName || ((it.region && it.region.sigunguName) || '모임 안에서');
+    const when = new Date(p.createdAt);
+    const hours = Math.max(0, Math.round((Date.now() - when.getTime()) / 36e5));
+    const whenLabel = hours < 1 ? '방금' : (hours < 24 ? `${hours}시간 전` : `${Math.round(hours / 24)}일 전`);
+    return `
+      <article class="ig-post" data-home-feed-post="${escapeHtml(it.uid)}" data-suggest-post="${escapeHtml(p.id)}"
+               data-post-id="${escapeHtml(p.id)}" data-post-round="${it.round || 0}">
+        <header class="ig-head">
+          <span class="ig-avatar tone-${escapeHtml(vis.tone)}">${avatar}</span>
+          <span class="ig-head-text">
+            <span class="ig-group">${escapeHtml(it.groupName)}</span>
+            <span class="ig-place">${ic('map')} ${escapeHtml(place)}</span>
+          </span>
+          <span class="ig-when">${escapeHtml(whenLabel)}</span>
+        </header>
+        <div class="ig-media ${p.photoUrl ? '' : 'is-plain'}">${media}</div>
+        <div class="ig-actions">
+          <button class="ig-act ${p.likedByMe ? 'on' : ''}" data-feed-like="${escapeHtml(p.id)}" type="button"
+                  aria-pressed="${p.likedByMe ? 'true' : 'false'}"
+                  aria-label="${p.likedByMe ? '좋아요 취소' : '좋아요'}">
+            ${p.likedByMe ? ic('heartFilled') : ic('heart')}
+            <span class="ig-act-count" data-feed-like-count="${escapeHtml(p.id)}">${Number(p.likes) || 0}</span>
+          </button>
+          <button class="ig-act" data-feed-comment-open="${escapeHtml(p.id)}" type="button"
+                  aria-label="댓글 보기">
+            ${ic('comment')}
+            <span class="ig-act-count" data-feed-comment-count="${escapeHtml(p.id)}">${comments.length}</span>
+          </button>
+        </div>
+        <p class="ig-caption"><strong>${escapeHtml(it.groupName)}</strong> ${escapeHtml(firstSentence(p.caption) || '사진을 올렸어요')}</p>
+        <div class="ig-comments">
+          ${comments.length ? `<button class="ig-comments-all" data-feed-comment-open="${escapeHtml(p.id)}" type="button">
+            댓글 ${comments.length}개 모두 보기</button>` : ''}
+          ${shown.map((c) => `<p class="ig-comment-line"><strong>${escapeHtml(c.authorName || '멤버')}</strong> ${escapeHtml(c.text || '')}</p>`).join('')}
+        </div>
+        <button class="ig-add-comment" data-feed-comment-open="${escapeHtml(p.id)}" type="button">댓글 달기…</button>
+      </article>`;
+  }
+
+  /** 첫 배치 — 추천 피드 노출을 허용한 글만, 인스타그램처럼 한 장씩. */
   function renderHomeSuggestFeed() {
     if (!el.homeSuggestFeedList) return;
-    const items = store.getRecommendedFeed({ limit: 6 });
+    const st = homeFeedState();
+    const first = store.getRecommendedFeedPage({ offset: 0, limit: HOME_FEED_BATCH });
+    st.page = 0;
+    st.offset = first.items.length;
+    st.items = first.items;
+    st.hasMore = first.hasMore;
+    st.loading = false;
+    el.homeSuggestFeed.hidden = first.total === 0;
+    if (el.homeSuggestFeedSub) {
+      el.homeSuggestFeedSub.textContent = first.total
+        ? '모임이 추천 피드로 공개한 글만 모았어요'
+        : '';
+    }
+    el.homeSuggestFeedList.innerHTML = first.items.map(igPostHTML).join('');
+    if (!first.total) {
+      el.homeSuggestFeedList.innerHTML = `
+        <p class="home-empty-line">아직 추천 피드에 공개된 글이 없어요. 모임에서 글을 쓸 때 '추천 피드에도 보여주기'를 켜면 여기 올라와요.</p>`;
+    }
+    updateHomeFeedMore();
+    setupHomeFeedObserver();
+  }
+
+  function updateHomeFeedMore() {
+    const st = homeFeedState();
+    if (el.homeFeedMore) el.homeFeedMore.hidden = !st.hasMore || !st.items.length;
+    if (el.homeFeedStatus) el.homeFeedStatus.hidden = !st.loading;
+    if (el.homeFeedStatusText) el.homeFeedStatusText.textContent = st.loading ? '불러오는 중' : '';
+    if (el.btnHomeFeedMore) el.btnHomeFeedMore.hidden = !st.hasMore || !st.items.length;
+  }
+
+  /** 스크롤이 바닥 근처에 오면 다음 배치를 붙인다(같은 글은 다음 라운드로 순환). */
+  function loadMoreHomeFeed() {
+    const st = homeFeedState();
+    if (st.loading || !st.hasMore || !st.items.length) return false;
+    st.loading = true;
+    updateHomeFeedMore();
+    const next = store.getRecommendedFeedPage({ offset: st.offset, limit: HOME_FEED_BATCH });
+    if (!next.items.length) {
+      st.loading = false;
+      st.hasMore = false;
+      updateHomeFeedMore();
+      return false;
+    }
+    st.page += 1;
+    st.offset = next.nextOffset;
+    st.items = st.items.concat(next.items);
+    st.hasMore = next.hasMore;
+    st.loading = false;
+    if (el.homeSuggestFeedList) {
+      el.homeSuggestFeedList.insertAdjacentHTML('beforeend', next.items.map(igPostHTML).join(''));
+      hydrateIcons(el.homeSuggestFeedList);
+    }
+    updateHomeFeedMore();
+    return true;
+  }
+
+  let homeFeedObserver = null;
+  function setupHomeFeedObserver() {
+    if (typeof IntersectionObserver === 'undefined') return;
+    if (!el.homeFeedMore || !el.main) return;
+    if (homeFeedObserver) homeFeedObserver.disconnect();
+    homeFeedObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        if (ui.activeTab !== 'tab-home' || isGroupMode()) return;
+        if (document.querySelector('.modal-overlay.active')) return;
+        loadMoreHomeFeed();
+      });
+    }, { root: el.main, rootMargin: '360px 0px 0px 0px' });
+    homeFeedObserver.observe(el.homeFeedMore);
+  }
+
+  /* 추천 피드 댓글 시트 */
+  function openFeedComments(postId) {
+    const post = store.getPost(postId);
+    if (!post) return;
+    homeFeedState().openComments = postId;
+    renderFeedComments();
+    openModal(el.feedCommentModal);
+  }
+
+  function renderFeedComments() {
+    const postId = homeFeedState().openComments;
+    const post = postId ? store.getPost(postId) : null;
+    if (!post || !el.feedCommentList) return;
+    const comments = post.comments || [];
+    if (el.feedCommentSub) {
+      const grp = store.getGroup(post.groupId);
+      el.feedCommentSub.textContent = `${grp ? grp.name : '모임'} · 댓글 ${comments.length}개`;
+    }
+    el.feedCommentList.innerHTML = comments.length
+      ? comments.map((c) => `
+          <div class="feed-comment-row">
+            <span class="feed-comment-author">${escapeHtml(c.authorName || '멤버')}</span>
+            <span class="feed-comment-text">${escapeHtml(c.text || '')}</span>
+          </div>`).join('')
+      : '<p class="feed-comment-empty">첫 댓글을 남겨 보세요.</p>';
+    if (el.feedCommentList.lastElementChild) {
+      el.feedCommentList.scrollTop = el.feedCommentList.scrollHeight;
+    }
+  }
+
+  function refreshFeedPostCounts(postId) {
+    const post = store.getPost(postId);
+    if (!post) return;
+    document.querySelectorAll(`[data-feed-like-count="${postId}"]`).forEach((n) => {
+      n.textContent = String(Number(post.likes) || 0);          // eslint-disable-line no-param-reassign
+    });
+    document.querySelectorAll(`[data-feed-comment-count="${postId}"]`).forEach((n) => {
+      n.textContent = String((post.comments || []).length);      // eslint-disable-line no-param-reassign
+    });
+  }
+
+  /* ==========================================================================
+   * H1 — 전용 화면 두 개 (내 그룹 전체 · 모임 찾기)
+   * ======================================================================== */
+
+  /** 전용 화면을 연다 — 한 번에 하나만, 뒤로 가면 홈으로 돌아온다. */
+  function openSubscreen(node, focusSelector) {
+    if (!node) return;
+    document.querySelectorAll('.subscreen').forEach((n) => { n.hidden = n !== node; });
+    node.hidden = false;
+    document.body.classList.add('subscreen-open');
+    ui.openSubscreen = node.id;
+    const body = node.querySelector('.subscreen-body');
+    if (body) body.scrollTop = 0;
+    if (focusSelector) {
+      setTimeout(() => {
+        const f = document.querySelector(focusSelector);
+        if (f) f.focus({ preventScroll: true });
+      }, 180);
+    }
+  }
+
+  /** 전용 화면을 닫는다 — 화면이 없으면 아무 일도 하지 않는다. */
+  function closeSubscreens() {
+    let closed = false;
+    document.querySelectorAll('.subscreen').forEach((n) => {
+      if (!n.hidden) { n.hidden = true; closed = true; }
+    });
+    ui.openSubscreen = null;
+    document.body.classList.remove('subscreen-open');
+    return closed;
+  }
+
+  function subscreenOpen() {
+    return !!ui.openSubscreen;
+  }
+
+  /* ---------------------------------------- 내 그룹 전체 */
+
+  /** 내 그룹 전체 화면 — 위: 내 일정, 아래: 가입한 모임(모임 카드 그리드). */
+  function renderMyGroupsScreen() {
+    if (!el.myGroupsList) return;
+    renderMyGroupsWeek();
+    const items = store.getGroupGallery();
+    if (el.myGroupsCount) el.myGroupsCount.textContent = String(items.length);
     if (!items.length) {
-      if (el.homeSuggestFeed) el.homeSuggestFeed.hidden = true;
-      el.homeSuggestFeedList.innerHTML = '';
+      el.myGroupsList.innerHTML = '';
+      if (el.myGroupsEmpty) {
+        el.myGroupsEmpty.hidden = false;
+        el.myGroupsEmpty.innerHTML = `
+          <p class="home-empty-title">아직 내 모임이 없어요</p>
+          <p class="home-empty-desc">취미가 맞는 모임을 찾거나, 직접 만들어 보세요.</p>
+          <div class="home-empty-actions">
+            <button class="btn-secondary" data-home-find="1" type="button">모임 찾기</button>
+            <button class="btn-primary" data-gallery-new="1" type="button">새 모임 만들기</button>
+          </div>`;
+      }
       return;
     }
-    if (el.homeSuggestFeed) el.homeSuggestFeed.hidden = false;
-    if (el.homeSuggestFeedSub) {
-      el.homeSuggestFeedSub.textContent = '모임에서 추천 피드로 공개한 글만 모았어요';
+    if (el.myGroupsEmpty) { el.myGroupsEmpty.hidden = true; el.myGroupsEmpty.innerHTML = ''; }
+    el.myGroupsList.innerHTML = items.map((it) => groupCardHTML({
+      group: it.group, tone: it.tone, azit: it.azit, isLeader: it.isLeader, joined: true
+    })).join('');
+  }
+
+  /** 내 일정 — 홈의 '이번 주 내 모임 일정'이 이 화면 상단으로 옮겨 왔다. */
+  function renderMyGroupsWeek() {
+    if (!el.myGroupsWeekList) return;
+    const now = Date.now();
+    const rows = [];
+    store.getHomeGroups().forEach(({ group }) => {
+      (store.getUpcomingGroupEvents(group.id, 3) || []).forEach((ev) => {
+        const t = new Date(ev.when).getTime();
+        if (Number.isFinite(t) && t >= now) rows.push({ ev, group, t });
+      });
+    });
+    rows.sort((a, b) => a.t - b.t);
+    const weekEnd = now + 7 * 24 * 60 * 60 * 1000;
+    const thisWeek = rows.filter((r) => r.t <= weekEnd);
+    const list = (thisWeek.length ? thisWeek : rows).slice(0, 5);
+    if (el.myGroupsWeekSub) {
+      el.myGroupsWeekSub.textContent = list.length
+        ? (thisWeek.length ? `이번 주 ${list.length}개` : `다가오는 ${list.length}개`)
+        : '';
     }
-    el.homeSuggestFeedList.innerHTML = items.map((it) => {
-      const p = it.post;
-      const thumb = p.photoUrl
-        ? `<img class="suggest-post-thumb" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
-        : `<span class="suggest-post-thumb is-plain tone-${escapeHtml(it.tone)}" aria-hidden="true">${ic(it.hobbyIcon || 'sparkle')}</span>`;
+    if (!list.length) {
+      el.myGroupsWeekList.innerHTML = '<p class="myweek-empty">다가오는 일정이 없어요</p>';
+      return;
+    }
+    el.myGroupsWeekList.innerHTML = list.map(({ ev, group, t }) => {
+      const d = new Date(t);
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      const day = `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
+      const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
       return `
-        <button class="suggest-post" data-suggest-post="${p.id}" type="button">
-          ${thumb}
-          <span class="suggest-post-body">
-            <span class="suggest-post-group">${escapeHtml(it.groupName)}${it.azitName ? ` · ${escapeHtml(it.azitName)}` : ''}</span>
-            <span class="suggest-post-caption">${escapeHtml(firstSentence(p.caption) || '사진을 올렸어요')}</span>
-            <span class="suggest-post-meta">${ic('heart')} ${fmtCount(p.likes || 0)} · 댓글 ${(p.comments || []).length}</span>
-          </span>
+        <button class="myweek-row" data-myweek-group="${escapeHtml(group.id)}" data-myweek-event="${escapeHtml(ev.id)}" type="button">
+          <span class="myweek-when">${escapeHtml(day)} ${escapeHtml(time)}</span>
+          <span class="myweek-title">${escapeHtml(ev.title || '모임 일정')}</span>
+          <span class="myweek-group">${escapeHtml(group.name)}</span>
         </button>`;
     }).join('');
   }
 
-  /** 홈의 새 영역들(내 그룹·아지트 칩·추천 일정·추천 피드)을 한 번에. */
-  function renderHomeHub() {
-    renderMyGroups();
-    renderHomeAzits();
-    renderHomeSuggestEvents();
-    renderHomeSuggestFeed();
+  function openMyGroupsScreen() {
+    renderMyGroupsScreen();
+    openSubscreen(el.myGroupsScreen);
   }
 
-  function renderGallerySort(visible) {
-    if (!el.gallerySort) return;
-    el.gallerySort.hidden = visible === false;
-    const sort = store.getGallerySort();
-    el.gallerySort.innerHTML = store.getGallerySortOptions().map((o) => `
-      <button class="gallery-sort-btn ${sort === o.id ? 'active' : ''}" data-gallery-sort="${o.id}"
-              type="button" aria-pressed="${sort === o.id}">${escapeHtml(o.label)}</button>`).join('');
-  }
+  /* ---------------------------------------- 모임 찾기 전용 화면 */
 
-  /** Sprint 17 — 2열 갤러리 안의 '새 모임 만들기' 타일. */
-  function newGroupTileHTML() {
-    return `
-      <button class="gallery-new" data-gallery-new="1" type="button" aria-label="새 모임 만들기">
-        <span class="gallery-new-plus" aria-hidden="true">${ic('plus')}</span>
-        <span class="gallery-new-title">새 모임 만들기</span>
-        <span class="gallery-new-desc">취미가 맞는 사람들과 바로 시작</span>
-      </button>`;
-  }
+  const FIND_PAGE = 12;
 
-  /** 갤러리 카드 하나 — 표지(사진 2장 또는 그라디언트) · 이름 · 멤버·사진·스토리 · 다음 약속. */
-  function galleryCardHTML(item) {
-    const grp = item.group;
-    const coverPhotos = (item.coverPhotos || []).filter(Boolean);
-    /* Sprint 21 — 사진이 없으면 취미 대분류 색조(운동=그린 · 게임=보라 …)로 표지를 구분한다.
-       R4 — 그 표지의 문양은 대분류 7종의 단색 문양이다. */
-    const tone = store.getHobbyTone(grp.hobbyId || grp.category);
-    const vis = groupCoverVisual(grp);
-    const azit = item.azit || store.getGroupAzit(grp);
-    const cover = coverPhotos.length
-      ? `<span class="gallery-cover-photos">${coverPhotos.map((url, i) =>
-          `<span class="gallery-cover-photo"><img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async"></span>`).join('')}</span>`
-      : `<span class="gallery-cover-emoji" aria-hidden="true">${ic(vis.icon)}</span>`;
-    const next = item.nextEvent;
-    return `
-      <article class="gallery-card tone-${escapeHtml(tone)}" data-open-group="${grp.id}" role="button" tabindex="0"
-               aria-label="${escapeHtml(grp.name)} 모임 열기">
-        <div class="gallery-cover${coverPhotos.length ? '' : ' is-plain'}">
-          ${cover}
-          <span class="gallery-cover-veil" aria-hidden="true"></span>
-          ${item.storyCount && SHOW_STORIES ? `<span class="gallery-story-badge">스토리 ${item.storyCount}</span>` : ''}
-          ${item.isLeader ? '<span class="gallery-leader">모임장</span>' : ''}
-        </div>
-        <div class="gallery-body">
-          <h3 class="gallery-name">${escapeHtml(grp.name)}</h3>
-          <p class="gallery-meta">멤버 ${item.memberCount} · 사진 ${item.photoCount}</p>
-          ${azit ? `<p class="gallery-azit">${ic(azit.icon)} ${escapeHtml(azit.name)}</p>` : ''}
-          <p class="gallery-next ${next ? '' : 'quiet'}">${next
-            ? `${escapeHtml(next.title)} · ${escapeHtml(next.whenLabel)}`
-            : '다가오는 약속 없음'}</p>
-          ${item.storyAuthors.length && SHOW_STORIES ? `<div class="gallery-rings">${item.storyAuthors.map((a) =>
-            `<span class="gallery-ring" style="background:${a.gradient}">${escapeHtml(a.avatarText || a.name.charAt(0))}</span>`).join('')}</div>` : ''}
-        </div>
-      </article>`;
-  }
-
-  /* ==========================================================================
-   * Sprint 21 — 홈 하단 추천 모임 · 가입 후 스포트라이트 가이드 · 취향 질문
-   * ------------------------------------------------------------------------
-   *  11/16 18:42 사용자 지시
-   *   · \"추천모임이 노출되도록 가입하면 모임이 없으니깐 처음에 어떤취향인지 물어보고 …\"
-   *   · \"홈 탭 하단에 추천 모임이 뜨도록 그리고 모임찾기는 추천모임 아래로 내리면서 볼거아니야?
-   *      좀만 내리면 더 많은 모임을 확인하세요! 나 더 많은 모임 둘러보기 이런식으로 버튼을 이동해줘\"
-   *   · \"스포트라이트 효과로 이용자가 처음에 익숙할 수 있게 가이드를 넣어주었으면 해\"
-   * ======================================================================== */
-
-  /** 추천 모임 카드 — 사진이 없으면 취미 대분류 색조(.tone-*)의 점토 타일로 표지를 만든다. */
-  function recommendCardHTML(item, index) {
-    const g = item.group;
-    const vis = groupCoverVisual(g);
-    const azit = store.getGroupAzit(g);
-    return `
-      <article class="recommend-card tone-${escapeHtml(item.tone)}" data-open-group="${g.id}"
-               data-rail-index="${index || 0}"
-               role="button" tabindex="0"
-               aria-label="${escapeHtml(g.name)} 추천 그룹 · ${escapeHtml(item.hobbyName)}">
-        <div class="recommend-cover">
-          ${vis.photoUrl
-            ? `<img class="recommend-photo" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span class="recommend-clay" aria-hidden="true">${ic(vis.icon)}</span>`}
-          <span class="recommend-hobby">${ic(vis.icon)} ${escapeHtml(item.hobbyName)}</span>
-        </div>
-        <div class="recommend-body">
-          <h4 class="recommend-name">${escapeHtml(g.name)}</h4>
-          <p class="recommend-meta">아지트 ${escapeHtml((azit || {}).name || g.location || '온라인')} · 멤버 ${g.memberCount}명</p>
-          <p class="recommend-reason">${escapeHtml(item.reason)}</p>
-        </div>
-      </article>`;
-  }
-
-  /** 홈 하단 '추천 모임' — 취향 답변(없으면 프로필 취미)으로 고른다. */
-  function renderHomeRecommend() {
-    if (!el.homeRecommendGrid) return;
-    const taste = store.getTaste();
-    const picked = (taste.goalIds.length ? taste.goalIds : taste.hobbyIds.length ? taste.hobbyIds : store.getTasteHobbyIds());
-    const names = picked.map((id) => store.getHobbyChip(id)).filter(Boolean).map((h) => h.name).slice(0, 2);
-    if (el.homeRecommendSub) {
-      const mine = store.getMyAzit();
-      const tasteText = names.length ? `${names.join(' · ')} 취미` : '';
-      el.homeRecommendSub.textContent = mine && tasteText
-        ? `${mine.name} 근처 · ${tasteText}로 골랐어요`
-        : (tasteText ? `${tasteText}로 골랐어요` : '취미를 고르면 잘 맞는 모임을 골라드려요');
+  function findState() {
+    if (!ui.find) {
+      ui.find = {
+        query: '', categoryId: 'all', azitId: 'all', sort: 'recommend', limit: FIND_PAGE,
+        /* H2 — 지역(시·도/시·군·구)과 아지트 필터 */
+        sidoId: 'all', sigunguId: 'all', hangoutId: 'all',
+        hangoutQuery: '', regionSidoDraft: null
+      };
     }
-    const items = store.getRecommendedGroups({ limit: 6 });
-    /* Sprint 23 — 추천이 0개면 위쪽 슬라이드만 조용히 접고, 아래 '모임 둘러보기'가 바로 이어진다. */
-    const recommendBlock = $('#home-recommend');
-    const moreBlock = $('#home-recommend-more');
-    if (!items.length) {
-      if (recommendBlock) recommendBlock.hidden = true;
-      if (moreBlock) moreBlock.hidden = true;
-      if (el.homeRecommendGrid) el.homeRecommendGrid.innerHTML = '';
-      if (el.homeRecommendSub) el.homeRecommendSub.textContent = '아직 추천할 모임이 없어요 — 아래에서 찾아보세요';
-      return;
-    }
-    if (recommendBlock) recommendBlock.hidden = false;
-    if (moreBlock) moreBlock.hidden = false;
-    el.homeRecommendGrid.innerHTML = items.map((it, i) => recommendCardHTML(it, i)).join('');
+    if (!ui.find.azitId) ui.find.azitId = 'all';
+    if (!ui.find.sidoId) ui.find.sidoId = 'all';
+    if (!ui.find.sigunguId) ui.find.sigunguId = 'all';
+    if (!ui.find.hangoutId) ui.find.hangoutId = 'all';
+    return ui.find;
   }
 
-  /* ==========================================================================
-   * Sprint 22 — 홈의 '모임 둘러보기' (탐색에서 옮겨온 모임 목록)
-   * ------------------------------------------------------------------------
-   *  11/16 사용자: "탐색탭의 모임은 그냥 홈탭으로 보내줘"
-   *   · 홈에서 내 모임 → 추천 모임 → **모임 둘러보기** 순으로 내려가며 본다.
-   *   · 검색어·취미 대분류·정렬을 고르면 즉시 목록이 바뀌고, '모임 더 보기'로 이어 붙인다.
-   * ======================================================================== */
-  const HOME_BROWSE_PAGE = 6;
-
-  function homeBrowseState() {
-    if (!ui.homeBrowse) {
-      ui.homeBrowse = { categoryId: 'all', sort: 'recommend', query: '', azitId: 'all', limit: HOME_BROWSE_PAGE };
+  /** 모임 찾기 전용 화면 — 검색 · 아지트 · 분야 · 정렬 · 2열 카드 · 더 보기. */
+  function renderFindScreen() {
+    if (!el.findGrid) return;
+    const s = findState();
+    if (el.findSearchClear) el.findSearchClear.classList.toggle('hide', !s.query);
+    /* H2 — 지역·아지트 필터 버튼의 지금 값 */
+    const areaSel = s.sigunguId && s.sigunguId !== 'all' ? store.findSigungu(s.sigunguId) : null;
+    const hangoutSel = s.hangoutId && s.hangoutId !== 'all' ? store.findAzit(s.hangoutId) : null;
+    if (el.findRegionLabel) {
+      el.findRegionLabel.textContent = areaSel
+        ? areaSel.label
+        : (s.sidoId && s.sidoId !== 'all'
+          ? (store.getRegionSido().find((x) => x.id === s.sidoId) || {}).short || '전체'
+          : '전체');
     }
-    if (!ui.homeBrowse.azitId) ui.homeBrowse.azitId = 'all';
-    return ui.homeBrowse;
-  }
-
-  function renderHomeBrowse() {
-    if (!el.homeBrowseGrid) return;
-    const s = homeBrowseState();
-    if (el.homeBrowseChips) {
-      el.homeBrowseChips.innerHTML = store.getGroupBrowseCategories().map((c) => `
-        <button class="home-browse-chip ${s.categoryId === c.id ? 'active' : ''}" data-browse-cat="${escapeHtml(c.id)}"
-                type="button" aria-pressed="${s.categoryId === c.id}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`).join('');
+    if (el.findHangoutLabel) {
+      el.findHangoutLabel.textContent = hangoutSel ? hangoutSel.name : '전체';
     }
-    if (el.homeBrowseSorts) {
-      el.homeBrowseSorts.innerHTML = store.getGroupBrowseSorts().map((o) => `
-        <button class="home-browse-sort ${s.sort === o.id ? 'active' : ''}" data-browse-sort="${escapeHtml(o.id)}"
-                type="button" aria-pressed="${s.sort === o.id}">${escapeHtml(o.label)}</button>`).join('');
+    if (el.findRegionBtn) el.findRegionBtn.classList.toggle('has-value', !!(areaSel || (s.sidoId && s.sidoId !== 'all')));
+    if (el.findHangoutBtn) el.findHangoutBtn.classList.toggle('has-value', !!hangoutSel);
+    if (el.findReset) {
+      el.findReset.classList.toggle('hide', !(s.query || s.categoryId !== 'all'
+        || (s.azitId && s.azitId !== 'all') || (s.sidoId && s.sidoId !== 'all')
+        || (s.sigunguId && s.sigunguId !== 'all') || (s.hangoutId && s.hangoutId !== 'all')));
     }
-    if (el.homeBrowseClear) el.homeBrowseClear.classList.toggle('hide', !s.query);
-    /* Sprint 32.5 — 아지트 칩: 전체 + 내 아지트·가까운 아지트 */
-    if (el.homeBrowseAzits) {
-      const mine = store.getMyAzit();
-      const chips = store.getAzitChips(5).filter((c) => c.id !== mine.id).slice(0, 4);
-      el.homeBrowseAzits.innerHTML = [`
-        <button class="home-browse-azit ${s.azitId === 'all' ? 'active' : ''}" data-browse-azit="all"
-                type="button" aria-pressed="${s.azitId === 'all'}">${ic('map')}<span>아지트 전체</span></button>`,
-      `<button class="home-browse-azit ${s.azitId === mine.id ? 'active' : ''}" data-browse-azit="${mine.id}"
-                type="button" aria-pressed="${s.azitId === mine.id}">${ic(mine.icon)}<span>내 아지트 · ${escapeHtml(mine.name)}</span></button>`]
-        .concat(chips.map((c) => `
-          <button class="home-browse-azit ${s.azitId === c.id ? 'active' : ''}" data-browse-azit="${c.id}"
-                  type="button" aria-pressed="${s.azitId === c.id}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span>
-            ${c.groupCount ? `<b class="home-browse-azit-count">${c.groupCount}</b>` : ''}</button>`)).join('');
+    if (el.findCats) {
+      el.findCats.innerHTML = store.getGroupBrowseCategories().map((c) => {
+        const on = s.categoryId === c.id;
+        return `<button class="find-chip ${on ? 'active' : ''}" data-find-cat="${escapeHtml(c.id)}"
+                  type="button" aria-pressed="${on}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`;
+      }).join('');
+    }
+    if (el.findSorts) {
+      el.findSorts.innerHTML = store.getGroupBrowseSorts().map((o) => {
+        const on = s.sort === o.id;
+        return `<button class="find-sort ${on ? 'active' : ''}" data-find-sort="${escapeHtml(o.id)}"
+                  type="button" aria-pressed="${on}">${escapeHtml(o.label)}</button>`;
+      }).join('');
     }
     const res = store.getGroupBrowse({
-      query: s.query, categoryId: s.categoryId, sort: s.sort, azitId: s.azitId, limit: s.limit
+      query: s.query, categoryId: s.categoryId, sort: s.sort, azitId: s.azitId,
+      sidoId: s.sidoId, sigunguId: s.sigunguId, hangoutId: s.hangoutId, limit: s.limit
     });
     const cat = store.getGroupBrowseCategories().find((c) => c.id === s.categoryId);
-    const azitDefSel = s.azitId && s.azitId !== 'all' ? store.findAzit(s.azitId) : null;
-    if (el.btnHomeBrowseNew) el.btnHomeBrowseNew.hidden = res.total === 0 && !s.query && s.categoryId === 'all' && s.azitId === 'all';
-    if (el.homeBrowseSub) {
-      el.homeBrowseSub.textContent = res.total
-        ? `${s.query ? `'${s.query}' · ` : ''}${azitDefSel ? `${azitDefSel.name} · ` : ''}${cat && cat.id !== 'all' ? `${cat.name} · ` : ''}모임 ${res.total}개`
+    const azitSel = s.azitId && s.azitId !== 'all' ? store.findAzit(s.azitId) : null;
+    if (el.findSub) {
+      const where = areaSel ? `${areaSel.name} · ` : (hangoutSel ? `${hangoutSel.name} · ` : '');
+      el.findSub.textContent = res.total
+        ? `${s.query ? `'${s.query}' · ` : ''}${where}${azitSel ? `${azitSel.name} · ` : ''}${cat && cat.id !== 'all' ? `${cat.name} · ` : ''}모임 ${res.total}개`
         : '아직 둘러볼 모임이 없어요';
     }
     if (!res.items.length) {
-      const filtering = !!(s.query || s.categoryId !== 'all' || (s.azitId && s.azitId !== 'all'));
-      /* Sprint 26.5 — 세상이 비었을 때는 위 '내 모임' 카드가 이미 모임 만들기를 권한다.
-         여기서 또 버튼을 두면 같은 행동이 세 번 반복되므로, 조건에 걸린 0건일 때만 버튼을 둔다. */
-      el.homeBrowseGrid.innerHTML = `
-        <div class="home-browse-empty">
-          <p class="home-browse-empty-title">${filtering ? '조건에 맞는 모임이 없어요' : '아직 둘러볼 모임이 없어요'}</p>
-          <p class="home-browse-empty-desc">${filtering
-            ? '검색어를 짧게 바꾸거나 다른 분야를 골라보세요.'
-            : '모임이 생기면 이 자리에 보여요.'}</p>
-          ${filtering ? `<div class="home-browse-empty-actions">
-            <button class="btn-secondary" data-browse-reset="1" type="button">조건 초기화</button>
-          </div>` : ''}
+      const filtering = !!(s.query || s.categoryId !== 'all' || (s.azitId && s.azitId !== 'all')
+        || (s.sidoId && s.sidoId !== 'all') || (s.sigunguId && s.sigunguId !== 'all')
+        || (s.hangoutId && s.hangoutId !== 'all'));
+      el.findGrid.innerHTML = `
+        <div class="home-empty-block">
+          <p class="home-empty-title">${filtering ? '조건에 맞는 모임이 없어요' : '아직 둘러볼 모임이 없어요'}</p>
+          <p class="home-empty-desc">${filtering ? '검색어를 짧게 바꾸거나 다른 분야를 골라보세요.' : '모임이 생기면 이 자리에 보여요.'}</p>
+          ${filtering ? '<button class="btn-secondary" data-find-reset="1" type="button">조건 초기화</button>' : ''}
         </div>`;
     } else {
-      el.homeBrowseGrid.innerHTML = res.items.map((item) => groupTileHTML(item)).join('');
+      el.findGrid.innerHTML = res.items.map((item) => groupCardHTML(item)).join('');
     }
-    if (el.btnHomeBrowseMore) {
-      el.btnHomeBrowseMore.hidden = !res.hasMore;
-      el.btnHomeBrowseMore.textContent = `모임 더 보기 (${Math.max(0, res.total - res.items.length)}개)`;
+    if (el.btnFindMore) {
+      el.btnFindMore.hidden = !res.hasMore;
+      el.btnFindMore.textContent = `모임 더 보기 (${Math.max(0, res.total - res.items.length)}개)`;
     }
   }
 
-  /** 홈의 '모임 둘러보기'로 시선을 옮긴다(탐색에 있던 모임 찾기의 새 자리). */
-  function focusHomeBrowse() {
-    if (ui.activeTab !== 'tab-home') switchTab('tab-home');
+  /** 모임 찾기 전용 화면을 연다 — 헤더 검색 아이콘·추천 그룹 '더 보기'가 부른다. */
+  function openFindScreen(options = {}) {
+    const s = findState();
+    if (options.sort) s.sort = options.sort;
+    if (options.azitId) s.azitId = options.azitId;
+    if (options.query != null) s.query = options.query;
+    if (options.sidoId != null) s.sidoId = options.sidoId || 'all';
+    if (options.sigunguId != null) s.sigunguId = options.sigunguId || 'all';
+    if (options.hangoutId != null) s.hangoutId = options.hangoutId || 'all';
+    s.limit = FIND_PAGE;
+    if (el.findSearch) el.findSearch.value = s.query || '';
     if (isGroupMode()) exitGroupSpace();
-    renderHomeRecommend();
-    renderHomeBrowse();
-    const target = $('#home-browse') || $('#home-discover');
-    if (target) {
-      target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-    }
+    if (ui.activeTab !== 'tab-home') switchTab('tab-home');
+    renderFindScreen();
+    openSubscreen(el.findScreen, options.focusSearch ? '#find-search' : null);
   }
 
-  /** 홈 모임 둘러보기의 검색·분야 칩·정렬·더 보기·카드 열기 */
-  function bindHomeBrowse() {
-    const s = homeBrowseState();
-    if (el.homeBrowseSearch) {
-      let timer = null;
-      el.homeBrowseSearch.addEventListener('input', () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-          s.query = el.homeBrowseSearch.value.trim();
-          s.limit = HOME_BROWSE_PAGE;
-          renderHomeBrowse();
-        }, 160);
-      });
-    }
-    if (el.homeBrowseClear) {
-      el.homeBrowseClear.addEventListener('click', () => {
-        s.query = '';
-        if (el.homeBrowseSearch) el.homeBrowseSearch.value = '';
-        s.limit = HOME_BROWSE_PAGE;
-        renderHomeBrowse();
-      });
-    }
-    if (el.homeBrowseChips) {
-      el.homeBrowseChips.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-browse-cat]');
-        if (!btn) return;
-        s.categoryId = btn.dataset.browseCat;
-        s.limit = HOME_BROWSE_PAGE;
-        renderHomeBrowse();
-      });
-    }
-    if (el.homeBrowseAzits) {
-      el.homeBrowseAzits.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-browse-azit]');
-        if (!btn) return;
-        s.azitId = btn.dataset.browseAzit || 'all';
-        ui.homeAzitId = s.azitId;
-        s.limit = HOME_BROWSE_PAGE;
-        renderHomeAzits();
-        renderHomeBrowse();
-      });
-    }
-    if (el.homeBrowseSorts) {
-      el.homeBrowseSorts.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-browse-sort]');
-        if (!btn) return;
-        s.sort = btn.dataset.browseSort;
-        renderHomeBrowse();
-      });
-    }
-    if (el.btnHomeBrowseMore) {
-      el.btnHomeBrowseMore.addEventListener('click', () => {
-        s.limit += HOME_BROWSE_PAGE;
-        renderHomeBrowse();
-      });
-    }
-    if (el.btnHomeBrowseNew) el.btnHomeBrowseNew.addEventListener('click', () => openGroupCreate());
-    if (el.homeBrowseGrid) {
-      el.homeBrowseGrid.addEventListener('click', (e) => {
-        if (e.target.closest('[data-browse-reset]')) {
-          s.categoryId = 'all'; s.query = ''; s.azitId = 'all'; s.limit = HOME_BROWSE_PAGE;
-          ui.homeAzitId = 'all';
-          if (el.homeBrowseSearch) el.homeBrowseSearch.value = '';
-          renderHomeAzits();
-          renderHomeBrowse();
-          return;
-        }
-        const openBtn = e.target.closest('[data-group-open]');
-        if (openBtn) { openGroupDetail(openBtn.dataset.groupOpen); return; }
-        const card = e.target.closest('[data-group-id]');
-        if (card) openGroupDetail(card.dataset.groupId);
-      });
-      el.homeBrowseGrid.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        if (e.target.closest('button')) return;
-        const card = e.target.closest('[data-group-id]');
-        if (!card) return;
-        e.preventDefault();
-        openGroupDetail(card.dataset.groupId);
-      });
-    }
+  /** 예전 이름 호환 — '모임 둘러보기로 가기'는 이제 모임 찾기 화면을 연다. */
+  function focusHomeBrowse() {
+    openFindScreen({ focusSearch: true });
   }
 
   /* ==========================================================================
-   * Sprint 32.5 — 홈 새 영역 배선(상단 진입 · 내 그룹 · 아지트 칩 · 추천 일정/피드)
+   * H1 — 홈 배선
    * ======================================================================== */
   function bindHomeHub() {
-    if (el.btnHomeTopSearch) {
-      el.btnHomeTopSearch.addEventListener('click', () => {
-        focusHomeBrowse();
-        if (el.homeBrowseSearch) {
-          setTimeout(() => el.homeBrowseSearch.focus({ preventScroll: true }), 320);
-        }
-      });
-    }
-    if (el.btnHomeTopCreate) el.btnHomeTopCreate.addEventListener('click', () => openGroupCreate());
-
-    if (el.homeAzitStrip) {
-      el.homeAzitStrip.addEventListener('click', (e) => {
-        const chip = e.target.closest('[data-home-azit]');
-        if (!chip) return;
-        const id = chip.dataset.homeAzit || 'all';
-        ui.homeAzitId = id;
-        homeBrowseState().azitId = id;
-        homeBrowseState().limit = HOME_BROWSE_PAGE;
-        renderHomeAzits();
-        renderHomeBrowse();
-        if (el.homeBrowse) el.homeBrowse.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-      });
-    }
-
+    /* 내 그룹 원형 줄 — 전체 · 모임 열기 · 새 모임 */
     if (el.myGroupsRail) {
       el.myGroupsRail.addEventListener('click', (e) => {
-        const all = e.target.closest('[data-my-group-all]');
-        if (all) {
-          const grid = el.galleryGrid || $('#group-gallery-grid');
-          if (grid) grid.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-          return;
-        }
+        if (e.target.closest('[data-my-group-all]')) { openMyGroupsScreen(); return; }
         if (e.target.closest('[data-my-group-create]')) { openGroupCreate(); return; }
         const item = e.target.closest('[data-my-group]');
         if (item) enterGroupSpace(item.dataset.myGroup, 'tab-home');
       });
     }
-    if (el.btnMyGroupsMore) {
-      el.btnMyGroupsMore.addEventListener('click', () => {
-        const grid = el.galleryGrid || $('#group-gallery-grid');
-        if (grid) grid.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+    if (el.btnMyGroupsMore) el.btnMyGroupsMore.addEventListener('click', () => openMyGroupsScreen());
+
+    /* 추천 그룹 — 칩으로 순서 바꾸기 · 카드 열기 · 더 보기 → 모임 찾기 */
+    if (el.homeRecommendChips) {
+      el.homeRecommendChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-home-rec-sort]');
+        if (!chip) return;
+        ui.homeRecSort = chip.dataset.homeRecSort;
+        renderHomeRecommend();
+      });
+    }
+    if (el.homeRecommendGrid) {
+      el.homeRecommendGrid.addEventListener('click', (e) => {
+        if (e.target.closest('[data-home-find]')) { openFindScreen(); return; }
+        const card = e.target.closest('[data-group-card]');
+        if (!card) return;
+        if (card.dataset.joined === '1') enterGroupSpace(card.dataset.groupId, 'tab-home');
+        else openGroupDetail(card.dataset.groupId);
+      });
+      el.homeRecommendGrid.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const card = e.target.closest('[data-group-card]');
+        if (!card) return;
+        e.preventDefault();
+        card.click();
+      });
+    }
+    if (el.btnHomeRecommendMore) {
+      el.btnHomeRecommendMore.addEventListener('click', () => {
+        const map = { near: 'near', popular: 'members', new: 'new' };
+        openFindScreen({ sort: map[homeRecommendSort()] || 'recommend' });
       });
     }
 
-    if (el.homeSuggestEventsRail) {
-      el.homeSuggestEventsRail.addEventListener('click', (e) => {
+    /* 추천 일정 — 게스트 참석 신청/취소 · 내 모임 일정이면 상세 */
+    if (el.homeSuggestEventsList) {
+      el.homeSuggestEventsList.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-guest-event]');
         if (btn) {
           const id = btn.dataset.guestEvent;
-          const joined = btn.dataset.guestJoined === 'true';
-          const res = joined ? store.cancelGuestSeat(id) : store.requestGuestSeat(id);
-          if (!res.ok) {
-            const why = { full: '자리가 다 찾어요', past: '지난 일정이에요', guest_closed: '게스트를 받지 않는 일정이에요' };
-            showToast(why[res.reason] || '참석을 바꾸지 못했어요', 'warning');
+          const state = btn.dataset.guestState;
+          if (state === 'mine') {
+            const ev = store.getGroupEvent(id);
+            if (ev) openEventDetail(ev.id);
             return;
           }
-          ui.homeSuggestEventSeat = joined ? null : id;
+          if (state === 'pending' || state === 'approved') {
+            const res = store.cancelGuestSeat(id);
+            if (!res.ok) { showToast('신청을 취소하지 못했어요', 'warning'); return; }
+            renderHomeSuggestEvents();
+            showToast(state === 'pending' ? '게스트 신청을 취소했어요' : '게스트 참석을 취소했어요');
+            return;
+          }
+          /* H3 — 바로 참석이 아니라 **모임장 승인 대기**로 들어간다. */
+          const res = store.requestGuestSeat(id);
+          if (!res.ok) {
+            const why = { full: '자리가 다 찼어요', past: '지난 일정이에요', guest_closed: '게스트를 받지 않는 일정이에요', member: '이미 가입한 모임이에요' };
+            showToast(why[res.reason] || '참석을 신청하지 못했어요', 'warning');
+            return;
+          }
           renderHomeSuggestEvents();
-          showToast(joined ? '게스트 참석을 취소했어요' : '게스트로 참석 신청했어요 · 모임장에게 전달될 거예요');
+          showToast('게스트 참석을 신청했어요 · 모임장이 수락하면 참석돼요');
           return;
         }
-        const card = e.target.closest('[data-suggest-event]');
-        if (card) {
-          const ev = store.getGroupEvent(card.dataset.suggestEvent);
-          if (ev && store.isGroupJoined(ev.groupId)) openEventDetail(ev.id);
+        const row = e.target.closest('[data-suggest-event]');
+        if (row) {
+          const ev = store.getGroupEvent(row.dataset.suggestEvent);
+          if (ev) openEventDetail(ev.id);
         }
       });
     }
 
+    /* H2 추천 피드 — 좋아요 토글 · 댓글 시트 · 글 상세 */
     if (el.homeSuggestFeedList) {
       el.homeSuggestFeedList.addEventListener('click', (e) => {
+        const like = e.target.closest('[data-feed-like]');
+        if (like) {
+          const res = store.toggleLike(like.dataset.feedLike);
+          if (res) {
+            like.classList.toggle('on', res.liked);
+            like.setAttribute('aria-pressed', res.liked ? 'true' : 'false');
+            like.setAttribute('aria-label', res.liked ? '좋아요 취소' : '좋아요');
+            const iconBox = like.firstElementChild;
+            if (iconBox && iconBox.tagName === 'svg') {
+              iconBox.outerHTML = res.liked ? ic('heartFilled') : ic('heart');
+            }
+            refreshFeedPostCounts(like.dataset.feedLike);
+          }
+          return;
+        }
+        const cmt = e.target.closest('[data-feed-comment-open]');
+        if (cmt) { openFeedComments(cmt.dataset.feedCommentOpen); return; }
         const card = e.target.closest('[data-suggest-post]');
+        if (card) openHomePost(card.dataset.suggestPost);
+      });
+    }
+    if (el.homeFeedMore) el.homeFeedMore.addEventListener('click', () => loadMoreHomeFeed());
+    if (el.feedCommentForm) {
+      el.feedCommentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const postId = homeFeedState().openComments;
+        const text = el.feedCommentInput ? el.feedCommentInput.value : '';
+        if (!postId || !text.trim()) return;
+        const made = store.addComment(postId, text);
+        if (!made) { showToast('댓글을 남기지 못했어요', 'warning'); return; }
+        if (el.feedCommentInput) el.feedCommentInput.value = '';
+        renderFeedComments();
+        /* 카드의 댓글 수·최근 댓글도 바로 맞춘다(다시 그리지 않고 제자리만 고침) */
+        refreshFeedPostCounts(postId);
+        document.querySelectorAll(`[data-post-id="${postId}"] .ig-comments`).forEach((box) => {
+          const post = store.getPost(postId);
+          const comments = post.comments || [];
+          const shown = comments.slice(-2);
+          box.innerHTML = `<button class="ig-comments-all" data-feed-comment-open="${postId}" type="button">
+            댓글 ${comments.length}개 모두 보기</button>`
+            + shown.map((c) => `<p class="ig-comment-line"><strong>${escapeHtml(c.authorName || '멤버')}</strong> ${escapeHtml(c.text || '')}</p>`).join('');
+        });
+      });
+    }
+    const closeFeedComment = $('#btn-close-feed-comment');
+    if (closeFeedComment) closeFeedComment.addEventListener('click', () => closeModal(el.feedCommentModal));
+
+    /* 내 그룹 전체 화면 — 뒤로 · 새 모임 · 카드 · 내 일정 */
+    const backMy = $('#btn-mygroups-back');
+    if (backMy) backMy.addEventListener('click', () => closeSubscreens());
+    const newMy = $('#btn-mygroups-new');
+    if (newMy) newMy.addEventListener('click', () => openGroupCreate());
+    if (el.myGroupsList) {
+      el.myGroupsList.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-group-card]');
+        if (card) enterGroupSpace(card.dataset.groupId, 'tab-home');
+      });
+      el.myGroupsList.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const card = e.target.closest('[data-group-card]');
         if (!card) return;
-        openHomePost(card.dataset.suggestPost);
+        e.preventDefault();
+        card.click();
+      });
+    }
+    if (el.myGroupsEmpty) {
+      el.myGroupsEmpty.addEventListener('click', (e) => {
+        if (e.target.closest('[data-home-find]')) { closeSubscreens(); openFindScreen(); }
+        if (e.target.closest('[data-gallery-new]')) openGroupCreate();
+      });
+    }
+    if (el.myGroupsWeekList) {
+      el.myGroupsWeekList.addEventListener('click', (e) => {
+        const row = e.target.closest('[data-myweek-group]');
+        if (!row) return;
+        const gid = row.dataset.myweekGroup;
+        const eid = row.dataset.myweekEvent;
+        closeSubscreens();
+        const res = enterGroupSpace(gid, eid ? 'tab-board' : 'tab-home');
+        if (res && res.ok && eid) setTimeout(() => openEventDetail(eid), 260);
+      });
+    }
+
+    /* 모임 찾기 화면 — 뒤로 · 검색 · 필터 · 정렬 · 카드 · 더 보기 */
+    const backFind = $('#btn-find-back');
+    if (backFind) backFind.addEventListener('click', () => closeSubscreens());
+    if (el.findSearch) {
+      let timer = null;
+      el.findSearch.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          findState().query = el.findSearch.value.trim();
+          findState().limit = FIND_PAGE;
+          renderFindScreen();
+        }, 160);
+      });
+    }
+    if (el.findSearchClear) {
+      el.findSearchClear.addEventListener('click', () => {
+        findState().query = '';
+        if (el.findSearch) el.findSearch.value = '';
+        findState().limit = FIND_PAGE;
+        renderFindScreen();
+      });
+    }
+    /* H2 — 지역(시·도/시·군·구) 시트 */
+    function openFindRegionSheet() {
+      const s2 = findState();
+      s2.regionSidoDraft = s2.sidoId && s2.sidoId !== 'all' ? s2.sidoId : null;
+      renderFindRegionSheet();
+      openModal(el.findRegionModal);
+    }
+    function renderFindRegionSheet() {
+      const s2 = findState();
+      const sidoId = s2.regionSidoDraft || (s2.sidoId !== 'all' ? s2.sidoId : null);
+      if (el.findRegionSido) {
+        el.findRegionSido.innerHTML = [`<button class="region-chip ${!sidoId ? 'active' : ''}" data-find-region-all="1" type="button">전체</button>`]
+          .concat(store.getRegionSido().map((x) => `
+            <button class="region-chip ${sidoId === x.id ? 'active' : ''}" data-find-sido="${x.id}"
+                    type="button" aria-pressed="${sidoId === x.id}">${escapeHtml(x.short)}</button>`)).join('');
+      }
+      if (el.findRegionSigungu) {
+        const rows = sidoId ? store.getRegionSigungu(sidoId) : [];
+        el.findRegionSigungu.innerHTML = rows.length
+          ? rows.map((g) => `
+              <button class="region-gu ${s2.sigunguId === g.sigunguId ? 'active' : ''}" data-find-sigungu="${g.sigunguId}"
+                      type="button" aria-pressed="${s2.sigunguId === g.sigunguId}">${escapeHtml(g.name)}</button>`).join('')
+          : '<p class="azit-empty">시·도를 먼저 골라 주세요.</p>';
+      }
+      const area = s2.sigunguId !== 'all' ? store.findSigungu(s2.sigunguId) : null;
+      const sidoRow = sidoId ? store.getRegionSido().find((x) => x.id === sidoId) : null;
+      if (el.findRegionCurrent) {
+        el.findRegionCurrent.textContent = area ? area.label : (sidoRow ? sidoRow.name : '전체 지역');
+      }
+    }
+    if (el.findRegionBtn) el.findRegionBtn.addEventListener('click', openFindRegionSheet);
+    const closeFindRegion = $('#btn-close-find-region');
+    if (closeFindRegion) closeFindRegion.addEventListener('click', () => closeModal(el.findRegionModal));
+    if (el.findRegionSido) {
+      el.findRegionSido.addEventListener('click', (e) => {
+        if (e.target.closest('[data-find-region-all]')) {
+          const s2 = findState();
+          s2.sidoId = 'all'; s2.sigunguId = 'all'; s2.hangoutId = 'all';
+          s2.regionSidoDraft = null;
+          s2.limit = FIND_PAGE;
+          closeModal(el.findRegionModal);
+          renderFindScreen();
+          return;
+        }
+        const chip = e.target.closest('[data-find-sido]');
+        if (!chip) return;
+        findState().regionSidoDraft = chip.dataset.findSido;
+        renderFindRegionSheet();
+      });
+    }
+    if (el.findRegionSigungu) {
+      el.findRegionSigungu.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-find-sigungu]');
+        if (!btn) return;
+        const s2 = findState();
+        const area = store.findSigungu(btn.dataset.findSigungu);
+        s2.sidoId = area ? area.sidoId : 'all';
+        s2.sigunguId = btn.dataset.findSigungu;
+        s2.hangoutId = 'all';
+        s2.limit = FIND_PAGE;
+        closeModal(el.findRegionModal);
+        renderFindScreen();
+      });
+    }
+
+    /* H2 — 아지트 시트 (지역 후보 먼저 · 검색은 전체) */
+    function openFindHangoutSheet() {
+      findState().hangoutQuery = '';
+      if (el.findHangoutSearch) el.findHangoutSearch.value = '';
+      renderFindHangoutSheet();
+      openModal(el.findHangoutModal);
+    }
+    function renderFindHangoutSheet() {
+      const s2 = findState();
+      const area = s2.sigunguId !== 'all' ? store.findSigungu(s2.sigunguId) : null;
+      const query = s2.hangoutQuery || '';
+      if (el.findHangoutClear) el.findHangoutClear.classList.toggle('hide', !query);
+      if (el.findHangoutCurrent) {
+        const sel = s2.hangoutId !== 'all' ? store.findAzit(s2.hangoutId) : null;
+        el.findHangoutCurrent.textContent = sel ? sel.name : (area ? `${area.name} 근처` : '전체 아지트');
+      }
+      if (el.findHangoutList) {
+        let rows = store.getHangouts({ query, sigunguId: query ? 'all' : (area ? area.sigunguId : 'all'), limit: 80 });
+        if (!rows.length && !query) rows = store.getHangouts({ limit: 80 });
+        const head = `<button class="azit-row ${s2.hangoutId === 'all' ? 'active' : ''}" data-find-hangout-pick="all" type="button">
+            <span class="azit-row-ic" aria-hidden="true">${ic('map')}</span>
+            <span class="azit-row-text"><span class="azit-row-name">아지트 전체</span>
+              <span class="azit-row-meta">지역만으로 거르기</span></span>
+            <span class="azit-row-check" aria-hidden="true">${s2.hangoutId === 'all' ? ic('check') : ''}</span>
+          </button>`;
+        el.findHangoutList.innerHTML = head + rows.map((h) => `
+          <button class="azit-row ${s2.hangoutId === h.id ? 'active' : ''}" data-find-hangout-pick="${h.id}"
+                  type="button" aria-pressed="${s2.hangoutId === h.id}">
+            <span class="azit-row-ic" aria-hidden="true">${ic(h.icon)}</span>
+            <span class="azit-row-text">
+              <span class="azit-row-name">${escapeHtml(h.name)}</span>
+              <span class="azit-row-meta">${escapeHtml(h.sigunguName || '')} · ${escapeHtml(h.kindLabel)}${h.groupCount ? ` · 모임 ${h.groupCount}` : ''}</span>
+            </span>
+            ${h.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
+            <span class="azit-row-check" aria-hidden="true">${s2.hangoutId === h.id ? ic('check') : ''}</span>
+          </button>`).join('');
+      }
+    }
+    if (el.findHangoutBtn) el.findHangoutBtn.addEventListener('click', openFindHangoutSheet);
+    const closeFindHangout = $('#btn-close-find-hangout');
+    if (closeFindHangout) closeFindHangout.addEventListener('click', () => closeModal(el.findHangoutModal));
+    if (el.findHangoutSearch) {
+      el.findHangoutSearch.addEventListener('input', () => {
+        findState().hangoutQuery = el.findHangoutSearch.value.trim();
+        renderFindHangoutSheet();
+      });
+    }
+    if (el.findHangoutClear) {
+      el.findHangoutClear.addEventListener('click', () => {
+        findState().hangoutQuery = '';
+        if (el.findHangoutSearch) { el.findHangoutSearch.value = ''; el.findHangoutSearch.focus(); }
+        renderFindHangoutSheet();
+      });
+    }
+    if (el.findHangoutList) {
+      el.findHangoutList.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-find-hangout-pick]');
+        if (!btn) return;
+        const s2 = findState();
+        s2.hangoutId = btn.dataset.findHangoutPick || 'all';
+        s2.limit = FIND_PAGE;
+        closeModal(el.findHangoutModal);
+        renderFindScreen();
+      });
+    }
+    if (el.findReset) {
+      el.findReset.addEventListener('click', () => {
+        const s2 = findState();
+        s2.query = ''; s2.categoryId = 'all'; s2.azitId = 'all'; s2.sort = 'recommend';
+        s2.sidoId = 'all'; s2.sigunguId = 'all'; s2.hangoutId = 'all'; s2.limit = FIND_PAGE;
+        if (el.findSearch) el.findSearch.value = '';
+        renderFindScreen();
+      });
+    }
+    if (el.findCats) {
+      el.findCats.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-find-cat]');
+        if (!chip) return;
+        findState().categoryId = chip.dataset.findCat;
+        findState().limit = FIND_PAGE;
+        renderFindScreen();
+      });
+    }
+    if (el.findSorts) {
+      el.findSorts.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-find-sort]');
+        if (!chip) return;
+        findState().sort = chip.dataset.findSort;
+        renderFindScreen();
+      });
+    }
+    if (el.btnFindMore) {
+      el.btnFindMore.addEventListener('click', () => {
+        findState().limit += FIND_PAGE;
+        renderFindScreen();
+      });
+    }
+    if (el.findGrid) {
+      el.findGrid.addEventListener('click', (e) => {
+        if (e.target.closest('[data-find-reset]')) {
+          const s = findState();
+          s.categoryId = 'all'; s.query = ''; s.azitId = 'all'; s.sort = 'recommend'; s.limit = FIND_PAGE;
+          s.sidoId = 'all'; s.sigunguId = 'all'; s.hangoutId = 'all';
+          if (el.findSearch) el.findSearch.value = '';
+          renderFindScreen();
+          return;
+        }
+        const card = e.target.closest('[data-group-card]');
+        if (!card) return;
+        if (card.dataset.joined === '1') { closeSubscreens(); enterGroupSpace(card.dataset.groupId, 'tab-home'); }
+        else openGroupDetail(card.dataset.groupId);
+      });
+      el.findGrid.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const card = e.target.closest('[data-group-card]');
+        if (!card) return;
+        e.preventDefault();
+        card.click();
       });
     }
   }
+
 
   /* ---------------------------------------------------- 스포트라이트 가이드 */
   /* ==========================================================================
@@ -2664,7 +3121,7 @@ document.addEventListener('DOMContentLoaded', () => {
       desc: '함께 해보고 싶은 것을 고르면 홈의 추천 모임이 그 취미로 채워져요. 건너뛰어도 괜찮아요.'
     },
     {
-      id: 'gallery', stage: 2, targets: ['#group-gallery-grid .gallery-card'], tab: 'tab-home',
+      id: 'gallery', stage: 2, targets: ['#my-groups-rail .my-group-item'], tab: 'tab-home',
       title: '여기가 내 모임 자리예요',
       desc: '지금 보이는 두 모임은 둘러보기용 예시예요. 카드를 누르면 그 모임의 피드·채팅·일정으로 들어가요.'
     },
@@ -2726,7 +3183,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.remove('spotlight-open');
     if (ui.activeTab === 'tab-home') {
       renderHomeRecommend();
-      renderHomeBrowse();
     }
   }
 
@@ -2735,7 +3191,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const g = guideState();
     const res = store.saveTaste({ hobbyIds: g.hobbyIds, goalIds: g.goalIds });
     renderHomeRecommend();
-    renderHomeBrowse();
+    renderFindScreen();
     renderExploreToolbar();
     if (el.main) el.main.scrollTop = 0;
     return res;
@@ -3795,6 +4251,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="event-kind">${escapeHtml(kind.label)}</span>
           <span class="event-when">${escapeHtml(ev.whenLabel)}</span>
           ${ev.guestOpen ? '<span class="event-guest-badge">게스트</span>' : ''}
+          ${(ev.guestPending > 0 && store.canReviewGuestRequests(ev.id))
+            ? `<span class="event-my is-guest-pending">게스트 신청 ${ev.guestPending}</span>` : ''}
           ${ev.past ? '<span class="event-past">지난 일정</span>'
             : (myBadge ? `<span class="event-my rs-${ev.myRsvp}">${myBadge}</span>` : '')}
         </div>
@@ -4246,6 +4704,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const perms = store.getDeputyPermissions(grp.id);
     const joinMode = store.getGroupJoinMode(grp);
     const ageLimit = store.getGroupAgeLimit(grp.id);
+    const ageRange = store.getGroupAgeRange(grp.id);
     const cover = store.getGroupCover(grp.id);
     const leader = roster.members.find((m) => m.isLeader) || roster.members[0];
 
@@ -4308,11 +4767,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         <div class="drawer-setting is-wrap">
           <span class="drawer-setting-label">나이 제한</span>
-          <span class="drawer-chips" role="group" aria-label="나이 제한">
-            ${store.getAgeLimitOptions().map((o) => isLeader
-              ? `<button class="drawer-chip ${ageLimit.id === o.id ? 'active' : ''}" data-drawer-age="${o.id}" type="button" aria-pressed="${ageLimit.id === o.id}">${escapeHtml(o.short)}</button>`
-              : `<span class="drawer-chip ${ageLimit.id === o.id ? 'active' : ''}">${escapeHtml(o.short)}</span>`).join('')}
-          </span>
+          ${isLeader
+            ? ageSliderHTML({ host: 'drawer', groupId: grp.id, min: ageRange.min, max: ageRange.max })
+            : `<span class="drawer-setting-value">${escapeHtml(ageSliderLabel(ageRange.min, ageRange.max))}</span>`}
         </div>
 
         <div class="drawer-toggle-row">
@@ -4604,9 +5061,60 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `<div class="event-people">${list.map((p) => `
           <span class="event-person ${cls}">
             <span class="event-person-avatar" style="background:${p.gradient}">${escapeHtml(p.avatarText || p.name.charAt(0))}</span>
-            <span class="event-person-name">${escapeHtml(p.name)}${p.order ? `<b class="event-wait-order">${p.order}순위</b>` : ''}</span>
+            <span class="event-person-name">${escapeHtml(p.name)}${p.guest ? '<b class="event-person-guest">게스트</b>' : ''}${p.order ? `<b class="event-wait-order">${p.order}순위</b>` : ''}</span>
           </span>`).join('')}</div>`
       : `<p class="event-people-empty">아직 없어요</p>`;
+
+    /* H3 — 모임 밖 사람(게스트)이 보는 일정 상세. 정확한 주소 대신 아지트 이름만 적는다. */
+    const isMember = store.isGroupJoined(ev.groupId);
+    if (!isMember) {
+      const azit = grp ? store.getGroupAzit(grp) : null;
+      const guestState = s.myGuestStatus;
+      const guestBlock = guestState === 'approved'
+        ? `<div class="guest-status is-approved">
+             <p class="guest-status-title">참석이 확정됐어요</p>
+             <p class="guest-status-desc">모임장이 게스트 참석을 수락했어요 · ${escapeHtml(s.whenLabel)}</p>
+             <button class="btn-secondary guest-cancel" data-guest-cancel="${ev.id}" type="button">게스트 참석 취소</button>
+           </div>`
+        : guestState === 'pending'
+          ? `<div class="guest-status is-pending">
+               <p class="guest-status-title">모임장 승인을 기다리는 중이에요</p>
+               <p class="guest-status-desc">모임장이 수락하면 참석 명단에 올라요. 그전에는 자리가 잡히지 않아요.</p>
+               <button class="btn-secondary guest-cancel" data-guest-cancel="${ev.id}" type="button">신청 취소</button>
+             </div>`
+          : `<div class="guest-status">
+               ${guestState === 'rejected' ? '<p class="guest-status-desc">지난 신청은 모임장이 거절했어요. 다시 신청할 수 있어요.</p>' : ''}
+               <button class="btn-primary guest-request" data-guest-request="${ev.id}" type="button">
+                 ${guestState === 'rejected' ? '다시 신청' : '게스트 참석 신청'}
+               </button>
+               <p class="guest-status-desc">신청하면 모임장이 확인한 뒤 수락해요.</p>
+             </div>`;
+      el.eventDetailBody.innerHTML = `
+        <div class="event-detail-head tone-${kind.tone}">
+          <div class="event-detail-top">
+            <span class="event-kind">${escapeHtml(kind.label)}</span>
+            <span class="event-when">${escapeHtml(s.whenLabel)}</span>
+            <span class="event-guest-badge">게스트 참여</span>
+          </div>
+          <h2 class="sheet-title">${escapeHtml(ev.title)}</h2>
+          ${grp ? `<p class="event-detail-group">${ic(grp.icon)} ${escapeHtml(grp.name)}</p>` : ''}
+          ${azit ? `<p class="event-detail-place">${ic('map')} ${escapeHtml(azit.name)}</p>` : ''}
+          ${ev.note ? `<p class="event-detail-note">${escapeHtml(ev.note)}</p>` : ''}
+          <div class="event-detail-stats">
+            <span class="event-stat"><b>${s.yes}</b><span>참석</span></span>
+            <span class="event-stat ${s.full ? 'is-full' : ''}"><b>${s.capacity ? s.seatsLeft : '∞'}</b><span>${s.full ? '정원 마감' : '남은 자리'}</span></span>
+          </div>
+        </div>
+        ${new Date(ev.when).getTime() < Date.now()
+          ? '<p class="event-detail-past">지난 일정이에요</p>'
+          : guestBlock}
+        <section class="event-detail-block">
+          <h4 class="event-detail-title">참석 ${s.yes}${s.capacity ? ` / ${s.capacity}` : ''}</h4>
+          ${people(s.attendees, 'is-yes')}
+        </section>
+        <p class="event-detail-privacy">${ic('lock')} 정확한 장소는 모임원에게만 보여요. 추천 일정에는 아지트 이름만 표시돼요.</p>`;
+      return;
+    }
     el.eventDetailBody.innerHTML = `
       <div class="event-detail-head tone-${kind.tone}">
         <div class="event-detail-top">
@@ -4648,7 +5156,23 @@ document.addEventListener('DOMContentLoaded', () => {
       <section class="event-detail-block">
         <h4 class="event-detail-title">${ic('closeCircle')} 불참 ${s.no}</h4>
         ${people(s.noList, 'is-no')}
-      </section>`;
+      </section>
+      ${(store.canReviewGuestRequests(ev.id) || s.guestPending > 0) ? `
+      <section class="event-detail-block event-guest-review">
+        <h4 class="event-detail-title">게스트 승인 대기 ${s.guestPending > 0 ? `<span class="section-count">${s.guestPending}</span>` : ''}</h4>
+        ${s.guestRequests.length
+          ? s.guestRequests.map((g) => `
+              <div class="guest-review-row">
+                <span class="event-person-avatar" style="background:${g.gradient}">${escapeHtml(g.avatarText || g.name.charAt(0))}</span>
+                <span class="guest-review-name">${escapeHtml(g.name)}<span class="guest-review-sub">게스트 참여 신청</span></span>
+                ${store.canReviewGuestRequests(ev.id) ? `
+                  <span class="guest-review-actions">
+                    <button class="guest-review-btn is-approve" data-guest-approve="${g.memberId}" data-guest-event-id="${ev.id}" type="button">수락</button>
+                    <button class="guest-review-btn" data-guest-reject="${g.memberId}" data-guest-event-id="${ev.id}" type="button">거절</button>
+                  </span>` : '<span class="guest-review-sub">모임장 확인 중</span>'}
+              </div>`).join('')
+          : `<p class="event-people-empty">${store.canReviewGuestRequests(ev.id) ? '대기 중인 게스트 신청이 없어요' : '모임장이 확인하면 참석으로 올라와요'}</p>`}
+      </section>` : ''}`;
     /* Sprint 32.5 — 만든 사람은 일정을 고칠 수 있다(게스트 참여 여부 포함). */
     if (ev.createdBy === store.currentUser.id) {
       el.eventDetailBody.innerHTML += `
@@ -4736,6 +5260,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     ui.eventGroupId = grp.id;
     ui.eventEditId = eventId || null;
+    /* H3 — 모임 기본값과 상관없이 **새 일정의 게스트 참여는 항상 꺼짐**으로 시작한다.
+       만든 사람이 필요할 때만 스위치를 켜서 홈 추천 일정에 올린다. */
     ui.eventDraft = { kind: 'drink', when: null, guestOpen: false };
     if (eventId) {
       const ev = store.getGroupEvent(eventId);
@@ -4838,7 +5364,10 @@ document.addEventListener('DOMContentLoaded', () => {
           ${HEART_SVG(post.likedByMe)} ${post.likedByMe ? '좋아요 취소' : '좋아요'}
         </button>
         ${grp ? `<button class="post-detail-group" data-feed-post-group="${grp.id}" type="button">모임 보기</button>` : ''}
+        ${post.authorId === store.currentUser.id
+          ? `<button class="post-detail-group" data-feed-post-edit="${post.id}" type="button">글 수정</button>` : ''}
       </div>
+      ${post.recommendOptIn ? '<p class="post-detail-optin">추천 피드에 노출 중이에요 · 글 수정에서 바꿀 수 있어요</p>' : ''}
       <div class="post-comment-head">
         <h4 class="post-comment-title">댓글 <span class="section-count">${comments.length}</span></h4>
         <span class="post-comment-privacy">모임원만 볼 수 있는 반응이에요</span>
@@ -4876,73 +5405,14 @@ document.addEventListener('DOMContentLoaded', () => {
    * Sprint 16 배선 — 갤러리 · 모임 뒤로가기 · 스토리 · 게시판 · 쪽지 · 나이 슬라이더
    * ---------------------------------------------------------------- */
   function bindGallery() {
-    const openFromCard = (node) => { if (node) enterGroupSpace(node.dataset.openGroup, 'tab-home'); };
-    if (el.galleryGrid) {
-      el.galleryGrid.addEventListener('click', (e) => {
-        if (e.target.closest('[data-home-find]')) { focusHomeBrowse(); return; }
-        if (e.target.closest('[data-gallery-new]')) { openGroupCreate(); return; }
-        openFromCard(e.target.closest('[data-open-group]'));
-      });
-      el.galleryGrid.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        const card = e.target.closest('[data-open-group]');
-        if (!card) return;
-        e.preventDefault();
-        openFromCard(card);
-      });
-    }
-    if (el.galleryEmpty) {
-      el.galleryEmpty.addEventListener('click', (e) => {
-        if (e.target.closest('[data-home-find]')) focusHomeBrowse();
-        if (e.target.closest('[data-gallery-new]')) openGroupCreate();
-      });
-    }
-    /* Sprint 21 — 추천 모임 카드 · 더 많은 모임 둘러보기 · 취미 다시 고르기 */
-    if (el.homeRecommendGrid) {
-      el.homeRecommendGrid.addEventListener('click', (e) => {
-        if (e.target.closest('[data-gallery-new]')) { openGroupCreate(); return; }
-        openFromCard(e.target.closest('[data-open-group]'));
-      });
-      el.homeRecommendGrid.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        const card = e.target.closest('[data-open-group]');
-        if (!card) return;
-        e.preventDefault();
-        openFromCard(card);
-      });
-    }
-    if (el.btnHomeMoreGroups) {
-      el.btnHomeMoreGroups.addEventListener('click', () => {
-        /* Sprint 22 — '더 많은 모임 둘러보기'는 탐색이 아니라 **바로 아래 홈의 모임 둘러보기**로. */
-        renderHomeBrowse();
-        if (el.homeBrowse) el.homeBrowse.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-      });
-    }
-    bindHomeBrowse();
+    /* H1 — 홈 배선은 bindHomeHub() 한 곳에 모았다(내 그룹 · 추천 · 전용 화면 둘). */
     bindHomeHub();
-    if (el.btnHomeRecommendTaste) {
-      el.btnHomeRecommendTaste.addEventListener('click', () => startGuide({ mode: 'taste', step: 'taste-category' }));
-    }
-    /* Sprint 17 — 갤러리 정렬 */
-    if (el.gallerySort) {
-      el.gallerySort.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-gallery-sort]');
-        if (!btn) return;
-        store.setGallerySort(btn.dataset.gallerySort);
-        renderGallery();
-      });
-    }
   }
   bindGallery();
 
   /* 모임 안 상단 뒤로가기 — 피드·게시판 어디서든 갤러리로 */
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-group-back]')) { exitGroupSpace(); }
-  });
-
-  /* Sprint 16 — 바깥 3탭에는 내정보가 없으므로 헤더 프로필로 연다(모임 안에서는 4탭에 이미 있다). */
-  $('#btn-header-profile') && $('#btn-header-profile').addEventListener('click', () => {
-    switchTab('tab-profile');
   });
 
   /* Sprint 18 — 모임·내정보 사이드바 열기 */
@@ -5008,12 +5478,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = store.updateGroupJoinPolicy(grp.id, { joinMode: t.dataset.drawerJoin });
       if (!res.ok) { showToast('모임장만 바꿀 수 있어요', 'warning'); return; }
       showToast(t.dataset.drawerJoin === 'open' ? '누구나 자유롭게 가입하는 모임이에요' : '소개서를 보고 승인하는 모임이에요');
-      rerender();
-      return;
-    }
-    if (t.dataset.drawerAge) {
-      const res = store.updateGroupJoinPolicy(grp.id, { ageLimit: t.dataset.drawerAge });
-      if (!res.ok) { showToast('모임장만 바꿀 수 있어요', 'warning'); return; }
       rerender();
       return;
     }
@@ -5725,6 +6189,55 @@ document.addEventListener('DOMContentLoaded', () => {
       else showToast('참석 표시를 바꿨어요');
     });
   }
+  /* H3 — 게스트 참석 신청·취소, 모임장의 수락·거절(로컬 데이터로 도는 승인 흐름) */
+  if (el.eventDetailBody) {
+    el.eventDetailBody.addEventListener('click', (e) => {
+      const request = e.target.closest('[data-guest-request]');
+      if (request) {
+        const res = store.requestGuestSeat(request.dataset.guestRequest);
+        if (!res.ok) {
+          const why = { full: '자리가 다 찼어요', past: '지난 일정이에요', guest_closed: '게스트를 받지 않는 일정이에요', member: '이미 가입한 모임이에요' };
+          showToast(why[res.reason] || '참석을 신청하지 못했어요', 'warning');
+          return;
+        }
+        renderEventDetail(request.dataset.guestRequest);
+        renderHomeSuggestEvents();
+        showToast('게스트 참석을 신청했어요 · 모임장이 수락하면 참석돼요');
+        return;
+      }
+      const cancel = e.target.closest('[data-guest-cancel]');
+      if (cancel) {
+        const res = store.cancelGuestSeat(cancel.dataset.guestCancel);
+        if (!res.ok) { showToast('신청을 취소하지 못했어요', 'warning'); return; }
+        renderEventDetail(cancel.dataset.guestCancel);
+        renderHomeSuggestEvents();
+        showToast('게스트 신청을 취소했어요');
+        return;
+      }
+      const approve = e.target.closest('[data-guest-approve]');
+      const reject = e.target.closest('[data-guest-reject]');
+      if (!approve && !reject) return;
+      const node = approve || reject;
+      const eventId = node.dataset.guestEventId;
+      const memberId = approve ? node.dataset.guestApprove : node.dataset.guestReject;
+      const res = approve
+        ? store.approveGuestSeat(eventId, memberId)
+        : store.rejectGuestSeat(eventId, memberId);
+      if (!res.ok) {
+        const why = { permission: '모임장만 처리할 수 있어요', no_request: '이미 처리된 신청이에요' };
+        showToast(why[res.reason] || '게스트 신청을 처리하지 못했어요', 'warning');
+        return;
+      }
+      renderEventDetail(eventId);
+      const grp = homeGroup();
+      if (grp) renderHomeEvents(grp);
+      renderHomeSuggestEvents();
+      updateBadges();
+      showToast(approve
+        ? (res.status === 'maybe' ? '정원이 찾아 게스트를 대기 1순위로 올렸어요' : '게스트 참석을 수락했어요')
+        : '게스트 신청을 거절했어요');
+    });
+  }
   const eventDetailClose = $('#btn-close-event-detail');
   eventDetailClose && eventDetailClose.addEventListener('click', () => closeModal(el.eventDetailModal));
 
@@ -5780,6 +6293,12 @@ document.addEventListener('DOMContentLoaded', () => {
         renderGroupPostDetail(likeBtn.dataset.feedPostLike);
         if (ui.activeTab === 'tab-home') renderHomeFeed(homeGroup());
         if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8);
+        return;
+      }
+      const editBtn = e.target.closest('[data-feed-post-edit]');
+      if (editBtn) {
+        closeModal(el.postModal);
+        openComposerEditing(editBtn.dataset.feedPostEdit);
         return;
       }
       const groupBtn = e.target.closest('[data-feed-post-group]');
@@ -7702,20 +8221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* 모임장 — 나이 제한 변경 */
-    const ageBtn = e.target.closest('[data-policy-age]');
-    if (ageBtn) {
-      const groupId = ageBtn.closest('[data-join-policy]').dataset.joinPolicy;
-      const res = store.updateGroupJoinPolicy(groupId, { ageLimit: ageBtn.dataset.policyAge });
-      if (!res.ok) {
-        showToast('나이 제한을 바꾸지 못했어요', 'warning');
-        return;
-      }
-      renderGroupDetail(res.group);
-      renderExplore({ preserve: true });
-      const option = store.getGroupAgeLimit(groupId);
-      showToast(option.id === 'all' ? '나이 제한을 없앴어요' : `나이 제한을 ${option.label} 으로 바꿨어요`);
-      return;
-    }
+    /* H4 — 나이 제한은 칩이 아니라 슬라이더(data-age-slider)로 바꾼다. 저장은 commitAgeSlider 가 맡는다. */
 
     /* 모임장 — 가입 질문 삭제 */
     const qDel = e.target.closest('[data-policy-qdel]');
@@ -8109,6 +8615,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const menu = document.createElement('div');
     menu.className = 'post-menu';
     menu.setAttribute('role', 'menu');
+    /* H3 — 올린 글도 여기서 고칠 수 있다(추천 피드 노출 포함). */
+    const edit = document.createElement('button');
+    edit.className = 'post-menu-item';
+    edit.type = 'button';
+    edit.setAttribute('data-edit-post', postId);
+    edit.textContent = '게시물 수정';
+    menu.appendChild(edit);
     const item = document.createElement('button');
     item.className = 'post-menu-item danger';
     item.type = 'button';
@@ -8131,6 +8644,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* 바깥 클릭: 메뉴가 열려 있으면 닫고, 메뉴 항목 클릭은 삭제로 처리 */
   document.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-edit-post]');
+    if (editBtn) {
+      e.preventDefault();
+      closeAllPostMenus();
+      openComposerEditing(editBtn.dataset.editPost);
+      return;
+    }
     const deleteBtn = e.target.closest('[data-delete-post]');
     if (deleteBtn) {
       e.preventDefault();
@@ -8218,7 +8738,11 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다(모임 선택 한 번 줄임). */
     const viewing = ui.activeTab === 'tab-home' ? (ui.homeGroupId || store.getHomeGroupId()) : null;
     const startGroup = store.getGroup(prefillGroupId || viewing || ui.feedGroupId) || joined[0];
-    ui.composer = { groupId: startGroup.id, tag: null, photoUrl: null, recommendOptIn: false };
+    /* H3 — 글을 쓸 때마다 '추천 피드 노출'은 **꺼진 상태**로 시작한다(모임 기본값을 따르지 않음).
+       체크해야만 홈 추천 피드에 오른다. */
+    ui.composer = { editId: null, groupId: startGroup.id, tag: null, photoUrl: null, recommendOptIn: false };
+    if (el.composerTitle) el.composerTitle.textContent = '새 게시물';
+    if (el.publishBtn) el.publishBtn.textContent = '게시';
     renderPhotoPreview('composer');
     composerResetFields();
     renderComposerGroups();
@@ -8229,12 +8753,13 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal(el.composerModal);
   }
 
-  /** Sprint 32.5 — 추천 피드 공개 토글(기본 꺼짐) */
+  /** H3 — '추천 피드에 노출해도 괜찮아요' 체크박스(기본 꺼짐). */
   function renderComposerRecommend() {
-    if (!el.composerRecommendToggle) return;
+    if (!el.composerRecommendCheck) return;
     const on = ui.composer.recommendOptIn === true;
-    el.composerRecommendToggle.classList.toggle('on', on);
-    el.composerRecommendToggle.setAttribute('aria-checked', String(on));
+    el.composerRecommendCheck.checked = on;
+    const row = el.composerRecommendCheck.closest('.optin-row');
+    if (row) row.classList.toggle('is-checked', on);
   }
 
   /* (DOM 초기화 헬퍼) 캡션/사진문구 비우기 */
@@ -8245,7 +8770,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.captionCount) el.captionCount.textContent = '0';
   }
   function renderComposerGroups() {
-    const joined = store.getJoinedGroups();
+    /* 수정할 때는 모임을 바꾸지 않는다 — 그 글의 모임 한 곳만 보여 준다. */
+    const joined = ui.composer.editId
+      ? [store.getGroup(ui.composer.groupId)].filter(Boolean)
+      : store.getJoinedGroups();
     el.composerGroupList.innerHTML = joined.map((g) => `
       <button class="composer-group-chip ${ui.composer.groupId === g.id ? 'active' : ''}" data-pick-group="${g.id}">
         <span class="chip-thumb">${ic(g.icon)}</span>
@@ -8324,9 +8852,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderComposerTags();
   });
 
-  if (el.composerRecommendToggle) {
-    el.composerRecommendToggle.addEventListener('click', () => {
-      ui.composer.recommendOptIn = !ui.composer.recommendOptIn;
+  if (el.composerRecommendCheck) {
+    el.composerRecommendCheck.addEventListener('change', () => {
+      ui.composer.recommendOptIn = el.composerRecommendCheck.checked === true;
       renderComposerRecommend();
     });
   }
@@ -8350,14 +8878,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   el.publishBtn && el.publishBtn.addEventListener('click', () => {
-    const post = store.createPost({
-      groupId: ui.composer.groupId,
+    const payload = {
       tag: ui.composer.tag,
       caption: el.composerCaption.value,
       mediaCaption: el.composerMediaCaption ? el.composerMediaCaption.value : '',
       photoUrl: ui.composer.photoUrl || (el.composerPhotoUrl ? el.composerPhotoUrl.value : ''),
       recommendOptIn: ui.composer.recommendOptIn === true
-    });
+    };
+    /* H3 — 올린 글도 수정 화면에서 '추천 피드 노출'을 바꿀 수 있다(저장하면 홈 추천 피드에 바로 반영/해제). */
+    if (ui.composer.editId) {
+      const res = store.updatePost(ui.composer.editId, payload);
+      if (!res.ok) {
+        showToast(res.reason === 'empty' ? '내용이나 사진을 하나는 남겨 주세요' : '글을 고치지 못했어요', 'warning');
+        return;
+      }
+      const post = res.post;
+      ui.composer.editId = null;
+      if (el.composerTitle) el.composerTitle.textContent = '새 게시물';
+      if (el.publishBtn) el.publishBtn.textContent = '게시';
+      closeModal(el.composerModal);
+      renderFeed();
+      renderHomeSuggestFeed();
+      if (el.postModal && el.postModal.classList.contains('active')) renderGroupPostDetail(post.id);
+      updateBadges();
+      showToast(post.recommendOptIn
+        ? '글을 고쳤어요 · 홈 추천 피드에 보여요'
+        : '글을 고쳤어요 · 이 모임 피드에만 보여요');
+      return;
+    }
+    const post = store.createPost({ groupId: ui.composer.groupId, ...payload });
     if (!post) {
       showToast('모임과 내용을 확인해 주세요', 'warning');
       return;
@@ -8371,6 +8920,39 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHomeSuggestFeed();
     scrollTop();
   });
+
+  /* H3 — 올린 글 수정. 글쓰기 화면을 그대로 쓰되 모임·말머리는 그대로 두고 내용과 노출 여부만 고친다. */
+  function openComposerEditing(postId) {
+    const post = store.getPost(postId);
+    if (!post) { showToast('글을 찾지 못했어요', 'warning'); return; }
+    if (post.authorId !== store.currentUser.id) {
+      showToast('내가 쓴 글만 고칠 수 있어요', 'warning');
+      return;
+    }
+    const grp = store.getGroup(post.groupId);
+    if (!grp) { showToast('모임을 찾지 못했어요', 'warning'); return; }
+    ui.composer = {
+      editId: post.id,
+      groupId: post.groupId,
+      tag: post.tag || null,
+      photoUrl: post.photoUrl || null,
+      recommendOptIn: post.recommendOptIn === true
+    };
+    renderPhotoPreview('composer');
+    composerResetFields();
+    if (el.composerCaption) el.composerCaption.value = post.caption || '';
+    if (el.captionCount) el.captionCount.textContent = String((post.caption || '').length);
+    if (el.composerMediaCaption) el.composerMediaCaption.value = post.mediaCaption || '';
+    if (el.composerPhotoUrl) el.composerPhotoUrl.value = /^https?:\/\//i.test(post.photoUrl || '') ? post.photoUrl : '';
+    if (el.composerTitle) el.composerTitle.textContent = '글 수정';
+    if (el.publishBtn) el.publishBtn.textContent = '저장';
+    renderComposerGroups();
+    renderComposerTags();
+    renderComposerRecommend();
+    updatePublishState();
+    updatePhotoPreview();
+    openModal(el.composerModal);
+  }
 
   el.fab && el.fab.addEventListener('click', () => openComposer());
 
@@ -9306,120 +9888,556 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ------------------------------------------------------------ 모임 개설 */
   /* ==========================================================================
-   * Sprint 32.5 — 새 그룹 만들기: 한 단계씩(5단계) + 대표 이미지 + 아지트
+   * H2 — 새 모임 만들기: 한 번에 한 질문씩 6단계 위자드
    * ------------------------------------------------------------------------
-   *  11/21 16:41 루키 님(#21060): 한 화면 폼 대신 한 단계씩 묻고, 대표 이미지와
-   *   '아지트'를 고르게 한다. 단계: 이름 → 대표 이미지 → 아지트 → 취미 → 운영.
+   *  1 이름·한 줄 소개 → 2 취미(대분류 → 세부, 직접 입력) → 3 대표 이미지
+   *  (한 번 크롭해 1:1 원형용 + 4:3 카드용) → 4 활동 지역(시·도 → 시·군·구)
+   *  → 5 아지트 1~3곳(역·대학교·랜드마크) → 6 공개 설정과 확인.
+   *  · 단계를 오가도 입력값이 남고, 중간에 나가면 localStorage 에 임시저장된다.
+   *  · 지역·장소는 목록에서만 고른다(직접 입력·정확한 주소 없음).
+   *  · 사진은 Canvas 로 다시 저장해 EXIF(위치 정보)를 지운 Data URL 만 쓴다.
    * ======================================================================== */
+
+  /* ========================================================================
+   * H4 — 나이 제한 듀얼 레인지 슬라이더 (19~99세)
+   * ------------------------------------------------------------------------
+   *  · 6단계 위자드 · 모임 사이드바 · 모임 상세 '가입 안내'가 **같은 컴포넌트**를 쓴다.
+   *  · 양끝(19~99)이면 '제한 없음' — 별도 토글 없이 양끝 최대치로 처리한다.
+   *  · 손잡이 두 개는 네이티브 input[type=range] 를 겹쳐 만든다(키보드·화면낭독기 그대로).
+   *    트랙을 눌러 끌면 가까운 손잡이가 따라온다(터치·마우스 공통).
+   * ======================================================================== */
+  const AGE_MIN = 19;
+  const AGE_MAX = 99;
+
+  function normalizeAgeRange(min, max) {
+    const toAge = (v, fallback) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return fallback;
+      return Math.min(AGE_MAX, Math.max(AGE_MIN, Math.round(n)));
+    };
+    const lo = toAge(min, AGE_MIN);
+    const hi = toAge(max, AGE_MAX);
+    return { min: Math.min(lo, hi), max: Math.max(lo, hi) };
+  }
+
+  /** 슬라이더 읽기 문구 — '제한 없음' / '25세 이상' / '29세 이하' / '20세 ~ 35세' */
+  function ageSliderLabel(min, max) {
+    const r = normalizeAgeRange(min, max);
+    if (r.min <= AGE_MIN && r.max >= AGE_MAX) return '제한 없음';
+    if (r.max >= AGE_MAX) return `${r.min}세 이상`;
+    if (r.min <= AGE_MIN) return `${r.max}세 이하`;
+    return `${r.min}세 ~ ${r.max}세`;
+  }
+
+  /** 값 → 입력·채움막대·문구·해제버튼을 한 번에 맞춘다. */
+  function paintAgeSlider(root, min, max) {
+    if (!root) return normalizeAgeRange(min, max);
+    const r = normalizeAgeRange(min, max);
+    const minInput = root.querySelector('input[data-age-min]');
+    const maxInput = root.querySelector('input[data-age-max]');
+    if (minInput) minInput.value = String(r.min);
+    if (maxInput) maxInput.value = String(r.max);
+    const fill = root.querySelector('[data-age-fill]');
+    if (fill) {
+      const span = AGE_MAX - AGE_MIN;
+      fill.style.left = `${((r.min - AGE_MIN) / span) * 100}%`;
+      fill.style.width = `${((r.max - r.min) / span) * 100}%`;
+    }
+    const readout = root.querySelector('[data-age-readout]');
+    if (readout) readout.textContent = ageSliderLabel(r.min, r.max);
+    const clear = root.querySelector('[data-age-clear]');
+    if (clear) clear.hidden = r.min <= AGE_MIN && r.max >= AGE_MAX;
+    root.dataset.ageMin = String(r.min);
+    root.dataset.ageMax = String(r.max);
+    return r;
+  }
+
+  /** 지금 두 입력의 값 — moved 쪽을 다른 쪽에 맞춰 뒤집히지 않게 한다. */
+  function readAgeSlider(root, moved) {
+    const minInput = root.querySelector('input[data-age-min]');
+    const maxInput = root.querySelector('input[data-age-max]');
+    let min = Number(minInput ? minInput.value : AGE_MIN);
+    let max = Number(maxInput ? maxInput.value : AGE_MAX);
+    if (min > max) {
+      if (moved === 'max') { max = min; if (maxInput) maxInput.value = String(min); }
+      else { min = max; if (minInput) minInput.value = String(max); }
+    }
+    return normalizeAgeRange(min, max);
+  }
+
+  /** 사이드바·상세처럼 다시 그려지는 자리에 넣는 슬라이더 HTML. */
+  function ageSliderHTML(opts) {
+    const o = opts || {};
+    const r = normalizeAgeRange(o.min, o.max);
+    const span = AGE_MAX - AGE_MIN;
+    const left = ((r.min - AGE_MIN) / span) * 100;
+    const width = ((r.max - r.min) / span) * 100;
+    const open = r.min <= AGE_MIN && r.max >= AGE_MAX;
+    return `<div class="age-range" data-age-slider="${escapeHtml(o.host || 'inline')}" data-age-group="${escapeHtml(o.groupId || '')}"
+                 data-age-min="${r.min}" data-age-max="${r.max}" role="group" aria-label="나이 제한">
+      <div class="age-range-head">
+        <span class="age-range-label" data-age-readout="1" aria-live="polite">${escapeHtml(ageSliderLabel(r.min, r.max))}</span>
+        <button class="age-range-clear" type="button" data-age-clear="1" aria-label="나이 조건 없음"${open ? ' hidden' : ''}>나이 조건 없음</button>
+      </div>
+      <div class="age-range-track">
+        <span class="age-range-fill" data-age-fill="1" aria-hidden="true" style="left:${left}%;width:${width}%"></span>
+        <input class="age-range-input" type="range" min="${AGE_MIN}" max="${AGE_MAX}" step="1" value="${r.min}"
+               aria-label="최소 나이" data-age-min>
+        <input class="age-range-input" type="range" min="${AGE_MIN}" max="${AGE_MAX}" step="1" value="${r.max}"
+               aria-label="최대 나이" data-age-max>
+      </div>
+      <div class="age-range-foot" aria-hidden="true"><span>${AGE_MIN}세</span><span>${AGE_MAX}세</span></div>
+    </div>`;
+  }
+
+  /** 위자드 초안에 반영(요약·임시저장도 같이). */
+  function applyAgeToDraft(range) {
+    if (!ui.groupDraft || !range) return;
+    ui.groupDraft.ageMin = range.min;
+    ui.groupDraft.ageMax = range.max;
+    renderCreateSummary();
+    queueCreateDraftSave();
+  }
+
+  /** 손을 뗐을 때 — 위자드는 초안 저장, 사이드바·상세는 모임장 권한으로 즉시 반영. */
+  function commitAgeSlider(root) {
+    if (!root) return;
+    const min = Number(root.dataset.ageMin);
+    const max = Number(root.dataset.ageMax);
+    const host = root.dataset.ageSlider;
+    if (host === 'wizard') { applyAgeToDraft({ min, max }); return; }
+    const groupId = root.dataset.ageGroup;
+    if (!groupId) return;
+    const res = store.updateGroupJoinPolicy(groupId, { ageMin: min, ageMax: max });
+    if (!res.ok) {
+      showToast(res.reason === 'permission' ? '모임장만 바꿀 수 있어요' : '나이 제한을 바꾸지 못했어요', 'warning');
+      const back = store.getGroup(groupId);
+      if (back) { paintAgeSlider(root, store.getGroupAgeRange(back).min, store.getGroupAgeRange(back).max); }
+      return;
+    }
+    const option = store.getGroupAgeLimit(groupId);
+    showToast(option.id === 'all' ? '나이 제한을 없앴어요' : `나이 제한을 ${ageSliderLabel(min, max)} 로 바꿨어요`);
+    if (host === 'drawer') renderExplore({ preserve: true });
+    else { renderGroupDetail(res.group); renderExplore({ preserve: true }); }
+  }
+
   const CREATE_STEPS = [
     {
       id: 1, label: '이름', title: '모임 이름을 정해 주세요',
       desc: '이름과 한 줄 소개면 충분해요. 나머지는 다음 단계에서 하나씩 물을게요.'
     },
     {
-      id: 2, label: '대표 이미지', title: '대표 이미지를 골라 주세요',
-      desc: '사진을 올리거나 기본 아이콘 중 하나를 고르면, 모임 카드와 내 그룹 아이콘에 그대로 보여요.'
+      id: 2, label: '취미', title: '어떤 취미 모임인가요?',
+      desc: '큰 분류를 고르면 세부 취미가 나와요. 목록에 없으면 직접 적어도 돼요.'
     },
     {
-      id: 3, label: '아지트', title: '아지트를 골라 주세요',
-      desc: '집 주소 대신 만나는 곳만 정해요. 가까운 역·학교·랜드마크에서 고르면 이웃이 찾기 쉬워요.'
+      id: 3, label: '대표 이미지', title: '대표 이미지를 골라 주세요',
+      desc: '사진은 한 번만 자르면 원형(1:1)과 카드(4:3)로 함께 만들어져요.'
     },
     {
-      id: 4, label: '취미', title: '어떤 취미 모임인가요?',
-      desc: '취미 하나를 고르면 색과 아이콘이 정해져 목록에서 한눈에 구분돼요.'
+      id: 4, label: '활동 지역', title: '어디서 활동하나요?',
+      desc: '시·도에서 시·군·구 순서로 골라 주세요. 상세 주소는 받지 않아요.'
     },
     {
-      id: 5, label: '운영', title: '가입 방식과 일정을 정해요',
-      desc: '가입은 나중에 바꿀 수 있어요. 정기 일시는 비워두어도 괜찮아요.'
+      id: 5, label: '아지트', title: '만나는 곳을 1~3곳 골라 주세요',
+      desc: '지하철역·대학교·랜드마크 중에서 골라요. 정확한 주소 대신 이름만 저장해요.'
+    },
+    {
+      id: 6, label: '공개 설정', title: '공개 설정을 확인해 주세요',
+      desc: '가입 방식을 정하고, 만든 내용을 한 번에 확인해요.'
     }
   ];
+
+  const CREATE_DRAFT_KEY = 'oog.groupDraft.v2';
 
   function createStepMeta(step) {
     return CREATE_STEPS.find((s) => s.id === step) || CREATE_STEPS[0];
   }
 
-  /** 대표 이미지 미리보기 — 올린 사진 → 고른 기본 아이콘 → 아직 없음. */
+  function freshGroupDraft() {
+    const my = store.getMyArea();
+    return {
+      step: 1,
+      name: '', desc: '',
+      hobbyId: null, categoryId: null,
+      /* circle·card 는 크롭 한 번으로 만든 두 장. presetId 는 기본 커버 8종. */
+      cover: { src: null, circle: null, card: null, presetId: null, zoom: 1, panX: 0, panY: 0, natW: 0, natH: 0 },
+      sidoId: my ? my.sidoId : 'seoul',
+      sigunguId: my ? my.sigunguId : null,
+      hangoutIds: [],
+      azitQuery: '',
+      privacyType: 'open',
+      /* H4 — 나이 제한은 19~99 범위로 시작한다(양끝 = 제한 없음). */
+      ageMin: AGE_MIN,
+      ageMax: AGE_MAX,
+      ageLimit: 'all',
+      question: ''
+    };
+  }
+
+  /* ------------------------------------------------ 임시저장(localStorage) */
+
+  /** 사진은 용량이 커서, 가득 차면 사진만 빼고 저장한다. */
+  function persistCreateDraft() {
+    if (!ui.groupDraft || !ui.groupDraft.touched) return;
+    const d = ui.groupDraft;
+    const payload = {
+      step: d.step, name: d.name, desc: d.desc, hobbyId: d.hobbyId, categoryId: d.categoryId,
+      cover: d.cover, sidoId: d.sidoId, sigunguId: d.sigunguId,
+      hangoutIds: d.hangoutIds, privacyType: d.privacyType, ageLimit: d.ageLimit,
+      ageMin: d.ageMin, ageMax: d.ageMax,
+      question: d.question,
+      savedAt: new Date().toISOString()
+    };
+    try {
+      localStorage.setItem(CREATE_DRAFT_KEY, JSON.stringify(payload));
+    } catch (e) {
+      try {
+        localStorage.setItem(CREATE_DRAFT_KEY, JSON.stringify({
+          ...payload, cover: { ...d.cover, src: null, circle: null, card: null, presetId: d.cover.presetId }
+        }));
+      } catch (e2) { /* 저장 공간이 없으면 조용히 넘어간다 */ }
+    }
+  }
+
+  let createDraftTimer = null;
+  function queueCreateDraftSave() {
+    if (ui.groupDraft) ui.groupDraft.touched = true;
+    clearTimeout(createDraftTimer);
+    createDraftTimer = setTimeout(persistCreateDraft, 180);
+  }
+
+  function readCreateDraft() {
+    try {
+      const raw = localStorage.getItem(CREATE_DRAFT_KEY);
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved !== 'object') return null;
+      const hasContent = !!(saved.name || saved.desc || saved.hobbyId
+        || (saved.cover && (saved.cover.circle || saved.cover.card || saved.cover.presetId))
+        || saved.sigunguId || (Array.isArray(saved.hangoutIds) && saved.hangoutIds.length));
+      return hasContent ? saved : null;
+    } catch (e) { return null; }
+  }
+
+  function clearCreateDraft() {
+    /* 예약해 둔 저장이 남아 있으면 지운 뒤에 다시 써 버린다 — 먼저 취소한다. */
+    clearTimeout(createDraftTimer);
+    createDraftTimer = null;
+    if (ui.groupDraft) ui.groupDraft.touched = false;
+    try { localStorage.removeItem(CREATE_DRAFT_KEY); } catch (e) { /* ignore */ }
+  }
+
+  /* ------------------------------------------------ 단계별 그리기 */
+
+  /** 대표 이미지 미리보기 — 1:1 원형용과 4:3 카드용을 따로 보여 준다. */
   function renderCreateCover() {
     const d = ui.groupDraft;
-    const preset = d.cover.presetId ? store.getCoverIconPreset(d.cover.presetId) : null;
+    const c = d.cover || {};
+    const preset = c.presetId ? store.getCoverIconPreset(c.presetId) : null;
+    const tile = preset
+      ? `<span class="cover-pick-tile tone-${escapeHtml(preset.tone)}" aria-hidden="true">${ic(preset.icon)}</span>`
+      : `<span class="cover-pick-empty" aria-hidden="true">${ic('image')}</span>`;
+    if (el.createGroupCoverCircle) {
+      el.createGroupCoverCircle.innerHTML = c.circle
+        ? `<img class="cover-pick-img is-circle" src="${escapeHtml(c.circle)}" alt="원형 대표 이미지 미리보기">`
+        : tile;
+    }
     if (el.createGroupCoverPreview) {
-      el.createGroupCoverPreview.innerHTML = d.cover.photoUrl
-        ? `<img class="cover-pick-img" src="${escapeHtml(d.cover.photoUrl)}" alt="대표 이미지 미리보기">`
-        : (preset
-          ? `<span class="cover-pick-tile tone-${escapeHtml(preset.tone)}" aria-hidden="true">${ic(preset.icon)}</span>`
-          : `<span class="cover-pick-empty" aria-hidden="true">${ic('image')}</span>
-             <span class="cover-pick-hint">사진이나 기본 아이콘을 골라 주세요</span>`);
+      el.createGroupCoverPreview.innerHTML = c.card
+        ? `<img class="cover-pick-img" src="${escapeHtml(c.card)}" alt="카드 대표 이미지 미리보기">`
+        : (preset ? tile : `<span class="cover-pick-empty" aria-hidden="true">${ic('image')}</span>
+             <span class="cover-pick-hint">사진이나 기본 커버를 골라 주세요</span>`);
     }
     if (el.createGroupCoverRemove) {
-      el.createGroupCoverRemove.hidden = !(d.cover.photoUrl || d.cover.presetId);
+      el.createGroupCoverRemove.hidden = !(c.circle || c.card || c.presetId);
     }
     if (el.createGroupCoverPresets) {
       el.createGroupCoverPresets.innerHTML = store.getCoverIconPresets().map((p) => `
-        <button class="cover-preset tone-${escapeHtml(p.tone)} ${d.cover.presetId === p.id ? 'active' : ''}"
-                data-create-cover-preset="${p.id}" type="button" aria-pressed="${d.cover.presetId === p.id}"
-                aria-label="${escapeHtml(p.label)} 아이콘">
+        <button class="cover-preset tone-${escapeHtml(p.tone)} ${c.presetId === p.id ? 'active' : ''}"
+                data-create-cover-preset="${p.id}" type="button" aria-pressed="${c.presetId === p.id}"
+                aria-label="${escapeHtml(p.label)} 기본 커버">
           <span class="cover-preset-ic" aria-hidden="true">${ic(p.icon)}</span>
           <span class="cover-preset-label">${escapeHtml(p.label)}</span>
         </button>`).join('');
     }
   }
 
-  /** 아지트 목록 — 권역 칩 + 검색 + 고른 아지트 + 목록. */
-  function renderCreateAzit() {
+  /* 크롭 — 고른 사진 위에서 정사각형 창을 끌어 옮기고 확대로 맞춘다. */
+  function cropStageSize() {
+    const stage = el.createGroupCropStage;
+    const w = stage && stage.clientWidth ? stage.clientWidth : 320;
+    return Math.max(120, Math.round(w));
+  }
+
+  function cropGeometry() {
+    const c = ui.groupDraft.cover;
+    const S = cropStageSize();
+    const natW = c.natW || 1;
+    const natH = c.natH || 1;
+    const base = S / Math.min(natW, natH);
+    const scale = base * (c.zoom || 1);
+    const dw = natW * scale;
+    const dh = natH * scale;
+    const maxX = Math.max(0, (dw - S) / 2);
+    const maxY = Math.max(0, (dh - S) / 2);
+    const panX = Math.max(-maxX, Math.min(maxX, c.panX || 0));
+    const panY = Math.max(-maxY, Math.min(maxY, c.panY || 0));
+    const left = (S - dw) / 2 + panX;
+    const top = (S - dh) / 2 + panY;
+    return { S, scale, dw, dh, left, top, panX, panY, maxX, maxY };
+  }
+
+  function layoutCreateCrop() {
+    const img = el.createGroupCropImg;
+    const c = ui.groupDraft.cover;
+    if (!img || !c.src) return;
+    const g = cropGeometry();
+    c.panX = g.panX;
+    c.panY = g.panY;
+    img.style.width = `${g.dw}px`;
+    img.style.height = `${g.dh}px`;
+    img.style.left = `${g.left}px`;
+    img.style.top = `${g.top}px`;
+    if (el.createGroupCropZoom && Number(el.createGroupCropZoom.value) !== Math.round((c.zoom || 1) * 100)) {
+      el.createGroupCropZoom.value = String(Math.round((c.zoom || 1) * 100));
+    }
+  }
+
+  function openCreateCrop(src) {
+    const c = ui.groupDraft.cover;
+    c.src = src;
+    c.circle = null;
+    c.card = null;
+    c.presetId = null;
+    c.zoom = 1;
+    c.panX = 0;
+    c.panY = 0;
+    if (el.createGroupCrop) el.createGroupCrop.hidden = false;
+    if (el.createGroupCropImg) {
+      el.createGroupCropImg.onload = () => {
+        c.natW = el.createGroupCropImg.naturalWidth || 1;
+        c.natH = el.createGroupCropImg.naturalHeight || 1;
+        layoutCreateCrop();
+      };
+      el.createGroupCropImg.src = src;
+      if (el.createGroupCropImg.complete && el.createGroupCropImg.naturalWidth) {
+        c.natW = el.createGroupCropImg.naturalWidth;
+        c.natH = el.createGroupCropImg.naturalHeight;
+        layoutCreateCrop();
+      }
+    }
+    if (el.createGroupCropZoom) el.createGroupCropZoom.value = '100';
+    queueCreateDraftSave();
+  }
+
+  function closeCreateCrop() {
+    if (el.createGroupCrop) el.createGroupCrop.hidden = true;
+    if (el.createGroupCropImg) el.createGroupCropImg.removeAttribute('src');
+  }
+
+  /**
+   * 크롭 확정 — 같은 선택 영역에서 1:1(원형용)과 4:3(카드용)을 함께 만든다.
+   *  · Canvas 로 다시 그려 JPEG 로 저장하므로 EXIF(촬영 위치·기기)는 남지 않는다.
+   */
+  function applyCreateCrop() {
+    const c = ui.groupDraft.cover;
+    const img = el.createGroupCropImg;
+    if (!c.src || !img || !img.naturalWidth) return null;
+    const g = cropGeometry();
+    const natW = img.naturalWidth;
+    const natH = img.naturalHeight;
+    const sx = Math.max(0, Math.min(natW - g.S / g.scale, (0 - g.left) / g.scale));
+    const sy = Math.max(0, Math.min(natH - g.S / g.scale, (0 - g.top) / g.scale));
+    const square = g.S / g.scale;
+    const draw = (rx, ry, rw, rh, outW, outH) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0D1117';
+      ctx.fillRect(0, 0, outW, outH);
+      ctx.drawImage(img, rx, ry, rw, rh, 0, 0, outW, outH);
+      return canvas.toDataURL('image/jpeg', 0.84);
+    };
+    c.circle = draw(sx, sy, square, square, 720, 720);
+    /* 카드용 4:3 — 같은 가운데에서 넓게 자른다(사진 밖으로 나가지 않게 자름). */
+    const centerX = sx + square / 2;
+    const centerY = sy + square / 2;
+    let w4 = Math.min(square * 4 / 3, natW);
+    let h4 = w4 * 3 / 4;
+    if (h4 > natH) { h4 = natH; w4 = h4 * 4 / 3; }
+    const x4 = Math.max(0, Math.min(natW - w4, centerX - w4 / 2));
+    const y4 = Math.max(0, Math.min(natH - h4, centerY - h4 / 2));
+    c.card = draw(x4, y4, w4, h4, 720, 540);
+    c.src = null;
+    c.natW = 720;
+    c.natH = 540;
+    closeCreateCrop();
+    renderGroupWizard();
+    queueCreateDraftSave();
+    showToast('대표 사진을 원형·카드용으로 함께 만들었어요 · 위치 정보는 지웠어요');
+    return { circle: c.circle, card: c.card };
+  }
+
+  /** 취미 — 대분류 칩을 고르면 그 아래 세부 취미가 나온다. */
+  function renderCreateHobbies() {
     const d = ui.groupDraft;
-    const areas = store.getAzitAreas();
-    if (el.createGroupAzitAreas) {
-      const known = d.azitArea && d.azitArea !== 'all' ? ['all'].concat(areas.map((a) => a.id)) : null;
-      /* 검색 중에는 권역 선택을 '전체'로 보여 준다(결과가 전 권역에서 나오므로). */
-      const areaId = !d.azitQuery && known && known.includes(d.azitArea) ? d.azitArea : 'all';
-      el.createGroupAzitAreas.innerHTML = [`<button class="azit-area ${areaId === 'all' ? 'active' : ''}"
-          data-azit-area="all" type="button" aria-pressed="${areaId === 'all'}">전체</button>`]
-        .concat(areas.map((a) => `
-          <button class="azit-area ${areaId === a.id ? 'active' : ''}" data-azit-area="${a.id}"
-                  type="button" aria-pressed="${areaId === a.id}">${escapeHtml(a.name)}</button>`)).join('');
+    const cats = store.getHobbyCategories();
+    const picked = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
+    const catId = d.categoryId || (picked ? picked.categoryId : cats[0].id);
+    d.categoryId = catId;
+    if (el.createGroupCats) {
+      el.createGroupCats.innerHTML = cats.map((c) => `
+        <button class="create-cat ${catId === c.id ? 'active' : ''}" data-create-cat="${c.id}"
+                type="button" aria-pressed="${catId === c.id}">
+          ${ic(c.icon)}<span>${escapeHtml(c.name.split('·')[0])}</span>
+        </button>`).join('');
     }
-    if (el.createGroupAzitSearch && el.createGroupAzitSearch.value !== d.azitQuery) {
-      el.createGroupAzitSearch.value = d.azitQuery || '';
+    const cat = cats.find((c) => c.id === catId) || cats[0];
+    if (el.createGroupHobbies) {
+      el.createGroupHobbies.innerHTML = cat.hobbies.map((h) => `
+        <button class="tag-pick ${d.hobbyId === h.id ? 'active' : ''}" data-hobby-pick="${h.id}"
+                data-hobby-scope="group" type="button">
+          ${ic(h.icon || 'sparkle')} ${escapeHtml(h.name)}
+        </button>`).join('');
     }
-    if (el.createGroupAzitClear) el.createGroupAzitClear.classList.toggle('hide', !d.azitQuery);
-    const chosen = d.azitId ? store.findAzit(d.azitId) : null;
+    if (el.createGroupHobbyPicked) {
+      el.createGroupHobbyPicked.textContent = picked
+        ? `고른 취미 · ${picked.name}`
+        : '아직 고르지 않았어요';
+    }
+  }
+
+  /** 활동 지역 — 시·도 칩 → 시·군·구 그리드. */
+  function renderCreateRegion() {
+    const d = ui.groupDraft;
+    if (el.createGroupRegionSido) {
+      el.createGroupRegionSido.innerHTML = store.getRegionSido().map((s) => `
+        <button class="region-chip ${d.sidoId === s.id ? 'active' : ''}" data-create-sido="${s.id}"
+                type="button" aria-pressed="${d.sidoId === s.id}">${escapeHtml(s.short)}</button>`).join('');
+    }
+    if (el.createGroupRegionSigungu) {
+      const rows = d.sidoId ? store.getRegionSigungu(d.sidoId) : [];
+      el.createGroupRegionSigungu.innerHTML = rows.map((g) => `
+        <button class="region-gu ${d.sigunguId === g.sigunguId ? 'active' : ''}" data-create-sigungu="${g.sigunguId}"
+                type="button" aria-pressed="${d.sigunguId === g.sigunguId}">${escapeHtml(g.name)}</button>`).join('');
+    }
+    if (el.createGroupRegionPicked) {
+      const area = d.sigunguId ? store.findSigungu(d.sigunguId) : null;
+      el.createGroupRegionPicked.textContent = area ? `고른 지역 · ${area.label}` : '아직 고르지 않았어요';
+    }
+  }
+
+  /** 아지트 — 4단계 지역 후보를 먼저 보여 주고, 검색하면 전체에서 찾는다. 1~3곳. */
+  function renderCreateHangouts() {
+    const d = ui.groupDraft;
+    const area = d.sigunguId ? store.findSigungu(d.sigunguId) : null;
+    const query = d.azitQuery || '';
+    const chosen = d.hangoutIds.map((id) => store.findAzit(id)).filter(Boolean);
+    if (el.createGroupAzitSearch && el.createGroupAzitSearch.value !== query) {
+      el.createGroupAzitSearch.value = query;
+    }
+    if (el.createGroupAzitClear) el.createGroupAzitClear.classList.toggle('hide', !query);
+    if (el.createGroupHangoutLead) {
+      const near = area ? store.getHangouts({ sigunguId: area.sigunguId }) : [];
+      el.createGroupHangoutLead.textContent = query
+        ? `'${query}'로 찾은 아지트 · ${d.hangoutIds.length}/3곳 골랐어요`
+        : (area
+          ? `${area.name} 근처 아지트를 먼저 보여드려요 · ${d.hangoutIds.length}/3곳 골랐어요`
+          : `아지트를 1~3곳 골라 주세요 · ${d.hangoutIds.length}/3곳`);
+      if (area && !near.length && !query) {
+        el.createGroupHangoutLead.textContent = `${area.name}에는 아직 아지트가 없어 가까운 곳부터 보여드려요 · ${d.hangoutIds.length}/3곳`;
+      }
+    }
     if (el.createGroupAzitChosen) {
-      el.createGroupAzitChosen.innerHTML = chosen
-        ? `<span class="azit-chosen-chip">${ic(chosen.icon)} 아지트 · ${escapeHtml(chosen.name)}
-             <span class="azit-chosen-area">${escapeHtml(chosen.areaName)}</span></span>`
-        : `<span class="azit-chosen-none">아직 고르지 않았어요</span>`;
+      el.createGroupAzitChosen.innerHTML = chosen.length
+        ? chosen.map((h) => `
+            <span class="azit-chosen-chip">${ic(h.icon)} ${escapeHtml(h.name)}
+              <span class="azit-chosen-area">${escapeHtml(h.sigunguName || h.areaName)}</span>
+              <button class="azit-chosen-x" data-create-hangout-remove="${h.id}" type="button"
+                      aria-label="${escapeHtml(h.name)} 빼기">&times;</button>
+            </span>`).join('')
+        : '<span class="azit-chosen-none">아직 고르지 않았어요 · 1~3곳</span>';
     }
     if (el.createGroupAzitList) {
-      const spots = store.getAzitSpots({ areaId: d.azitArea, query: d.azitQuery, limit: 60 });
-      el.createGroupAzitList.innerHTML = spots.length
-        ? spots.map((s) => `
-            <button class="azit-row ${d.azitId === s.id ? 'active' : ''}" data-azit-pick="${s.id}"
-                    type="button" aria-pressed="${d.azitId === s.id}">
-              <span class="azit-row-ic" aria-hidden="true">${ic(s.icon)}</span>
+      /* H2 — 4단계에서 고른 시·군·구 후보를 먼저, 그다음 같은 시·도의 다른 곳(검색은 전체). */
+      let rows = store.getHangouts({ query, limit: 200 });
+      if (!query && d.sigunguId) {
+        const inArea = rows.filter((h) => h.sigunguId === d.sigunguId);
+        const rest = rows.filter((h) => h.sigunguId !== d.sigunguId);
+        rows = inArea.concat(rest);
+      } else if (!query && d.sidoId) {
+        const inSido = rows.filter((h) => h.sidoId === d.sidoId);
+        rows = inSido.concat(rows.filter((h) => h.sidoId !== d.sidoId));
+      }
+      rows = rows.slice(0, 80);
+      el.createGroupAzitList.innerHTML = rows.length
+        ? rows.map((h) => `
+            <button class="azit-row ${d.hangoutIds.includes(h.id) ? 'active' : ''}" data-azit-pick="${h.id}"
+                    type="button" aria-pressed="${d.hangoutIds.includes(h.id)}">
+              <span class="azit-row-ic" aria-hidden="true">${ic(h.icon)}</span>
               <span class="azit-row-text">
-                <span class="azit-row-name">${escapeHtml(s.name)}</span>
-                <span class="azit-row-meta">${escapeHtml(s.areaName)} · ${escapeHtml(s.kindLabel)}${s.groupCount ? ` · 모임 ${s.groupCount}` : ''}</span>
+                <span class="azit-row-name">${escapeHtml(h.name)}</span>
+                <span class="azit-row-meta">${escapeHtml(h.sigunguName || '')} · ${escapeHtml(h.kindLabel)}${h.groupCount ? ` · 모임 ${h.groupCount}` : ''}</span>
               </span>
-              ${s.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
-              <span class="azit-row-check" aria-hidden="true">${d.azitId === s.id ? ic('check') : ''}</span>
+              ${h.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
+              <span class="azit-row-check" aria-hidden="true">${d.hangoutIds.includes(h.id) ? ic('check') : ''}</span>
             </button>`).join('')
-        : `<p class="azit-empty">'${escapeHtml(d.azitQuery)}'에 맞는 아지트가 없어요. 동네 이름으로 다시 찾아보세요.</p>`;
+        : `<p class="azit-empty">${query ? `'${escapeHtml(query)}'에 맞는 아지트가 없어요. 역·학교 이름으로 다시 찾아보세요.` : '보여 줄 아지트가 없어요.'}</p>`;
     }
+  }
+
+  /** 6단계 확인 — 만든 내용을 한 번에. */
+  function renderCreateSummary() {
+    if (!el.createGroupSummary) return;
+    const d = ui.groupDraft;
+    const chip = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
+    const area = d.sigunguId ? store.findSigungu(d.sigunguId) : null;
+    const hangouts = d.hangoutIds.map((id) => store.findAzit(id)).filter(Boolean);
+    const preset = d.cover.presetId ? store.getCoverIconPreset(d.cover.presetId) : null;
+    const coverLabel = d.cover.circle || d.cover.card
+      ? '사진 · 원형·카드용'
+      : (preset ? `기본 커버 · ${preset.label}` : '아직 없음');
+    const name = el.createGroupName ? el.createGroupName.value.trim() : d.name;
+    const rows = [
+      ['모임명', name || '아직 없음'],
+      ['취미', chip ? chip.name : '아직 없음'],
+      ['대표 이미지', coverLabel],
+      ['활동 지역', area ? area.label : '아직 없음'],
+      ['아지트', hangouts.length ? hangouts.map((h) => h.name).join(' · ') : '아직 없음'],
+      ['가입 방식', d.privacyType === 'approval_private' ? '승인제' : '바로 가입'],
+      ['나이 제한', ageSliderLabel(d.ageMin, d.ageMax)]
+    ];
+    el.createGroupSummary.innerHTML = rows.map(([k, v]) => `
+      <div class="wizard-summary-row"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('');
   }
 
   /** 지금 단계를 넘어갈 수 있는지. */
   function createStepReady(step) {
     const d = ui.groupDraft;
     if (step === 1) {
-      const name = el.createGroupName ? el.createGroupName.value.trim() : '';
+      const name = (el.createGroupName ? el.createGroupName.value : d.name).trim();
       return name.length >= 2 && name.length <= 30;
     }
-    if (step === 3) return !!d.azitId;
-    if (step === 4) return !!d.hobbyId;
+    if (step === 2) return !!d.hobbyId;
+    if (step === 3) return !!(d.cover.circle || d.cover.card || d.cover.presetId);
+    if (step === 4) return !!(d.sidoId && d.sigunguId);
+    if (step === 5) return d.hangoutIds.length >= 1 && d.hangoutIds.length <= 3;
     return true;
   }
 
-  /** 마법사 전체를 지금 상태로 그린다. */
+  function createFootHint() {
+    const d = ui.groupDraft;
+    if (d.step === 1) return createStepReady(1) ? '' : '모임명을 2자 이상 적어 주세요';
+    if (d.step === 2) return createStepReady(2) ? '' : '취미를 하나 골라 주세요';
+    if (d.step === 3) return createStepReady(3) ? '' : '사진을 올리거나 기본 커버를 골라 주세요';
+    if (d.step === 4) return createStepReady(4) ? '' : '시·도와 시·군·구를 골라 주세요';
+    if (d.step === 5) return d.hangoutIds.length ? '아지트는 3곳까지 고를 수 있어요' : '아지트를 1곳 이상 골라 주세요';
+    return '만들면 모임장이 되고, 모임 안에서 바로 시작해요';
+  }
+
+  /** 위자드 전체를 지금 상태로 그린다. */
   function renderGroupWizard() {
     const d = ui.groupDraft;
     const meta = createStepMeta(d.step);
@@ -9440,24 +10458,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.createGroupStepDesc) el.createGroupStepDesc.textContent = meta.desc;
     if (el.createGroupPrev) el.createGroupPrev.hidden = d.step === 1;
 
-    /* 각 단계의 내용 */
-    if (el.createGroupHobbies) {
-      el.createGroupHobbies.innerHTML = hobbyPickerHTML('group', d.hobbyId);
-    }
+    renderCreateHobbies();
+    renderCreateCover();
+    renderCreateRegion();
+    renderCreateHangouts();
+    renderCreateSummary();
+
     if (el.createGroupPrivacy) {
       const options = [
-        { id: 'open', label: '자유 가입', icon: 'leaf', hint: '누구나 바로 참여' },
+        { id: 'open', label: '바로 가입', hint: '누구나 바로 참여' },
         { id: 'approval_private', label: '승인제', hint: '소개서 심사' }
       ];
       el.createGroupPrivacy.innerHTML = options.map((o) => `
         <button class="tag-pick ${d.privacyType === o.id ? 'active' : ''}"
-                data-create-privacy="${o.id}" type="button">${o.label}</button>`).join('');
+                data-create-privacy="${o.id}" type="button" aria-pressed="${d.privacyType === o.id}">${o.label}</button>`).join('');
     }
-    if (el.createGroupAge) {
-      el.createGroupAge.innerHTML = store.getAgeLimitOptions().map((o) => `
-        <button class="tag-pick ${d.ageLimit === o.id ? 'active' : ''}"
-                data-create-age="${o.id}" type="button">${escapeHtml(o.badge)}</button>`).join('');
-    }
+    /* H4 — 나이 제한: 칩 대신 듀얼 레인지 슬라이더의 값·문구·채움막대를 초안에 맞춘다. */
+    if (el.createGroupAge) paintAgeSlider(el.createGroupAge, d.ageMin, d.ageMax);
     if (el.createGroupQuestionPresets) {
       el.createGroupQuestionPresets.innerHTML = (store.state.joinQuestionPresets || []).map((q, i) => `
         <button class="tag-pick preset-pick" data-create-qpreset="${i}" type="button">${escapeHtml(q)}</button>`).join('');
@@ -9467,24 +10484,15 @@ document.addEventListener('DOMContentLoaded', () => {
       questionField.classList.toggle('policy-field-hidden', d.privacyType !== 'approval_private');
     }
 
-    renderCreateCover();
-    renderCreateAzit();
-
     const ready = createStepReady(d.step);
     const last = d.step === CREATE_STEPS.length;
     const btn = $('#btn-create-group-submit');
     if (btn) {
-      btn.textContent = last ? '개설' : '다음';
+      btn.textContent = last ? '모임 만들기' : '다음';
       btn.disabled = !ready;
       btn.classList.toggle('ready', ready);
     }
-    if (el.createGroupFootHint) {
-      el.createGroupFootHint.textContent = !ready
-        ? (d.step === 1 ? '모임명을 2자 이상 적어 주세요'
-          : d.step === 3 ? '아지트를 하나 골라 주세요'
-            : d.step === 4 ? '취미를 골라 주세요' : '')
-        : (last ? '개설하면 모임장이 되고, 모임 안에서 바로 시작해요' : '');
-    }
+    if (el.createGroupFootHint) el.createGroupFootHint.textContent = createFootHint();
     hydrateIcons(el.groupCreateModal || document);
   }
 
@@ -9493,47 +10501,171 @@ document.addEventListener('DOMContentLoaded', () => {
     const target = Math.max(1, Math.min(CREATE_STEPS.length, Number(next) || 1));
     ui.groupDraft.step = target;
     renderGroupWizard();
+    if (el.groupCreateModal) {
+      const body = el.groupCreateModal.querySelector('.wizard-body');
+      if (body) body.scrollTop = 0;
+    }
+    queueCreateDraftSave();
+  }
+
+  /** 들어온 입력을 초안에 모은다(단계를 오가도 남게). */
+  function syncCreateFields() {
+    const d = ui.groupDraft;
+    if (el.createGroupName) d.name = el.createGroupName.value;
+    if (el.createGroupDesc) d.desc = el.createGroupDesc.value;
+    if (el.createGroupQuestion) d.question = el.createGroupQuestion.value;
+  }
+
+  /** 위자드를 처음 상태로 — 새로 시작. */
+  function resetCreateWizard(options = {}) {
+    clearCreateDraft();
+    ui.groupDraft = freshGroupDraft();
+    if (el.createGroupName) el.createGroupName.value = '';
+    if (el.createGroupDesc) el.createGroupDesc.value = '';
+    if (el.createGroupQuestion) el.createGroupQuestion.value = '';
+    if (el.createGroupAzitSearch) el.createGroupAzitSearch.value = '';
+    if (el.createGroupResume) el.createGroupResume.hidden = true;
+    closeCreateCrop();
+    renderGroupWizard();
+    if (options.toast) showToast('새 모임 만들기를 새로 시작했어요');
   }
 
   function openGroupCreate() {
-    const myAzit = store.getMyAzit();
-    ui.groupDraft = {
-      step: 1, hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '',
-      cover: { photoUrl: null, presetId: null },
-      azitId: myAzit ? myAzit.id : null,
-      azitArea: myAzit ? myAzit.areaId : 'all',
-      azitQuery: ''
-    };
-    if (el.createGroupName) el.createGroupName.value = '';
-    if (el.createGroupDesc) el.createGroupDesc.value = '';
-    if (el.createGroupMeet) el.createGroupMeet.value = '';
-    if (el.createGroupQuestion) el.createGroupQuestion.value = '';
+    const saved = readCreateDraft();
+    ui.groupDraft = freshGroupDraft();
+    let resumed = false;
+    if (saved) {
+      const d = ui.groupDraft;
+      ['name', 'desc', 'hobbyId', 'categoryId', 'sidoId', 'sigunguId', 'privacyType', 'ageLimit', 'question'].forEach((k) => {
+        if (saved[k] != null) d[k] = saved[k];
+      });
+      /* H4 — 슬라이더 범위를 우선 복원하고, 옛 임시저장(ageLimit id)은 같은 범위로 바꿔 준다. */
+      if (saved.ageMin != null || saved.ageMax != null) {
+        const r = normalizeAgeRange(saved.ageMin, saved.ageMax);
+        d.ageMin = r.min;
+        d.ageMax = r.max;
+      } else if (saved.ageLimit) {
+        const opt = store.getAgeLimit(saved.ageLimit);
+        if (opt) {
+          const r = normalizeAgeRange(opt.min, opt.max);
+          d.ageMin = r.min;
+          d.ageMax = r.max;
+        }
+      }
+      d.hangoutIds = Array.isArray(saved.hangoutIds) ? saved.hangoutIds.filter((id) => !!store.findAzit(id)) : [];
+      d.cover = Object.assign(d.cover, saved.cover || {});
+      d.step = Math.max(1, Math.min(CREATE_STEPS.length, Number(saved.step) || 1));
+      d.touched = true;
+      resumed = true;
+    }
+    const d = ui.groupDraft;
+    if (el.createGroupName) el.createGroupName.value = d.name || '';
+    if (el.createGroupDesc) el.createGroupDesc.value = d.desc || '';
+    if (el.createGroupQuestion) el.createGroupQuestion.value = d.question || '';
     if (el.createGroupAzitSearch) el.createGroupAzitSearch.value = '';
+    if (el.createGroupResume) el.createGroupResume.hidden = !resumed;
+    closeCreateCrop();
+    if (d.cover.src) openCreateCrop(d.cover.src);
     renderGroupWizard();
     openModal(el.groupCreateModal);
   }
 
-  /** 대표 이미지 — 앨범·카메라로 고른 사진을 720px JPEG로 줄여 담는다. */
+  /** 대표 이미지 — 고른 사진을 불러와 크롭 화면을 연다. */
   function pickCreateCover(file) {
     if (!file) return;
-    const spec = albumUploadSpec();
-    readImageFile(file, (dataUrl) => {
-      if (!dataUrl) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!reader.result) {
         showToast('사진을 읽지 못했어요. 다른 사진으로 해보세요', 'warning');
         return;
       }
-      ui.groupDraft.cover.photoUrl = dataUrl;
-      ui.groupDraft.cover.presetId = null;
-      renderCreateCover();
-      showToast(`대표 사진을 담았어요 · ${spec.maxDimension}px`);
-    }, spec.maxDimension, spec.jpegQuality);
+      openCreateCrop(String(reader.result));
+    };
+    reader.onerror = () => showToast('사진을 읽지 못했어요. 다른 사진으로 해보세요', 'warning');
+    reader.readAsDataURL(file);
   }
+
+  /* ------------------------------------------------ 위자드 배선 */
+
+  el.createGroupCats && el.createGroupCats.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-create-cat]');
+    if (!btn) return;
+    ui.groupDraft.categoryId = btn.dataset.createCat;
+    renderCreateHobbies();
+    queueCreateDraftSave();
+  });
 
   el.createGroupHobbies && el.createGroupHobbies.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-hobby-pick]');
     if (!chip || chip.dataset.hobbyScope !== 'group') return;
-    ui.groupDraft.hobbyId = chip.dataset.hobbyPick;
+    const d = ui.groupDraft;
+    d.hobbyId = chip.dataset.hobbyPick;
+    const picked = store.getHobbyChip(d.hobbyId);
+    if (picked) d.categoryId = picked.categoryId;
     renderGroupWizard();
+    queueCreateDraftSave();
+  });
+
+  el.createGroupRegionSido && el.createGroupRegionSido.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-create-sido]');
+    if (!btn) return;
+    const d = ui.groupDraft;
+    d.sidoId = btn.dataset.createSido;
+    const first = store.getRegionSigungu(d.sidoId)[0];
+    d.sigunguId = first ? first.sigunguId : null;
+    d.hangoutIds = [];
+    renderGroupWizard();
+    queueCreateDraftSave();
+  });
+
+  el.createGroupRegionSigungu && el.createGroupRegionSigungu.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-create-sigungu]');
+    if (!btn) return;
+    const d = ui.groupDraft;
+    if (d.sigunguId !== btn.dataset.createSigungu) d.hangoutIds = [];
+    d.sigunguId = btn.dataset.createSigungu;
+    renderGroupWizard();
+    queueCreateDraftSave();
+  });
+
+  el.createGroupAzitList && el.createGroupAzitList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-azit-pick]');
+    if (!btn) return;
+    const d = ui.groupDraft;
+    const id = btn.dataset.azitPick;
+    if (d.hangoutIds.includes(id)) {
+      d.hangoutIds = d.hangoutIds.filter((x) => x !== id);
+    } else {
+      if (d.hangoutIds.length >= 3) {
+        showToast('아지트는 3곳까지 고를 수 있어요', 'warning');
+        return;
+      }
+      d.hangoutIds = d.hangoutIds.concat(id);
+    }
+    renderGroupWizard();
+    queueCreateDraftSave();
+  });
+
+  el.createGroupAzitChosen && el.createGroupAzitChosen.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-create-hangout-remove]');
+    if (!btn) return;
+    ui.groupDraft.hangoutIds = ui.groupDraft.hangoutIds.filter((id) => id !== btn.dataset.createHangoutRemove);
+    renderGroupWizard();
+    queueCreateDraftSave();
+  });
+
+  el.createGroupAzitSearch && el.createGroupAzitSearch.addEventListener('input', () => {
+    ui.groupDraft.azitQuery = el.createGroupAzitSearch.value.trim();
+    renderCreateHangouts();
+    queueCreateDraftSave();
+  });
+  el.createGroupAzitClear && el.createGroupAzitClear.addEventListener('click', () => {
+    ui.groupDraft.azitQuery = '';
+    if (el.createGroupAzitSearch) {
+      el.createGroupAzitSearch.value = '';
+      el.createGroupAzitSearch.focus();
+    }
+    renderCreateHangouts();
   });
 
   el.createGroupPrivacy && el.createGroupPrivacy.addEventListener('click', (e) => {
@@ -9541,36 +10673,129 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!chip) return;
     ui.groupDraft.privacyType = chip.dataset.createPrivacy;
     renderGroupWizard();
+    queueCreateDraftSave();
   });
 
-  el.createGroupAge && el.createGroupAge.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-create-age]');
-    if (!chip) return;
-    ui.groupDraft.ageLimit = chip.dataset.createAge;
-    renderGroupWizard();
+  /* H4 — 나이 제한 슬라이더 (위자드). 끌 때마다 문구·요약·임시저장이 따라온다. */
+  el.createGroupAge && el.createGroupAge.addEventListener('input', (e) => {
+    const input = e.target.closest('input[type="range"]');
+    if (!input) return;
+    const moved = input.hasAttribute('data-age-min') ? 'min' : 'max';
+    const r = paintAgeSlider(el.createGroupAge, readAgeSlider(el.createGroupAge, moved).min,
+      readAgeSlider(el.createGroupAge, moved).max);
+    applyAgeToDraft(r);
   });
+  el.createGroupAge && el.createGroupAge.addEventListener('change', () => commitAgeSlider(el.createGroupAge));
+
+  /* H4 — 사이드바·상세처럼 JS 로 다시 그리는 자리의 슬라이더는 document 에서 받는다.
+     (input = 그리는 중 · change = 손을 뗐을 때 저장) */
+  document.addEventListener('input', (e) => {
+    const input = e.target && e.target.closest && e.target.closest('[data-age-slider] input[type="range"]');
+    if (!input) return;
+    const root = input.closest('[data-age-slider]');
+    if (!root || root.dataset.ageSlider === 'wizard') return;
+    const moved = input.hasAttribute('data-age-min') ? 'min' : 'max';
+    paintAgeSlider(root, readAgeSlider(root, moved).min, readAgeSlider(root, moved).max);
+  });
+  document.addEventListener('change', (e) => {
+    const input = e.target && e.target.closest && e.target.closest('[data-age-slider] input[type="range"]');
+    if (!input) return;
+    const root = input.closest('[data-age-slider]');
+    if (!root || root.dataset.ageSlider === 'wizard') return;
+    commitAgeSlider(root);
+  });
+
+  /* H4 — '나이 조건 없음' — 어느 자리든 19~99 로 되돌리고 저장한다. */
+  document.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest && e.target.closest('[data-age-slider] [data-age-clear]');
+    if (!btn) return;
+    const root = btn.closest('[data-age-slider]');
+    if (!root) return;
+    paintAgeSlider(root, AGE_MIN, AGE_MAX);
+    commitAgeSlider(root);
+  });
+
+  /* H4 — 트랙을 눌러 끌면 가까운 손잡이가 따라온다(손잡이 자체는 브라우저 기본 드래그). */
+  let ageTrackDrag = null;
+  function moveAgeTrack(e) {
+    if (!ageTrackDrag) return;
+    const { root, track } = ageTrackDrag;
+    const rect = track.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / Math.max(1, rect.width)));
+    const v = Math.round(AGE_MIN + ratio * (AGE_MAX - AGE_MIN));
+    const cur = readAgeSlider(root, 'min');
+    const toMin = Math.abs(v - cur.min) <= Math.abs(v - cur.max);
+    const r = toMin
+      ? normalizeAgeRange(Math.min(v, cur.max), cur.max)
+      : normalizeAgeRange(cur.min, Math.max(v, cur.min));
+    paintAgeSlider(root, r.min, r.max);
+    if (root.dataset.ageSlider === 'wizard') applyAgeToDraft(r);
+  }
+  document.addEventListener('pointerdown', (e) => {
+    const track = e.target && e.target.closest && e.target.closest('.age-range-track');
+    if (!track || !e.target.closest('[data-age-slider]')) return;
+    if (e.target.closest('input[type="range"]')) return;   // 손잡이는 브라우저가 끈다
+    ageTrackDrag = { root: track.closest('[data-age-slider]'), track, id: e.pointerId };
+    try { track.setPointerCapture(e.pointerId); } catch (err) { /* 캡처가 안 돼도 아래 move 로 동작 */ }
+    moveAgeTrack(e);
+    e.preventDefault();
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!ageTrackDrag || e.pointerId !== ageTrackDrag.id) return;
+    moveAgeTrack(e);
+  });
+  document.addEventListener('pointerup', (e) => {
+    if (!ageTrackDrag || e.pointerId !== ageTrackDrag.id) return;
+    const root = ageTrackDrag.root;
+    ageTrackDrag = null;
+    commitAgeSlider(root);
+  });
+  document.addEventListener('pointercancel', () => { ageTrackDrag = null; });
 
   el.createGroupQuestionPresets && el.createGroupQuestionPresets.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-create-qpreset]');
     if (!chip) return;
     const preset = (store.state.joinQuestionPresets || [])[Number(chip.dataset.createQpreset)];
-    if (preset && el.createGroupQuestion) el.createGroupQuestion.value = preset;
+    if (preset && el.createGroupQuestion) {
+      el.createGroupQuestion.value = preset;
+      ui.groupDraft.question = preset;
+      queueCreateDraftSave();
+    }
   });
 
   el.createGroupName && el.createGroupName.addEventListener('input', () => {
+    ui.groupDraft.name = el.createGroupName.value;
     if (ui.groupDraft.step === 1) renderGroupWizard();
+    queueCreateDraftSave();
   });
+  el.createGroupDesc && el.createGroupDesc.addEventListener('input', () => {
+    ui.groupDraft.desc = el.createGroupDesc.value;
+    queueCreateDraftSave();
+  });
+  if (el.createGroupQuestion) el.createGroupQuestion.addEventListener('input', () => { ui.groupDraft.question = el.createGroupQuestion.value; queueCreateDraftSave(); });
 
-  /* 대표 이미지 — 기본 프리셋 · 앨범 · 카메라 · 지우기 */
+  /* 대표 이미지 — 기본 프리셋 · 앨범 · 카메라 · 지우기 · 크롭 */
   el.createGroupCoverPresets && el.createGroupCoverPresets.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-create-cover-preset]');
     if (!btn) return;
     const id = btn.dataset.createCoverPreset;
     const preset = store.getCoverIconPreset(id);
     if (!preset) return;
-    ui.groupDraft.cover.presetId = ui.groupDraft.cover.presetId === id ? null : id;
-    if (ui.groupDraft.cover.presetId) ui.groupDraft.cover.photoUrl = null;
+    const c = ui.groupDraft.cover;
+    const on = c.presetId === id;
+    c.presetId = on ? null : id;
+    if (!on) {
+      c.circle = null;
+      c.card = null;
+      c.src = null;
+      closeCreateCrop();
+    }
     renderCreateCover();
+    renderCreateSummary();
+    const btnSubmit = $('#btn-create-group-submit');
+    if (btnSubmit) { const ready = createStepReady(ui.groupDraft.step); btnSubmit.disabled = !ready; }
+    if (el.createGroupFootHint) el.createGroupFootHint.textContent = createFootHint();
+    queueCreateDraftSave();
   });
   el.createGroupCoverAlbum && el.createGroupCoverAlbum.addEventListener('change', (e) => {
     pickCreateCover(e.target.files && e.target.files[0]);
@@ -9581,49 +10806,64 @@ document.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
   el.createGroupCoverRemove && el.createGroupCoverRemove.addEventListener('click', () => {
-    ui.groupDraft.cover = { photoUrl: null, presetId: null };
+    ui.groupDraft.cover = { src: null, circle: null, card: null, presetId: null, zoom: 1, panX: 0, panY: 0, natW: 0, natH: 0 };
+    closeCreateCrop();
     renderCreateCover();
+    renderGroupWizard();
+    queueCreateDraftSave();
   });
 
-  /* 아지트 — 권역 · 검색 · 목록 */
-  el.createGroupAzitAreas && el.createGroupAzitAreas.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-azit-area]');
-    if (!btn) return;
-    ui.groupDraft.azitArea = btn.dataset.azitArea || 'all';
-    renderCreateAzit();
+  if (el.createGroupCropZoom) {
+    el.createGroupCropZoom.addEventListener('input', () => {
+      const c = ui.groupDraft.cover;
+      c.zoom = Math.max(1, Number(el.createGroupCropZoom.value) / 100);
+      layoutCreateCrop();
+    });
+  }
+  const cropStage = el.createGroupCropStage;
+  if (cropStage) {
+    let drag = null;
+    cropStage.addEventListener('pointerdown', (e) => {
+      const c = ui.groupDraft.cover;
+      if (!c.src) return;
+      drag = { x: e.clientX, y: e.clientY, panX: c.panX || 0, panY: c.panY || 0 };
+      try { cropStage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    cropStage.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const c = ui.groupDraft.cover;
+      c.panX = drag.panX + (e.clientX - drag.x);
+      c.panY = drag.panY + (e.clientY - drag.y);
+      layoutCreateCrop();
+    });
+    const endDrag = () => { drag = null; };
+    cropStage.addEventListener('pointerup', endDrag);
+    cropStage.addEventListener('pointercancel', endDrag);
+  }
+  const btnCropCancel = $('#btn-create-group-crop-cancel');
+  if (btnCropCancel) btnCropCancel.addEventListener('click', () => {
+    const c = ui.groupDraft.cover;
+    c.src = null;
+    closeCreateCrop();
   });
-  el.createGroupAzitList && el.createGroupAzitList.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-azit-pick]');
-    if (!btn) return;
-    ui.groupDraft.azitId = btn.dataset.azitPick;
-    renderGroupWizard();
-  });
-  el.createGroupAzitSearch && el.createGroupAzitSearch.addEventListener('input', () => {
-    ui.groupDraft.azitQuery = el.createGroupAzitSearch.value.trim();
-    renderCreateAzit();
-  });
-  el.createGroupAzitClear && el.createGroupAzitClear.addEventListener('click', () => {
-    ui.groupDraft.azitQuery = '';
-    if (el.createGroupAzitSearch) {
-      el.createGroupAzitSearch.value = '';
-      el.createGroupAzitSearch.focus();
-    }
-    renderCreateAzit();
-  });
+  const btnCropApply = $('#btn-create-group-crop-apply');
+  if (btnCropApply) btnCropApply.addEventListener('click', () => applyCreateCrop());
 
   el.createGroupPrev && el.createGroupPrev.addEventListener('click', () => {
     if (ui.groupDraft.step <= 1) return;
     goCreateStep(ui.groupDraft.step - 1);
   });
 
+  const btnCreateRestart = $('#btn-create-group-restart');
+  btnCreateRestart && btnCreateRestart.addEventListener('click', () => resetCreateWizard({ toast: true }));
+
   const btnCreateGroupSubmit = $('#btn-create-group-submit');
   btnCreateGroupSubmit && btnCreateGroupSubmit.addEventListener('click', () => {
     const d = ui.groupDraft;
+    syncCreateFields();
     if (!createStepReady(d.step)) {
       renderGroupWizard();
-      const why = d.step === 1 ? '모임명을 2~30자로 정해주세요'
-        : d.step === 3 ? '아지트를 골라주세요' : '취미를 골라주세요';
-      showToast(why, 'warning');
+      showToast(createFootHint(), 'warning');
       return;
     }
     if (d.step < CREATE_STEPS.length) {
@@ -9631,41 +10871,41 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const result = store.createGroup({
-      name: el.createGroupName ? el.createGroupName.value : '',
+      name: d.name,
       hobbyId: d.hobbyId,
-      description: el.createGroupDesc ? el.createGroupDesc.value : '',
-      meetLabel: el.createGroupMeet ? el.createGroupMeet.value : '',
-      azitId: d.azitId,
-      photoUrl: d.cover.photoUrl,
+      description: d.desc,
+      region: d.sigunguId ? store.findSigungu(d.sigunguId) : null,
+      hangoutIds: d.hangoutIds,
+      coverImage: { circle: d.cover.circle, card: d.cover.card },
       coverIconPresetId: d.cover.presetId,
       privacyType: d.privacyType,
       joinMode: d.privacyType === 'approval_private' ? 'approval' : 'open',
       ageLimit: d.ageLimit,
-      joinQuestions: el.createGroupQuestion && el.createGroupQuestion.value.trim()
-        ? [el.createGroupQuestion.value.trim()] : []
+      ageMin: d.ageMin,
+      ageMax: d.ageMax,
+      joinQuestions: d.question ? [d.question] : []
     });
     if (!result.ok) {
       const messages = {
         name: '모임명은 2~30자로 정해주세요',
-        hobby: '취미 카테고리를 골라주세요',
-        azit: '아지트를 골라주세요'
+        hobby: '취미를 골라주세요',
+        hangout: '아지트를 1곳 이상 골라주세요',
+        too_many_hangouts: '아지트는 3곳까지 골라주세요'
       };
       showToast(messages[result.reason] || '모임을 만들지 못했어요', 'warning');
       return;
     }
+    clearCreateDraft();
+    closeCreateCrop();
     closeModal(el.groupCreateModal);
     renderExplore();
     renderFeed();
     updateBadges();
-    /* 만든 모임을 홈에서 바로 보이게 — 둘러보기 검색어를 그 이름으로. */
-    homeBrowseState().categoryId = 'all';
-    homeBrowseState().azitId = 'all';
-    homeBrowseState().query = result.group.name;
-    homeBrowseState().limit = Math.max(HOME_BROWSE_PAGE, 12);
-    if (el.homeBrowseSearch) el.homeBrowseSearch.value = result.group.name;
+    /* H1 — 만든 모임은 홈 '내 그룹' 줄 첫 자리와 '내 그룹 전체'에 바로 보인다. */
     switchTab('tab-home');
+    closeSubscreens();
     renderGallery();
-    renderHomeBrowse();
+    if (subscreenOpen()) renderMyGroupsScreen();
     scrollTop();
     showToast(result.group.joinMode === 'approval'
       ? `'${result.group.name}' 승인제 모임을 만들었어요 · 신청서를 보고 직접 고를게요`
@@ -9673,7 +10913,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const btnCreateGroupCancel = $('#btn-create-group-cancel');
-  btnCreateGroupCancel && btnCreateGroupCancel.addEventListener('click', () => closeModal(el.groupCreateModal));
+  btnCreateGroupCancel && btnCreateGroupCancel.addEventListener('click', () => {
+    syncCreateFields();
+    persistCreateDraft();
+    closeModal(el.groupCreateModal);
+  });
 
   /* ==========================================================================
    * 6-4. 푸시 알림 파이프라인 (Sprint 4.5)
@@ -9882,8 +11126,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = store.notificationSettings;
     const show = supportsNotifications() && s.permission !== 'granted' && !s.promptDismissed;
     el.pushPermissionBanner.hidden = !show;
-    /* R2 — 홈에는 안내 배너를 한 번에 하나만 둔다(권한 안내가 먼저, 그다음 사진 안내). */
-    renderHomePhotoGuide();
+    /* H1 — 사진 안내는 홈이 아니라 내 프로필 탭 맨 위 한 줄이다. */
+    renderMyProfilePhotoLine();
   }
 
   /**
@@ -11158,6 +12402,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderJoinPolicySection(grp, isLeader) {
     const mode = store.getGroupJoinMode(grp);
     const age = store.getGroupAgeLimit(grp.id);
+    const ageRange = store.getGroupAgeRange(grp);
     const questions = store.getGroupJoinQuestions(grp.id);
 
     const questionList = questions.length
@@ -11179,12 +12424,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="policy-option ${mode === 'approval' ? 'active' : ''}" data-policy-mode="approval" type="button">승인제</button>
           </div>
         </div>
-        <div class="policy-editor-row">
+        <div class="policy-editor-row column">
           <span class="policy-editor-label">나이 제한</span>
-          <div class="policy-options">
-            ${store.getAgeLimitOptions().map((o) => `
-              <button class="policy-option ${age.id === o.id ? 'active' : ''}" data-policy-age="${o.id}" type="button">${escapeHtml(o.badge)}</button>`).join('')}
-          </div>
+          ${ageSliderHTML({ host: 'policy', groupId: grp.id, min: ageRange.min, max: ageRange.max })}
         </div>
         <div class="policy-editor-row column">
           <span class="policy-editor-label">가입 질문 (${questions.length}/2)</span>
@@ -11826,17 +13068,17 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal(openSheet);
       return;
     }
+    /* 1-b) H1 — 모달이 없을 때 전용 화면(내 그룹 전체·모임 찾기)을 뒤로 한 번으로 닫는다. */
+    if (subscreenOpen()) { closeSubscreens(); return; }
     closeMatchPopup();
     /* 2) 모달이 없을 때만 전체 화면 대화방을 닫는다 */
     if (el.chatRoomModal && !el.chatRoomModal.hidden) closeChatRoom();
     if (el.groupChatModal && !el.groupChatModal.hidden) closeGroupChat();
   });
 
+  /* H1 — 헤더 검색 아이콘은 '모임 찾기' 전용 화면을 연다(홈에서 모임 찾기를 뺐다). */
   const headerSearch = $('#btn-header-search');
-  headerSearch && headerSearch.addEventListener('click', () => {
-    switchTab('tab-explore');
-    setTimeout(() => el.exploreInput && el.exploreInput.focus(), 120);
-  });
+  headerSearch && headerSearch.addEventListener('click', () => openFindScreen({ focusSearch: true }));
 
   const headerNotif = $('#btn-header-notif');
   headerNotif && headerNotif.addEventListener('click', openNotificationCenter);
@@ -12181,6 +13423,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderMyProfileTab() {
+    renderMyProfilePhotoLine();
     const me = store.currentUser || {};
     if (el.myProfileName) el.myProfileName.textContent = me.nickname || '내 프로필';
     if (el.myProfileMeta) {
@@ -12849,71 +14092,16 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 내 프로필: 공개 사진 / 비밀앨범 탭
    *  · 탐색: 2시간 프로필 남은 시간
    * ======================================================================== */
-  function renderHomePhotoGuide() {
-    if (!el.homePhotoGuide) return;
+  /** H1 — '프로필 사진 추가' 안내는 내 프로필 탭 맨 위 한 줄이다(홈 카드는 삭제). */
+  function renderMyProfilePhotoLine() {
+    if (!el.myProfilePhotoLine) return;
     const u = store.currentUser || {};
-    /* R2 — 홈 안내 배너는 우선순위 하나만: 권한 안내가 떠 있으면 사진 안내는 숨긴다. */
-    const pushPromptOn = !!(el.pushPermissionBanner && !el.pushPermissionBanner.hidden);
-    const need = !u.photoUrl && store.isSignedIn() && !isGroupMode() && !pushPromptOn;
-    el.homePhotoGuide.hidden = !need;
+    const need = !u.photoUrl && store.isSignedIn();
+    el.myProfilePhotoLine.hidden = !need;
   }
 
-  el.homePhotoGuide && el.homePhotoGuide.addEventListener('click', () => {
+  el.myProfilePhotoLine && el.myProfilePhotoLine.addEventListener('click', () => {
     openProfileEdit();
-  });
-
-  /** 이번 주(7일) 모임 일정 — 없으면 추천 모임을 대신 보여준다. */
-  function renderHomeWeek() {
-    if (!el.homeWeek || !el.homeWeekRail) return;
-    if (isGroupMode() || !store.isSignedIn()) { el.homeWeek.hidden = true; return; }
-    const now = Date.now();
-    const weekEnd = now + 7 * 24 * 60 * 60 * 1000;
-    const rows = [];
-    store.getHomeGroups().forEach(({ group }) => {
-      (store.getUpcomingGroupEvents(group.id, 3) || []).forEach((ev) => {
-        const t = new Date(ev.when).getTime();
-        if (Number.isFinite(t) && t >= now && t <= weekEnd) rows.push({ ev, group, t });
-      });
-    });
-    rows.sort((a, b) => a.t - b.t);
-    const titleEl = document.getElementById('home-week-title');
-    if (rows.length) {
-      if (titleEl) titleEl.textContent = '이번 주 내 모임 일정';
-      if (el.homeWeekSub) el.homeWeekSub.textContent = `${rows.length}개`;
-      el.homeWeekRail.innerHTML = rows.slice(0, 6).map(({ ev, group, t }) => {
-        const d = new Date(t);
-        const days = ['일', '월', '화', '수', '목', '금', '토'];
-        const label = `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]}) ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-        return `<button class="home-week-card tone-${escapeHtml(store.getHobbyTone(group.hobbyId || group.category))}" data-home-week-event="${escapeHtml(ev.id)}" data-home-week-group="${escapeHtml(group.id)}" type="button">
-          <span class="hw-day">${escapeHtml(label)}</span>
-          <span class="hw-title">${escapeHtml(ev.title || '모임 일정')}</span>
-          <span class="hw-group">${escapeHtml(group.name)}</span>
-        </button>`;
-      }).join('');
-      el.homeWeek.hidden = false;
-      return;
-    }
-    /* 일정이 없는 주 — 추천 모임으로 채운다 */
-    const recs = store.getRecommendedGroups({ limit: 6 }) || [];
-    if (!recs.length) { el.homeWeek.hidden = true; return; }
-    if (titleEl) titleEl.textContent = '이번 주엔 일정이 없어요 · 추천 모임';
-    if (el.homeWeekSub) el.homeWeekSub.textContent = '가볍게 둘러보기';
-    el.homeWeekRail.innerHTML = recs.map((it) => `
-      <button class="home-week-card tone-${escapeHtml(it.tone || store.getHobbyTone(it.group.hobbyId || it.group.category))}" data-home-week-group="${escapeHtml(it.group.id)}" type="button">
-        <span class="hw-day">추천</span>
-        <span class="hw-title">${escapeHtml(it.group.name)}</span>
-        <span class="hw-group">${escapeHtml(it.reason || it.group.location || '')}</span>
-      </button>`).join('');
-    el.homeWeek.hidden = false;
-  }
-
-  el.homeWeekRail && el.homeWeekRail.addEventListener('click', (e) => {
-    const card = e.target.closest('[data-home-week-group]');
-    if (!card) return;
-    const gid = card.dataset.homeWeekGroup;
-    const eid = card.dataset.homeWeekEvent;
-    const res = enterGroupSpace(gid, eid ? 'tab-board' : 'tab-home');
-    if (res && res.ok && eid) setTimeout(() => openEventDetail(eid), 260);
   });
 
   /** 목록을 그리다 문제가 생겼을 때 — 한 줄 안내 + 다시 시도 버튼. */
@@ -13090,8 +14278,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderExplore();
   store.seedDmRequests && store.seedDmRequests();
   renderDmRequests();
-  renderHomePhotoGuide();
-  renderHomeWeek();
+  renderMyProfilePhotoLine();
   renderProfileHeader();
   paintMyAvatars();
   /* Sprint 17 — 가입 전이면 회원가입 화면만 보인다(입구). */
@@ -13258,7 +14445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openNoticeRead, getNoticeRead: (id) => store.getNoticeReadState(id),
     openCoverPicker, renderCoverGrid, toggleCoverPreset, saveCover,
     getCoverState: () => ({ groupId: ui.coverGroupId, draft: ui.coverDraft.slice() }),
-    renderGallerySort, renderExploreSummary,
+    renderExploreSummary,
     /* Sprint 24 — 내 프로필 올리기(2시간) · 프로필 탭 · 앨범 · 다크모드 */
     openPublishSheet, submitPublishSheet, renderExploreProfileToggle,
     getExplorePublishState: () => store.getMyExplorePublishState(),
@@ -13313,7 +14500,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 21 — 점토 아이콘 · 취미 분류 · 추천 모임 · 스포트라이트 가이드 */
     renderHomeRecommend,
     /* Sprint 32.5 — 홈 네이버 카페형(내 그룹 레일·아지트·추천 일정/피드) · 만들기 마법사 */
-    renderHomeHub, renderMyGroups, renderHomeAzits, renderHomeSuggestEvents, renderHomeSuggestFeed,
+    renderHomeHub, renderMyGroups, renderHomeSuggestEvents, renderHomeSuggestFeed,
     getMyGroupsRail: () => (el.myGroupsRail ? el.myGroupsRail.querySelectorAll('[data-my-group]').length : 0),
     getHomeSuggest: () => ({
       events: store.getRecommendedEvents({ limit: 5 }).map((it) => ({
@@ -13321,37 +14508,172 @@ document.addEventListener('DOMContentLoaded', () => {
       })),
       feed: store.getRecommendedFeed({ limit: 6 }).map((it) => ({ id: it.post.id, group: it.groupName }))
     }),
-    setHomeAzit: (id) => {
-      ui.homeAzitId = id || 'all';
-      homeBrowseState().azitId = ui.homeAzitId;
-      renderHomeAzits();
-      renderHomeBrowse();
-      return ui.homeAzitId;
-    },
+    /* H1 — 내 그룹 전체 화면 · 모임 찾기 전용 화면 */
+    openMyGroupsScreen, renderMyGroupsScreen, renderMyGroupsWeek,
+    openFindScreen, renderFindScreen, closeSubscreens,
+    getH1State: () => ({
+      openScreen: ui.openSubscreen,
+      homeSections: ['my-groups', 'home-recommend', 'home-suggest-events', 'home-suggest-feed']
+        .filter((id) => { const n = document.getElementById(id); return n && !n.hidden; })
+        .filter((id) => id !== 'home-suggest-events' || el.homeSuggestEventsList.querySelector('[data-suggest-event]'))
+        .filter((id) => id !== 'home-suggest-feed' || el.homeSuggestFeedList.querySelector('[data-suggest-post]')),
+      recCards: el.homeRecommendGrid ? el.homeRecommendGrid.querySelectorAll('[data-group-card]').length : 0,
+      recJoined: el.homeRecommendGrid
+        ? [...el.homeRecommendGrid.querySelectorAll('[data-group-card]')].filter((c) => c.dataset.joined === '1').length : 0,
+      recSort: homeRecommendSort(),
+      myGroups: el.myGroupsRail ? el.myGroupsRail.querySelectorAll('[data-my-group]').length : 0,
+      myGroupsAll: !!(el.myGroupsRail && el.myGroupsRail.querySelector('[data-my-group-all]')),
+      myGroupsNew: !!(el.myGroupsRail && el.myGroupsRail.querySelector('[data-my-group-create]')),
+      eventRows: el.homeSuggestEventsList ? el.homeSuggestEventsList.querySelectorAll('[data-suggest-event]').length : 0,
+      feedRows: el.homeSuggestFeedList ? el.homeSuggestFeedList.querySelectorAll('[data-suggest-post]').length : 0,
+      feedPosts: el.homeSuggestFeedList ? el.homeSuggestFeedList.querySelectorAll('.ig-post').length : 0,
+      feedLikes: el.homeSuggestFeedList ? el.homeSuggestFeedList.querySelectorAll('[data-feed-like]').length : 0,
+      findCards: el.findGrid ? el.findGrid.querySelectorAll('[data-group-card]').length : 0
+    }),
     getAzit: (id) => store.findAzit(id),
     getAzitSpots: (opts) => store.getAzitSpots(opts || {}),
     getAzitAreas: () => store.getAzitAreas(),
+    /* H2 — 6단계 위자드 상태·조작(임시저장 포함) */
     getCreateState: () => ({
-      step: ui.groupDraft.step, hobbyId: ui.groupDraft.hobbyId, azitId: ui.groupDraft.azitId,
-      azitQuery: ui.groupDraft.azitQuery, azitArea: ui.groupDraft.azitArea,
-      cover: { ...ui.groupDraft.cover }, privacyType: ui.groupDraft.privacyType
+      step: ui.groupDraft.step, hobbyId: ui.groupDraft.hobbyId, categoryId: ui.groupDraft.categoryId,
+      sidoId: ui.groupDraft.sidoId, sigunguId: ui.groupDraft.sigunguId,
+      hangoutIds: ui.groupDraft.hangoutIds.slice(),
+      azitQuery: ui.groupDraft.azitQuery,
+      cover: { ...ui.groupDraft.cover },
+      privacyType: ui.groupDraft.privacyType,
+      ageMin: ui.groupDraft.ageMin,
+      ageMax: ui.groupDraft.ageMax,
+      question: ui.groupDraft.question || '',
+      draft: readCreateDraft(),
+      ready: CREATE_STEPS.map((x) => createStepReady(x.id))
     }),
     setCreateStep: (n) => { goCreateStep(n); return ui.groupDraft.step; },
-    setCreateAzit: (id) => { ui.groupDraft.azitId = id; renderGroupWizard(); return ui.groupDraft.azitId; },
+    /* H4 — 나이 제한 슬라이더를 코드로 맞춘다(스크린샷·검증용). 실제 화면에서는 손으로 끈다. */
+    setCreateAge: (min, max) => {
+      const r = paintAgeSlider(el.createGroupAge, min, max);
+      applyAgeToDraft(r);
+      return r;
+    },
+    setCreateHangouts: (ids) => {
+      ui.groupDraft.hangoutIds = (Array.isArray(ids) ? ids : [ids]).filter((id) => !!store.findAzit(id)).slice(0, 3);
+      renderGroupWizard();
+      return ui.groupDraft.hangoutIds.slice();
+    },
+    /* 옛 이름 호환 — 아지트 한 곳 = 아지트 1곳 */
+    setCreateAzit: (id) => {
+      ui.groupDraft.hangoutIds = id && store.findAzit(id) ? [id] : [];
+      renderGroupWizard();
+      return ui.groupDraft.hangoutIds[0] || null;
+    },
+    setCreateRegion: (sigunguId) => {
+      const area = sigunguId ? store.findSigungu(sigunguId) : null;
+      ui.groupDraft.sidoId = area ? area.sidoId : ui.groupDraft.sidoId;
+      ui.groupDraft.sigunguId = area ? area.sigunguId : null;
+      ui.groupDraft.hangoutIds = [];
+      renderGroupWizard();
+      return { ...ui.groupDraft };
+    },
     setCreateCoverPreset: (id) => {
       const preset = store.getCoverIconPreset(id);
-      ui.groupDraft.cover = preset ? { photoUrl: null, presetId: preset.id } : { photoUrl: null, presetId: null };
+      ui.groupDraft.cover = {
+        src: null, circle: null, card: null, zoom: 1, panX: 0, panY: 0, natW: 0, natH: 0,
+        presetId: preset ? preset.id : null
+      };
       renderCreateCover();
+      renderGroupWizard();
       return { ...ui.groupDraft.cover };
     },
-    /* Sprint 22 — 홈 '모임 둘러보기'(탐색에서 옮겨온 모임 목록). 테스트·미리보기가 한 번에 펼친다. */
-    renderHomeBrowse, focusHomeBrowse,
-    getHomeBrowseState: () => ({ ...homeBrowseState() }),
-    setHomeBrowse: (patch) => {
-      Object.assign(homeBrowseState(), patch || {});
-      renderHomeBrowse();
-      return { ...homeBrowseState() };
+    /* 테스트·미리보기 — 파일 선택 대신 사진을 바로 넣고 크롭을 확정한다. */
+    setCreateCoverPhoto: (dataUrl) => {
+      openCreateCrop(String(dataUrl || ''));
+      return new Promise((resolve) => {
+        const img = el.createGroupCropImg;
+        const done = () => resolve(applyCreateCrop() || { ...ui.groupDraft.cover });
+        if (img && img.complete && img.naturalWidth) done();
+        else if (img) img.addEventListener('load', done, { once: true });
+        else resolve(null);
+      });
     },
+    resetCreateDraft: () => { resetCreateWizard(); return readCreateDraft(); },
+    reloadCreateDraft: () => readCreateDraft(),
+    /* H1 — 모임 찾기(옛 홈 '모임 둘러보기'). 테스트·미리보기가 한 번에 펼치던 이름을 그대로 둔다. */
+    renderFindScreen, openFindScreen, focusHomeBrowse,
+    getFindState: () => ({ ...findState() }),
+    setFind: (patch) => {
+      Object.assign(findState(), patch || {});
+      renderFindScreen();
+      return { ...findState() };
+    },
+    setHomeBrowse: (patch) => {
+      const p = patch || {};
+      const s = findState();
+      if (p.limit != null) s.limit = p.limit;
+      if (p.categoryId != null) s.categoryId = p.categoryId;
+      if (p.query != null) s.query = p.query;
+      if (p.sort != null) s.sort = p.sort;
+      if (p.azitId != null) s.azitId = p.azitId;
+      if (el.findSearch) el.findSearch.value = s.query || '';
+      renderFindScreen();
+      return { ...s };
+    },
+    setHomeAzit: (id) => {
+      findState().azitId = id || 'all';
+      renderFindScreen();
+      return findState().azitId;
+    },
+    /* H2 — 모임 찾기 지역·아지트 필터 */
+    setFindRegion: (sidoId, sigunguId) => {
+      const s2 = findState();
+      s2.sidoId = sidoId || 'all';
+      s2.sigunguId = sigunguId || 'all';
+      if (s2.sigunguId === 'all') s2.hangoutId = 'all';
+      s2.limit = FIND_PAGE;
+      renderFindScreen();
+      return { sidoId: s2.sidoId, sigunguId: s2.sigunguId };
+    },
+    setFindHangout: (id) => {
+      findState().hangoutId = id || 'all';
+      findState().limit = FIND_PAGE;
+      renderFindScreen();
+      return findState().hangoutId;
+    },
+    /* H2 — 무제한 스크롤 추천 피드 */
+    getHomeFeedState: () => {
+      const st = homeFeedState();
+      return {
+        page: st.page, hasMore: st.hasMore, loading: st.loading,
+        items: st.items.map((it) => ({ uid: it.uid, postId: it.post.id, round: it.round })),
+        dom: el.homeSuggestFeedList ? el.homeSuggestFeedList.querySelectorAll('.ig-post').length : 0,
+        moreVisible: !!(el.homeFeedMore && !el.homeFeedMore.hidden)
+      };
+    },
+    loadMoreHomeFeed: () => { const before = homeFeedState().items.length; loadMoreHomeFeed(); return homeFeedState().items.length - before; },
+    resetHomeFeed: () => { renderHomeSuggestFeed(); return homeFeedState().items.length; },
+    openFeedComments, renderFeedComments,
+    /* H3 — 글 수정 · 게스트 승인 흐름(시연 포함) */
+    openComposerEditing,
+    getComposerState: () => ({
+      editId: ui.composer ? ui.composer.editId : null,
+      recommendOptIn: !!(ui.composer && ui.composer.recommendOptIn),
+      title: el.composerTitle ? el.composerTitle.textContent : '',
+      open: !!(el.composerModal && el.composerModal.classList.contains('active'))
+    }),
+    openEventDetail,
+    demoGuestRequest: (eventId, guest) => store.simulateGuestRequest(eventId, guest),
+    getGuestFlow: (eventId) => {
+      const ev = store.getGroupEvent(eventId);
+      if (!ev) return null;
+      const s = store.getGroupEventSummary(eventId);
+      return {
+        guestOpen: ev.guestOpen === true,
+        myGuestStatus: s.myGuestStatus,
+        guestPending: s.guestPending,
+        requests: s.guestRequests.map((g) => ({ memberId: g.memberId, name: g.name })),
+        attendees: s.attendees.map((a) => ({ name: a.name, guest: !!a.guest })),
+        canReview: store.canReviewGuestRequests(eventId)
+      };
+    },
+    getOpenComments: () => homeFeedState().openComments,
     getRecommend: () => store.getRecommendedGroups({ limit: 6 }).map((it) => ({ id: it.group.id, name: it.group.name, tone: it.tone, reason: it.reason })),
     startGuide, closeGuide, renderGuide, nextGuide: guideNext, prevGuide: guidePrev,
     saveGuideTaste, toggleGuidePick, addGuideCustomHobby,
@@ -13401,15 +14723,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return { done: narrationState().done !== false };
     },
     setTabBarAutoHide, getTabBarState, noteUserActivity,
+    /* H1 — 홈 추천 그리드는 2열 고정, '모임 찾기'는 별도 화면이다. */
     getHomeDiscoverState: () => {
-      const rail = $('#home-recommend-grid');
+      const grid = $('#home-recommend-grid');
+      const style = grid ? getComputedStyle(grid) : null;
       return {
-        merged: !!$('#home-discover'),
+        merged: false,
         recommendHidden: !!($('#home-recommend') || {}).hidden,
-        cards: rail ? rail.querySelectorAll('.recommend-card').length : 0,
-        scrollSnap: rail ? getComputedStyle(rail).scrollSnapType : '',
-        overflowX: rail ? getComputedStyle(rail).overflowX : '',
-        browseCards: document.querySelectorAll('#home-browse-grid .group-tile').length
+        cards: grid ? grid.querySelectorAll('[data-group-card]').length : 0,
+        columns: style ? style.gridTemplateColumns.split(' ').length : 0,
+        overflowX: style ? style.overflowX : '',
+        browseCards: document.querySelectorAll('#find-grid [data-group-card]').length
       };
     }
   };

@@ -1,0 +1,1429 @@
+{
+ "version": 2,
+ "updatedAt": "2026-11-21",
+ "sido": [
+  {
+   "id": "seoul",
+   "name": "서울특별시",
+   "short": "서울",
+   "lat": 37.566,
+   "lng": 126.978,
+   "sigungu": [
+    {
+     "id": "seoul-jongno",
+     "name": "종로구",
+     "regionId": "seoul-jongno-junggu",
+     "lat": 37.573,
+     "lng": 126.979
+    },
+    {
+     "id": "seoul-jung",
+     "name": "중구",
+     "regionId": "seoul-jongno-junggu",
+     "lat": 37.564,
+     "lng": 126.998
+    },
+    {
+     "id": "seoul-yongsan",
+     "name": "용산구",
+     "regionId": "seoul-mapo-yongsan",
+     "lat": 37.532,
+     "lng": 126.99
+    },
+    {
+     "id": "seoul-seongdong",
+     "name": "성동구",
+     "regionId": "seoul-seongdong-gwangjin",
+     "lat": 37.563,
+     "lng": 127.037
+    },
+    {
+     "id": "seoul-gwangjin",
+     "name": "광진구",
+     "regionId": "seoul-seongdong-gwangjin",
+     "lat": 37.538,
+     "lng": 127.082
+    },
+    {
+     "id": "seoul-dongdaemun",
+     "name": "동대문구",
+     "regionId": "seoul-dongdaemun-seongbuk",
+     "lat": 37.574,
+     "lng": 127.04
+    },
+    {
+     "id": "seoul-jungnang",
+     "name": "중랑구",
+     "regionId": "seoul-nowon-jungnang",
+     "lat": 37.606,
+     "lng": 127.093
+    },
+    {
+     "id": "seoul-seongbuk",
+     "name": "성북구",
+     "regionId": "seoul-dongdaemun-seongbuk",
+     "lat": 37.589,
+     "lng": 127.017
+    },
+    {
+     "id": "seoul-gangbuk",
+     "name": "강북구",
+     "regionId": "seoul-gangbuk-dobong",
+     "lat": 37.64,
+     "lng": 127.026
+    },
+    {
+     "id": "seoul-dobong",
+     "name": "도봉구",
+     "regionId": "seoul-gangbuk-dobong",
+     "lat": 37.669,
+     "lng": 127.047
+    },
+    {
+     "id": "seoul-nowon",
+     "name": "노원구",
+     "regionId": "seoul-nowon-jungnang",
+     "lat": 37.654,
+     "lng": 127.057
+    },
+    {
+     "id": "seoul-eunpyeong",
+     "name": "은평구",
+     "regionId": "seoul-seodaemun-eunpyeong",
+     "lat": 37.603,
+     "lng": 126.929
+    },
+    {
+     "id": "seoul-seodaemun",
+     "name": "서대문구",
+     "regionId": "seoul-seodaemun-eunpyeong",
+     "lat": 37.579,
+     "lng": 126.937
+    },
+    {
+     "id": "seoul-mapo",
+     "name": "마포구",
+     "regionId": "seoul-mapo-yongsan",
+     "lat": 37.566,
+     "lng": 126.902
+    },
+    {
+     "id": "seoul-yangcheon",
+     "name": "양천구",
+     "regionId": "seoul-gangseo-yangcheon",
+     "lat": 37.517,
+     "lng": 126.866
+    },
+    {
+     "id": "seoul-gangseo",
+     "name": "강서구",
+     "regionId": "seoul-gangseo-yangcheon",
+     "lat": 37.551,
+     "lng": 126.85
+    },
+    {
+     "id": "seoul-guro",
+     "name": "구로구",
+     "regionId": "seoul-yeongdeungpo-guro-geumcheon",
+     "lat": 37.495,
+     "lng": 126.887
+    },
+    {
+     "id": "seoul-geumcheon",
+     "name": "금천구",
+     "regionId": "seoul-yeongdeungpo-guro-geumcheon",
+     "lat": 37.457,
+     "lng": 126.895
+    },
+    {
+     "id": "seoul-yeongdeungpo",
+     "name": "영등포구",
+     "regionId": "seoul-yeongdeungpo-guro-geumcheon",
+     "lat": 37.526,
+     "lng": 126.896
+    },
+    {
+     "id": "seoul-dongjak",
+     "name": "동작구",
+     "regionId": "seoul-dongjak-gwanak",
+     "lat": 37.512,
+     "lng": 126.939
+    },
+    {
+     "id": "seoul-seocho",
+     "name": "서초구",
+     "regionId": "seoul-seocho-gangnam",
+     "lat": 37.484,
+     "lng": 127.032
+    },
+    {
+     "id": "seoul-gangnam",
+     "name": "강남구",
+     "regionId": "seoul-seocho-gangnam",
+     "lat": 37.517,
+     "lng": 127.047
+    },
+    {
+     "id": "seoul-songpa",
+     "name": "송파구",
+     "regionId": "seoul-gangdong-songpa",
+     "lat": 37.514,
+     "lng": 127.106
+    },
+    {
+     "id": "seoul-gangdong",
+     "name": "강동구",
+     "regionId": "seoul-gangdong-songpa",
+     "lat": 37.53,
+     "lng": 127.124
+    }
+   ]
+  },
+  {
+   "id": "busan",
+   "name": "부산광역시",
+   "short": "부산",
+   "lat": 35.18,
+   "lng": 129.076,
+   "sigungu": [
+    {
+     "id": "busan-jung",
+     "name": "중구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-seo",
+     "name": "서구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-dong",
+     "name": "동구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-yeongdo",
+     "name": "영도구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-busanjin",
+     "name": "부산진구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-dongnae",
+     "name": "동래구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-nam",
+     "name": "남구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-buk",
+     "name": "북구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-haeundae",
+     "name": "해운대구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-saha",
+     "name": "사하구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-geumjeong",
+     "name": "금정구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-gangseo",
+     "name": "강서구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-yeonje",
+     "name": "연제구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-suyeong",
+     "name": "수영구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-sasang",
+     "name": "사상구",
+     "regionId": "gyeongsang-busan"
+    },
+    {
+     "id": "busan-gijang",
+     "name": "기장군",
+     "regionId": "gyeongsang-busan"
+    }
+   ]
+  },
+  {
+   "id": "daegu",
+   "name": "대구광역시",
+   "short": "대구",
+   "lat": 35.871,
+   "lng": 128.601,
+   "sigungu": [
+    {
+     "id": "daegu-jung",
+     "name": "중구",
+     "regionId": "gyeongsang-daegu"
+    },
+    {
+     "id": "daegu-dong",
+     "name": "동구",
+     "regionId": "gyeongsang-daegu"
+    },
+    {
+     "id": "daegu-seo",
+     "name": "서구",
+     "regionId": "gyeongsang-daegu"
+    },
+    {
+     "id": "daegu-nam",
+     "name": "남구",
+     "regionId": "gyeongsang-daegu"
+    },
+    {
+     "id": "daegu-buk",
+     "name": "북구",
+     "regionId": "gyeongsang-daegu"
+    },
+    {
+     "id": "daegu-suseong",
+     "name": "수성구",
+     "regionId": "gyeongsang-daegu"
+    },
+    {
+     "id": "daegu-dalseo",
+     "name": "달서구",
+     "regionId": "gyeongsang-daegu"
+    },
+    {
+     "id": "daegu-dalseong",
+     "name": "달성군",
+     "regionId": "gyeongsang-daegu"
+    },
+    {
+     "id": "daegu-gunwi",
+     "name": "군위군",
+     "regionId": "gyeongsang-daegu"
+    }
+   ]
+  },
+  {
+   "id": "incheon",
+   "name": "인천광역시",
+   "short": "인천",
+   "lat": 37.456,
+   "lng": 126.705,
+   "sigungu": [
+    {
+     "id": "incheon-jung",
+     "name": "중구",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.474,
+     "lng": 126.621
+    },
+    {
+     "id": "incheon-dong",
+     "name": "동구",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.474,
+     "lng": 126.643
+    },
+    {
+     "id": "incheon-michuhol",
+     "name": "미추홀구",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.464,
+     "lng": 126.65
+    },
+    {
+     "id": "incheon-yeonsu",
+     "name": "연수구",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.418,
+     "lng": 126.664
+    },
+    {
+     "id": "incheon-namdong",
+     "name": "남동구",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.42,
+     "lng": 126.72
+    },
+    {
+     "id": "incheon-bupyeong",
+     "name": "부평구",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.507,
+     "lng": 126.722
+    },
+    {
+     "id": "incheon-gyeyang",
+     "name": "계양구",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.537,
+     "lng": 126.738
+    },
+    {
+     "id": "incheon-seo",
+     "name": "서구",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.545,
+     "lng": 126.676
+    },
+    {
+     "id": "incheon-ganghwa",
+     "name": "강화군",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.746,
+     "lng": 126.488
+    },
+    {
+     "id": "incheon-ongjin",
+     "name": "옹진군",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.447,
+     "lng": 126.637
+    }
+   ]
+  },
+  {
+   "id": "gwangju",
+   "name": "광주광역시",
+   "short": "광주",
+   "lat": 35.16,
+   "lng": 126.853,
+   "sigungu": [
+    {
+     "id": "gwangju-dong",
+     "name": "동구",
+     "regionId": "jeolla-gwangju"
+    },
+    {
+     "id": "gwangju-seo",
+     "name": "서구",
+     "regionId": "jeolla-gwangju"
+    },
+    {
+     "id": "gwangju-nam",
+     "name": "남구",
+     "regionId": "jeolla-gwangju"
+    },
+    {
+     "id": "gwangju-buk",
+     "name": "북구",
+     "regionId": "jeolla-gwangju"
+    },
+    {
+     "id": "gwangju-gwangsan",
+     "name": "광산구",
+     "regionId": "jeolla-gwangju"
+    }
+   ]
+  },
+  {
+   "id": "daejeon",
+   "name": "대전광역시",
+   "short": "대전",
+   "lat": 36.35,
+   "lng": 127.385,
+   "sigungu": [
+    {
+     "id": "daejeon-dong",
+     "name": "동구",
+     "regionId": "chungcheong-daejeon"
+    },
+    {
+     "id": "daejeon-jung",
+     "name": "중구",
+     "regionId": "chungcheong-daejeon"
+    },
+    {
+     "id": "daejeon-seo",
+     "name": "서구",
+     "regionId": "chungcheong-daejeon"
+    },
+    {
+     "id": "daejeon-yuseong",
+     "name": "유성구",
+     "regionId": "chungcheong-daejeon"
+    },
+    {
+     "id": "daejeon-daedeok",
+     "name": "대덕구",
+     "regionId": "chungcheong-daejeon"
+    }
+   ]
+  },
+  {
+   "id": "ulsan",
+   "name": "울산광역시",
+   "short": "울산",
+   "lat": 35.538,
+   "lng": 129.311,
+   "sigungu": [
+    {
+     "id": "ulsan-jung",
+     "name": "중구",
+     "regionId": "gyeongsang-ulsan"
+    },
+    {
+     "id": "ulsan-nam",
+     "name": "남구",
+     "regionId": "gyeongsang-ulsan"
+    },
+    {
+     "id": "ulsan-dong",
+     "name": "동구",
+     "regionId": "gyeongsang-ulsan"
+    },
+    {
+     "id": "ulsan-buk",
+     "name": "북구",
+     "regionId": "gyeongsang-ulsan"
+    },
+    {
+     "id": "ulsan-ulju",
+     "name": "울주군",
+     "regionId": "gyeongsang-ulsan"
+    }
+   ]
+  },
+  {
+   "id": "sejong",
+   "name": "세종특별자치시",
+   "short": "세종",
+   "lat": 36.48,
+   "lng": 127.289,
+   "sigungu": [
+    {
+     "id": "sejong-sejong",
+     "name": "세종시",
+     "regionId": "chungcheong-sejong"
+    }
+   ]
+  },
+  {
+   "id": "gyeonggi",
+   "name": "경기도",
+   "short": "경기",
+   "lat": 37.264,
+   "lng": 127.029,
+   "sigungu": [
+    {
+     "id": "gyeonggi-suwon",
+     "name": "수원시",
+     "regionId": "gyeonggi-suwon-yongin-uiwang",
+     "lat": 37.264,
+     "lng": 127.029
+    },
+    {
+     "id": "gyeonggi-seongnam",
+     "name": "성남시",
+     "regionId": "gyeonggi-seongnam-gwangju",
+     "lat": 37.42,
+     "lng": 127.126
+    },
+    {
+     "id": "gyeonggi-uijeongbu",
+     "name": "의정부시",
+     "regionId": "gyeonggi-uijeongbu-yangju-dongducheon",
+     "lat": 37.738,
+     "lng": 127.034
+    },
+    {
+     "id": "gyeonggi-anyang",
+     "name": "안양시",
+     "regionId": "gyeonggi-anyang-gunpo-gwacheon",
+     "lat": 37.392,
+     "lng": 126.927
+    },
+    {
+     "id": "gyeonggi-bucheon",
+     "name": "부천시",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.503,
+     "lng": 126.766
+    },
+    {
+     "id": "gyeonggi-gwangmyeong",
+     "name": "광명시",
+     "regionId": "gyeonggi-ansan-siheung-gwangmyeong",
+     "lat": 37.479,
+     "lng": 126.865
+    },
+    {
+     "id": "gyeonggi-pyeongtaek",
+     "name": "평택시",
+     "regionId": "gyeonggi-pyeongtaek-anseong",
+     "lat": 36.992,
+     "lng": 127.113
+    },
+    {
+     "id": "gyeonggi-dongducheon",
+     "name": "동두천시",
+     "regionId": "gyeonggi-uijeongbu-yangju-dongducheon",
+     "lat": 37.904,
+     "lng": 127.061
+    },
+    {
+     "id": "gyeonggi-ansan",
+     "name": "안산시",
+     "regionId": "gyeonggi-ansan-siheung-gwangmyeong",
+     "lat": 37.322,
+     "lng": 126.831
+    },
+    {
+     "id": "gyeonggi-goyang",
+     "name": "고양시",
+     "regionId": "gyeonggi-goyang-paju",
+     "lat": 37.658,
+     "lng": 126.832
+    },
+    {
+     "id": "gyeonggi-gwacheon",
+     "name": "과천시",
+     "regionId": "gyeonggi-anyang-gunpo-gwacheon",
+     "lat": 37.429,
+     "lng": 126.988
+    },
+    {
+     "id": "gyeonggi-guri",
+     "name": "구리시",
+     "regionId": "gyeonggi-guri-hanam-namyangju",
+     "lat": 37.594,
+     "lng": 127.13
+    },
+    {
+     "id": "gyeonggi-namyangju",
+     "name": "남양주시",
+     "regionId": "gyeonggi-guri-hanam-namyangju",
+     "lat": 37.636,
+     "lng": 127.216
+    },
+    {
+     "id": "gyeonggi-osan",
+     "name": "오산시",
+     "regionId": "gyeonggi-hwaseong-osan",
+     "lat": 37.152,
+     "lng": 127.07
+    },
+    {
+     "id": "gyeonggi-siheung",
+     "name": "시흥시",
+     "regionId": "gyeonggi-ansan-siheung-gwangmyeong",
+     "lat": 37.38,
+     "lng": 126.803
+    },
+    {
+     "id": "gyeonggi-gunpo",
+     "name": "군포시",
+     "regionId": "gyeonggi-anyang-gunpo-gwacheon",
+     "lat": 37.362,
+     "lng": 126.935
+    },
+    {
+     "id": "gyeonggi-uiwang",
+     "name": "의왕시",
+     "regionId": "gyeonggi-suwon-yongin-uiwang",
+     "lat": 37.345,
+     "lng": 126.968
+    },
+    {
+     "id": "gyeonggi-hanam",
+     "name": "하남시",
+     "regionId": "gyeonggi-guri-hanam-namyangju",
+     "lat": 37.539,
+     "lng": 127.215
+    },
+    {
+     "id": "gyeonggi-yongin",
+     "name": "용인시",
+     "regionId": "gyeonggi-suwon-yongin-uiwang",
+     "lat": 37.241,
+     "lng": 127.178
+    },
+    {
+     "id": "gyeonggi-paju",
+     "name": "파주시",
+     "regionId": "gyeonggi-goyang-paju",
+     "lat": 37.76,
+     "lng": 126.78
+    },
+    {
+     "id": "gyeonggi-icheon",
+     "name": "이천시",
+     "regionId": "gyeonggi-yeoju-icheon",
+     "lat": 37.272,
+     "lng": 127.435
+    },
+    {
+     "id": "gyeonggi-anseong",
+     "name": "안성시",
+     "regionId": "gyeonggi-pyeongtaek-anseong",
+     "lat": 37.008,
+     "lng": 127.28
+    },
+    {
+     "id": "gyeonggi-gimpo",
+     "name": "김포시",
+     "regionId": "gyeonggi-incheon-bucheon-gimpo",
+     "lat": 37.615,
+     "lng": 126.716
+    },
+    {
+     "id": "gyeonggi-hwaseong",
+     "name": "화성시",
+     "regionId": "gyeonggi-hwaseong-osan",
+     "lat": 37.2,
+     "lng": 126.831
+    },
+    {
+     "id": "gyeonggi-gwangju",
+     "name": "광주시",
+     "regionId": "gyeonggi-seongnam-gwangju",
+     "lat": 37.429,
+     "lng": 127.255
+    },
+    {
+     "id": "gyeonggi-yangju",
+     "name": "양주시",
+     "regionId": "gyeonggi-uijeongbu-yangju-dongducheon",
+     "lat": 37.785,
+     "lng": 127.046
+    },
+    {
+     "id": "gyeonggi-pocheon",
+     "name": "포천시",
+     "regionId": "gyeonggi-pocheon-yeoncheon",
+     "lat": 37.895,
+     "lng": 127.201
+    },
+    {
+     "id": "gyeonggi-yeoju",
+     "name": "여주시",
+     "regionId": "gyeonggi-yeoju-icheon",
+     "lat": 37.298,
+     "lng": 127.637
+    },
+    {
+     "id": "gyeonggi-yeoncheon",
+     "name": "연천군",
+     "regionId": "gyeonggi-pocheon-yeoncheon",
+     "lat": 38.097,
+     "lng": 127.075
+    },
+    {
+     "id": "gyeonggi-gapyeong",
+     "name": "가평군",
+     "regionId": "gyeonggi-yangpyeong-gapyeong",
+     "lat": 37.831,
+     "lng": 127.51
+    },
+    {
+     "id": "gyeonggi-yangpyeong",
+     "name": "양평군",
+     "regionId": "gyeonggi-yangpyeong-gapyeong",
+     "lat": 37.492,
+     "lng": 127.488
+    }
+   ]
+  },
+  {
+   "id": "gangwon",
+   "name": "강원특별자치도",
+   "short": "강원",
+   "lat": 37.881,
+   "lng": 127.73,
+   "sigungu": [
+    {
+     "id": "gangwon-chuncheon",
+     "name": "춘천시",
+     "regionId": "gangwon-chuncheon"
+    },
+    {
+     "id": "gangwon-wonju",
+     "name": "원주시",
+     "regionId": "gangwon-wonju"
+    },
+    {
+     "id": "gangwon-gangneung",
+     "name": "강릉시",
+     "regionId": "gangwon-gangneung"
+    },
+    {
+     "id": "gangwon-donghae",
+     "name": "동해시",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-taebaek",
+     "name": "태백시",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-sokcho",
+     "name": "속초시",
+     "regionId": "gangwon-sokcho"
+    },
+    {
+     "id": "gangwon-samcheok",
+     "name": "삼척시",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-hongcheon",
+     "name": "홍천군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-hoengseong",
+     "name": "횡성군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-yeongwol",
+     "name": "영월군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-pyeongchang",
+     "name": "평창군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-jeongseon",
+     "name": "정선군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-cheorwon",
+     "name": "철원군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-hwacheon",
+     "name": "화천군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-yanggu",
+     "name": "양구군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-inje",
+     "name": "인제군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-goseong",
+     "name": "고성군",
+     "regionId": "gangwon-etc"
+    },
+    {
+     "id": "gangwon-yangyang",
+     "name": "양양군",
+     "regionId": "gangwon-etc"
+    }
+   ]
+  },
+  {
+   "id": "chungbuk",
+   "name": "충청북도",
+   "short": "충북",
+   "lat": 36.642,
+   "lng": 127.489,
+   "sigungu": [
+    {
+     "id": "chungbuk-cheongju",
+     "name": "청주시",
+     "regionId": "chungcheong-cheongju"
+    },
+    {
+     "id": "chungbuk-chungju",
+     "name": "충주시",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-jecheon",
+     "name": "제천시",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-boeun",
+     "name": "보은군",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-okcheon",
+     "name": "옥천군",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-yeongdong",
+     "name": "영동군",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-jeungpyeong",
+     "name": "증평군",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-jincheon",
+     "name": "진천군",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-goesan",
+     "name": "괴산군",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-eumseong",
+     "name": "음성군",
+     "regionId": "chungcheong-chungbuk"
+    },
+    {
+     "id": "chungbuk-danyang",
+     "name": "단양군",
+     "regionId": "chungcheong-chungbuk"
+    }
+   ]
+  },
+  {
+   "id": "chungnam",
+   "name": "충청남도",
+   "short": "충남",
+   "lat": 36.601,
+   "lng": 126.661,
+   "sigungu": [
+    {
+     "id": "chungnam-cheonan",
+     "name": "천안시",
+     "regionId": "chungcheong-cheonan-asan"
+    },
+    {
+     "id": "chungnam-gongju",
+     "name": "공주시",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-boryeong",
+     "name": "보령시",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-asan",
+     "name": "아산시",
+     "regionId": "chungcheong-cheonan-asan"
+    },
+    {
+     "id": "chungnam-seosan",
+     "name": "서산시",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-nonsan",
+     "name": "논산시",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-gyeryong",
+     "name": "계룡시",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-dangjin",
+     "name": "당진시",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-geumsan",
+     "name": "금산군",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-buyeo",
+     "name": "부여군",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-seocheon",
+     "name": "서천군",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-cheongyang",
+     "name": "청양군",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-hongseong",
+     "name": "홍성군",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-yesan",
+     "name": "예산군",
+     "regionId": "chungcheong-chungnam"
+    },
+    {
+     "id": "chungnam-taean",
+     "name": "태안군",
+     "regionId": "chungcheong-chungnam"
+    }
+   ]
+  },
+  {
+   "id": "jeonbuk",
+   "name": "전북특별자치도",
+   "short": "전북",
+   "lat": 35.824,
+   "lng": 127.148,
+   "sigungu": [
+    {
+     "id": "jeonbuk-jeonju",
+     "name": "전주시",
+     "regionId": "jeolla-jeonju"
+    },
+    {
+     "id": "jeonbuk-gunsan",
+     "name": "군산시",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-iksan",
+     "name": "익산시",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-jeongeup",
+     "name": "정읍시",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-namwon",
+     "name": "남원시",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-gimje",
+     "name": "김제시",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-wanju",
+     "name": "완주군",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-jinan",
+     "name": "진안군",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-muju",
+     "name": "무주군",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-jangsu",
+     "name": "장수군",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-imsil",
+     "name": "임실군",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-sunchang",
+     "name": "순창군",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-gochang",
+     "name": "고창군",
+     "regionId": "jeolla-jeonbuk"
+    },
+    {
+     "id": "jeonbuk-buan",
+     "name": "부안군",
+     "regionId": "jeolla-jeonbuk"
+    }
+   ]
+  },
+  {
+   "id": "jeonnam",
+   "name": "전라남도",
+   "short": "전남",
+   "lat": 34.99,
+   "lng": 126.482,
+   "sigungu": [
+    {
+     "id": "jeonnam-mokpo",
+     "name": "목포시",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-yeosu",
+     "name": "여수시",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-suncheon",
+     "name": "순천시",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-naju",
+     "name": "나주시",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-gwangyang",
+     "name": "광양시",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-damyang",
+     "name": "담양군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-gokseong",
+     "name": "곡성군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-gurye",
+     "name": "구례군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-goheung",
+     "name": "고흥군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-boseong",
+     "name": "보성군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-hwasun",
+     "name": "화순군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-jangheung",
+     "name": "장흥군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-gangjin",
+     "name": "강진군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-haenam",
+     "name": "해남군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-yeongam",
+     "name": "영암군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-muan",
+     "name": "무안군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-hampyeong",
+     "name": "함평군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-yeonggwang",
+     "name": "영광군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-jangseong",
+     "name": "장성군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-wando",
+     "name": "완도군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-jindo",
+     "name": "진도군",
+     "regionId": "jeolla-jeonnam"
+    },
+    {
+     "id": "jeonnam-sinan",
+     "name": "신안군",
+     "regionId": "jeolla-jeonnam"
+    }
+   ]
+  },
+  {
+   "id": "gyeongbuk",
+   "name": "경상북도",
+   "short": "경북",
+   "lat": 36.568,
+   "lng": 128.729,
+   "sigungu": [
+    {
+     "id": "gyeongbuk-pohang",
+     "name": "포항시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-gyeongju",
+     "name": "경주시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-gimcheon",
+     "name": "김천시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-andong",
+     "name": "안동시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-gumi",
+     "name": "구미시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-yeongju",
+     "name": "영주시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-yeongcheon",
+     "name": "영천시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-sangju",
+     "name": "상주시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-mungyeong",
+     "name": "문경시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-gyeongsan",
+     "name": "경산시",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-uiseong",
+     "name": "의성군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-cheongsong",
+     "name": "청송군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-yeongyang",
+     "name": "영양군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-yeongdeok",
+     "name": "영덕군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-cheongdo",
+     "name": "청도군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-goryeong",
+     "name": "고령군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-seongju",
+     "name": "성주군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-chilgok",
+     "name": "칠곡군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-yecheon",
+     "name": "예천군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-bonghwa",
+     "name": "봉화군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-uljin",
+     "name": "울진군",
+     "regionId": "gyeongsang-gyeongbuk"
+    },
+    {
+     "id": "gyeongbuk-ulleung",
+     "name": "울릉군",
+     "regionId": "gyeongsang-gyeongbuk"
+    }
+   ]
+  },
+  {
+   "id": "gyeongnam",
+   "name": "경상남도",
+   "short": "경남",
+   "lat": 35.228,
+   "lng": 128.681,
+   "sigungu": [
+    {
+     "id": "gyeongnam-changwon",
+     "name": "창원시",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-jinju",
+     "name": "진주시",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-tongyeong",
+     "name": "통영시",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-sacheon",
+     "name": "사천시",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-gimhae",
+     "name": "김해시",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-miryang",
+     "name": "밀양시",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-geoje",
+     "name": "거제시",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-yangsan",
+     "name": "양산시",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-uiryeong",
+     "name": "의령군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-haman",
+     "name": "함안군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-changnyeong",
+     "name": "창녕군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-goseong",
+     "name": "고성군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-namhae",
+     "name": "남해군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-hadong",
+     "name": "하동군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-sancheong",
+     "name": "산청군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-hamyang",
+     "name": "함양군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-geochang",
+     "name": "거창군",
+     "regionId": "gyeongsang-gyeongnam"
+    },
+    {
+     "id": "gyeongnam-hapcheon",
+     "name": "합천군",
+     "regionId": "gyeongsang-gyeongnam"
+    }
+   ]
+  },
+  {
+   "id": "jeju",
+   "name": "제주특별자치도",
+   "short": "제주",
+   "lat": 33.5,
+   "lng": 126.531,
+   "sigungu": [
+    {
+     "id": "jeju-jejusi",
+     "name": "제주시",
+     "regionId": "jeju"
+    },
+    {
+     "id": "jeju-seogwipo",
+     "name": "서귀포시",
+     "regionId": "jeju"
+    }
+   ]
+  }
+ ]
+}
