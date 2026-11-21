@@ -23810,3 +23810,21 @@ button.caption-author::after {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
+
+/* 검색창도 같은 방식 — 상자(.explore-search 등)는 그대로, 안의 글자만 14px 로 보이게.
+   검색 input 은 배경·테두리가 투명해서 줄어든 칸이 눈에 띄지 않는다. */
+.explore-search .input-shrink,
+.home-browse-search .input-shrink,
+.subscreen-search .input-shrink,
+.azit-search .input-shrink,
+.search-box .input-shrink {
+  height: var(--tap);
+}
+.explore-search .input-shrink > input,
+.home-browse-search .input-shrink > input,
+.subscreen-search .input-shrink > input,
+.azit-search .input-shrink > input,
+.search-box .input-shrink > input {
+  height: calc(var(--tap) / 0.875);
+  min-height: calc(var(--tap) / 0.875);
+}
