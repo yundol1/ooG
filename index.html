@@ -139,11 +139,40 @@
            모임을 탭해서 들어가면 그 모임 전용 공간(피드·게시판·디엠·내정보 4탭)으로 전환". -->
       <section class="tab-view active" id="tab-home">
 
-        <!-- (1) 바깥 홈 = 내 모임 갤러리 -->
+        <!-- (1) 바깥 홈 = 내 그룹 허브 (Sprint 32.5 — 네이버 카페형) -->
         <div class="group-gallery" id="group-gallery">
+          <!-- 상단 진입 — '모임 찾기 · 모임 둘러보기'를 맨 위로. 바로 아래가 내 그룹. -->
+          <section class="home-top" id="home-top" aria-label="모임 찾기와 만들기">
+            <div class="home-top-row">
+              <button class="home-top-search" id="btn-home-top-search" type="button">
+                <span class="oo-icon-20" aria-hidden="true" data-oog-icon="search"></span>
+                <span class="home-top-search-text">모임 찾기 · 아지트로 찾기</span>
+                <span class="home-top-search-go" aria-hidden="true">찾기</span>
+              </button>
+              <button class="home-top-create" id="btn-home-top-create" type="button" aria-label="새 그룹 만들기">
+                <span class="oo-icon-20" aria-hidden="true" data-oog-icon="plus"></span>
+              </button>
+            </div>
+
+            <!-- 내 아지트 — 이 근처 모임만 골라 보는 가로 칩 -->
+            <div class="home-azit-strip" id="home-azit-strip" role="group" aria-label="내 아지트로 모임 찾기"><!-- JS --></div>
+          </section>
+
+          <!-- 내 그룹 — 네이버 카페 '내 카페' 자리. 원형 아이콘 가로 레일 + 새 글 점 -->
+          <section class="my-groups" id="my-groups" aria-labelledby="my-groups-title">
+            <div class="my-groups-head">
+              <h2 class="my-groups-title" id="my-groups-title">내 그룹</h2>
+              <span class="my-groups-sub" id="my-groups-sub"></span>
+              <button class="my-groups-more" id="btn-my-groups-more" type="button">전체보기
+                <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronRight"></span>
+              </button>
+            </div>
+            <div class="my-groups-rail" id="my-groups-rail" aria-live="polite"><!-- JS --></div>
+          </section>
+
           <div class="gallery-head">
             <div class="gallery-head-text">
-              <h2 class="gallery-title" id="gallery-title">내 모임</h2>
+              <h2 class="gallery-title" id="gallery-title">내 그룹 전체</h2>
               <p class="gallery-sub" id="gallery-sub"></p>
             </div>
           </div>
@@ -183,7 +212,7 @@
             <div class="home-recommend" id="home-recommend" aria-labelledby="home-recommend-title">
               <div class="home-recommend-head">
                 <div class="home-recommend-head-text">
-                  <h4 class="home-recommend-title" id="home-recommend-title">추천 모임</h4>
+                  <h4 class="home-recommend-title" id="home-recommend-title">추천 그룹</h4>
                   <p class="home-recommend-sub" id="home-recommend-sub"></p>
                 </div>
                 <button class="home-recommend-taste" id="btn-home-recommend-taste" type="button">취미 다시 고르기</button>
@@ -191,9 +220,31 @@
               <div class="home-recommend-grid" id="home-recommend-grid" aria-live="polite"><!-- JS --></div>
             </div>
 
+            <!-- Sprint 32.5 — 추천 일정: '게스트 참여 가능'을 켠 일정만 -->
+            <section class="home-suggest home-suggest-events" id="home-suggest-events" aria-labelledby="home-suggest-events-title">
+              <div class="home-suggest-head">
+                <div class="home-suggest-head-text">
+                  <h4 class="home-suggest-title" id="home-suggest-events-title">추천 일정</h4>
+                  <p class="home-suggest-sub" id="home-suggest-events-sub"></p>
+                </div>
+              </div>
+              <div class="home-suggest-rail" id="home-suggest-events-rail" aria-live="polite"><!-- JS --></div>
+            </section>
+
+            <!-- Sprint 32.5 — 추천 피드: 글을 쓸 때 '추천 피드 공개'를 고른 글만 -->
+            <section class="home-suggest home-suggest-feed" id="home-suggest-feed" aria-labelledby="home-suggest-feed-title">
+              <div class="home-suggest-head">
+                <div class="home-suggest-head-text">
+                  <h4 class="home-suggest-title" id="home-suggest-feed-title">추천 피드</h4>
+                  <p class="home-suggest-sub" id="home-suggest-feed-sub"></p>
+                </div>
+              </div>
+              <div class="home-suggest-feed-list" id="home-suggest-feed-list" aria-live="polite"><!-- JS --></div>
+            </section>
+
             <div class="home-recommend-more" id="home-recommend-more">
               <p class="home-recommend-more-title">추천에 없는 모임은 아래에서</p>
-              <p class="home-recommend-more-desc">검색·분야·정렬로 바로 찾을 수 있어요</p>
+              <p class="home-recommend-more-desc">검색·분야·아지트·정렬로 바로 찾을 수 있어요</p>
             </div>
 
             <div class="home-browse" id="home-browse" aria-labelledby="home-browse-title">
@@ -206,9 +257,10 @@
               </div>
               <div class="home-browse-search">
                 <span class="home-browse-search-icon" aria-hidden="true" data-oog-icon="search"></span>
-                <input type="search" id="home-browse-search" placeholder="모임 이름이나 동네로 찾기" aria-label="모임 검색" autocomplete="off">
+                <input type="search" id="home-browse-search" placeholder="모임 이름이나 아지트로 찾기" aria-label="모임 검색" autocomplete="off">
                 <button class="home-browse-clear hide" id="home-browse-clear" type="button" aria-label="검색어 지우기">&times;</button>
               </div>
+              <div class="home-browse-azits" id="home-browse-azits" role="group" aria-label="아지트로 거르기"><!-- JS --></div>
               <div class="home-browse-chips" id="home-browse-chips" role="group" aria-label="취미 대분류"><!-- JS --></div>
               <div class="home-browse-sorts" id="home-browse-sorts" role="group" aria-label="모임 정렬"><!-- JS --></div>
               <div class="home-browse-grid" id="home-browse-grid" aria-live="polite"><!-- JS --></div>
@@ -667,6 +719,18 @@
             <textarea id="composer-caption" class="text-area" aria-label="게시물 내용" maxlength="500" placeholder="오늘의 운동/취미 기록을 남겨보세요. 가입한 모임원에게만 보입니다."></textarea>
             <div class="caption-counter"><span id="caption-count">0</span> / 500</div>
           </div>
+
+          <!-- Sprint 32.5 — 추천 피드 공개 (기본 꺼짐: 모임 밖 사람도 보는 자리) -->
+          <div class="feed-optin" id="composer-recommend-row">
+            <span class="feed-optin-text">
+              <span class="feed-optin-title">추천 피드에도 보여주기</span>
+              <span class="feed-optin-desc">홈 '추천 피드'에 올라가요. 켜지 않으면 이 모임 안에서만 보여요.</span>
+            </span>
+            <button class="switch-toggle" id="composer-recommend-toggle" role="switch" aria-checked="false"
+                    aria-label="추천 피드에도 보여주기" type="button">
+              <span class="switch-knob" aria-hidden="true"></span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -800,49 +864,108 @@
     </div>
 
     <!-- ==================== 모달 8. 새 소모임 만들기 ==================== -->
-    <div class="modal-overlay" id="group-create-modal" role="dialog" aria-modal="true" aria-label="새 소모임 만들기">
-      <div class="modal-sheet" tabindex="-1">
+    <!-- ==================== 모달 8. 새 그룹 만들기 — 한 단계씩 (Sprint 32.5) ====================
+         11/21 16:41 루키 님(#21060): "모임 만들기를 한 단계씩 묻는 방식으로, 대표 이미지와
+         '아지트'를 고르게 해줘." → 이름 → 대표 이미지 → 아지트 → 취미 → 운영 5단계. -->
+    <div class="modal-overlay" id="group-create-modal" role="dialog" aria-modal="true" aria-label="새 그룹 만들기">
+      <div class="modal-sheet group-wizard" tabindex="-1">
         <div class="sheet-grabber"></div>
-        <div class="composer-header">
+        <div class="composer-header wizard-header">
           <button class="text-btn ghost" id="btn-create-group-cancel">취소</button>
-          <h3 class="composer-title">새 소모임</h3>
-          <button class="btn-publish ready" id="btn-create-group-submit">개설</button>
+          <h3 class="composer-title">새 그룹 만들기</h3>
+          <button class="btn-publish" id="btn-create-group-submit">다음</button>
         </div>
-        <div class="composer-body">
-          <div class="field-group">
-            <label class="field-label" for="create-group-name">모임명 <span class="field-hint">2~30자</span></label>
-            <input type="text" class="text-input" id="create-group-name" maxlength="30" autocomplete="off" placeholder="예: 성수 주말 러닝 번개">
+
+        <div class="wizard-progress">
+          <div class="wizard-track" id="create-group-progress" role="progressbar"
+               aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" aria-label="만들기 단계">
+            <span class="wizard-seg"></span><span class="wizard-seg"></span><span class="wizard-seg"></span>
+            <span class="wizard-seg"></span><span class="wizard-seg"></span>
           </div>
-          <div class="field-group">
-            <label class="field-label">취미 카테고리</label>
+          <p class="wizard-step" id="create-group-step-label">1 / 5 · 이름</p>
+          <h4 class="wizard-step-title" id="create-group-step-title">모임 이름을 정해 주세요</h4>
+          <p class="wizard-step-desc" id="create-group-step-desc">이름과 한 줄 소개면 충분해요. 나머지는 다음 단계에서 하나씩 물을게요.</p>
+        </div>
+
+        <div class="composer-body wizard-body">
+          <!-- 1. 이름 -->
+          <section class="wizard-panel" data-create-step="1">
+            <div class="field-group">
+              <label class="field-label" for="create-group-name">모임명 <span class="field-hint">2~30자</span></label>
+              <input type="text" class="text-input" id="create-group-name" maxlength="30" autocomplete="off" placeholder="예: 성수 주말 러닝 번개">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="create-group-desc">한 줄 소개 <span class="field-hint">선택</span></label>
+              <textarea id="create-group-desc" class="text-area" maxlength="300" placeholder="어떤 사람들이 모이는 모임인지 짧게 적어주세요"></textarea>
+            </div>
+          </section>
+
+          <!-- 2. 대표 이미지 -->
+          <section class="wizard-panel" data-create-step="2" hidden>
+            <div class="cover-pick">
+              <div class="cover-pick-preview" id="create-group-cover-preview" aria-live="polite"><!-- JS --></div>
+              <div class="cover-pick-actions">
+                <label class="cover-pick-btn" for="create-group-cover-album">
+                  <span class="oo-icon-17" aria-hidden="true" data-oog-icon="image"></span>앨범에서
+                </label>
+                <input type="file" id="create-group-cover-album" accept="image/*" hidden>
+                <label class="cover-pick-btn" for="create-group-cover-camera">
+                  <span class="oo-icon-17" aria-hidden="true" data-oog-icon="camera"></span>사진 찍기
+                </label>
+                <input type="file" id="create-group-cover-camera" accept="image/*" capture="environment" hidden>
+                <button class="cover-pick-btn ghost" id="btn-create-group-cover-remove" type="button" hidden>지우기</button>
+              </div>
+              <p class="cover-pick-note" id="create-group-cover-note">긴 변 720px JPEG로 줄여 저장해요. 사진은 이 기기에만 저장되고 밖으로 나가지 않아요.</p>
+            </div>
+
+            <p class="wizard-panel-lead">사진이 없으면 기본 아이콘으로 정해요.</p>
+            <div class="cover-preset-grid" id="create-group-cover-presets" role="group" aria-label="기본 대표 이미지"><!-- JS --></div>
+          </section>
+
+          <!-- 3. 아지트 -->
+          <section class="wizard-panel" data-create-step="3" hidden>
+            <div class="azit-search">
+              <span class="azit-search-icon" aria-hidden="true" data-oog-icon="search"></span>
+              <input type="search" id="create-group-azit-search" placeholder="역·학교·동네 이름으로 찾기" aria-label="아지트 검색" autocomplete="off">
+              <button class="azit-search-clear hide" id="create-group-azit-clear" type="button" aria-label="검색어 지우기">&times;</button>
+            </div>
+            <div class="azit-areas" id="create-group-azit-areas" role="group" aria-label="권역"><!-- JS --></div>
+            <p class="azit-chosen" id="create-group-azit-chosen"><!-- JS --></p>
+            <div class="azit-list" id="create-group-azit-list" aria-live="polite"><!-- JS --></div>
+          </section>
+
+          <!-- 4. 취미 -->
+          <section class="wizard-panel" data-create-step="4" hidden>
+            <p class="wizard-panel-lead">이 모임의 취미를 하나 골라 주세요. 색과 아이콘이 아지트 목록에서 이 모임을 구분해 줘요.</p>
             <div class="composer-tag-list" id="create-group-hobbies"><!-- JS --></div>
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="create-group-desc">소개말</label>
-            <textarea id="create-group-desc" class="text-area" maxlength="300" placeholder="어떤 사람들이 모이는 모임인지 짧게 적어주세요"></textarea>
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="create-group-meet">정기 모임 일시</label>
-            <input type="text" class="text-input" id="create-group-meet" maxlength="24" autocomplete="off" placeholder="예: 토 08:00 · 주말 반개">
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="create-group-location">활동 지역</label>
-            <input type="text" class="text-input" id="create-group-location" maxlength="24" autocomplete="off" placeholder="예: 성동구 성수동">
-          </div>
-          <div class="field-group">
-            <label class="field-label">가입 방식 <span class="field-hint">나중에 바꿀 수 있어요</span></label>
-            <div class="composer-tag-list" id="create-group-privacy"><!-- JS --></div>
-          </div>
-          <div class="field-group">
-            <label class="field-label">나이 제한</label>
-            <div class="composer-tag-list" id="create-group-age"><!-- JS --></div>
-          </div>
-          <div class="field-group">
-            <label class="field-label" for="create-group-question">가입 질문 <span class="field-hint">승인제일 때 신청자에게 물어요</span></label>
-            <div class="composer-tag-list" id="create-group-question-presets"><!-- JS --></div>
-            <input type="text" class="text-input" id="create-group-question" maxlength="60" autocomplete="off" placeholder="예: 취미 구력이나 선호 요일을 적어주세요!">
-            <p class="policy-hint">비워두면 기본 질문을 씁니다. 질문은 모임 설정에서 더 바꿀 수 있어요.</p>
-          </div>
+          </section>
+
+          <!-- 5. 운영 -->
+          <section class="wizard-panel" data-create-step="5" hidden>
+            <div class="field-group">
+              <label class="field-label" for="create-group-meet">정기 모임 일시 <span class="field-hint">선택</span></label>
+              <input type="text" class="text-input" id="create-group-meet" maxlength="24" autocomplete="off" placeholder="예: 토 08:00 · 주말 반개">
+            </div>
+            <div class="field-group">
+              <label class="field-label">가입 방식 <span class="field-hint">나중에 바꿀 수 있어요</span></label>
+              <div class="composer-tag-list" id="create-group-privacy"><!-- JS --></div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">나이 제한</label>
+              <div class="composer-tag-list" id="create-group-age"><!-- JS --></div>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="create-group-question">가입 질문 <span class="field-hint">승인제일 때 신청자에게 물어요</span></label>
+              <div class="composer-tag-list" id="create-group-question-presets"><!-- JS --></div>
+              <input type="text" class="text-input" id="create-group-question" maxlength="60" autocomplete="off" placeholder="예: 취미 구력이나 선호 요일을 적어주세요!">
+              <p class="policy-hint">비워두면 기본 질문을 씁니다. 질문은 모임 설정에서 더 바꿀 수 있어요.</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="wizard-foot">
+          <button class="wizard-prev" id="btn-create-group-prev" type="button">이전</button>
+          <p class="wizard-foot-hint" id="create-group-foot-hint"></p>
         </div>
       </div>
     </div>
@@ -1186,6 +1309,18 @@
           <div class="field-group">
             <label class="field-label" for="event-note">한 줄 안내 <span class="field-hint">선택</span></label>
             <textarea id="event-note" class="text-area" maxlength="140" placeholder="모이는 시간·회비 같은 걸 적어두세요"></textarea>
+          </div>
+
+          <!-- Sprint 32.5 — 게스트 참여 가능 (켜면 홈 '추천 일정'에 올라간다) -->
+          <div class="feed-optin" id="event-guest-row">
+            <span class="feed-optin-text">
+              <span class="feed-optin-title">게스트 참여 가능</span>
+              <span class="feed-optin-desc">모임에 가입하지 않은 이웃도 홈 '추천 일정'에서 참석을 신청할 수 있어요.</span>
+            </span>
+            <button class="switch-toggle" id="event-guest-toggle" role="switch" aria-checked="false"
+                    aria-label="게스트 참여 가능" type="button">
+              <span class="switch-knob" aria-hidden="true"></span>
+            </button>
           </div>
         </div>
       </div>

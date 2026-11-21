@@ -86,7 +86,14 @@ document.addEventListener('DOMContentLoaded', () => {
     postSheetId: null,           // 열린 게시글 상세
     exploreCompose: { hobbyId: null, regionId: null, meetStyle: null, photoUrl: null },
     edit: { hobbyIds: [], activity: '' },   // 프로필 수정 드래프트
-    groupDraft: { hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '' },
+    groupDraft: {
+      /* Sprint 32.5 — 한 단계씩(5단계) + 대표 이미지 + 아지트 */
+      step: 1, hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '',
+      cover: { photoUrl: null, presetId: null }, azitId: null, azitArea: 'all', azitQuery: ''
+    },
+    /* Sprint 32.5 — 홈: 내 그룹 레일·아지트 칩·추천 일정/피드 */
+    homeAzitId: 'all',           // 홈 둘러보기의 아지트 필터
+    homeSuggestEventSeat: null,  // 방금 게스트로 참석한 일정(잠깐 '참석함' 표시)
 
     /* Sprint 4.5 — 알림 파이프라인 · 가입 심사 */
     applyGroupId: null,          // 지금 신청서를 쓰는 모임
@@ -224,6 +231,21 @@ document.addEventListener('DOMContentLoaded', () => {
     homeBrowseGrid: $('#home-browse-grid'),
     btnHomeBrowseMore: $('#btn-home-browse-more'),
     btnHomeBrowseNew: $('#btn-home-browse-new'),
+    /* Sprint 32.5 — 홈 상단 진입 · 내 그룹 레일 · 아지트 칩 · 추천 일정/피드 */
+    homeTop: $('#home-top'),
+    btnHomeTopSearch: $('#btn-home-top-search'),
+    btnHomeTopCreate: $('#btn-home-top-create'),
+    homeAzitStrip: $('#home-azit-strip'),
+    myGroupsRail: $('#my-groups-rail'),
+    myGroupsSub: $('#my-groups-sub'),
+    btnMyGroupsMore: $('#btn-my-groups-more'),
+    homeSuggestEvents: $('#home-suggest-events'),
+    homeSuggestEventsSub: $('#home-suggest-events-sub'),
+    homeSuggestEventsRail: $('#home-suggest-events-rail'),
+    homeSuggestFeed: $('#home-suggest-feed'),
+    homeSuggestFeedSub: $('#home-suggest-feed-sub'),
+    homeSuggestFeedList: $('#home-suggest-feed-list'),
+    homeBrowseAzits: $('#home-browse-azits'),
     spotlight: $('#spotlight'),
     spotlightHole: $('#spotlight-hole'),
     spotlightVeil: $('#spotlight-veil'),
@@ -565,8 +587,27 @@ document.addEventListener('DOMContentLoaded', () => {
     createGroupHobbies: $('#create-group-hobbies'),
     createGroupDesc: $('#create-group-desc'),
     createGroupMeet: $('#create-group-meet'),
-    createGroupLocation: $('#create-group-location'),
     createGroupPrivacy: $('#create-group-privacy'),
+    /* Sprint 32.5 — 만들기 마법사 */
+    createGroupPanels: $$('#group-create-modal .wizard-panel'),
+    createGroupProgress: $('#create-group-progress'),
+    createGroupStepLabel: $('#create-group-step-label'),
+    createGroupStepTitle: $('#create-group-step-title'),
+    createGroupStepDesc: $('#create-group-step-desc'),
+    createGroupPrev: $('#btn-create-group-prev'),
+    createGroupFootHint: $('#create-group-foot-hint'),
+    createGroupCoverPreview: $('#create-group-cover-preview'),
+    createGroupCoverPresets: $('#create-group-cover-presets'),
+    createGroupCoverAlbum: $('#create-group-cover-album'),
+    createGroupCoverCamera: $('#create-group-cover-camera'),
+    createGroupCoverRemove: $('#btn-create-group-cover-remove'),
+    createGroupAzitAreas: $('#create-group-azit-areas'),
+    createGroupAzitList: $('#create-group-azit-list'),
+    createGroupAzitSearch: $('#create-group-azit-search'),
+    createGroupAzitClear: $('#create-group-azit-clear'),
+    createGroupAzitChosen: $('#create-group-azit-chosen'),
+    eventGuestToggle: $('#event-guest-toggle'),
+    composerRecommendToggle: $('#composer-recommend-toggle'),
     chatRoomModal: $('#chat-room-modal'),
     chatMessages: $('#chat-messages'),
     chatRoomAvatar: $('#chat-room-avatar'),
@@ -1957,6 +1998,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.homeView = 'feed';
     ui.boardTag = null;
     store.setHomeGroupId(groupId);
+    /* Sprint 32.5 — 들어간 모임의 빨간 점을 지운다(방문 시각 기록). */
+    store.markGroupVisited(groupId);
     syncNavMode();
     switchTab(tabId || 'tab-home');
     updateBadges();
@@ -2020,6 +2063,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderGallery() {
     renderHomePhotoGuide();
     renderHomeWeek();
+    renderHomeHub();
     if (!el.galleryGrid) return;
     renderHomeRecommend();
     renderHomeBrowse();
@@ -2053,6 +2097,170 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** Sprint 17 — 갤러리 정렬 세그먼트. */
+  /* ==========================================================================
+   * Sprint 32.5 — 홈을 네이버 카페처럼
+   * ------------------------------------------------------------------------
+   *  11/21 16:41 루키 님 지시(#21060 · 첨부 IMG_4556 캡처):
+   *   · 맨 위에 '모임 찾기' 진입을 올리고, 바로 아래 '내 그룹' 원형 아이콘 가로 레일.
+   *   · 아이콘에는 대표 이미지 + 모임명 + 새 소식 빨간 점.
+   *   · 아래로 추천 그룹 · 추천 일정(게스트 참여 가능만) · 추천 피드(공개 허용 글만).
+   * ======================================================================== */
+
+  /** 모임의 대표 그림 — 올린 사진 → 기본 프리셋 → 취미 아이콘 순. */
+  function groupCoverVisual(group) {
+    const preset = group.coverIconPreset || null;
+    const chip = store.getHobbyChip(group.hobbyId || group.category);
+    return {
+      photoUrl: group.photoUrl || null,
+      preset,
+      tone: (preset && preset.tone) || store.getHobbyTone(group.hobbyId || group.category),
+      icon: (preset && preset.icon) || group.icon || (chip && chip.icon) || 'sparkle'
+    };
+  }
+
+  /** '내 그룹' 원형 레일 — [내 그룹 전체] + 가입한 모임들(대표 이미지·이름·빨간 점). */
+  function renderMyGroups() {
+    if (!el.myGroupsRail) return;
+    const items = store.getGroupGallery();
+    const updates = items.filter((it) => it.updateDot).length;
+    if (el.myGroupsSub) {
+      el.myGroupsSub.textContent = items.length
+        ? (updates ? `새 소식 ${updates}곳` : `${items.length}곳`)
+        : '';
+    }
+    if (el.btnMyGroupsMore) el.btnMyGroupsMore.hidden = items.length === 0;
+    if (!items.length) {
+      el.myGroupsRail.innerHTML = `
+        <button class="my-group-item" data-my-group-create="1" type="button">
+          <span class="my-group-ring">
+            <span class="my-group-face is-new" aria-hidden="true">${ic('plus')}</span>
+          </span>
+          <span class="my-group-name">첫 그룹<br>만들기</span>
+        </button>`;
+      return;
+    }
+    const all = `
+      <button class="my-group-item" data-my-group-all="1" type="button" aria-label="내 그룹 전체 보기">
+        <span class="my-group-ring">
+          <span class="my-group-face is-all" aria-hidden="true">${ic('grid')}</span>
+        </span>
+        <span class="my-group-name">내 그룹<br>전체</span>
+      </button>`;
+    const rows = items.map((it) => {
+      const g = it.group;
+      const vis = groupCoverVisual(g);
+      const face = vis.photoUrl
+        ? `<img class="my-group-img" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
+        : `<span class="my-group-tile tone-${escapeHtml(vis.tone)}" aria-hidden="true">${ic(vis.icon)}</span>`;
+      return `
+        <button class="my-group-item" data-my-group="${g.id}" type="button"
+                aria-label="${escapeHtml(g.name)}${it.updateDot ? ' · 새 소식' : ''}">
+          <span class="my-group-ring ${it.updateDot ? 'has-new' : ''} ${it.isLeader ? 'is-leader' : ''}">
+            <span class="my-group-face tone-${escapeHtml(vis.tone)}">${face}</span>
+            ${it.updateDot ? '<span class="my-group-dot" aria-hidden="true"></span>' : ''}
+          </span>
+          <span class="my-group-name">${escapeHtml(g.name)}</span>
+        </button>`;
+    }).join('');
+    el.myGroupsRail.innerHTML = all + rows;
+  }
+
+  /** 홈 상단 '내 아지트' 칩 — 내 동네 아지트 먼저, 누르면 그 아지트 모임만. */
+  function renderHomeAzits() {
+    if (!el.homeAzitStrip) return;
+    const mine = store.getMyAzit();
+    const chips = store.getAzitChips(6);
+    const active = ui.homeAzitId;
+    const chipHTML = (id, label, count, icon, extra = '') => `
+      <button class="home-azit-chip ${active === id ? 'active' : ''}" data-home-azit="${escapeHtml(id)}"
+              type="button" aria-pressed="${active === id}">
+        ${icon ? `<span class="home-azit-ic" aria-hidden="true">${ic(icon)}</span>` : ''}
+        <span class="home-azit-name">${escapeHtml(label)}</span>
+        ${count ? `<span class="home-azit-count">${count}</span>` : ''}${extra}
+      </button>`;
+    const mineCount = store.getGroupBrowse({ azitId: mine.id }).total;
+    const parts = [chipHTML(mine.id, `내 아지트 · ${mine.name}`, mineCount, mine.icon)];
+    parts.push(chipHTML('all', '아지트 전체', 0, 'map'));
+    chips.filter((c) => c.id !== mine.id).slice(0, 4).forEach((c) => {
+      parts.push(chipHTML(c.id, c.name, c.groupCount, c.icon));
+    });
+    el.homeAzitStrip.innerHTML = parts.join('');
+  }
+
+  /** 홈 '추천 일정' — 게스트 참여 가능을 켠 일정만. */
+  function renderHomeSuggestEvents() {
+    if (!el.homeSuggestEventsRail) return;
+    const items = store.getRecommendedEvents({ limit: 5 });
+    if (!items.length) {
+      if (el.homeSuggestEvents) el.homeSuggestEvents.hidden = true;
+      el.homeSuggestEventsRail.innerHTML = '';
+      return;
+    }
+    if (el.homeSuggestEvents) el.homeSuggestEvents.hidden = false;
+    if (el.homeSuggestEventsSub) {
+      el.homeSuggestEventsSub.textContent = '게스트로 열린 일정이에요 · 가입 없이도 참석 신청';
+    }
+    el.homeSuggestEventsRail.innerHTML = items.map((it) => {
+      const ev = it.event;
+      const s = store.getGroupEventSummary(ev.id);
+      const joined = s.myRsvp === 'yes';
+      return `
+        <article class="suggest-event tone-${escapeHtml(it.tone)}" data-suggest-event="${ev.id}">
+          <div class="suggest-event-top">
+            <span class="suggest-event-kind">${ic(store.getGroupEventKindsLabel(ev.kind).icon)} ${escapeHtml(store.getGroupEventKindsLabel(ev.kind).label)}</span>
+            <span class="suggest-event-when">${escapeHtml(it.whenLabel)}</span>
+          </div>
+          <h5 class="suggest-event-title">${escapeHtml(ev.title)}</h5>
+          <p class="suggest-event-group">${escapeHtml(it.groupName)}${ev.place ? ` · ${escapeHtml(ev.place)}` : ''}</p>
+          <div class="suggest-event-foot">
+            <span class="suggest-event-seats">참석 ${s.yes}${ev.capacity ? `/${ev.capacity}` : ''}</span>
+            <button class="suggest-event-join ${joined ? 'is-joined' : ''}" data-guest-event="${ev.id}"
+                    data-guest-joined="${joined}" type="button" aria-pressed="${joined}">
+              ${joined ? `${ic('check')} 참석함` : '게스트 참석'}
+            </button>
+          </div>
+        </article>`;
+    }).join('');
+  }
+
+  /** 홈 '추천 피드' — '추천 피드 공개'를 고른 글만. */
+  function renderHomeSuggestFeed() {
+    if (!el.homeSuggestFeedList) return;
+    const items = store.getRecommendedFeed({ limit: 6 });
+    if (!items.length) {
+      if (el.homeSuggestFeed) el.homeSuggestFeed.hidden = true;
+      el.homeSuggestFeedList.innerHTML = '';
+      return;
+    }
+    if (el.homeSuggestFeed) el.homeSuggestFeed.hidden = false;
+    if (el.homeSuggestFeedSub) {
+      el.homeSuggestFeedSub.textContent = '모임에서 추천 피드로 공개한 글만 모았어요';
+    }
+    el.homeSuggestFeedList.innerHTML = items.map((it) => {
+      const p = it.post;
+      const thumb = p.photoUrl
+        ? `<img class="suggest-post-thumb" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
+        : `<span class="suggest-post-thumb is-plain tone-${escapeHtml(it.tone)}" aria-hidden="true">${ic(it.hobbyIcon || 'sparkle')}</span>`;
+      return `
+        <button class="suggest-post" data-suggest-post="${p.id}" type="button">
+          ${thumb}
+          <span class="suggest-post-body">
+            <span class="suggest-post-group">${escapeHtml(it.groupName)}${it.azitName ? ` · ${escapeHtml(it.azitName)}` : ''}</span>
+            <span class="suggest-post-caption">${escapeHtml(firstSentence(p.caption) || '사진을 올렸어요')}</span>
+            <span class="suggest-post-meta">${ic('heart')} ${fmtCount(p.likes || 0)} · 댓글 ${(p.comments || []).length}</span>
+          </span>
+        </button>`;
+    }).join('');
+  }
+
+  /** 홈의 새 영역들(내 그룹·아지트 칩·추천 일정·추천 피드)을 한 번에. */
+  function renderHomeHub() {
+    renderMyGroups();
+    renderHomeAzits();
+    renderHomeSuggestEvents();
+    renderHomeSuggestFeed();
+  }
+
   function renderGallerySort(visible) {
     if (!el.gallerySort) return;
     el.gallerySort.hidden = visible === false;
@@ -2079,10 +2287,12 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 21 — 사진이 없으면 취미 대분류 색조(운동=그린 · 게임=보라 …)로 표지를 구분한다.
        R4 — 그 표지의 문양은 대분류 7종의 단색 문양이다. */
     const tone = store.getHobbyTone(grp.hobbyId || grp.category);
+    const vis = groupCoverVisual(grp);
+    const azit = item.azit || store.getGroupAzit(grp);
     const cover = coverPhotos.length
       ? `<span class="gallery-cover-photos">${coverPhotos.map((url, i) =>
           `<span class="gallery-cover-photo"><img src="${escapeHtml(url)}" alt="" loading="lazy" decoding="async"></span>`).join('')}</span>`
-      : `<span class="gallery-cover-emoji" aria-hidden="true">${coverIc(tone)}</span>`;
+      : `<span class="gallery-cover-emoji" aria-hidden="true">${ic(vis.icon)}</span>`;
     const next = item.nextEvent;
     return `
       <article class="gallery-card tone-${escapeHtml(tone)}" data-open-group="${grp.id}" role="button" tabindex="0"
@@ -2096,6 +2306,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="gallery-body">
           <h3 class="gallery-name">${escapeHtml(grp.name)}</h3>
           <p class="gallery-meta">멤버 ${item.memberCount} · 사진 ${item.photoCount}</p>
+          ${azit ? `<p class="gallery-azit">${ic(azit.icon)} ${escapeHtml(azit.name)}</p>` : ''}
           <p class="gallery-next ${next ? '' : 'quiet'}">${next
             ? `${escapeHtml(next.title)} · ${escapeHtml(next.whenLabel)}`
             : '다가오는 약속 없음'}</p>
@@ -2118,22 +2329,22 @@ document.addEventListener('DOMContentLoaded', () => {
   /** 추천 모임 카드 — 사진이 없으면 취미 대분류 색조(.tone-*)의 점토 타일로 표지를 만든다. */
   function recommendCardHTML(item, index) {
     const g = item.group;
-    const chip = store.getHobbyChip(g.hobbyId);
-    const icon = g.icon || (chip && chip.icon) || 'sparkle';
+    const vis = groupCoverVisual(g);
+    const azit = store.getGroupAzit(g);
     return `
       <article class="recommend-card tone-${escapeHtml(item.tone)}" data-open-group="${g.id}"
                data-rail-index="${index || 0}"
                role="button" tabindex="0"
-               aria-label="${escapeHtml(g.name)} 추천 모임 · ${escapeHtml(item.hobbyName)}">
+               aria-label="${escapeHtml(g.name)} 추천 그룹 · ${escapeHtml(item.hobbyName)}">
         <div class="recommend-cover">
-          ${g.photoUrl
-            ? `<img class="recommend-photo" src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span class="recommend-clay" aria-hidden="true">${coverIc(item.tone)}</span>`}
-          <span class="recommend-hobby">${ic(icon)} ${escapeHtml(item.hobbyName)}</span>
+          ${vis.photoUrl
+            ? `<img class="recommend-photo" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
+            : `<span class="recommend-clay" aria-hidden="true">${ic(vis.icon)}</span>`}
+          <span class="recommend-hobby">${ic(vis.icon)} ${escapeHtml(item.hobbyName)}</span>
         </div>
         <div class="recommend-body">
           <h4 class="recommend-name">${escapeHtml(g.name)}</h4>
-          <p class="recommend-meta">${escapeHtml(g.location || '온라인')} · 멤버 ${g.memberCount}명</p>
+          <p class="recommend-meta">아지트 ${escapeHtml((azit || {}).name || g.location || '온라인')} · 멤버 ${g.memberCount}명</p>
           <p class="recommend-reason">${escapeHtml(item.reason)}</p>
         </div>
       </article>`;
@@ -2146,9 +2357,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const picked = (taste.goalIds.length ? taste.goalIds : taste.hobbyIds.length ? taste.hobbyIds : store.getTasteHobbyIds());
     const names = picked.map((id) => store.getHobbyChip(id)).filter(Boolean).map((h) => h.name).slice(0, 2);
     if (el.homeRecommendSub) {
-      el.homeRecommendSub.textContent = names.length
-        ? `${names.join(' · ')} 취미로 골랐어요`
-        : '취미를 고르면 잘 맞는 모임을 골라드려요';
+      const mine = store.getMyAzit();
+      const tasteText = names.length ? `${names.join(' · ')} 취미` : '';
+      el.homeRecommendSub.textContent = mine && tasteText
+        ? `${mine.name} 근처 · ${tasteText}로 골랐어요`
+        : (tasteText ? `${tasteText}로 골랐어요` : '취미를 고르면 잘 맞는 모임을 골라드려요');
     }
     const items = store.getRecommendedGroups({ limit: 6 });
     /* Sprint 23 — 추천이 0개면 위쪽 슬라이드만 조용히 접고, 아래 '모임 둘러보기'가 바로 이어진다. */
@@ -2177,8 +2390,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function homeBrowseState() {
     if (!ui.homeBrowse) {
-      ui.homeBrowse = { categoryId: 'all', sort: 'recommend', query: '', limit: HOME_BROWSE_PAGE };
+      ui.homeBrowse = { categoryId: 'all', sort: 'recommend', query: '', azitId: 'all', limit: HOME_BROWSE_PAGE };
     }
+    if (!ui.homeBrowse.azitId) ui.homeBrowse.azitId = 'all';
     return ui.homeBrowse;
   }
 
@@ -2196,18 +2410,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 type="button" aria-pressed="${s.sort === o.id}">${escapeHtml(o.label)}</button>`).join('');
     }
     if (el.homeBrowseClear) el.homeBrowseClear.classList.toggle('hide', !s.query);
+    /* Sprint 32.5 — 아지트 칩: 전체 + 내 아지트·가까운 아지트 */
+    if (el.homeBrowseAzits) {
+      const mine = store.getMyAzit();
+      const chips = store.getAzitChips(5).filter((c) => c.id !== mine.id).slice(0, 4);
+      el.homeBrowseAzits.innerHTML = [`
+        <button class="home-browse-azit ${s.azitId === 'all' ? 'active' : ''}" data-browse-azit="all"
+                type="button" aria-pressed="${s.azitId === 'all'}">${ic('map')}<span>아지트 전체</span></button>`,
+      `<button class="home-browse-azit ${s.azitId === mine.id ? 'active' : ''}" data-browse-azit="${mine.id}"
+                type="button" aria-pressed="${s.azitId === mine.id}">${ic(mine.icon)}<span>내 아지트 · ${escapeHtml(mine.name)}</span></button>`]
+        .concat(chips.map((c) => `
+          <button class="home-browse-azit ${s.azitId === c.id ? 'active' : ''}" data-browse-azit="${c.id}"
+                  type="button" aria-pressed="${s.azitId === c.id}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span>
+            ${c.groupCount ? `<b class="home-browse-azit-count">${c.groupCount}</b>` : ''}</button>`)).join('');
+    }
     const res = store.getGroupBrowse({
-      query: s.query, categoryId: s.categoryId, sort: s.sort, limit: s.limit
+      query: s.query, categoryId: s.categoryId, sort: s.sort, azitId: s.azitId, limit: s.limit
     });
     const cat = store.getGroupBrowseCategories().find((c) => c.id === s.categoryId);
-    if (el.btnHomeBrowseNew) el.btnHomeBrowseNew.hidden = res.total === 0 && !s.query && s.categoryId === 'all';
+    const azitDefSel = s.azitId && s.azitId !== 'all' ? store.findAzit(s.azitId) : null;
+    if (el.btnHomeBrowseNew) el.btnHomeBrowseNew.hidden = res.total === 0 && !s.query && s.categoryId === 'all' && s.azitId === 'all';
     if (el.homeBrowseSub) {
       el.homeBrowseSub.textContent = res.total
-        ? `${s.query ? `'${s.query}' · ` : ''}${cat && cat.id !== 'all' ? `${cat.name} · ` : ''}모임 ${res.total}개`
+        ? `${s.query ? `'${s.query}' · ` : ''}${azitDefSel ? `${azitDefSel.name} · ` : ''}${cat && cat.id !== 'all' ? `${cat.name} · ` : ''}모임 ${res.total}개`
         : '아직 둘러볼 모임이 없어요';
     }
     if (!res.items.length) {
-      const filtering = !!(s.query || s.categoryId !== 'all');
+      const filtering = !!(s.query || s.categoryId !== 'all' || (s.azitId && s.azitId !== 'all'));
       /* Sprint 26.5 — 세상이 비었을 때는 위 '내 모임' 카드가 이미 모임 만들기를 권한다.
          여기서 또 버튼을 두면 같은 행동이 세 번 반복되므로, 조건에 걸린 0건일 때만 버튼을 둔다. */
       el.homeBrowseGrid.innerHTML = `
@@ -2272,6 +2501,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHomeBrowse();
       });
     }
+    if (el.homeBrowseAzits) {
+      el.homeBrowseAzits.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-browse-azit]');
+        if (!btn) return;
+        s.azitId = btn.dataset.browseAzit || 'all';
+        ui.homeAzitId = s.azitId;
+        s.limit = HOME_BROWSE_PAGE;
+        renderHomeAzits();
+        renderHomeBrowse();
+      });
+    }
     if (el.homeBrowseSorts) {
       el.homeBrowseSorts.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-browse-sort]');
@@ -2290,8 +2530,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.homeBrowseGrid) {
       el.homeBrowseGrid.addEventListener('click', (e) => {
         if (e.target.closest('[data-browse-reset]')) {
-          s.categoryId = 'all'; s.query = ''; s.limit = HOME_BROWSE_PAGE;
+          s.categoryId = 'all'; s.query = ''; s.azitId = 'all'; s.limit = HOME_BROWSE_PAGE;
+          ui.homeAzitId = 'all';
           if (el.homeBrowseSearch) el.homeBrowseSearch.value = '';
+          renderHomeAzits();
           renderHomeBrowse();
           return;
         }
@@ -2311,8 +2553,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /* ---------------------------------------------------- 스포트라이트 가이드 */
+  /* ==========================================================================
+   * Sprint 32.5 — 홈 새 영역 배선(상단 진입 · 내 그룹 · 아지트 칩 · 추천 일정/피드)
+   * ======================================================================== */
+  function bindHomeHub() {
+    if (el.btnHomeTopSearch) {
+      el.btnHomeTopSearch.addEventListener('click', () => {
+        focusHomeBrowse();
+        if (el.homeBrowseSearch) {
+          setTimeout(() => el.homeBrowseSearch.focus({ preventScroll: true }), 320);
+        }
+      });
+    }
+    if (el.btnHomeTopCreate) el.btnHomeTopCreate.addEventListener('click', () => openGroupCreate());
 
+    if (el.homeAzitStrip) {
+      el.homeAzitStrip.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-home-azit]');
+        if (!chip) return;
+        const id = chip.dataset.homeAzit || 'all';
+        ui.homeAzitId = id;
+        homeBrowseState().azitId = id;
+        homeBrowseState().limit = HOME_BROWSE_PAGE;
+        renderHomeAzits();
+        renderHomeBrowse();
+        if (el.homeBrowse) el.homeBrowse.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      });
+    }
+
+    if (el.myGroupsRail) {
+      el.myGroupsRail.addEventListener('click', (e) => {
+        const all = e.target.closest('[data-my-group-all]');
+        if (all) {
+          const grid = el.galleryGrid || $('#group-gallery-grid');
+          if (grid) grid.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+          return;
+        }
+        if (e.target.closest('[data-my-group-create]')) { openGroupCreate(); return; }
+        const item = e.target.closest('[data-my-group]');
+        if (item) enterGroupSpace(item.dataset.myGroup, 'tab-home');
+      });
+    }
+    if (el.btnMyGroupsMore) {
+      el.btnMyGroupsMore.addEventListener('click', () => {
+        const grid = el.galleryGrid || $('#group-gallery-grid');
+        if (grid) grid.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      });
+    }
+
+    if (el.homeSuggestEventsRail) {
+      el.homeSuggestEventsRail.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-guest-event]');
+        if (btn) {
+          const id = btn.dataset.guestEvent;
+          const joined = btn.dataset.guestJoined === 'true';
+          const res = joined ? store.cancelGuestSeat(id) : store.requestGuestSeat(id);
+          if (!res.ok) {
+            const why = { full: '자리가 다 찾어요', past: '지난 일정이에요', guest_closed: '게스트를 받지 않는 일정이에요' };
+            showToast(why[res.reason] || '참석을 바꾸지 못했어요', 'warning');
+            return;
+          }
+          ui.homeSuggestEventSeat = joined ? null : id;
+          renderHomeSuggestEvents();
+          showToast(joined ? '게스트 참석을 취소했어요' : '게스트로 참석 신청했어요 · 모임장에게 전달될 거예요');
+          return;
+        }
+        const card = e.target.closest('[data-suggest-event]');
+        if (card) {
+          const ev = store.getGroupEvent(card.dataset.suggestEvent);
+          if (ev && store.isGroupJoined(ev.groupId)) openEventDetail(ev.id);
+        }
+      });
+    }
+
+    if (el.homeSuggestFeedList) {
+      el.homeSuggestFeedList.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-suggest-post]');
+        if (!card) return;
+        openHomePost(card.dataset.suggestPost);
+      });
+    }
+  }
+
+  /* ---------------------------------------------------- 스포트라이트 가이드 */
   /* ==========================================================================
    * Sprint 21~22 — 가입 후 스포트라이트 가이드
    * ------------------------------------------------------------------------
@@ -3402,7 +3725,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="home-hero-emoji" aria-hidden="true">${coverIc(heroTone)}</span>
         <span class="home-hero-shade" aria-hidden="true"></span>
         <div class="home-hero-text">
-          <span class="home-hero-kicker">${ic(grp.icon)} ${escapeHtml(grp.categoryName)} · ${escapeHtml(grp.location)}</span>
+          <span class="home-hero-kicker">${ic(grp.icon)} ${escapeHtml(grp.categoryName)} · ${(function () { const a = store.getGroupAzit(grp); return a ? `아지트 ${escapeHtml(a.name)}` : escapeHtml(grp.location); })()}</span>
           <h2 class="home-hero-name">${escapeHtml(grp.name)}</h2>
           <p class="home-hero-meta">멤버 ${grp.memberCount}명 · 사진 ${info.photoCount || 0}장 · 대화 ${chat.count}개</p>
           <p class="home-hero-next">${next
@@ -3471,6 +3794,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="event-top">
           <span class="event-kind">${escapeHtml(kind.label)}</span>
           <span class="event-when">${escapeHtml(ev.whenLabel)}</span>
+          ${ev.guestOpen ? '<span class="event-guest-badge">게스트</span>' : ''}
           ${ev.past ? '<span class="event-past">지난 일정</span>'
             : (myBadge ? `<span class="event-my rs-${ev.myRsvp}">${myBadge}</span>` : '')}
         </div>
@@ -4288,6 +4612,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="event-detail-top">
           <span class="event-kind">${escapeHtml(kind.label)}</span>
           <span class="event-when">${escapeHtml(s.whenLabel)}</span>
+          ${ev.guestOpen ? '<span class="event-guest-badge">게스트 참여</span>' : ''}
         </div>
         <h2 class="sheet-title">${escapeHtml(ev.title)}</h2>
         ${grp ? `<p class="event-detail-group">${ic(grp.icon)} ${escapeHtml(grp.name)}</p>` : ''}
@@ -4324,6 +4649,14 @@ document.addEventListener('DOMContentLoaded', () => {
         <h4 class="event-detail-title">${ic('closeCircle')} 불참 ${s.no}</h4>
         ${people(s.noList, 'is-no')}
       </section>`;
+    /* Sprint 32.5 — 만든 사람은 일정을 고칠 수 있다(게스트 참여 여부 포함). */
+    if (ev.createdBy === store.currentUser.id) {
+      el.eventDetailBody.innerHTML += `
+        <div class="event-detail-edit">
+          <button class="btn-secondary" data-event-edit="${ev.id}" type="button">${ic('pencil')} 일정 수정</button>
+          <p class="event-detail-edit-hint">${ev.guestOpen ? '게스트에게 열려 있어요 · 홈 추천 일정에 보여요' : '게스트 참여를 켜면 홈 추천 일정에도 올라가요'}</p>
+        </div>`;
+    }
   }
 
   /* -------------------------------------------- 모임 일정 만들기(술모임·번개) */
@@ -4359,7 +4692,17 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     el.eventQuickWhen.innerHTML = quick.map((q, i) => `
       <button class="tag-pick" data-event-quick="${i}" type="button">${q.label}</button>`).join('');
-    el.eventSubmit.disabled = !(el.eventTitle && el.eventTitle.value.trim().length >= 2);
+    if (el.eventGuestToggle) {
+      const on = ui.eventDraft.guestOpen === true;
+      el.eventGuestToggle.classList.toggle('on', on);
+      el.eventGuestToggle.setAttribute('aria-checked', String(on));
+    }
+    const title = $('#event-modal .composer-title');
+    if (title) title.textContent = ui.eventEditId ? '일정 수정' : '새 모임 일정';
+    if (el.eventSubmit) {
+      el.eventSubmit.textContent = ui.eventEditId ? '저장' : '올리기';
+      el.eventSubmit.disabled = !(el.eventTitle && el.eventTitle.value.trim().length >= 2);
+    }
   }
 
   function applyQuickWhen(index) {
@@ -4384,7 +4727,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.eventDraft.when = target.toISOString();
   }
 
-  function openEventForm(groupId) {
+  function openEventForm(groupId, eventId) {
     const grp = store.getGroup(groupId || store.getHomeGroupId());
     if (!grp || !el.eventModal) return;
     if (!store.isGroupJoined(grp.id)) {
@@ -4392,12 +4735,26 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     ui.eventGroupId = grp.id;
-    ui.eventDraft = { kind: 'drink', when: null };
+    ui.eventEditId = eventId || null;
+    ui.eventDraft = { kind: 'drink', when: null, guestOpen: false };
+    if (eventId) {
+      const ev = store.getGroupEvent(eventId);
+      if (!ev) return;
+      ui.eventDraft.kind = ev.kind;
+      ui.eventDraft.guestOpen = ev.guestOpen === true;
+      if (el.eventTitle) el.eventTitle.value = ev.title;
+      if (el.eventPlace) el.eventPlace.value = ev.place || '';
+      if (el.eventNote) el.eventNote.value = ev.note || '';
+      const when = new Date(ev.when);
+      if (el.eventDate) el.eventDate.value = localDateInput(when);
+      if (el.eventTime) el.eventTime.value = localTimeInput(when);
+    } else {
+      if (el.eventTitle) el.eventTitle.value = '';
+      if (el.eventPlace) el.eventPlace.value = '';
+      if (el.eventNote) el.eventNote.value = '';
+      applyQuickWhen(0);
+    }
     if (el.eventGroupNote) el.eventGroupNote.textContent = `${grp.name} 멤버 ${grp.memberCount}명에게 보입니다.`;
-    if (el.eventTitle) el.eventTitle.value = '';
-    if (el.eventPlace) el.eventPlace.value = '';
-    if (el.eventNote) el.eventNote.value = '';
-    applyQuickWhen(0);
     renderEventForm();
     openModal(el.eventModal);
   }
@@ -4405,30 +4762,44 @@ document.addEventListener('DOMContentLoaded', () => {
   function submitGroupEvent() {
     if (!el.eventTitle) return;
     const when = eventDraftIso();
-    const res = store.createGroupEvent(ui.eventGroupId, {
+    const payload = {
       title: el.eventTitle.value,
       kind: ui.eventDraft.kind,
       when,
       place: el.eventPlace ? el.eventPlace.value : '',
       note: el.eventNote ? el.eventNote.value : '',
-      capacity: 12
-    });
+      capacity: 12,
+      guestOpen: ui.eventDraft.guestOpen === true
+    };
+    const res = ui.eventEditId
+      ? store.updateGroupEvent(ui.eventEditId, payload)
+      : store.createGroupEvent(ui.eventGroupId, payload);
     if (!res.ok) {
       const messages = {
         title_short: '일정 이름을 2자 이상 적어주세요',
         title_long: '일정 이름은 30자까지 가능해요',
         bad_when: '날짜와 시각을 골라주세요',
         past_when: '지난 시각으로는 일정을 만들 수 없어요',
-        not_member: '가입한 모임에만 일정을 올릴 수 있어요'
+        not_member: '가입한 모임에만 일정을 올릴 수 있어요',
+        permission: '만든 사람만 일정을 고칠 수 있어요'
       };
-      showToast(messages[res.reason] || '일정을 올리지 못했어요', 'warning');
+      showToast(messages[res.reason] || '일정을 저장하지 못했어요', 'warning');
       return;
     }
+    const edited = !!ui.eventEditId;
+    const event = res.event;
     closeModal(el.eventModal);
-    ui.homeGroupId = res.event.groupId;
+    if (el.eventDetailModal && el.eventDetailModal.classList.contains('active')) {
+      renderEventDetail(event.id);
+    }
+    ui.eventEditId = null;
+    ui.homeGroupId = event.groupId;
     renderHome();
+    renderHomeSuggestEvents();
     updateBadges();
-    showToast(`'${res.event.title}' 일정을 올렸어요 · 참석으로 표시했어요`);
+    showToast(edited
+      ? (event.guestOpen ? '일정을 고쳤어요 · 게스트에게도 열려 있어요' : '일정을 고쳤어요')
+      : `'${event.title}' 일정을 올렸어요 · 참석으로 표시했어요${event.guestOpen ? ' · 게스트에게도 열려 있어요' : ''}`);
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(12);
   }
 
@@ -4548,6 +4919,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
     bindHomeBrowse();
+    bindHomeHub();
     if (el.btnHomeRecommendTaste) {
       el.btnHomeRecommendTaste.addEventListener('click', () => startGuide({ mode: 'taste', step: 'taste-category' }));
     }
@@ -5378,6 +5750,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   el.eventSubmit && el.eventSubmit.addEventListener('click', submitGroupEvent);
+  /* Sprint 32.5 — 게스트 참여 가능 토글 */
+  if (el.eventGuestToggle) {
+    el.eventGuestToggle.addEventListener('click', () => {
+      ui.eventDraft.guestOpen = !ui.eventDraft.guestOpen;
+      renderEventForm();
+    });
+  }
+  /* 일정 상세의 '일정 수정' → 같은 폼을 고치기 모드로 */
+  if (el.eventDetailBody) {
+    el.eventDetailBody.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-event-edit]');
+      if (!btn) return;
+      const ev = store.getGroupEvent(btn.dataset.eventEdit);
+      if (!ev) return;
+      openEventForm(ev.groupId, ev.id);
+    });
+  }
   const eventCancel = $('#btn-event-cancel');
   eventCancel && eventCancel.addEventListener('click', () => closeModal(el.eventModal));
 
@@ -7066,7 +7455,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </span>
         <h2 class="sheet-title">${escapeHtml(grp.name)}</h2>
         <div class="sheet-meta">
-          <span>${escapeHtml(grp.location)} · ${grp.distanceKm}km</span>
+          <span>${(function () { const a = store.getGroupAzit(grp); return a ? `${ic(a.icon)} 아지트 ${escapeHtml(a.name)} · ${escapeHtml(a.areaName)}` : escapeHtml(grp.location); })()}</span>
           <span>멤버 ${grp.memberCount}/${grp.maxMembers}명</span>
           <span>모임장 ${escapeHtml(grp.leaderName)}${isLeader ? ' (나)' : ''}</span>
         </div>
@@ -7829,14 +8218,23 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다(모임 선택 한 번 줄임). */
     const viewing = ui.activeTab === 'tab-home' ? (ui.homeGroupId || store.getHomeGroupId()) : null;
     const startGroup = store.getGroup(prefillGroupId || viewing || ui.feedGroupId) || joined[0];
-    ui.composer = { groupId: startGroup.id, tag: null, photoUrl: null };
+    ui.composer = { groupId: startGroup.id, tag: null, photoUrl: null, recommendOptIn: false };
     renderPhotoPreview('composer');
     composerResetFields();
     renderComposerGroups();
     renderComposerTags();
     renderMediaPicker();
+    renderComposerRecommend();
     updatePublishState();
     openModal(el.composerModal);
+  }
+
+  /** Sprint 32.5 — 추천 피드 공개 토글(기본 꺼짐) */
+  function renderComposerRecommend() {
+    if (!el.composerRecommendToggle) return;
+    const on = ui.composer.recommendOptIn === true;
+    el.composerRecommendToggle.classList.toggle('on', on);
+    el.composerRecommendToggle.setAttribute('aria-checked', String(on));
   }
 
   /* (DOM 초기화 헬퍼) 캡션/사진문구 비우기 */
@@ -7926,6 +8324,13 @@ document.addEventListener('DOMContentLoaded', () => {
     renderComposerTags();
   });
 
+  if (el.composerRecommendToggle) {
+    el.composerRecommendToggle.addEventListener('click', () => {
+      ui.composer.recommendOptIn = !ui.composer.recommendOptIn;
+      renderComposerRecommend();
+    });
+  }
+
   /* Sprint 17 — 앨범/카메라 사진 (게시물·스토리·오픈 글) */
   wirePhotoPicker('composer', el.composerPhotoAlbum, el.composerPhotoCamera,
     $('#btn-composer-album'), $('#btn-composer-camera'), $('#btn-composer-photo-remove'));
@@ -7950,7 +8355,8 @@ document.addEventListener('DOMContentLoaded', () => {
       tag: ui.composer.tag,
       caption: el.composerCaption.value,
       mediaCaption: el.composerMediaCaption ? el.composerMediaCaption.value : '',
-      photoUrl: ui.composer.photoUrl || (el.composerPhotoUrl ? el.composerPhotoUrl.value : '')
+      photoUrl: ui.composer.photoUrl || (el.composerPhotoUrl ? el.composerPhotoUrl.value : ''),
+      recommendOptIn: ui.composer.recommendOptIn === true
     });
     if (!post) {
       showToast('모임과 내용을 확인해 주세요', 'warning');
@@ -7961,7 +8367,8 @@ document.addEventListener('DOMContentLoaded', () => {
     goGroupFeed(post.groupId, 'feed');
     updateBadges();
     const grp = store.getGroup(post.groupId);
-    showToast(`'${grp ? grp.name : '모임'}'에 게시했어요 · 이 모임 피드에만 보여요`);
+    showToast(`'${grp ? grp.name : '모임'}'에 게시했어요${post.recommendOptIn ? ' · 추천 피드에도 보여요' : ' · 이 모임 피드에만 보여요'}`);
+    renderHomeSuggestFeed();
     scrollTop();
   });
 
@@ -8898,9 +9305,144 @@ document.addEventListener('DOMContentLoaded', () => {
   btnEditCancel && btnEditCancel.addEventListener('click', () => closeModal(el.profileEditModal));
 
   /* ------------------------------------------------------------ 모임 개설 */
-  function renderGroupDraft() {
+  /* ==========================================================================
+   * Sprint 32.5 — 새 그룹 만들기: 한 단계씩(5단계) + 대표 이미지 + 아지트
+   * ------------------------------------------------------------------------
+   *  11/21 16:41 루키 님(#21060): 한 화면 폼 대신 한 단계씩 묻고, 대표 이미지와
+   *   '아지트'를 고르게 한다. 단계: 이름 → 대표 이미지 → 아지트 → 취미 → 운영.
+   * ======================================================================== */
+  const CREATE_STEPS = [
+    {
+      id: 1, label: '이름', title: '모임 이름을 정해 주세요',
+      desc: '이름과 한 줄 소개면 충분해요. 나머지는 다음 단계에서 하나씩 물을게요.'
+    },
+    {
+      id: 2, label: '대표 이미지', title: '대표 이미지를 골라 주세요',
+      desc: '사진을 올리거나 기본 아이콘 중 하나를 고르면, 모임 카드와 내 그룹 아이콘에 그대로 보여요.'
+    },
+    {
+      id: 3, label: '아지트', title: '아지트를 골라 주세요',
+      desc: '집 주소 대신 만나는 곳만 정해요. 가까운 역·학교·랜드마크에서 고르면 이웃이 찾기 쉬워요.'
+    },
+    {
+      id: 4, label: '취미', title: '어떤 취미 모임인가요?',
+      desc: '취미 하나를 고르면 색과 아이콘이 정해져 목록에서 한눈에 구분돼요.'
+    },
+    {
+      id: 5, label: '운영', title: '가입 방식과 일정을 정해요',
+      desc: '가입은 나중에 바꿀 수 있어요. 정기 일시는 비워두어도 괜찮아요.'
+    }
+  ];
+
+  function createStepMeta(step) {
+    return CREATE_STEPS.find((s) => s.id === step) || CREATE_STEPS[0];
+  }
+
+  /** 대표 이미지 미리보기 — 올린 사진 → 고른 기본 아이콘 → 아직 없음. */
+  function renderCreateCover() {
+    const d = ui.groupDraft;
+    const preset = d.cover.presetId ? store.getCoverIconPreset(d.cover.presetId) : null;
+    if (el.createGroupCoverPreview) {
+      el.createGroupCoverPreview.innerHTML = d.cover.photoUrl
+        ? `<img class="cover-pick-img" src="${escapeHtml(d.cover.photoUrl)}" alt="대표 이미지 미리보기">`
+        : (preset
+          ? `<span class="cover-pick-tile tone-${escapeHtml(preset.tone)}" aria-hidden="true">${ic(preset.icon)}</span>`
+          : `<span class="cover-pick-empty" aria-hidden="true">${ic('image')}</span>
+             <span class="cover-pick-hint">사진이나 기본 아이콘을 골라 주세요</span>`);
+    }
+    if (el.createGroupCoverRemove) {
+      el.createGroupCoverRemove.hidden = !(d.cover.photoUrl || d.cover.presetId);
+    }
+    if (el.createGroupCoverPresets) {
+      el.createGroupCoverPresets.innerHTML = store.getCoverIconPresets().map((p) => `
+        <button class="cover-preset tone-${escapeHtml(p.tone)} ${d.cover.presetId === p.id ? 'active' : ''}"
+                data-create-cover-preset="${p.id}" type="button" aria-pressed="${d.cover.presetId === p.id}"
+                aria-label="${escapeHtml(p.label)} 아이콘">
+          <span class="cover-preset-ic" aria-hidden="true">${ic(p.icon)}</span>
+          <span class="cover-preset-label">${escapeHtml(p.label)}</span>
+        </button>`).join('');
+    }
+  }
+
+  /** 아지트 목록 — 권역 칩 + 검색 + 고른 아지트 + 목록. */
+  function renderCreateAzit() {
+    const d = ui.groupDraft;
+    const areas = store.getAzitAreas();
+    if (el.createGroupAzitAreas) {
+      const known = d.azitArea && d.azitArea !== 'all' ? ['all'].concat(areas.map((a) => a.id)) : null;
+      /* 검색 중에는 권역 선택을 '전체'로 보여 준다(결과가 전 권역에서 나오므로). */
+      const areaId = !d.azitQuery && known && known.includes(d.azitArea) ? d.azitArea : 'all';
+      el.createGroupAzitAreas.innerHTML = [`<button class="azit-area ${areaId === 'all' ? 'active' : ''}"
+          data-azit-area="all" type="button" aria-pressed="${areaId === 'all'}">전체</button>`]
+        .concat(areas.map((a) => `
+          <button class="azit-area ${areaId === a.id ? 'active' : ''}" data-azit-area="${a.id}"
+                  type="button" aria-pressed="${areaId === a.id}">${escapeHtml(a.name)}</button>`)).join('');
+    }
+    if (el.createGroupAzitSearch && el.createGroupAzitSearch.value !== d.azitQuery) {
+      el.createGroupAzitSearch.value = d.azitQuery || '';
+    }
+    if (el.createGroupAzitClear) el.createGroupAzitClear.classList.toggle('hide', !d.azitQuery);
+    const chosen = d.azitId ? store.findAzit(d.azitId) : null;
+    if (el.createGroupAzitChosen) {
+      el.createGroupAzitChosen.innerHTML = chosen
+        ? `<span class="azit-chosen-chip">${ic(chosen.icon)} 아지트 · ${escapeHtml(chosen.name)}
+             <span class="azit-chosen-area">${escapeHtml(chosen.areaName)}</span></span>`
+        : `<span class="azit-chosen-none">아직 고르지 않았어요</span>`;
+    }
+    if (el.createGroupAzitList) {
+      const spots = store.getAzitSpots({ areaId: d.azitArea, query: d.azitQuery, limit: 60 });
+      el.createGroupAzitList.innerHTML = spots.length
+        ? spots.map((s) => `
+            <button class="azit-row ${d.azitId === s.id ? 'active' : ''}" data-azit-pick="${s.id}"
+                    type="button" aria-pressed="${d.azitId === s.id}">
+              <span class="azit-row-ic" aria-hidden="true">${ic(s.icon)}</span>
+              <span class="azit-row-text">
+                <span class="azit-row-name">${escapeHtml(s.name)}</span>
+                <span class="azit-row-meta">${escapeHtml(s.areaName)} · ${escapeHtml(s.kindLabel)}${s.groupCount ? ` · 모임 ${s.groupCount}` : ''}</span>
+              </span>
+              ${s.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
+              <span class="azit-row-check" aria-hidden="true">${d.azitId === s.id ? ic('check') : ''}</span>
+            </button>`).join('')
+        : `<p class="azit-empty">'${escapeHtml(d.azitQuery)}'에 맞는 아지트가 없어요. 동네 이름으로 다시 찾아보세요.</p>`;
+    }
+  }
+
+  /** 지금 단계를 넘어갈 수 있는지. */
+  function createStepReady(step) {
+    const d = ui.groupDraft;
+    if (step === 1) {
+      const name = el.createGroupName ? el.createGroupName.value.trim() : '';
+      return name.length >= 2 && name.length <= 30;
+    }
+    if (step === 3) return !!d.azitId;
+    if (step === 4) return !!d.hobbyId;
+    return true;
+  }
+
+  /** 마법사 전체를 지금 상태로 그린다. */
+  function renderGroupWizard() {
+    const d = ui.groupDraft;
+    const meta = createStepMeta(d.step);
+    if (el.createGroupPanels && el.createGroupPanels.length) {
+      el.createGroupPanels.forEach((panel) => {
+        panel.hidden = Number(panel.dataset.createStep) !== d.step;
+      });
+    }
+    if (el.createGroupProgress) {
+      el.createGroupProgress.setAttribute('aria-valuenow', String(d.step));
+      el.createGroupProgress.querySelectorAll('.wizard-seg').forEach((seg, i) => {
+        seg.classList.toggle('on', i < d.step);
+        seg.classList.toggle('now', i === d.step - 1);
+      });
+    }
+    if (el.createGroupStepLabel) el.createGroupStepLabel.textContent = `${d.step} / ${CREATE_STEPS.length} · ${meta.label}`;
+    if (el.createGroupStepTitle) el.createGroupStepTitle.textContent = meta.title;
+    if (el.createGroupStepDesc) el.createGroupStepDesc.textContent = meta.desc;
+    if (el.createGroupPrev) el.createGroupPrev.hidden = d.step === 1;
+
+    /* 각 단계의 내용 */
     if (el.createGroupHobbies) {
-      el.createGroupHobbies.innerHTML = hobbyPickerHTML('group', ui.groupDraft.hobbyId);
+      el.createGroupHobbies.innerHTML = hobbyPickerHTML('group', d.hobbyId);
     }
     if (el.createGroupPrivacy) {
       const options = [
@@ -8908,54 +9450,104 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'approval_private', label: '승인제', hint: '소개서 심사' }
       ];
       el.createGroupPrivacy.innerHTML = options.map((o) => `
-        <button class="tag-pick ${ui.groupDraft.privacyType === o.id ? 'active' : ''}"
+        <button class="tag-pick ${d.privacyType === o.id ? 'active' : ''}"
                 data-create-privacy="${o.id}" type="button">${o.label}</button>`).join('');
     }
     if (el.createGroupAge) {
       el.createGroupAge.innerHTML = store.getAgeLimitOptions().map((o) => `
-        <button class="tag-pick ${ui.groupDraft.ageLimit === o.id ? 'active' : ''}"
+        <button class="tag-pick ${d.ageLimit === o.id ? 'active' : ''}"
                 data-create-age="${o.id}" type="button">${escapeHtml(o.badge)}</button>`).join('');
     }
     if (el.createGroupQuestionPresets) {
       el.createGroupQuestionPresets.innerHTML = (store.state.joinQuestionPresets || []).map((q, i) => `
         <button class="tag-pick preset-pick" data-create-qpreset="${i}" type="button">${escapeHtml(q)}</button>`).join('');
     }
-    const questionField = el.createGroupQuestion && el.createGroupQuestion.closest('.field-group');
+    const questionField = $('#create-group-question') && $('#create-group-question').closest('.field-group');
     if (questionField) {
-      questionField.classList.toggle('policy-field-hidden', ui.groupDraft.privacyType !== 'approval_private');
+      questionField.classList.toggle('policy-field-hidden', d.privacyType !== 'approval_private');
     }
+
+    renderCreateCover();
+    renderCreateAzit();
+
+    const ready = createStepReady(d.step);
+    const last = d.step === CREATE_STEPS.length;
+    const btn = $('#btn-create-group-submit');
+    if (btn) {
+      btn.textContent = last ? '개설' : '다음';
+      btn.disabled = !ready;
+      btn.classList.toggle('ready', ready);
+    }
+    if (el.createGroupFootHint) {
+      el.createGroupFootHint.textContent = !ready
+        ? (d.step === 1 ? '모임명을 2자 이상 적어 주세요'
+          : d.step === 3 ? '아지트를 하나 골라 주세요'
+            : d.step === 4 ? '취미를 골라 주세요' : '')
+        : (last ? '개설하면 모임장이 되고, 모임 안에서 바로 시작해요' : '');
+    }
+    hydrateIcons(el.groupCreateModal || document);
+  }
+
+  /** 단계 이동 — 앞으로는 지금 단계가 채워져야 넘어간다. */
+  function goCreateStep(next) {
+    const target = Math.max(1, Math.min(CREATE_STEPS.length, Number(next) || 1));
+    ui.groupDraft.step = target;
+    renderGroupWizard();
   }
 
   function openGroupCreate() {
-    ui.groupDraft = { hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '' };
+    const myAzit = store.getMyAzit();
+    ui.groupDraft = {
+      step: 1, hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '',
+      cover: { photoUrl: null, presetId: null },
+      azitId: myAzit ? myAzit.id : null,
+      azitArea: myAzit ? myAzit.areaId : 'all',
+      azitQuery: ''
+    };
     if (el.createGroupName) el.createGroupName.value = '';
     if (el.createGroupDesc) el.createGroupDesc.value = '';
     if (el.createGroupMeet) el.createGroupMeet.value = '';
-    if (el.createGroupLocation) el.createGroupLocation.value = store.currentUser.location || '';
     if (el.createGroupQuestion) el.createGroupQuestion.value = '';
-    renderGroupDraft();
+    if (el.createGroupAzitSearch) el.createGroupAzitSearch.value = '';
+    renderGroupWizard();
     openModal(el.groupCreateModal);
+  }
+
+  /** 대표 이미지 — 앨범·카메라로 고른 사진을 720px JPEG로 줄여 담는다. */
+  function pickCreateCover(file) {
+    if (!file) return;
+    const spec = albumUploadSpec();
+    readImageFile(file, (dataUrl) => {
+      if (!dataUrl) {
+        showToast('사진을 읽지 못했어요. 다른 사진으로 해보세요', 'warning');
+        return;
+      }
+      ui.groupDraft.cover.photoUrl = dataUrl;
+      ui.groupDraft.cover.presetId = null;
+      renderCreateCover();
+      showToast(`대표 사진을 담았어요 · ${spec.maxDimension}px`);
+    }, spec.maxDimension, spec.jpegQuality);
   }
 
   el.createGroupHobbies && el.createGroupHobbies.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-hobby-pick]');
     if (!chip || chip.dataset.hobbyScope !== 'group') return;
     ui.groupDraft.hobbyId = chip.dataset.hobbyPick;
-    renderGroupDraft();
+    renderGroupWizard();
   });
 
   el.createGroupPrivacy && el.createGroupPrivacy.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-create-privacy]');
     if (!chip) return;
     ui.groupDraft.privacyType = chip.dataset.createPrivacy;
-    renderGroupDraft();
+    renderGroupWizard();
   });
 
   el.createGroupAge && el.createGroupAge.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-create-age]');
     if (!chip) return;
     ui.groupDraft.ageLimit = chip.dataset.createAge;
-    renderGroupDraft();
+    renderGroupWizard();
   });
 
   el.createGroupQuestionPresets && el.createGroupQuestionPresets.addEventListener('click', (e) => {
@@ -8965,24 +9557,98 @@ document.addEventListener('DOMContentLoaded', () => {
     if (preset && el.createGroupQuestion) el.createGroupQuestion.value = preset;
   });
 
+  el.createGroupName && el.createGroupName.addEventListener('input', () => {
+    if (ui.groupDraft.step === 1) renderGroupWizard();
+  });
+
+  /* 대표 이미지 — 기본 프리셋 · 앨범 · 카메라 · 지우기 */
+  el.createGroupCoverPresets && el.createGroupCoverPresets.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-create-cover-preset]');
+    if (!btn) return;
+    const id = btn.dataset.createCoverPreset;
+    const preset = store.getCoverIconPreset(id);
+    if (!preset) return;
+    ui.groupDraft.cover.presetId = ui.groupDraft.cover.presetId === id ? null : id;
+    if (ui.groupDraft.cover.presetId) ui.groupDraft.cover.photoUrl = null;
+    renderCreateCover();
+  });
+  el.createGroupCoverAlbum && el.createGroupCoverAlbum.addEventListener('change', (e) => {
+    pickCreateCover(e.target.files && e.target.files[0]);
+    e.target.value = '';
+  });
+  el.createGroupCoverCamera && el.createGroupCoverCamera.addEventListener('change', (e) => {
+    pickCreateCover(e.target.files && e.target.files[0]);
+    e.target.value = '';
+  });
+  el.createGroupCoverRemove && el.createGroupCoverRemove.addEventListener('click', () => {
+    ui.groupDraft.cover = { photoUrl: null, presetId: null };
+    renderCreateCover();
+  });
+
+  /* 아지트 — 권역 · 검색 · 목록 */
+  el.createGroupAzitAreas && el.createGroupAzitAreas.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-azit-area]');
+    if (!btn) return;
+    ui.groupDraft.azitArea = btn.dataset.azitArea || 'all';
+    renderCreateAzit();
+  });
+  el.createGroupAzitList && el.createGroupAzitList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-azit-pick]');
+    if (!btn) return;
+    ui.groupDraft.azitId = btn.dataset.azitPick;
+    renderGroupWizard();
+  });
+  el.createGroupAzitSearch && el.createGroupAzitSearch.addEventListener('input', () => {
+    ui.groupDraft.azitQuery = el.createGroupAzitSearch.value.trim();
+    renderCreateAzit();
+  });
+  el.createGroupAzitClear && el.createGroupAzitClear.addEventListener('click', () => {
+    ui.groupDraft.azitQuery = '';
+    if (el.createGroupAzitSearch) {
+      el.createGroupAzitSearch.value = '';
+      el.createGroupAzitSearch.focus();
+    }
+    renderCreateAzit();
+  });
+
+  el.createGroupPrev && el.createGroupPrev.addEventListener('click', () => {
+    if (ui.groupDraft.step <= 1) return;
+    goCreateStep(ui.groupDraft.step - 1);
+  });
+
   const btnCreateGroupSubmit = $('#btn-create-group-submit');
   btnCreateGroupSubmit && btnCreateGroupSubmit.addEventListener('click', () => {
+    const d = ui.groupDraft;
+    if (!createStepReady(d.step)) {
+      renderGroupWizard();
+      const why = d.step === 1 ? '모임명을 2~30자로 정해주세요'
+        : d.step === 3 ? '아지트를 골라주세요' : '취미를 골라주세요';
+      showToast(why, 'warning');
+      return;
+    }
+    if (d.step < CREATE_STEPS.length) {
+      goCreateStep(d.step + 1);
+      return;
+    }
     const result = store.createGroup({
       name: el.createGroupName ? el.createGroupName.value : '',
-      hobbyId: ui.groupDraft.hobbyId,
+      hobbyId: d.hobbyId,
       description: el.createGroupDesc ? el.createGroupDesc.value : '',
       meetLabel: el.createGroupMeet ? el.createGroupMeet.value : '',
-      location: el.createGroupLocation ? el.createGroupLocation.value : '',
-      privacyType: ui.groupDraft.privacyType,
-      joinMode: ui.groupDraft.privacyType === 'approval_private' ? 'approval' : 'open',
-      ageLimit: ui.groupDraft.ageLimit,
+      azitId: d.azitId,
+      photoUrl: d.cover.photoUrl,
+      coverIconPresetId: d.cover.presetId,
+      privacyType: d.privacyType,
+      joinMode: d.privacyType === 'approval_private' ? 'approval' : 'open',
+      ageLimit: d.ageLimit,
       joinQuestions: el.createGroupQuestion && el.createGroupQuestion.value.trim()
         ? [el.createGroupQuestion.value.trim()] : []
     });
     if (!result.ok) {
       const messages = {
         name: '모임명은 2~30자로 정해주세요',
-        hobby: '취미 카테고리를 골라주세요'
+        hobby: '취미 카테고리를 골라주세요',
+        azit: '아지트를 골라주세요'
       };
       showToast(messages[result.reason] || '모임을 만들지 못했어요', 'warning');
       return;
@@ -8991,8 +9657,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExplore();
     renderFeed();
     updateBadges();
-    /* Sprint 22 — 모임은 이제 홈의 '모임 둘러보기' 에 있다. 만든 모임을 바로 보여준다. */
+    /* 만든 모임을 홈에서 바로 보이게 — 둘러보기 검색어를 그 이름으로. */
     homeBrowseState().categoryId = 'all';
+    homeBrowseState().azitId = 'all';
     homeBrowseState().query = result.group.name;
     homeBrowseState().limit = Math.max(HOME_BROWSE_PAGE, 12);
     if (el.homeBrowseSearch) el.homeBrowseSearch.value = result.group.name;
@@ -12645,6 +13312,38 @@ document.addEventListener('DOMContentLoaded', () => {
     }),
     /* Sprint 21 — 점토 아이콘 · 취미 분류 · 추천 모임 · 스포트라이트 가이드 */
     renderHomeRecommend,
+    /* Sprint 32.5 — 홈 네이버 카페형(내 그룹 레일·아지트·추천 일정/피드) · 만들기 마법사 */
+    renderHomeHub, renderMyGroups, renderHomeAzits, renderHomeSuggestEvents, renderHomeSuggestFeed,
+    getMyGroupsRail: () => (el.myGroupsRail ? el.myGroupsRail.querySelectorAll('[data-my-group]').length : 0),
+    getHomeSuggest: () => ({
+      events: store.getRecommendedEvents({ limit: 5 }).map((it) => ({
+        id: it.event.id, group: it.groupName, title: it.event.title, guestOpen: it.event.guestOpen === true
+      })),
+      feed: store.getRecommendedFeed({ limit: 6 }).map((it) => ({ id: it.post.id, group: it.groupName }))
+    }),
+    setHomeAzit: (id) => {
+      ui.homeAzitId = id || 'all';
+      homeBrowseState().azitId = ui.homeAzitId;
+      renderHomeAzits();
+      renderHomeBrowse();
+      return ui.homeAzitId;
+    },
+    getAzit: (id) => store.findAzit(id),
+    getAzitSpots: (opts) => store.getAzitSpots(opts || {}),
+    getAzitAreas: () => store.getAzitAreas(),
+    getCreateState: () => ({
+      step: ui.groupDraft.step, hobbyId: ui.groupDraft.hobbyId, azitId: ui.groupDraft.azitId,
+      azitQuery: ui.groupDraft.azitQuery, azitArea: ui.groupDraft.azitArea,
+      cover: { ...ui.groupDraft.cover }, privacyType: ui.groupDraft.privacyType
+    }),
+    setCreateStep: (n) => { goCreateStep(n); return ui.groupDraft.step; },
+    setCreateAzit: (id) => { ui.groupDraft.azitId = id; renderGroupWizard(); return ui.groupDraft.azitId; },
+    setCreateCoverPreset: (id) => {
+      const preset = store.getCoverIconPreset(id);
+      ui.groupDraft.cover = preset ? { photoUrl: null, presetId: preset.id } : { photoUrl: null, presetId: null };
+      renderCreateCover();
+      return { ...ui.groupDraft.cover };
+    },
     /* Sprint 22 — 홈 '모임 둘러보기'(탐색에서 옮겨온 모임 목록). 테스트·미리보기가 한 번에 펼친다. */
     renderHomeBrowse, focusHomeBrowse,
     getHomeBrowseState: () => ({ ...homeBrowseState() }),

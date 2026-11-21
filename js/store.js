@@ -778,6 +778,206 @@ const EXPLORE_MEET_STYLES = [
   { id: 'dm', name: '1:1 대화', icon: 'send', desc: '둘이서 이야기' }
 ];
 
+/* ---------------------------------------------------------------------------
+ * Sprint 32.5 — '아지트' : 모임이 만나는 곳을 고르는 목록
+ * -------------------------------------------------------------------------
+ * 11/21 16:41 루키 님 지시(#21060, 네이버 카페 참고):
+ *  "활동 지역을 자유롭게 적게 하면 집 주소까지 적히고, 가까운 모임을 찾기도 어렵다.
+ *   사생활을 지키면서 가까운 모임을 찾을 수 있게 '아지트'로 고르게 하자."
+ *  · 큰 분류(구·권역, 기존 지역 분류 그대로) → 그 안의 **지하철역 · 대학교 · 랜드마크 · 동네**.
+ *  · 모임은 아지트를 하나 고르고, 찾는 사람은 아지트로 가까운 모임을 거른다.
+ *  · 좌표·집 주소는 받지 않는다. 이름만 고른다(사생활 보호).
+ * ------------------------------------------------------------------------- */
+const AZIT_KINDS = {
+  station: { label: '지하철역', icon: 'train' },
+  school: { label: '대학교', icon: 'building' },
+  landmark: { label: '랜드마크', icon: 'map' },
+  area: { label: '동네', icon: 'home' }
+};
+
+/** 아지트의 큰 분류 — 기존 지역 권역 id 를 그대로 쓴다(지역 필터와 같은 자). */
+const AZIT_AREAS = [
+  { id: 'seoul-jongno-junggu', name: '종로·중구', groupId: 'seoul' },
+  { id: 'seoul-dongdaemun-seongbuk', name: '동대문·성북', groupId: 'seoul' },
+  { id: 'seoul-mapo-yongsan', name: '마포·용산', groupId: 'seoul' },
+  { id: 'seoul-seodaemun-eunpyeong', name: '서대문·은평', groupId: 'seoul' },
+  { id: 'seoul-seongdong-gwangjin', name: '성동·광진', groupId: 'seoul' },
+  { id: 'seoul-gangbuk-dobong', name: '강북·도봉', groupId: 'seoul' },
+  { id: 'seoul-nowon-jungnang', name: '노원·중랑', groupId: 'seoul' },
+  { id: 'seoul-seocho-gangnam', name: '서초·강남', groupId: 'seoul' },
+  { id: 'seoul-gangdong-songpa', name: '강동·송파', groupId: 'seoul' },
+  { id: 'seoul-gangseo-yangcheon', name: '강서·양천', groupId: 'seoul' },
+  { id: 'seoul-dongjak-gwanak', name: '동작·성동', groupId: 'seoul' },
+  { id: 'seoul-yeongdeungpo-guro-geumcheon', name: '영등포·구로·금천', groupId: 'seoul' },
+  { id: 'gyeonggi-incheon-bucheon-gimpo', name: '인천·부천·김포', groupId: 'gyeonggi' },
+  { id: 'gyeonggi-suwon-yongin-uiwang', name: '수원·용인·의왕', groupId: 'gyeonggi' },
+  { id: 'gyeonggi-goyang-paju', name: '고양·파주', groupId: 'gyeonggi' },
+  { id: 'gyeonggi-seongnam-gwangju', name: '성남·광주', groupId: 'gyeonggi' },
+  { id: 'gyeonggi-anyang-gunpo-gwacheon', name: '안양·군포·과천', groupId: 'gyeonggi' },
+  { id: 'gyeonggi-hwaseong-osan', name: '화성·오산', groupId: 'gyeonggi' },
+  { id: 'gyeonggi-pyeongtaek-anseong', name: '평택·안성', groupId: 'gyeonggi' },
+  { id: 'gyeongsang-busan', name: '부산', groupId: 'gyeongsang' },
+  { id: 'gyeongsang-daegu', name: '대구', groupId: 'gyeongsang' },
+  { id: 'chungcheong-daejeon', name: '대전', groupId: 'chungcheong' },
+  { id: 'jeolla-gwangju', name: '광주', groupId: 'jeolla' },
+  { id: 'gangwon-chuncheon', name: '춘천', groupId: 'gangwon' },
+  { id: 'jeolla-jeonbuk', name: '전주·전북', groupId: 'jeolla' },
+  { id: 'jeju', name: '제주', groupId: 'jeju' }
+];
+
+/**
+ * 아지트 한 곳 — 이름만 고른다. 좌표·주소는 저장하지 않는다.
+ * aliases 는 검색어(옛 동네 이름·노선 이름)다.
+ */
+const AZIT_SPOTS = [
+  /* ---------------------------------------------- 서울 · 종로·중구 */
+  { id: 'azit-gwanghwamun', areaId: 'seoul-jongno-junggu', name: '광화문역', kind: 'station', aliases: ['광화문', '5호선', '시청'] },
+  { id: 'azit-euljiro', areaId: 'seoul-jongno-junggu', name: '을지로입구역', kind: 'station', aliases: ['을지로', '2호선'] },
+  { id: 'azit-seoulstation', areaId: 'seoul-jongno-junggu', name: '서울역', kind: 'station', aliases: ['서울역', '1호선', '4호선', 'KTX'] },
+  { id: 'azit-myeongdong', areaId: 'seoul-jongno-junggu', name: '명동역', kind: 'station', aliases: ['명동', '4호선'] },
+  { id: 'azit-cheonggyecheon', areaId: 'seoul-jongno-junggu', name: '청계천', kind: 'landmark', aliases: ['청계천', '광장시장'] },
+  /* ---------------------------------------------- 서울 · 동대문·성북 */
+  { id: 'azit-ddp', areaId: 'seoul-dongdaemun-seongbuk', name: '동대문역사문화공원역', kind: 'station', aliases: ['동대문', 'DDP', '2호선'] },
+  { id: 'azit-anam', areaId: 'seoul-dongdaemun-seongbuk', name: '안암역', kind: 'station', aliases: ['안암', '고려대', '6호선'] },
+  { id: 'azit-korea-univ', areaId: 'seoul-dongdaemun-seongbuk', name: '고려대학교', kind: 'school', aliases: ['고대', '안암'] },
+  { id: 'azit-sungshin', areaId: 'seoul-dongdaemun-seongbuk', name: '성신여대입구역', kind: 'station', aliases: ['성신여대', '4호선', '우이신설'] },
+  { id: 'azit-janghanpyeong', areaId: 'seoul-dongdaemun-seongbuk', name: '장한평역', kind: 'station', aliases: ['장한평', '5호선'] },
+  /* ---------------------------------------------- 서울 · 마포·용산 */
+  { id: 'azit-hongdae', areaId: 'seoul-mapo-yongsan', name: '홍대입구역', kind: 'station', aliases: ['홍대', '2호선', '공항철도'] },
+  { id: 'azit-hapjeong', areaId: 'seoul-mapo-yongsan', name: '합정역', kind: 'station', aliases: ['합정', '2호선', '6호선'] },
+  { id: 'azit-yeonnam', areaId: 'seoul-mapo-yongsan', name: '연남동', kind: 'area', aliases: ['연남', '연트럴파크'] },
+  { id: 'azit-itaewon', areaId: 'seoul-mapo-yongsan', name: '이태원역', kind: 'station', aliases: ['이태원', '6호선', '경리단'] },
+  { id: 'azit-mangwon', areaId: 'seoul-mapo-yongsan', name: '망원한강공원', kind: 'landmark', aliases: ['망원', '한강', '한강공원'] },
+  /* ---------------------------------------------- 서울 · 서대문·은평 */
+  { id: 'azit-sinchon', areaId: 'seoul-seodaemun-eunpyeong', name: '신촌역', kind: 'station', aliases: ['신촌', '2호선', '연세대'] },
+  { id: 'azit-yonsei', areaId: 'seoul-seodaemun-eunpyeong', name: '연세대학교', kind: 'school', aliases: ['연대', '신촌'] },
+  { id: 'azit-yeonhui', areaId: 'seoul-seodaemun-eunpyeong', name: '연희동', kind: 'area', aliases: ['연희', '연희숲속'] },
+  { id: 'azit-bulgwang', areaId: 'seoul-seodaemun-eunpyeong', name: '불광역', kind: 'station', aliases: ['불광', '6호선', '3호선'] },
+  { id: 'azit-yonsinnae', areaId: 'seoul-seodaemun-eunpyeong', name: '연신내역', kind: 'station', aliases: ['연신내', '3호선', '6호선'] },
+  /* ---------------------------------------------- 서울 · 성동·광진 */
+  { id: 'azit-seongsu', areaId: 'seoul-seongdong-gwangjin', name: '성수역', kind: 'station', aliases: ['성수', '성수동', '2호선'] },
+  { id: 'azit-seoulforest', areaId: 'seoul-seongdong-gwangjin', name: '서울숲', kind: 'landmark', aliases: ['서울숲', '뚝섬', '수변공원'] },
+  { id: 'azit-kondae', areaId: 'seoul-seongdong-gwangjin', name: '건대입구역', kind: 'station', aliases: ['건대', '건국대', '2호선', '7호선'] },
+  { id: 'azit-wangsimni', areaId: 'seoul-seongdong-gwangjin', name: '왕십리역', kind: 'station', aliases: ['왕십리', '2호선', '5호선', '경의중앙'] },
+  { id: 'azit-ttukseom', areaId: 'seoul-seongdong-gwangjin', name: '뚝섬한강공원', kind: 'landmark', aliases: ['뚝섬', '한강공원', '자벌레'] },
+  /* ---------------------------------------------- 서울 · 강북·도봉 */
+  { id: 'azit-suyu', areaId: 'seoul-gangbuk-dobong', name: '수유역', kind: 'station', aliases: ['수유', '4호선'] },
+  { id: 'azit-mia', areaId: 'seoul-gangbuk-dobong', name: '미아사거리역', kind: 'station', aliases: ['미아', '4호선'] },
+  { id: 'azit-dreamforest', areaId: 'seoul-gangbuk-dobong', name: '북서울꿈의숲', kind: 'landmark', aliases: ['꿈의숲', '번동'] },
+  /* ---------------------------------------------- 서울 · 노원·중랑 */
+  { id: 'azit-nowon', areaId: 'seoul-nowon-jungnang', name: '노원역', kind: 'station', aliases: ['노원', '4호선', '7호선'] },
+  { id: 'azit-gongneung', areaId: 'seoul-nowon-jungnang', name: '공릉역', kind: 'station', aliases: ['공릉', '서울과기대', '7호선'] },
+  { id: 'azit-sangbong', areaId: 'seoul-nowon-jungnang', name: '상봉역', kind: 'station', aliases: ['상봉', '7호선', '경의중앙', '경춘선'] },
+  { id: 'azit-gyeongchun', areaId: 'seoul-nowon-jungnang', name: '경춘선숲길', kind: 'landmark', aliases: ['경춘선', '숲길', '화랑대'] },
+  /* ---------------------------------------------- 서울 · 서초·강남 */
+  { id: 'azit-gangnam', areaId: 'seoul-seocho-gangnam', name: '강남역', kind: 'station', aliases: ['강남', '2호선', '신분당선'] },
+  { id: 'azit-yeoksam', areaId: 'seoul-seocho-gangnam', name: '대치역', kind: 'station', aliases: ['대치', '2호선', '테헤란로'] },
+  { id: 'azit-seolleung', areaId: 'seoul-seocho-gangnam', name: '선릉역', kind: 'station', aliases: ['선릉', '2호선', '수인분당'] },
+  { id: 'azit-yangjae', areaId: 'seoul-seocho-gangnam', name: '양재시민의숲', kind: 'landmark', aliases: ['양재', '시민의숲', '매헌'] },
+  { id: 'azit-sinnonhyeon', areaId: 'seoul-seocho-gangnam', name: '신논현역', kind: 'station', aliases: ['신논현', '9호선', '논현'] },
+  /* ---------------------------------------------- 서울 · 강동·송파 */
+  { id: 'azit-jamsil', areaId: 'seoul-gangdong-songpa', name: '잠실역', kind: 'station', aliases: ['잠실', '2호선', '8호선', '롯데월드'] },
+  { id: 'azit-seokchon', areaId: 'seoul-gangdong-songpa', name: '석촌호수', kind: 'landmark', aliases: ['석촌', '호수', '잠실'] },
+  { id: 'azit-cheonho', areaId: 'seoul-gangdong-songpa', name: '천호역', kind: 'station', aliases: ['천호', '5호선', '8호선'] },
+  { id: 'azit-munjeong', areaId: 'seoul-gangdong-songpa', name: '문정역', kind: 'station', aliases: ['문정', '8호선', '가든파이브'] },
+  /* ---------------------------------------------- 서울 · 강서·양천 */
+  { id: 'azit-magong', areaId: 'seoul-gangseo-yangcheon', name: '마곡나루역', kind: 'station', aliases: ['마곡', '9호선', '공항철도'] },
+  { id: 'azit-mokdong', areaId: 'seoul-gangseo-yangcheon', name: '목동역', kind: 'station', aliases: ['목동', '5호선'] },
+  { id: 'azit-hwagok', areaId: 'seoul-gangseo-yangcheon', name: '화곡역', kind: 'station', aliases: ['화곡', '5호선'] },
+  { id: 'azit-botanic', areaId: 'seoul-gangseo-yangcheon', name: '서울식물원', kind: 'landmark', aliases: ['식물원', '마곡', '호수공원'] },
+  /* ---------------------------------------------- 서울 · 동작·성동 (루키 님 동네) */
+  { id: 'azit-sillim', areaId: 'seoul-dongjak-gwanak', name: '성수역', kind: 'station', aliases: ['성수', '성수동', '2호선', '성수선'] },
+  { id: 'azit-seouluniv', areaId: 'seoul-dongjak-gwanak', name: '한양대역', kind: 'station', aliases: ['한양대', '서울숲', '2호선'] },
+  { id: 'azit-snu', areaId: 'seoul-dongjak-gwanak', name: '서울대학교', kind: 'school', aliases: ['서울대', '성동', '샤로수길'] },
+  { id: 'azit-nakseongdae', areaId: 'seoul-dongjak-gwanak', name: '뚝섬역', kind: 'station', aliases: ['뚝섬', '2호선'] },
+  { id: 'azit-boramae', areaId: 'seoul-dongjak-gwanak', name: '뚝섬한강공원', kind: 'landmark', aliases: ['뚝섬한강', '공원', '신대방'] },
+  { id: 'azit-sadang', areaId: 'seoul-dongjak-gwanak', name: '왕십리역', kind: 'station', aliases: ['왕십리', '2호선', '4호선'] },
+  /* ---------------------------------------------- 서울 · 영등포·구로·금천 */
+  { id: 'azit-yeouido', areaId: 'seoul-yeongdeungpo-guro-geumcheon', name: '여의도한강공원', kind: 'landmark', aliases: ['여의도', '한강', '한강공원'] },
+  { id: 'azit-yeongdeungpo', areaId: 'seoul-yeongdeungpo-guro-geumcheon', name: '영등포역', kind: 'station', aliases: ['영등포', '1호선', '타임스퀘어'] },
+  { id: 'azit-sindorim', areaId: 'seoul-yeongdeungpo-guro-geumcheon', name: '신도림역', kind: 'station', aliases: ['신도림', '1호선', '2호선', '디큐브시티'] },
+  { id: 'azit-mullae', areaId: 'seoul-yeongdeungpo-guro-geumcheon', name: '문래동', kind: 'area', aliases: ['문래', '문래창작촌', '철공소'] },
+  { id: 'azit-gasan', areaId: 'seoul-yeongdeungpo-guro-geumcheon', name: '가산디지털단지역', kind: 'station', aliases: ['가산', '구디', '1호선', '7호선'] },
+  /* ---------------------------------------------- 경기 · 인천·부천·김포 */
+  { id: 'azit-bupyeong', areaId: 'gyeonggi-incheon-bucheon-gimpo', name: '부평역', kind: 'station', aliases: ['부평', '1호선', '인천1호선'] },
+  { id: 'azit-songdo', areaId: 'gyeonggi-incheon-bucheon-gimpo', name: '송도센트럴파크', kind: 'landmark', aliases: ['송도', '센트럴파크', '인천'] },
+  { id: 'azit-bucheon', areaId: 'gyeonggi-incheon-bucheon-gimpo', name: '부천역', kind: 'station', aliases: ['부천', '1호선', '부천대'] },
+  { id: 'azit-gimpoairport', areaId: 'gyeonggi-incheon-bucheon-gimpo', name: '김포공항역', kind: 'station', aliases: ['김포공항', '5호선', '9호선', '공항철도'] },
+  /* ---------------------------------------------- 경기 · 수원·용인·의왕 */
+  { id: 'azit-suwon', areaId: 'gyeonggi-suwon-yongin-uiwang', name: '수원역', kind: 'station', aliases: ['수원', '1호선', '수인분당'] },
+  { id: 'azit-gwanggyo', areaId: 'gyeonggi-suwon-yongin-uiwang', name: '광교호수공원', kind: 'landmark', aliases: ['광교', '호수공원', '경기대'] },
+  { id: 'azit-suji', areaId: 'gyeonggi-suwon-yongin-uiwang', name: '수지구청역', kind: 'station', aliases: ['수지', '신분당선', '용인'] },
+  { id: 'azit-yeongtong', areaId: 'gyeonggi-suwon-yongin-uiwang', name: '영통역', kind: 'station', aliases: ['영통', '수인분당'] },
+  /* ---------------------------------------------- 경기 · 고양·파주 */
+  { id: 'azit-ilsanlake', areaId: 'gyeonggi-goyang-paju', name: '일산호수공원', kind: 'landmark', aliases: ['일산', '호수공원', '고양'] },
+  { id: 'azit-baekseok', areaId: 'gyeonggi-goyang-paju', name: '백석역', kind: 'station', aliases: ['백석', '3호선', '일산'] },
+  { id: 'azit-unjeong', areaId: 'gyeonggi-goyang-paju', name: '운정역', kind: 'station', aliases: ['운정', '파주', '경의중앙'] },
+  { id: 'azit-kintex', areaId: 'gyeonggi-goyang-paju', name: '킨텍스', kind: 'landmark', aliases: ['킨텍스', '일산', '전시장'] },
+  /* ---------------------------------------------- 경기 · 성남·광주 */
+  { id: 'azit-pangyo', areaId: 'gyeonggi-seongnam-gwangju', name: '판교역', kind: 'station', aliases: ['판교', '신분당선', '경강선'] },
+  { id: 'azit-seohyeon', areaId: 'gyeonggi-seongnam-gwangju', name: '서현역', kind: 'station', aliases: ['서현', '분당', '수인분당'] },
+  { id: 'azit-moran', areaId: 'gyeonggi-seongnam-gwangju', name: '모란역', kind: 'station', aliases: ['모란', '성남', '8호선'] },
+  { id: 'azit-wirye', areaId: 'gyeonggi-seongnam-gwangju', name: '위례신도시', kind: 'area', aliases: ['위례', '신도시'] },
+  /* ---------------------------------------------- 경기 · 안양·군포·과천 */
+  { id: 'azit-beomgye', areaId: 'gyeonggi-anyang-gunpo-gwacheon', name: '범계역', kind: 'station', aliases: ['범계', '평촌', '4호선'] },
+  { id: 'azit-pyeongchon', areaId: 'gyeonggi-anyang-gunpo-gwacheon', name: '평촌역', kind: 'station', aliases: ['평촌', '4호선', '안양'] },
+  { id: 'azit-indeogwon', areaId: 'gyeonggi-anyang-gunpo-gwacheon', name: '인덕원역', kind: 'station', aliases: ['인덕원', '4호선', '과천'] },
+  { id: 'azit-seoulgrand', areaId: 'gyeonggi-anyang-gunpo-gwacheon', name: '서울대공원', kind: 'landmark', aliases: ['대공원', '과천', '동물원'] },
+  /* ---------------------------------------------- 경기 · 화성·오산 */
+  { id: 'azit-dongtan', areaId: 'gyeonggi-hwaseong-osan', name: '동탄역', kind: 'station', aliases: ['동탄', 'SRT', 'GTX'] },
+  { id: 'azit-byeongjeom', areaId: 'gyeonggi-hwaseong-osan', name: '병점역', kind: 'station', aliases: ['병점', '1호선'] },
+  { id: 'azit-osan', areaId: 'gyeonggi-hwaseong-osan', name: '오산역', kind: 'station', aliases: ['오산', '1호선'] },
+  /* ---------------------------------------------- 경기 · 평택·안성 */
+  { id: 'azit-pyeongtaek', areaId: 'gyeonggi-pyeongtaek-anseong', name: '평택역', kind: 'station', aliases: ['평택', '1호선', 'SRT'] },
+  { id: 'azit-godeok', areaId: 'gyeonggi-pyeongtaek-anseong', name: '고덕신도시', kind: 'area', aliases: ['고덕', '평택'] },
+  { id: 'azit-songtan', areaId: 'gyeonggi-pyeongtaek-anseong', name: '송탄역', kind: 'station', aliases: ['송탄', '평택', '1호선'] },
+  /* ---------------------------------------------- 부산·대구·대전·광주·춘천·전주·제주 */
+  { id: 'azit-seomyeon', areaId: 'gyeongsang-busan', name: '서면역', kind: 'station', aliases: ['서면', '부산', '1호선', '2호선'] },
+  { id: 'azit-haeundae', areaId: 'gyeongsang-busan', name: '해운대해수욕장', kind: 'landmark', aliases: ['해운대', '부산', '바다'] },
+  { id: 'azit-gwangalli', areaId: 'gyeongsang-busan', name: '광안리해수욕장', kind: 'landmark', aliases: ['광안리', '부산', '광안대교'] },
+  { id: 'azit-dongseongno', areaId: 'gyeongsang-daegu', name: '동성로', kind: 'area', aliases: ['동성로', '대구', '중앙로'] },
+  { id: 'azit-seongseo', areaId: 'gyeongsang-daegu', name: '성서산업단지', kind: 'area', aliases: ['성서', '대구', '계명대'] },
+  { id: 'azit-daejeon', areaId: 'chungcheong-daejeon', name: '대전역', kind: 'station', aliases: ['대전', 'KTX', '1호선'] },
+  { id: 'azit-yuseong', areaId: 'chungcheong-daejeon', name: '유성온천역', kind: 'station', aliases: ['유성', '대전', '온천'] },
+  { id: 'azit-chungjangro', areaId: 'jeolla-gwangju', name: '충장로', kind: 'area', aliases: ['충장로', '광주', '동명동'] },
+  { id: 'azit-sangmu', areaId: 'jeolla-gwangju', name: '상무지구', kind: 'area', aliases: ['상무', '광주', '시청'] },
+  { id: 'azit-chuncheon', areaId: 'gangwon-chuncheon', name: '춘천역', kind: 'station', aliases: ['춘천', 'ITX', '강촌'] },
+  { id: 'azit-soyang', areaId: 'gangwon-chuncheon', name: '소양강댐', kind: 'landmark', aliases: ['소양강', '춘천', '의암호'] },
+  { id: 'azit-hanok', areaId: 'jeolla-jeonbuk', name: '전주한옥마을', kind: 'landmark', aliases: ['한옥마을', '전주', '전동성당'] },
+  { id: 'azit-jeonju', areaId: 'jeolla-jeonbuk', name: '전주역', kind: 'station', aliases: ['전주', 'KTX'] },
+  { id: 'azit-jejucity', areaId: 'jeju', name: '제주시청', kind: 'area', aliases: ['제주시', '제주', '시청'] },
+  { id: 'azit-aewol', areaId: 'jeju', name: '애월해안도로', kind: 'landmark', aliases: ['애월', '제주', '해안도로'] },
+  { id: 'azit-seogwipo', areaId: 'jeju', name: '서귀포', kind: 'area', aliases: ['서귀포', '제주', '중문'] }
+];
+
+/** 아지트 큰 분류 하나 */
+function azitAreaDef(areaId) {
+  return AZIT_AREAS.find((a) => a.id === areaId) || null;
+}
+
+/** 아지트 한 곳(없으면 null). */
+function azitDef(azitId) {
+  if (!azitId) return null;
+  return AZIT_SPOTS.find((s) => s.id === azitId) || null;
+}
+
+/** 아지트 표시 정보 — 이름·큰 분류·종류 라벨. */
+function azitView(spot) {
+  if (!spot) return null;
+  const area = azitAreaDef(spot.areaId);
+  const kind = AZIT_KINDS[spot.kind] || AZIT_KINDS.area;
+  return {
+    id: spot.id,
+    name: spot.name,
+    kind: spot.kind,
+    kindLabel: kind.label,
+    icon: kind.icon,
+    areaId: spot.areaId,
+    areaName: area ? area.name : '우리 동네',
+    regionId: spot.areaId
+  };
+}
+
 /** 지역 id → 동네 정의(옛 id 는 지금 id 로 바꿔 찾는다). */
 function regionDef(regionId) {
   const id = REGION_ALIASES[regionId] || regionId;
@@ -1550,6 +1750,12 @@ const defaultInitialState = {
    * 'recent'(최근 활동순) | 'name'(가나다순) | 'leader'(내가 모임장 먼저)
    * ------------------------------------------------------------------------- */
   galleryPrefs: { sort: 'recent' },
+
+  /* ---------------- Sprint 32.5 — 마지막으로 모임을 열어 본 시각 -------------
+   * 홈 '내 그룹' 원형 아이콘의 빨간 점(새 글·일정·채팅)을 판단한다.
+   * { [groupId]: ISO } — 없으면 한 번도 들어가지 않은 모임(새 소식이 있으면 점).
+   * ------------------------------------------------------------------------- */
+  groupVisits: {},
 
   /* ---------------- Sprint 24 — 화면 설정 ----------------
    * 11/17 00:30 루키 님: "설정 안에 다크모드 ON/OFF".
@@ -3689,7 +3895,7 @@ function stripAllContent(state) {
  *  · 사람·동네는 가상의 가명이고 사진은 쓰지 않는다(Sprint 18 예시 이미지 금지 유지).
  *  · `#demo` 시드(예전 데모 계정)와는 id 접두사(sample_)로 분리해 서로 덮지 않는다.
  * ========================================================================== */
-const SAMPLE_DATA_VERSION = 1;
+const SAMPLE_DATA_VERSION = 2;
 const SAMPLE_FALLBACK_REGION = 'seoul-seongdong-gwangjin';
 /* 예시 중 **내가 가입한 모임** 두 곳 — 나머지 셋은 둘러보기용이다. */
 const SAMPLE_JOINED_GROUP_IDS = ['sample_grp_run', 'sample_grp_board'];
@@ -3766,6 +3972,12 @@ function samplePeople(regionId) {
 /** 예시 모임 — 내가 가입한 2개(run·boardgame)와 둘러볼 3개(climb·cafe·hike). */
 function sampleGroups(regionId) {
   const area = (regionDef(regionId) || {}).name || '우리 동네';
+  /* Sprint 32.5 — 예시 모임도 '아지트'에서 만난다(가입 동네의 아지트를 돌려 쓴다). */
+  const spots = AZIT_SPOTS.filter((s) => s.areaId === regionId);
+  const azitOf = (i) => {
+    const spot = spots.length ? spots[i % spots.length] : azitDef('azit-sillim');
+    return { azitId: spot.id, azitName: spot.name, location: spot.name.slice(0, 24), regionId: spot.areaId };
+  };
   const base = {
     location: area, regionId, sample: true, ageLimit: 'all', joinMode: 'approval',
     deputyIds: [], dmEnabled: true, deputyCanModerate: false, members: [],
@@ -3774,6 +3986,7 @@ function sampleGroups(regionId) {
   return [
     {
       ...base,
+      ...azitOf(0),
       id: 'sample_grp_run', name: '토요일 아침 동네 러닝팟', category: 'run', categoryName: '러닝',
       hobbyId: 'run', meetLabel: '토 08:00 · 5K', ratio: 'wide', icon: 'run',
       coverGradient: 'linear-gradient(135deg, #4676A4 0%, #0678C4 100%)',
@@ -3790,6 +4003,7 @@ function sampleGroups(regionId) {
     },
     {
       ...base,
+      ...azitOf(1),
       id: 'sample_grp_board', name: '동네 보드게임 한 판', category: 'boardgame', categoryName: '보드게임',
       hobbyId: 'boardgame', meetLabel: '토·일 15:00', ratio: 'square', icon: 'dice',
       coverGradient: 'linear-gradient(135deg, #856A00 0%, #866C02 100%)',
@@ -3806,6 +4020,7 @@ function sampleGroups(regionId) {
     },
     {
       ...base,
+      ...azitOf(2),
       id: 'sample_grp_climb', name: '퇴근 후 볼더링 같이', category: 'climb', categoryName: '클라이밍',
       hobbyId: 'climb', meetLabel: '평일 20:00', ratio: 'wide', icon: 'climb',
       coverGradient: 'linear-gradient(135deg, #0E814A 0%, #118134 100%)',
@@ -3818,6 +4033,7 @@ function sampleGroups(regionId) {
     },
     {
       ...base,
+      ...azitOf(0),
       id: 'sample_grp_cafe', name: '주말 카페 한 곳씩', category: 'cafe', categoryName: '카페/맛집',
       hobbyId: 'cafe', meetLabel: '일 11:00', ratio: 'square', icon: 'cup',
       coverGradient: 'linear-gradient(135deg, #856A00 0%, #866C02 100%)',
@@ -3830,6 +4046,7 @@ function sampleGroups(regionId) {
     },
     {
       ...base,
+      ...azitOf(3),
       id: 'sample_grp_hike', name: '일요 아침 가까운 산', category: 'hike', categoryName: '등산·트레킹',
       hobbyId: 'hike', meetLabel: '일 08:00', ratio: 'square', icon: 'mountain',
       coverGradient: 'linear-gradient(135deg, #118134 0%, #0B8636 100%)',
@@ -3854,6 +4071,7 @@ function sampleFeedPosts() {
       comments: [
         { id: 'sample_c_run_1', authorId: 'sample_p_danchu', authorName: '단추', text: '이번 주는 저도 나가볼게요', createdAt: ago(3 * HOUR) }
       ],
+      recommendOptIn: true,
       sample: true, createdAt: ago(5 * HOUR)
     },
     {
@@ -3871,9 +4089,44 @@ function sampleFeedPosts() {
       comments: [
         { id: 'sample_c_board_1', authorId: 'sample_p_choko', authorName: '초코', text: '다음엔 저도 끼워주세요', createdAt: ago(20 * HOUR) }
       ],
+      recommendOptIn: true,
       sample: true, createdAt: ago(26 * HOUR)
     }
   ];
+}
+
+/**
+ * Sprint 32.5 — 예전에 넣어 둔 예시 데이터(v1)를 지금 모양으로 손본다.
+ *  · 예시 모임에 아지트 · 예시 일정에 '게스트 참여 가능' · 예시 글에 '추천 피드 공개'.
+ *  · 새로 넣지 않고 **있던 것만 고친다**(사용자가 지운 것을 되살리지 않는다).
+ */
+function upgradeSampleData(state) {
+  if (!state) return state;
+  const regionId = (state.sampleData && state.sampleData.regionId)
+    || (state.currentUser && state.currentUser.regionId) || SAMPLE_FALLBACK_REGION;
+  const spots = AZIT_SPOTS.filter((s) => s.areaId === regionId);
+  let i = 0;
+  (state.groups || []).filter((g) => g && g.sample === true).forEach((g) => {
+    if (g.azitId) return;
+    const spot = spots.length ? spots[i % spots.length] : azitDef('azit-sillim');
+    g.azitId = spot.id;
+    g.azitName = spot.name;
+    g.regionId = g.regionId || spot.areaId;
+    i += 1;
+  });
+  (state.feedPosts || []).filter((p) => p && p.sample === true).forEach((p, idx) => {
+    if (p.recommendOptIn == null) p.recommendOptIn = idx < 2;
+  });
+  (state.groupEvents || []).filter((e) => e && e.sample === true).forEach((e) => {
+    if (e.guestOpen == null) e.guestOpen = true;
+  });
+  /* 게스트 일정을 한 곳 더 — 모임 밖 모임에서도 추천 일정이 보이게. */
+  const hasHike = (state.groupEvents || []).some((e) => e && e.id === 'sample_evt_hike');
+  const hasHikeGroup = (state.groups || []).some((g) => g && g.id === 'sample_grp_hike');
+  if (!hasHike && hasHikeGroup) {
+    state.groupEvents = (state.groupEvents || []).concat(sampleGroupEvents().filter((e) => e.id === 'sample_evt_hike'));
+  }
+  return state;
 }
 
 function sampleGroupNotices() {
@@ -3902,6 +4155,7 @@ function sampleGroupEvents() {
         { memberId: 'sample_p_mora', name: '모래', avatarText: '모', gradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)', status: 'yes' },
         { memberId: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #0B815A 0%, #047857 100%)', status: 'yes' }
       ],
+      guestOpen: true,
       sample: true, createdAt: ago(30 * HOUR)
     },
     {
@@ -3912,7 +4166,18 @@ function sampleGroupEvents() {
         { memberId: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)', status: 'yes' },
         { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #9E6506 0%, #B45309 100%)', status: 'maybe' }
       ],
+      guestOpen: true,
       sample: true, createdAt: ago(2 * 24 * HOUR)
+    },
+    {
+      id: 'sample_evt_hike', groupId: 'sample_grp_hike', kind: 'etc', title: '일요 아침 가벼운 등산',
+      when: atClock(6, 8, 30), place: '동네 뒷산 입구', note: '1시간 반 코스로 천천히 올라요. 처음 오셔도 괜찮습니다.',
+      capacity: 8, createdBy: 'sample_p_choko', createdByName: '초코',
+      rsvps: [
+        { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #9E6506 0%, #B45309 100%)', status: 'yes' }
+      ],
+      guestOpen: true,
+      sample: true, createdAt: ago(20 * HOUR)
     }
   ];
 }
@@ -4114,7 +4379,27 @@ function retargetSampleRegion(state, regionId) {
     if (p.sample) { p.regionId = regionId; p.location = area; p.groupName = `${area} ${p.hobbyLabel || ''}`.trim(); }
   });
   (state.matchProfiles || []).forEach((p) => { if (p.sample) { p.regionId = regionId; p.location = area; } });
-  (state.groups || []).forEach((g) => { if (g.sample) { g.regionId = regionId; g.location = area; } });
+  /* Sprint 32.5 — 예시 모임의 아지트도 가입한 동네 아지트로 옮긴다(이름만 바뀐다). */
+  const spots = AZIT_SPOTS.filter((s) => s.areaId === regionId);
+  let i = 0;
+  (state.groups || []).forEach((g) => {
+    if (!g.sample) return;
+    g.regionId = regionId;
+    if (spots.length) {
+      const spot = spots[i % spots.length];
+      g.azitId = spot.id;
+      g.azitName = spot.name;
+      g.location = spot.name;
+      i += 1;
+    } else {
+      g.location = area;
+    }
+  });
+  (state.groupEvents || []).forEach((e) => {
+    if (!e.sample) return;
+    const g = (state.groups || []).find((x) => x.id === e.groupId);
+    if (g && g.azitName && !e.place) e.place = g.azitName;
+  });
   state.sampleData.regionId = regionId;
   return state;
 }
@@ -4300,6 +4585,9 @@ class Store {
       merged.settings.darkMode = typeof merged.settings.darkMode === 'boolean' ? merged.settings.darkMode : null;
       merged.homePrefs = { ...defaultInitialState.homePrefs, ...(parsed.homePrefs || {}) };
       merged.galleryPrefs = { ...defaultInitialState.galleryPrefs, ...(parsed.galleryPrefs || {}) };
+      /* Sprint 32.5 — 마지막으로 연 모임 시각(내 그룹 빨간 점) */
+      merged.groupVisits = (parsed.groupVisits && typeof parsed.groupVisits === 'object' && !Array.isArray(parsed.groupVisits))
+        ? parsed.groupVisits : {};
       merged.ageRangeBounds = { min: 0, max: 99 };
       /* Sprint 21 — 취미 분류 체계는 **코드가 가진 선택지**다(사용자 콘텐츠가 아니다).
          저장 상태에 옛 8종 칩이 남아 있어도 지금의 42종으로 맞춘다. */
@@ -4390,9 +4678,14 @@ class Store {
       const emptyContent = merged.groups.length === 0 && merged.feedPosts.length === 0
         && merged.explorePosts.length === 0 && merged.matchProfiles.length === 0;
       if (sd.seeded !== true && !sd.clearedAt && emptyContent) applySampleData(merged);
+      /* Sprint 32.5 — v1 예시 데이터는 아지트·게스트 일정·추천 피드가 비어 있다. 있던 것만 손본다. */
+      if (merged.sampleData && merged.sampleData.seeded === true
+        && Number(merged.sampleData.version || 1) < SAMPLE_DATA_VERSION) {
+        upgradeSampleData(merged);
+      }
       merged.sampleData = {
         seeded: merged.sampleData ? merged.sampleData.seeded === true : false,
-        version: merged.sampleData ? merged.sampleData.version || SAMPLE_DATA_VERSION : SAMPLE_DATA_VERSION,
+        version: merged.sampleData ? SAMPLE_DATA_VERSION : SAMPLE_DATA_VERSION,
         regionId: merged.sampleData ? (merged.sampleData.regionId || null) : null,
         seededAt: (merged.sampleData && merged.sampleData.seededAt) || null,
         clearedAt: (merged.sampleData && merged.sampleData.clearedAt) || (sd.clearedAt || null)
@@ -4711,7 +5004,8 @@ class Store {
     const tag = data.tag && group.customTags.includes(data.tag) ? data.tag : null;
     const user = this.state.currentUser;
     const post = {
-      id: `post_${Date.now()}`,
+      /* 같은 1ms 안에 두 글을 써도 id 가 겹치지 않게 뒤에 짧은 난수를 붙인다(32.5). */
+      id: `post_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
       groupId,
       authorId: user.id,
       authorName: user.nickname,
@@ -4727,6 +5021,8 @@ class Store {
       likedByMe: false,
       bookmarkedByMe: false,
       comments: [],
+      /* Sprint 32.5 — 홈 '추천 피드'에 보여도 된다고 고른 글만 (기본은 모임 안에만). */
+      recommendOptIn: data.recommendOptIn === true,
       createdAt: new Date().toISOString()
     };
     this.state.feedPosts.unshift(post);
@@ -5333,8 +5629,10 @@ class Store {
   /** 검색어가 모임 카드에 걸리는지 — 모임명·지역·카테고리·요일·태그 */
   matchGroupQuery(group, q) {
     if (!q) return true;
+    const azit = this.getGroupAzit(group);
     const hay = [
       group.name, group.location, group.categoryName, group.meetLabel,
+      azit ? `${azit.name} ${azit.areaName} ${azit.kindLabel}` : '',
       (group.tags || []).join(' '), group.description
     ].join(' ').toLowerCase();
     return hay.includes(q);
@@ -5374,6 +5672,16 @@ class Store {
     const q = String(o.query || '').trim().toLowerCase();
     const categoryId = o.categoryId && o.categoryId !== 'all' ? o.categoryId : 'all';
     const hobbyId = o.hobbyId && o.hobbyId !== 'all' ? o.hobbyId : 'all';
+    /* Sprint 32.5 — 아지트로 가까운 모임만 (없는 id 는 전체). */
+    const azitId = o.azitId && azitDef(o.azitId) ? o.azitId : 'all';
+    const azit = azitId === 'all' ? null : this.findAzit(azitId);
+    const azitMatch = (g) => {
+      if (azitId === 'all') return true;
+      const mine = this.getGroupAzit(g);
+      if (mine && mine.id === azitId) return true;
+      /* 아지트를 안 골랐던 옛 모임 — 같은 권역이면 그 아지트 모임으로 본다. */
+      return !mine && azit != null && this.getGroupRegionId(g) === azit.areaId;
+    };
     const regionArg = o.region || 'all';
     const regionId = regionArg === 'all' || regionArg === 'nearby'
       || isKnownRegion(regionArg) || isKnownRegionGroup(regionArg) ? regionArg : 'all';
@@ -5389,6 +5697,7 @@ class Store {
       const chip = this.getHobbyChip(g.hobbyId || g.category);
       if (categoryId !== 'all' && (!chip || chip.categoryId !== categoryId)) return false;
       if (hobbyId !== 'all' && g.hobbyId !== hobbyId) return false;
+      if (!azitMatch(g)) return false;
       if (!this.ageFilterAllowsGroup(age, g)) return false;
       if (!this.ageRangeAllowsGroup(g)) return false;
       if (!inRegion(this.getGroupRegionId(g))) return false;
@@ -5408,6 +5717,7 @@ class Store {
         distanceKm: this.getGroupDistanceKm(g),
         tone: this.getHobbyTone(g.hobbyId || g.category),
         hobbyName: chip ? chip.name : (g.categoryName || '취미'),
+        azit: this.getGroupAzit(g),
         score
       };
     });
@@ -5443,6 +5753,232 @@ class Store {
       { id: 'members', label: '인원순' },
       { id: 'name', label: '이름순' }
     ];
+  }
+
+  /* ==========================================================================
+   * Sprint 32.5 — '아지트' 로 모임 장소 고르기 · 아지트로 가까운 모임 찾기
+   * ------------------------------------------------------------------------
+   *  · 모임을 만들 때 자유 입력 대신 아지트(역·대학교·랜드마크·동네)를 고른다.
+   *  · 찾는 사람은 '내 아지트 근처' 칩으로 그 아지트 모임만 본다.
+   *  · 예전에 만든 모임(아지트 없음)은 지역으로 같은 권역에 묶는다 — 목록에서 사라지지 않게.
+   * ========================================================================== */
+
+  /** 아지트 종류 4가지(고르는 화면의 안내에 쓴다). */
+  getAzitKinds() {
+    return Object.keys(AZIT_KINDS).map((id) => ({ id, ...AZIT_KINDS[id] }));
+  }
+
+  /** 아지트 큰 분류 — 서울 12권역 + 경기·지방. 그 안에 아지트가 있는 곳만. */
+  getAzitAreas() {
+    return AZIT_AREAS.map((a) => {
+      const group = regionGroupDef(a.groupId);
+      return {
+        id: a.id,
+        name: a.name,
+        groupId: a.groupId,
+        groupName: group ? group.name : '지역',
+        count: AZIT_SPOTS.filter((s) => s.areaId === a.id).length
+      };
+    });
+  }
+
+  /**
+   * 아지트 목록 — 큰 분류·검색어로 좁힌다.
+   * @param {{areaId?:string, query?:string, limit?:number}} options
+   * @returns {Array} 아지트 표시 정보 + 내 동네 여부
+   */
+  getAzitSpots(options = {}) {
+    /* 같은 이름의 아지트가 둘 이상이면 앞의 하나만 보여준다(공개용 사본의 가명 치환 뒤에도 목록이 깔끔하게). */
+
+    const o = options || {};
+    const q = String(o.query || '').trim().toLowerCase();
+    /* 검색어가 있으면 권역을 넘어 전부에서 찾는다('성수'를 기본 권역 안에서만 뒤지지 않게). */
+    const areaId = (!q && o.areaId && o.areaId !== 'all') ? o.areaId : null;
+    const myRegion = this.currentUser.regionId || null;
+    const list = AZIT_SPOTS.filter((s) => {
+      if (areaId && s.areaId !== areaId) return false;
+      if (!q) return true;
+      const hay = [s.name, ...(s.aliases || []), azitView(s).areaName].join(' ').toLowerCase();
+      return hay.includes(q);
+    }).map((s) => ({
+      ...azitView(s),
+      isMyArea: !!myRegion && s.areaId === myRegion,
+      groupCount: (this.state.groups || []).filter((g) => {
+        const a = this.getGroupAzit(g);
+        return !!a && a.id === s.id;
+      }).length
+    }));
+    const seen = new Set();
+    const unique = list.filter((a) => {
+      if (seen.has(a.name)) return false;
+      seen.add(a.name);
+      return true;
+    });
+    const limit = o.limit == null ? unique.length : Math.max(1, Number(o.limit));
+    return unique.slice(0, limit);
+  }
+
+  /** 아지트 하나 찾기(모임 만들기·표시 공통). */
+  findAzit(azitId) {
+    return azitView(azitDef(azitId));
+  }
+
+  /** 내 동네의 첫 아지트 — '내 아지트' 기본값. 동네를 모르면 성수역. */
+  getMyAzit() {
+    const regionId = this.currentUser.regionId || null;
+    const spot = AZIT_SPOTS.find((s) => s.areaId === regionId)
+      || AZIT_SPOTS.find((s) => s.id === 'azit-sillim');
+    return azitView(spot);
+  }
+
+  /**
+   * 모임의 아지트 — 저장된 id → (옛 모임) 활동 지역 글에서 이름으로 찾기.
+   * 글에도 없으면 '온라인'·null.
+   */
+  getGroupAzit(group) {
+    if (!group) return null;
+    const direct = azitDef(group.azitId);
+    if (direct) return azitView(direct);
+    const hay = String(group.location || '').toLowerCase();
+    if (!hay) return null;
+    const hit = AZIT_SPOTS.find((s) => hay.includes(s.name.toLowerCase())
+      || (s.aliases || []).some((a) => a.length >= 2 && hay.includes(a.toLowerCase())));
+    return hit ? azitView(hit) : null;
+  }
+
+  /** 홈 '모임 찾기' 의 아지트 칩 — 내 동네 먼저, 그다음 모임이 있는 아지트. */
+  getAzitChips(limit = 8) {
+    const myRegion = this.currentUser.regionId || null;
+    const mine = this.getMyAzit();
+    const rows = AZIT_SPOTS.map((s) => {
+      const view = azitView(s);
+      const groupCount = (this.state.groups || []).filter((g) => {
+        const a = this.getGroupAzit(g);
+        return !!a && a.id === s.id;
+      }).length;
+      return { ...view, isMyArea: !!myRegion && s.areaId === myRegion, groupCount };
+    });
+    rows.sort((a, b) => ((b.isMyArea ? 1 : 0) - (a.isMyArea ? 1 : 0))
+      || (b.groupCount - a.groupCount)
+      || (a.id === mine.id ? -1 : 0) - (b.id === mine.id ? -1 : 0));
+    const seen = new Set();
+    return rows.filter((a) => {
+      if (seen.has(a.name)) return false;
+      seen.add(a.name);
+      return true;
+    }).slice(0, Math.max(1, limit));
+  }
+
+  /** 모임 대표 이미지로 쓸 기본 프리셋 8종 — 사진이 없을 때의 점토 타일(사진 라이브러리 아님). */
+  getCoverIconPresets() {
+    return [
+      { id: 'green-run', icon: 'run', tone: 'green', label: '러닝' },
+      { id: 'violet-game', icon: 'gamepad', tone: 'violet', label: '게임' },
+      { id: 'teal-book', icon: 'book', tone: 'teal', label: '독서' },
+      { id: 'amber-cup', icon: 'cup', tone: 'amber', label: '카페' },
+      { id: 'sky-mountain', icon: 'mountain', tone: 'sky', label: '산' },
+      { id: 'coral-music', icon: 'music', tone: 'coral', label: '음악' },
+      { id: 'mint-leaf', icon: 'leaf', tone: 'mint', label: '일상' },
+      { id: 'neutral-star', icon: 'sparkle', tone: 'neutral', label: '취미' }
+    ];
+  }
+
+  /** 프리셋 하나 */
+  getCoverIconPreset(presetId) {
+    return this.getCoverIconPresets().find((p) => p.id === presetId) || null;
+  }
+
+  /**
+   * 홈 '추천 일정' — **게스트 참여 가능**을 켠 일정만.
+   * 모임에 가입하지 않은 사람도 참석을 신청할 수 있다(모임장이 승인하는 승인제와는 별개).
+   */
+  getRecommendedEvents(options = {}) {
+    const o = options || {};
+    const limit = o.limit == null ? 4 : Math.max(1, Number(o.limit));
+    const joined = this.currentUser ? this.currentUser.joinedGroupIds || [] : [];
+    return (this.state.groupEvents || [])
+      .filter((e) => e && e.guestOpen === true)
+      .filter((e) => new Date(e.when).getTime() > Date.now() - 60 * 1000)
+      .map((e) => {
+        const grp = this.getGroup(e.groupId);
+        const chip = grp ? this.getHobbyChip(grp.hobbyId) : null;
+        return {
+          event: e,
+          group: grp,
+          groupName: grp ? grp.name : '모임',
+          hobbyName: chip ? chip.name : (grp ? grp.categoryName : '취미'),
+          tone: grp ? this.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
+          joined: grp ? joined.includes(grp.id) : false,
+          myRsvp: (e.rsvps || []).some((r) => r.memberId === this.currentUser.id && r.status === 'yes') ? 'yes' : null,
+          whenLabel: this.getGroupEventSummary(e.id).whenLabel
+        };
+      })
+      .sort((a, b) => new Date(a.event.when).getTime() - new Date(b.event.when).getTime())
+      .slice(0, limit);
+  }
+
+  /** 게스트 참석 신청 — 가입 없이, 게스트 참여를 켠 일정에만. */
+  requestGuestSeat(eventId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    if (ev.guestOpen !== true) return { ok: false, reason: 'guest_closed' };
+    if (new Date(ev.when).getTime() < Date.now()) return { ok: false, reason: 'past' };
+    const me = this.currentUser;
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const already = rsvps.find((r) => r.memberId === me.id && r.status === 'yes');
+    if (already) return { ok: true, already: true, eventId, summary: this.getGroupEventSummary(eventId) };
+    const capacity = Number(ev.capacity) || 0;
+    const yes = rsvps.filter((r) => r.status === 'yes').length;
+    if (capacity && yes >= capacity) return { ok: false, reason: 'full' };
+    ev.rsvps = rsvps.filter((r) => r.memberId !== me.id).concat({
+      memberId: me.id,
+      name: me.nickname,
+      avatarText: me.avatarText,
+      gradient: me.avatarGradient,
+      status: 'yes',
+      guest: true
+    });
+    this.saveState();
+    return { ok: true, guest: true, eventId, summary: this.getGroupEventSummary(eventId) };
+  }
+
+  /** 게스트 참석 취소 */
+  cancelGuestSeat(eventId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    const me = this.currentUser;
+    const before = (ev.rsvps || []).length;
+    ev.rsvps = (ev.rsvps || []).filter((r) => !(r.memberId === me.id && r.guest === true));
+    if (ev.rsvps.length === before) return { ok: false, reason: 'not_guest' };
+    this.saveState();
+    return { ok: true, eventId };
+  }
+
+  /**
+   * 홈 '추천 피드' — 글을 쓸 때 **추천 피드에 공개해도 된다**고 고른 글만.
+   * 모임 밖 사람도 보는 자리라 기본값은 꺼짐(false)이다.
+   */
+  getRecommendedFeed(options = {}) {
+    const o = options || {};
+    const limit = o.limit == null ? 6 : Math.max(1, Number(o.limit));
+    return (this.state.feedPosts || [])
+      .filter((p) => p && p.recommendOptIn === true)
+      .map((p) => {
+        const grp = this.getGroup(p.groupId);
+        return {
+          post: p,
+          group: grp,
+          groupName: grp ? grp.name : '모임',
+          azitName: grp ? (this.getGroupAzit(grp) || {}).name || '' : '',
+          hobbyName: grp ? grp.categoryName : '취미',
+          hobbyIcon: grp ? ((this.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle',
+          tone: grp ? this.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
+          score: (p.likes || 0) * 2 + (p.comments || []).length * 3
+        };
+      })
+      .sort((a, b) => (b.score - a.score)
+        || (new Date(b.post.createdAt).getTime() - new Date(a.post.createdAt).getTime()))
+      .slice(0, limit);
   }
 
   getExploreFeed(filter = 'all', query = '', options = null, ageFilter = 'all', region = 'all', radius = 'all') {
@@ -6338,22 +6874,33 @@ class Store {
     const mine = this.getTasteHobbyIds();
     const myCats = mine.map((id) => this.getHobbyTone(id));
     const joined = this.state.currentUser ? this.state.currentUser.joinedGroupIds || [] : [];
+    /* Sprint 32.5 — 아지트가 가까운 모임을 먼저 권한다(사생활 보호용 이름만 비교). */
+    const myAzit = this.getMyAzit();
     const scored = (this.state.groups || [])
       .filter((g) => !joined.includes(g.id))
       .map((g) => {
         const chip = this.getHobbyChip(g.hobbyId);
         const sameHobby = mine.includes(g.hobbyId);
         const sameTone = !!(chip && myCats.includes(chip.tone));
+        const azit = this.getGroupAzit(g);
+        const sameAzit = !!(azit && myAzit && azit.id === myAzit.id);
+        const sameArea = !!(azit && myAzit && azit.areaId === myAzit.areaId);
         let score = 0;
         if (sameHobby) score += 3;
         else if (sameTone) score += 1;
+        if (sameAzit) score += 2;
+        else if (sameArea) score += 1;
         score += Math.min(2, Math.floor((g.memberCount || 0) / 12));
         return {
           group: g,
           hobbyName: chip ? chip.name : (g.categoryName || '취미'),
           tone: this.getHobbyTone(g.hobbyId || g.category),
-          reason: sameHobby ? '내 취미와 같아요'
-            : (sameTone ? '같은 분야 취미예요' : '지금 활동 중이에요'),
+          azit,
+          reason: sameHobby && (sameAzit || sameArea) ? '내 취미 · 아지트가 가까워요'
+            : (sameAzit ? '내 아지트에서 만나요'
+              : (sameArea ? '같은 동네 아지트'
+                : (sameHobby ? '내 취미와 같아요'
+                  : (sameTone ? '같은 분야 취미예요' : '지금 활동 중이에요')))),
           score
         };
       });
@@ -6508,8 +7055,11 @@ class Store {
     if (name.length < 2 || name.length > 30) return { ok: false, reason: 'name' };
     const chip = this.getHobbyChip(d.hobbyId);
     if (!chip) return { ok: false, reason: 'hobby' };
+    /* Sprint 32.5 — 장소는 자유 입력 대신 '아지트'. 만들기 화면에서는 골라야 넘어가고,
+       경계(API)로 바로 들어온 요청은 내 동네 아지트를 기본으로 받는다. */
+    const azit = this.findAzit(d.azitId) || this.getMyAzit();
+    if (!azit) return { ok: false, reason: 'azit' };
     const user = this.state.currentUser;
-    const location = String(d.location || '').trim().slice(0, 24) || user.location;
     const meetLabel = String(d.meetLabel || '').trim().slice(0, 24) || '일정 조율 중';
     const description = String(d.description || '').trim().slice(0, 300)
       || `${chip.name} 좋아하는 사람들이 모여 가볍게 만나는 모임이에요.`;
@@ -6524,6 +7074,11 @@ class Store {
     const joinQuestions = joinMode === 'approval' && !asked.length
       ? ['취미 구력이나 선호 요일을 적어주세요!']
       : (joinMode === 'approval' ? asked : []);
+    /* Sprint 32.5 — 대표 이미지: 올린 사진(720px JPEG) 또는 기본 점토 프리셋. */
+    const rawPhoto = String(d.photoUrl || '').trim();
+    const photoUrl = /^https?:\/\//i.test(rawPhoto) || /^data:image\//i.test(rawPhoto) ? rawPhoto : null;
+    const preset = d.coverIconPresetId ? this.getCoverIconPreset(d.coverIconPresetId) : null;
+    const coverIcon = (preset && preset.icon) || chip.icon;
 
     const group = {
       id: `grp_new_${Date.now()}`,
@@ -6533,12 +7088,14 @@ class Store {
       hobbyId: chip.id,
       meetLabel,
       ratio: this.state.groups.length % 2 === 0 ? 'wide' : 'square',
-      icon: chip.icon,
+      icon: coverIcon,
       coverGradient: 'linear-gradient(135deg, #0E814A 0%, #0E8146 100%)',
-      location,
-      /* Sprint 7 — 모임 지역도 문장에서 해석해 저장한다(지역 탐색·필터의 기준). */
-      regionId: deriveRegionId(location) || user.regionId || 'gwanak',
-      distanceKm: 0.1,
+      /* 아지트 — 이름만 저장한다(집 주소·좌표 없음). */
+      azitId: azit.id,
+      azitName: azit.name,
+      location: azit.name.slice(0, 24),
+      regionId: azit.areaId,
+      distanceKm: azit.areaId === (user.regionId || '') ? 0.4 : 3.4,
       memberCount: 1,
       maxMembers: 30,
       privacyType,
@@ -6547,7 +7104,7 @@ class Store {
       ageLimit: ageLimitOption.id,
       joinQuestions,
       description,
-      tags: [`#${chip.name}`, `#${location.replace(/\s+/g, '')}`],
+      tags: [`#${chip.name}`, `#${azit.name.replace(/\s+/g, '')}`],
       rules: '서로의 취미와 시간을 존중합니다. 모임 사진은 멤버에게만 공유해요.',
       leaderId: user.id,
       leaderName: user.nickname,
@@ -6555,6 +7112,8 @@ class Store {
       joinPolicy: [meetLabel],
       members: [],
       isMine: true,
+      photoUrl,
+      ...(preset ? { coverIconPreset: { id: preset.id, icon: preset.icon, tone: preset.tone } } : {}),
       createdAt: new Date().toISOString()
     };
 
@@ -8627,6 +9186,8 @@ class Store {
       place: String(payload.place == null ? '' : payload.place).trim().slice(0, 40),
       note: String(payload.note == null ? '' : payload.note).trim().slice(0, 140),
       capacity,
+      /* Sprint 32.5 — 게스트 참여 가능. 켜 두면 모임 밖 사람도 홈 '추천 일정'에서 참석을 신청한다. */
+      guestOpen: payload.guestOpen === true,
       createdBy: me.id,
       createdByName: me.nickname,
       createdAt: new Date().toISOString(),
@@ -8635,6 +9196,28 @@ class Store {
     this.state.groupEvents.push(event);
     this.saveState();
     return { ok: true, event, summary: this.getGroupEventSummary(event.id) };
+  }
+
+  /** 일정 수정 — 만든 사람만. 게스트 참여 가능 여부도 여기서 바꿔진다. */
+  updateGroupEvent(eventId, payload = {}) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    if (ev.createdBy !== this.currentUser.id) return { ok: false, reason: 'permission' };
+    const title = String(payload.title == null ? ev.title : payload.title).trim();
+    if (title.length < 2) return { ok: false, reason: 'title_short' };
+    if (title.length > 30) return { ok: false, reason: 'title_long' };
+    const kind = GROUP_EVENT_KINDS.some((k) => k.id === payload.kind) ? payload.kind : ev.kind;
+    const when = new Date(payload.when || ev.when);
+    if (Number.isNaN(when.getTime())) return { ok: false, reason: 'bad_when' };
+    ev.title = title;
+    ev.kind = kind;
+    ev.when = when.toISOString();
+    if (payload.place != null) ev.place = String(payload.place).trim().slice(0, 40);
+    if (payload.note != null) ev.note = String(payload.note).trim().slice(0, 140);
+    if (payload.capacity != null) ev.capacity = Math.min(50, Math.max(2, Number(payload.capacity) || 12));
+    if (payload.guestOpen != null) ev.guestOpen = payload.guestOpen === true;
+    this.saveState();
+    return { ok: true, event: ev, summary: this.getGroupEventSummary(ev.id) };
   }
 
   /* ------------------------------------------------------ 14-4. 전체 멤버 */
@@ -9008,6 +9591,47 @@ class Store {
    * 나열되고, 모임을 탭해서 들어가면 그 모임 전용 공간으로 전환".
    * 갤러리 카드 하나에 필요한 것만 한 번에 모아 준다(모임·표지·사진·스토리·약속).
    * ======================================================================== */
+  /* ==========================================================================
+   * Sprint 32.5 — 내 그룹 빨간 점(새 소식) · 모임을 열어 본 시각
+   * ------------------------------------------------------------------------
+   *  · '내 그룹' 원형 아이콘 위의 점은 **마지막으로 방문한 뒤** 새 글·스토리·
+   *    일정·채팅이 생겼을 때만 붙는다(네이버 카페 '내 카페' 의 빨간 점과 같은 뜻).
+   *  · 한 번도 들어가지 않은 모임은 소식이 있으면 점이 붙는다.
+   * ========================================================================== */
+  markGroupVisited(groupId) {
+    if (!groupId) return { ok: false };
+    if (!this.state.groupVisits || typeof this.state.groupVisits !== 'object') this.state.groupVisits = {};
+    this.state.groupVisits[groupId] = new Date().toISOString();
+    this.saveState();
+    return { ok: true, at: this.state.groupVisits[groupId] };
+  }
+
+  /** 그 모임의 가장 최근 소식 시각(글·스토리·일정·단체 채팅). */
+  getGroupActivityAt(groupId) {
+    let latest = 0;
+    const bump = (iso) => {
+      const t = iso ? new Date(iso).getTime() : 0;
+      if (Number.isFinite(t) && t > latest) latest = t;
+    };
+    (this.state.feedPosts || []).filter((p) => p.groupId === groupId).forEach((p) => bump(p.createdAt));
+    (this.state.stories || []).filter((s) => s.groupId === groupId).forEach((s) => bump(s.createdAt));
+    /* 일정은 '만든 시각'만 센다 — 일정 날짜(when)는 미래라 소식 시각이 아니다. */
+    (this.state.groupEvents || []).filter((e) => e.groupId === groupId).forEach((e) => bump(e.createdAt));
+    (this.state.groupNotices || []).filter((n) => n.groupId === groupId).forEach((n) => bump(n.at || n.createdAt));
+    const chat = (this.state.groupChats || []).find((c) => c.groupId === groupId);
+    if (chat) (chat.messages || []).forEach((m) => bump(m.at || m.createdAt));
+    return latest ? new Date(latest).toISOString() : null;
+  }
+
+  /** 빨간 점을 붙일지 — 방문 뒤 새 소식이 있을 때(방문 전이면 소식이 있으면). */
+  getGroupUpdateDot(groupId) {
+    const at = this.getGroupActivityAt(groupId);
+    if (!at) return false;
+    const visited = (this.state.groupVisits || {})[groupId];
+    if (!visited) return true;
+    return new Date(at).getTime() > new Date(visited).getTime();
+  }
+
   getGroupGallery(options = {}) {
     const sort = options.sort || this.getGallerySort();
     const items = this.getJoinedGroups().map((group) => {
@@ -9045,6 +9669,9 @@ class Store {
         activityAt,
         coverPhotos: cover ? cover.photos : [],
         coverCustom: !!(cover && cover.custom),
+        coverIconPreset: group.coverIconPreset || null,
+        azit: this.getGroupAzit(group),
+        updateDot: this.getGroupUpdateDot(group.id),
         isLeader: this.isGroupLeader(group.id)
       };
     });
@@ -10223,9 +10850,12 @@ class Store {
     if (!group) return null;
     const photos = this.getGroupPhotoPosts(groupId).filter((p) => p.photoUrl);
     const custom = Array.isArray(group.coverPhotos) ? group.coverPhotos.filter(Boolean) : [];
+    /* Sprint 32.5 — 만들 때 고른 대표 사진이 있으면 가장 먼저 보여준다. */
+    const own = group.photoUrl ? [group.photoUrl] : [];
     return {
       groupId,
-      photos: custom.length ? custom.slice(0, 2) : photos.slice(0, 2).map((p) => p.photoUrl),
+      photos: custom.length ? custom.slice(0, 2)
+        : (own.concat(photos.map((p) => p.photoUrl))).filter((u, i, arr) => arr.indexOf(u) === i).slice(0, 2),
       custom: custom.length > 0,
       gradient: group.coverGradient || 'linear-gradient(135deg,#0E814A,#0E8146)',
       /* 고를 수 있는 사진 — 이 모임에 올라온 실제 사진들 */
