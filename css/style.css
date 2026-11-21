@@ -24108,10 +24108,10 @@ button.caption-author::after {
 /* 사진 자리에 그라디언트가 깔리는 큰 이니셜도 같은 잉크(배경이 밝아졌으므로). */
 .detail-photo-initial { color: var(--avatar-ink); }
 
-/* 짝의 어두운 면(진한 네이비)과 내 면(진한 초록 그라디언트)은 지금처럼 흰 글자. */
-.match-avatar,
-.match-avatar.me,
-.match-avatar.them { color: #FFFFFF; }
+/* MATCH 팝업의 두 아바타 — 내 면은 진한 초록 그라디언트라 흰 글자,
+   짝의 면은 그 사람의 **밝은** 아바타 그라디언트라 잉크 글자(Sprint 33). */
+.match-avatar.me { color: #FFFFFF; background-color: #047857; }  /* 다크에서도 흰 글자 — 고정 진한 초록 */
+.match-avatar.them { color: var(--avatar-ink); background-color: #E8EDF3; }
 
 /* 사진 없는 내 큰 아바타는 **중립 면**(라이트 #F7F8FA · 다크 #1B222B)이라 잉크를 쓰지 않는다 —
    두 테마 모두 보조 글자색(라이트 #4B5563 · 다크 밝은 회색)이 이미 4.5:1 을 넘긴다. */
