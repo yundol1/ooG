@@ -11,7 +11,7 @@
  *  · index.html 을 직접 열었다면(file://) Service Worker 는 등록되지 않는다 — 그때도 앱은 그대로 동작한다.
  * ========================================================================== */
 
-const CACHE_VERSION = 'oog-shell-v33-2';
+const CACHE_VERSION = 'oog-shell-v33-3';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -28,7 +28,16 @@ const SHELL_ASSETS = [
   './icons/icon-180.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/icon-maskable-512.png'
+  './icons/icon-maskable-512.png',
+  /* v33.3 — 예시 사진 8장(예시 모임 대표 이미지·피드 사진). 오프라인에서도 같은 화면이 뜨게 담아 둔다. */
+  './assets/examples/example-dogs-walk.jpg',
+  './assets/examples/example-dog-face.jpg',
+  './assets/examples/example-group-character.jpg',
+  './assets/examples/example-game-screen.jpg',
+  './assets/examples/example-gym-mirror.jpg',
+  './assets/examples/example-bbq-grill.jpg',
+  './assets/examples/example-summit-view.jpg',
+  './assets/examples/example-parade-day.jpg'
 ];
 
 /* ---------------------------------------------------------------- 설치 */

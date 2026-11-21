@@ -4078,13 +4078,41 @@ function stripAllContent(state) {
  *    동네 글 4 · 1:1 대화 2 · 공지·일정·단체방).
  *  · 예시는 모두 `sample: true` 로 표시해 한 번에 걷어낼 수 있다
  *    (설정 › 데이터 관리 › 예시 데이터 비우기).
- *  · 사람·동네는 가상의 가명이고 사진은 쓰지 않는다(Sprint 18 예시 이미지 금지 유지).
+ *  · 사람·동네는 가상의 가명이다.
+ *  · v33.3(11/22) — 예시 모임 대표 이미지 · 예시 피드 글 사진으로 **실제 사진 8장**을 쓴다.
+ *    사용자가 보낸 사진을 EXIF(위치·기기) 없이 4:3 · 긴 변 960px 로 다시 저장한 것이라
+ *    사진 자체에는 개인 정보가 남지 않는다(tools/prepare_example_images.py).
  *  · `#demo` 시드(예전 데모 계정)와는 id 접두사(sample_)로 분리해 서로 덮지 않는다.
  * ========================================================================== */
-const SAMPLE_DATA_VERSION = 2;
+const SAMPLE_DATA_VERSION = 3;
 const SAMPLE_FALLBACK_REGION = 'seoul-seongdong-gwangjin';
 /* 예시 중 **내가 가입한 모임** 두 곳 — 나머지 셋은 둘러보기용이다. */
 const SAMPLE_JOINED_GROUP_IDS = ['sample_grp_run', 'sample_grp_board'];
+
+/**
+ * v33.3 — 예시 사진 8장(assets/examples, 4:3 960px · EXIF 없음).
+ *  · 단일 HTML 번들(file://)에서는 build_bundle.py 가 이 경로들을 data URI 로 바꿔 넣는다.
+ *  · 공개 사본(deploy/oog-site)에는 assets/ 가 그대로 복사된다.
+ */
+const EXAMPLE_PHOTOS = {
+  dogsWalk: 'assets/examples/example-dogs-walk.jpg',           /* 아침 산책 · 강아지 두 마리 */
+  dogFace: 'assets/examples/example-dog-face.jpg',             /* 강아지 얼굴 */
+  groupCharacter: 'assets/examples/example-group-character.jpg', /* 손그림 캐릭터 */
+  gameScreen: 'assets/examples/example-game-screen.jpg',       /* 게임 화면 */
+  gymMirror: 'assets/examples/example-gym-mirror.jpg',         /* 운동(거울 셀카) */
+  bbqGrill: 'assets/examples/example-bbq-grill.jpg',           /* 고기 굽는 자리 */
+  summitView: 'assets/examples/example-summit-view.jpg',       /* 산 정상 풍경 */
+  paradeDay: 'assets/examples/example-parade-day.jpg'          /* 거리 축제 */
+};
+
+/** 모임 id → 예시 대표 이미지 (마이그레이션과 시드가 같은 표를 쓴다). */
+const EXAMPLE_GROUP_COVERS = {
+  sample_grp_run: EXAMPLE_PHOTOS.dogsWalk,
+  sample_grp_board: EXAMPLE_PHOTOS.groupCharacter,
+  sample_grp_climb: EXAMPLE_PHOTOS.gymMirror,
+  sample_grp_cafe: EXAMPLE_PHOTOS.bbqGrill,
+  sample_grp_hike: EXAMPLE_PHOTOS.summitView
+};
 
 /** 가상의 예시 이웃 4명 — 이름·나이·동네 모두 지어낸 값이다. */
 function samplePeople(regionId) {
@@ -4200,6 +4228,11 @@ function sampleGroups(regionId, areaId) {
     'neutral-star': { id: 'neutral-star', icon: 'sparkle', tone: 'neutral' }
   };
   const presetOf = (id) => PRESETS[id] || PRESETS['neutral-star'];
+  /* v33.3 — 예시 모임 대표 이미지(사진이 있으면 기본 프리셋 그림보다 사진이 먼저 보인다). */
+  const exampleCover = (id) => {
+    const url = EXAMPLE_GROUP_COVERS[id];
+    return url ? { photoUrl: url, coverCircle: url, coverImage: { circle: url, card: url } } : {};
+  };
   const base = {
     location: area, regionId, sample: true, ageLimit: 'all', joinMode: 'approval',
     deputyIds: [], dmEnabled: true, deputyCanModerate: false, members: [],
@@ -4210,6 +4243,7 @@ function sampleGroups(regionId, areaId) {
     {
       ...base,
       ...azitOf(0),
+      ...exampleCover('sample_grp_run'),
       id: 'sample_grp_run', name: '토요일 아침 동네 러닝팟', category: 'run', categoryName: '러닝',
       hobbyId: 'run', meetLabel: '토 08:00 · 5K', ratio: 'wide', icon: 'run',
       coverIconPreset: presetOf('green-run'),
@@ -4228,6 +4262,7 @@ function sampleGroups(regionId, areaId) {
     {
       ...base,
       ...azitOf(1, 2),
+      ...exampleCover('sample_grp_board'),
       coverIconPreset: presetOf('violet-game'),
       id: 'sample_grp_board', name: '동네 보드게임 한 판', category: 'boardgame', categoryName: '보드게임',
       hobbyId: 'boardgame', meetLabel: '토·일 15:00', ratio: 'square', icon: 'dice',
@@ -4246,6 +4281,7 @@ function sampleGroups(regionId, areaId) {
     {
       ...base,
       ...azitOf(2),
+      ...exampleCover('sample_grp_climb'),
       coverIconPreset: presetOf('neutral-star'),
       id: 'sample_grp_climb', name: '퇴근 후 볼더링 같이', category: 'climb', categoryName: '클라이밍',
       hobbyId: 'climb', meetLabel: '평일 20:00', ratio: 'wide', icon: 'climb',
@@ -4260,6 +4296,7 @@ function sampleGroups(regionId, areaId) {
     {
       ...base,
       ...azitOf(4),
+      ...exampleCover('sample_grp_cafe'),
       coverIconPreset: presetOf('amber-cup'),
       id: 'sample_grp_cafe', name: '주말 카페 한 곳씩', category: 'cafe', categoryName: '카페/맛집',
       hobbyId: 'cafe', meetLabel: '일 11:00', ratio: 'square', icon: 'cup',
@@ -4274,6 +4311,7 @@ function sampleGroups(regionId, areaId) {
     {
       ...base,
       ...azitOf(3, 2),
+      ...exampleCover('sample_grp_hike'),
       coverIconPreset: presetOf('sky-mountain'),
       id: 'sample_grp_hike', name: '일요 아침 가까운 산', category: 'hike', categoryName: '등산·트레킹',
       hobbyId: 'hike', meetLabel: '일 08:00', ratio: 'square', icon: 'mountain',
@@ -4294,8 +4332,9 @@ function sampleFeedPosts() {
     {
       id: 'sample_post_run_1', groupId: 'sample_grp_run', authorId: 'sample_p_mora',
       authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #0B7CAF 0%, #0369A1 100%)',
-      tag: '오운완', caption: '오늘 아침 5K 완주. 어제보다 20초 빨랐습니다. 다음 주 토요일도 같은 시간에 출발해요.',
-      mediaCaption: '', likes: 6, likedByMe: false, bookmarkedByMe: false,
+      tag: '오운완', caption: '오늘 아침 5K 완주. 어제보다 20초 빨랐습니다. 같이 나온 강아지도 신나서 앞장섰네요. 다음 주 토요일도 같은 시간에 출발해요.',
+      photoUrl: EXAMPLE_PHOTOS.dogFace, mediaCaption: '같이 뛴 강아지',
+      likes: 6, likedByMe: false, bookmarkedByMe: false,
       comments: [
         { id: 'sample_c_run_1', authorId: 'sample_p_danchu', authorName: '단추', text: '이번 주는 저도 나가볼게요', createdAt: ago(3 * HOUR) }
       ],
@@ -4313,7 +4352,8 @@ function sampleFeedPosts() {
       id: 'sample_post_board_1', groupId: 'sample_grp_board', authorId: 'sample_p_danchu',
       authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)',
       tag: '게임후기', caption: '오늘 3인 전략게임 한 판. 처음 하신 분이 마지막에 1등 했습니다. 설명이 통했네요.',
-      mediaCaption: '', likes: 5, likedByMe: false, bookmarkedByMe: false,
+      photoUrl: EXAMPLE_PHOTOS.gameScreen, mediaCaption: '마지막 판',
+      likes: 5, likedByMe: false, bookmarkedByMe: false,
       comments: [
         { id: 'sample_c_board_1', authorId: 'sample_p_choko', authorName: '초코', text: '다음엔 저도 끼워주세요', createdAt: ago(20 * HOUR) }
       ],
@@ -4373,6 +4413,52 @@ function upgradeSampleData(state) {
   if (!hasHike && hasHikeGroup) {
     state.groupEvents = (state.groupEvents || []).concat(sampleGroupEvents().filter((e) => e.id === 'sample_evt_hike'));
   }
+  return state;
+}
+
+/**
+ * v33.3 — 예전에 저장된 예시 데이터(v2)에 **예시 사진 8장**을 붙인다.
+ *  · 이미 사진이 있는 모임·글은 건드리지 않는다(내가 올린 사진을 덮지 않는다).
+ *  · 예시 글 sample_ex_3 은 사진에 맞춰 '거리 축제 · 사진' 글로 바뀌었다(예시 글이라 함께 맞춘다).
+ */
+function upgradeSampleImages(state) {
+  if (!state) return state;
+  (state.groups || []).forEach((g) => {
+    if (!g || g.sample !== true) return;
+    const url = EXAMPLE_GROUP_COVERS[g.id];
+    if (!url) return;
+    if (!g.photoUrl) g.photoUrl = url;
+    if (!g.coverCircle) g.coverCircle = url;
+    if (!g.coverImage || (!g.coverImage.card && !g.coverImage.circle)) {
+      g.coverImage = { circle: url, card: url };
+    }
+  });
+  const postFix = {
+    sample_post_run_1: {
+      photoUrl: EXAMPLE_PHOTOS.dogFace, mediaCaption: '같이 뛴 강아지',
+      caption: '오늘 아침 5K 완주. 어제보다 20초 빨랐습니다. 같이 나온 강아지도 신나서 앞장섰네요. 다음 주 토요일도 같은 시간에 출발해요.'
+    },
+    sample_post_board_1: { photoUrl: EXAMPLE_PHOTOS.gameScreen, mediaCaption: '마지막 판' }
+  };
+  (state.feedPosts || []).forEach((p) => {
+    if (!p || p.sample !== true) return;
+    const fix = postFix[p.id];
+    if (!fix) return;
+    if (!p.photoUrl) {
+      p.photoUrl = fix.photoUrl;
+      p.mediaCaption = p.mediaCaption || fix.mediaCaption;
+    }
+    if (fix.caption) p.caption = fix.caption;
+  });
+  (state.explorePosts || []).forEach((p) => {
+    if (!p || p.sample !== true || p.id !== 'sample_ex_3' || p.photoUrl) return;
+    p.photoUrl = EXAMPLE_PHOTOS.paradeDay;
+    p.mediaCaption = p.mediaCaption || '주말 거리 풍경';
+    p.hobbyId = 'photo';
+    p.hobbyLabel = '사진';
+    p.caption = '주말 거리 축제 사진 찍으러 같이 가실 분. 사람 많은 시간은 피해 낮에 천천히 돌아요.';
+    p.groupName = `${p.location || '우리 동네'} 사진`;
+  });
   return state;
 }
 
@@ -4502,10 +4588,12 @@ function sampleExplorePosts(regionId) {
       likes: 5, comments: [], createdAt: ago(4 * HOUR)
     },
     {
+      /* v33.3 — 거리 축제 사진(예시 사진 8장 중 하나)을 쓴 동네 글. 1:1 디엠 답장 유도 샘플은 그대로. */
       id: 'sample_ex_3', authorId: 'sample_p_danchu', authorName: '단추', authorAvatarText: '단',
-      authorGradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)', hobbyId: 'boardgame', hobbyLabel: '보드게임',
+      authorGradient: 'linear-gradient(135deg, #8452F5 0%, #4C1D95 100%)', hobbyId: 'photo', hobbyLabel: '사진',
       ...style('dm'), tag: '1:1',
-      caption: '주말에 보드게임 같이 하실 분. 처음이어도 설명해드려요.',
+      caption: '주말 거리 축제 사진 찍으러 같이 가실 분. 사람 많은 시간은 피해 낮에 천천히 돌아요.',
+      photoUrl: EXAMPLE_PHOTOS.paradeDay, mediaCaption: '주말 거리 풍경',
       likes: 3, comments: [], createdAt: ago(9 * HOUR)
     },
     {
@@ -4518,7 +4606,7 @@ function sampleExplorePosts(regionId) {
   ];
   return rows.map((row, i) => ({
     ...row, sample: true, regionId, location: area, groupName: `${area} ${row.hobbyLabel}`,
-    mediaCaption: '', ratio: ['wide', 'square'][i % 2], likedByMe: false,
+    mediaCaption: row.mediaCaption || '', photoUrl: row.photoUrl || null, ratio: ['wide', 'square'][i % 2], likedByMe: false,
     comments: (row.comments || []).map((c) => ({ ...c, createdAt: c.createdAt }))
   }));
 }
@@ -4979,6 +5067,7 @@ class Store {
       if (merged.sampleData && merged.sampleData.seeded === true
         && Number(merged.sampleData.version || 1) < SAMPLE_DATA_VERSION) {
         upgradeSampleData(merged);
+        upgradeSampleImages(merged);
       }
       /* H2 — 저장된 모임에 아지트·지역·기본값이 없으면(옛 상태) 조용히 채운다. */
       upgradeGroupGeo(merged);

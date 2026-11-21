@@ -569,8 +569,8 @@ img, svg { display: block; }
 /* 카테고리 칩 */
 .category-scroll-container {
   overflow-x: auto;
-  margin: 0 -16px 16px;
-  padding: 2px 16px;
+  margin: 0 calc(-1 * var(--gutter-x)) 16px;
+  padding: 2px var(--gutter-x);
   scrollbar-width: none;
   /* 오른쪽 끝이 자연스럽게 사라지도록 (가로 스크롤 안내) */
   mask-image: linear-gradient(to right, #000 94%, transparent 100%);
@@ -9197,17 +9197,18 @@ body {
 
 /* ---------------------------------------- 14-1. 내 모임 스위처 */
 .home-switcher-wrap {
-  margin: -2px -16px 11px;
+  margin: -2px calc(-1 * var(--gutter-x)) 11px;
   overflow: hidden;
 }
 
 .home-switcher {
   display: flex;
   gap: 7px;
-  padding: 2px 16px 3px;
+  padding: 2px var(--gutter-x) 3px;
   overflow-x: auto;
   scrollbar-width: none;
   scroll-behavior: smooth;
+  touch-action: pan-x;
 }
 
 .home-switcher::-webkit-scrollbar { display: none; }
@@ -10354,11 +10355,11 @@ body {
  *  15-5 공지 시트 · 일정 상세 · 스위치 토글
  * ======================================================================== */
 
-/* 좁은 화면(≤380px)에서는 탭 여백이 12px 이므로, 가장자리까지 붙는 스트립도 같은 폭만큼만 나간다.
-   (반응형 규칙보다 뒤에 두어야 이긴다 — .home-switcher-wrap 은 파일 뒤쪽에서 정의된다.) */
+/* 좁은 화면(≤380px)에서도 탭 여백은 --gutter-x 한 값이다(32-4 부터 14px).
+   가장자리까지 붙는 스트립은 같은 폭만큼만 나간다. */
 @media (max-width: 380px) {
-  .home-switcher-wrap { margin: -2px -12px 11px; }
-  .home-pinned { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; }
+  .home-switcher-wrap { margin: -2px calc(-1 * var(--gutter-x)) 11px; }
+  .home-pinned { margin-left: calc(-1 * var(--gutter-x)); margin-right: calc(-1 * var(--gutter-x)); padding-left: var(--gutter-x); padding-right: var(--gutter-x); }
 }
 
 /* ---------------------------------------- 15-1. 상단 고정 영역 */
@@ -11200,7 +11201,7 @@ body.group-mode #bottom-nav { display: none; }
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: -16px -16px 10px;
+  margin: -16px calc(-1 * var(--gutter-x)) 10px;
   padding: 9px 12px;
   background: var(--bg-glass);
   backdrop-filter: blur(12px) saturate(160%);
@@ -11258,7 +11259,7 @@ body.group-mode #bottom-nav { display: none; }
 
 /* ---------- 16-3. 인스타그램형 24시간 스토리 ---------- */
 .story-bar {
-  margin: 0 -16px 8px;
+  margin: 0 calc(-1 * var(--gutter-x)) 8px;
   padding: 4px 0 2px;
   border-bottom: 1px solid var(--border-soft);
 }
@@ -11266,9 +11267,10 @@ body.group-mode #bottom-nav { display: none; }
 .story-rail {
   display: flex;
   gap: 12px;
-  padding: 6px 16px 8px;
+  padding: 6px var(--gutter-x) 8px;
   overflow-x: auto;
   scrollbar-width: none;
+  touch-action: pan-x;
 }
 
 .story-rail::-webkit-scrollbar { display: none; }
@@ -16478,6 +16480,10 @@ body.is-album-viewing { overflow: hidden; }
   --sp-6: 24px;
   --sp-7: 32px;
   --sp-8: 40px;
+  /* v33.3 — 탭 화면 좌우 여백. 화면 끝까지 붙는 요소(스위처·스토리 바·모임 상단바)는
+     이 값만큼만 음수 여백을 쓴다. 32-4 에서 14px 로 바뀐 뒤 -16px 가 남아
+     모임 공간이 좌우로 2px 씩 넘쳤다(11/22 사용자 제보: 화면이 옆으로 끌린다). */
+  --gutter-x: 14px;
 
   /* 라운드 */
   --r-1: 8px;
@@ -23289,3 +23295,57 @@ body.subscreen-open { overflow: hidden; }
 }
 :root[data-theme="dark"] .toast.warning { background: rgba(146, 64, 14, 0.84); }
 :root[data-theme="dark"] .toast.info { background: rgba(44, 52, 64, 0.84); }
+
+/* ==========================================================================
+   v33.3 — 모임 공간 좌우 흔들림 금지 (11/22 00:03 사용자 제보)
+   --------------------------------------------------------------------------
+   증상: 모임(#group-space)에 들어가면 화면이 390px 에 고정되지 않고 터치할 때마다
+         통째로 양옆으로 끌리며 뒤로가기(<)·배너 왼쪽이 잘렸다.
+   원인: ① 탭 화면 좌우 여백은 14px 인데, 화면 끝까지 붙는 요소들이 -16px 음수 여백을
+            써서 #group-space 안쪽이 2px 씩 넘쳤다(scrollWidth 378 > clientWidth 362).
+         ② .app-main 은 overflow-y:auto 라서 overflow-x 가 auto 로 계산된다 →
+            넘친 2px 만큼 페이지 전체를 가로로 끌 수 있었다(iOS 에서 크게 흔들린다).
+   처방: ① 화면 끝까지 붙는 여백은 전부 --gutter-x 하나로 맞춘다.
+         ② 스크롤 상자에서 가로 넘침을 아예 자른다(overflow-x: clip 은 스크롤 상자를
+            새로 만들지 않아 sticky·세로 스크롤을 건드리지 않는다).
+         ③ 가로 팬이 남지 않도록 overscroll-behavior-x: none.
+   ========================================================================== */
+html,
+body {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
+.app-main {
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+}
+
+/* 탭 화면과 그 안의 상자는 자기 폭을 넘지 않는다(자식이 넓어도 부모가 늘어나지 않게). */
+.tab-view,
+.tab-view > section,
+#group-space,
+.group-space {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* 모임 공간은 탭 화면의 좌우 여백을 스스로 갖는다 —
+   안쪽 카드가 화면 끝까지 붙는 음수 여백(-gutter)을 써도 상자 밖으로 넘치지 않는다.
+   (상자 폭 = 화면 폭, 내용 폭 = 화면 폭 - 2*gutter → 넘침 0) */
+#group-space,
+.group-space {
+  width: calc(100% + 2 * var(--gutter-x));
+  max-width: none;
+  margin-left: calc(-1 * var(--gutter-x));
+  margin-right: calc(-1 * var(--gutter-x));
+  padding-left: var(--gutter-x);
+  padding-right: var(--gutter-x);
+  overflow-x: clip;
+}
+
+/* 모임 안에서 가로로 넘치는 사진·영상이 생겨도 화면을 밀지 않는다. */
+.group-space img,
+.group-space video {
+  max-width: 100%;
+}
