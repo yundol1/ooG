@@ -23581,7 +23581,7 @@ button.comment-author::after {
 .ig-avatar-person { width: 38px; height: 38px; border: 0; padding: 0; color: #FFFFFF; cursor: pointer; }
 button.ig-author { font-size: var(--fs-small); font-weight: var(--fw-display); color: var(--text-strong); }
 .ig-subline { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.ig-subline .ig-group { flex: 0 1 auto; font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-sub); }
+.ig-subline .ig-group { flex: 0 1 auto; font-size: var(--fs-small); font-weight: var(--fw-meta); color: var(--text-sub); }
 .ig-subline .ig-place { flex: 0 1 auto; }
 button.ig-caption-author { font-size: inherit; font-weight: var(--fw-display); color: var(--text-strong); }
 .ig-act-num {
@@ -23624,6 +23624,9 @@ button.ig-comment-name { font-size: var(--fs-caption); font-weight: var(--fw-dis
 .ig-comment-text { flex: 1 1 auto; min-width: 0; font-weight: var(--fw-meta); }
 /* 11px 캡션은 600 이상(가독 규칙) — 댓글·'댓글 달기'도 예외가 아니다. */
 .ig-comment-text, .ig-add-comment { font-weight: 600; }
+/* Sprint 33 — 피드가 첫 화면부터 차면서 11px '읽는 문장'(모임명·댓글)이 드러났다.
+   11px 는 배지·캡션 자리로 두고, 읽는 글자는 12px 로 올린다. */
+.ig-comment-text, .ig-subline .ig-group { font-size: var(--fs-small); }
 
 /* (7) 추천 피드 댓글 시트 — 아바타 + 이름 + 문장 */
 .feed-comment-row {
@@ -24300,7 +24303,7 @@ button.caption-author::after {
   color: var(--text-strong);
 }
 .feed-rail-sub {
-  font-size: var(--fs-caption);
+  font-size: var(--fs-small);
   color: var(--text-muted);
   font-weight: var(--fw-meta);
 }
@@ -24350,7 +24353,7 @@ button.caption-author::after {
   cursor: pointer;
 }
 .feed-rail-event-when {
-  font-size: var(--fs-caption);
+  font-size: var(--fs-small);
   font-weight: var(--fw-label);
   color: var(--green-text);
 }
@@ -24365,7 +24368,7 @@ button.caption-author::after {
   overflow: hidden;
 }
 .feed-rail-event-meta {
-  font-size: var(--fs-caption);
+  font-size: var(--fs-small);
   font-weight: var(--fw-meta);
   color: var(--text-muted);
   overflow: hidden;
