@@ -1455,6 +1455,10 @@ const HOBBY_TAXONOMY = [
       { id: 'bike', name: '자전거', icon: 'bike' },
       { id: 'golf', name: '골프', icon: 'golf' },
       { id: 'bowling', name: '볼링', icon: 'bowling' },
+      /* v33.5 — 11/22 01:02 루키 님: "이름이나 설명에 영화나 당구, 롤, 하스스톤 같은 게
+         언급되면 다음에 자동 추천" — 당구는 목록에 없어 운동·스포츠의 '볼링'으로 밀리던 것을
+         제 취미로 세웠다(당구·포켓볼). */
+      { id: 'billiards', name: '당구·포켓볼', icon: 'circleDot' },
       { id: 'ski', name: '스키·보드', icon: 'ski' }
     ]
   },
@@ -1537,6 +1541,137 @@ const HOBBY_FLAT = HOBBY_TAXONOMY.reduce((list, cat) => list.concat(
     categoryName: cat.name, tone: cat.tone, core: h.core === true
   }))
 ), []);
+
+/* ============================================================================
+ * v33.5 — 이름·한 줄 소개에서 취미를 찾는다 (2단계 자동 추천)
+ * ----------------------------------------------------------------------------
+ * 11/22 01:02 루키 님: "모임 이름이나 설명에 영화나 당구, 롤, 하스스톤 이런 것처럼
+ * 언급이 되면 다음 눌렀을 때 카테고리에 자동으로 추천되는 카테고리로 해줄 수 있어?"
+ *
+ *  · 기획: **글자 그대로 찾는다.** 형태소 분석기 없이, 사용자가 실제로 쓰는 말
+ *    (롤·하스스톤·당구·넷플릭스·크로스핏 …)을 취미마다 모아 두고 부분 문자열로 본다.
+ *  · 한국어는 조사가 붙어('롤을', '당구치러') 띄어쓰기로 자를 수 없으므로 부분 일치가 기본이다.
+ *    대신 짧은 말('롤' ← 컨트롤, '술' ← 기술·미술, '마크' ← 북마크)은
+ *    SUGGEST_BLOCKERS 로 **오해할 말을 지운 사본**에서 다시 찾는다.
+ *  · 고르는 법: **긴 말이 이긴다**(보드게임 > 게임 · 스크린골프 > 골프), 같으면 **앞에 나온 말**.
+ *  · 세부 취미가 아니라 대분류만 걸리는 말('여행', '운동')은 대분류만 추천한다(세부는 이용자가 고른다).
+ * ========================================================================== */
+const HOBBY_SUGGEST_RULES = [
+  /* ---- 운동·스포츠 ---- */
+  { hobbyId: 'billiards', keywords: ['당구', '당구장', '포켓볼', '큐대', '쓰리쿠션', '3쿠션', '4구'] },
+  { hobbyId: 'fitness', keywords: ['헬스', '헬스장', '크로스핏', '웨이트', '웨이트트레이닝', '데드리프트', '스쿼트', '벤치프레스', '벤치', '3대', '보디빌딩', '피트니스', '근력', '운동'] },
+  { hobbyId: 'run', keywords: ['러닝', '달리기', '마라톤', '조깅', '뛰기', '러너', '하프마라톤', '트레일런', '한강런', '10k', '5k'] },
+  { hobbyId: 'swim', keywords: ['수영', '수영장', '자유형', '평영', '접영', '실내수영', '오픈워터'] },
+  { hobbyId: 'climb', keywords: ['클라이밍', '클라임', '볼더링', '볼더', '암벽', '인공암벽', '클라이머'] },
+  { hobbyId: 'hike', keywords: ['등산', '등반', '산행', '트레킹', '백패킹', '둘레길', '산정상'] },
+  { hobbyId: 'yoga', keywords: ['요가', '필라테스', '스트레칭', '명상'] },
+  { hobbyId: 'tennis', keywords: ['테니스', '테니스장', '테니스화'] },
+  { hobbyId: 'badminton', keywords: ['배드민턴', '셔틀콕'] },
+  { hobbyId: 'soccer', keywords: ['축구', '풋살', '조기축구', '축구화', '축구장'] },
+  { hobbyId: 'basketball', keywords: ['농구', '농구장', '농구공', '3on3', '3대3'] },
+  { hobbyId: 'bike', keywords: ['자전거', '라이딩', '사이클', '로드바이크', 'mtb', '자출', '자출족'] },
+  { hobbyId: 'golf', keywords: ['골프', '스크린골프', '골프장', '라운딩', '퍼팅', '티샷', '골프채'] },
+  { hobbyId: 'bowling', keywords: ['볼링', '볼링장', '볼링공'] },
+  { hobbyId: 'ski', keywords: ['스키', '스키장', '스노보드', '스노우보드', '슬로프'] },
+
+  /* ---- 게임 ---- */
+  { hobbyId: 'pcgame', keywords: ['리그오브레전드', '롤토체스', '하스스톤', '배틀그라운드', '스타크래프트', '오버워치', '발로란트', '서든어택', '던전앤파이터', '로스트아크', '마인크래프트', 'fc온라인', 'e스포츠', '이스포츠', 'pc방',
+    '롤', '협곡', '랭크', '배그', '옵치', '서든', '피파', '메이플', '던파', '로아', '원신', '마크', '스팀', '스타', 'lol', 'tft'] },
+  { hobbyId: 'boardgame', keywords: ['보드게임', '보드카페', '보드', '마작', '체스', '카탄', '루미큐브', '할리갈리', '젠가', '다이스', '주사위'] },
+  { hobbyId: 'console', keywords: ['닌텐도', '플레이스테이션', '스위치', '플스', '엑스박스', '엑박', '콘솔', '젤다', '포켓몬', '마리오', '동물의숲', '모동숲', 'ps5', 'ps4'] },
+  { hobbyId: 'trpg', keywords: ['trpg', '던전앤드래곤', '크툴루', '테이블탑', 'd&d'] },
+  { hobbyId: 'game', keywords: ['게임', '게이머', '게임방', '겜'] },
+
+  /* ---- 독서·글 ---- */
+  { hobbyId: 'novel', keywords: ['소설', '소설책', '장편소설', '웹소설'] },
+  { hobbyId: 'essay', keywords: ['에세이', '수필', '산문'] },
+  { hobbyId: 'bookclub', keywords: ['독서모임', '독서토론', '책모임', '북클럽', '독서', '완독', '책읽기', '책'] },
+  { hobbyId: 'comics', keywords: ['만화', '웹툰', '코믹스', '만화책'] },
+  { hobbyId: 'writing', keywords: ['글쓰기', '필사', '작문', '시나리오', '블로그', '글쓰는'] },
+
+  /* ---- 맛집·카페 ---- */
+  { hobbyId: 'cafe', keywords: ['카페투어', '카페거리', '맛집투어', '카페', '커피', '맛집', '디저트', '라떼', '에스프레소', '삼겹살', '고기집', '초밥', '국밥', '떡볶이', '파스타', '냉면', '치킨', '먹방', '맛집탐방'] },
+  { hobbyId: 'cooking', keywords: ['자취요리', '요리모임', '요리', '집밥', '레시피', '쿡방', '반찬'] },
+  { hobbyId: 'baking', keywords: ['홈베이킹', '베이킹', '제과', '제빵', '쿠키', '브라우니', '마카롱', '케이크'] },
+  { hobbyId: 'wine', keywords: ['와인', '위스키', '맥주', '소주', '칵테일', '사케', '하이볼', '술'] },
+  { hobbyId: 'brunch', keywords: ['브런치', '조식', '아침식사'] },
+
+  /* ---- 여행·야외 ---- */
+  { hobbyId: 'camping', keywords: ['캠핑', '차박', '글램핑', '오토캠핑', '캠핑장', '캠핑카'] },
+  { hobbyId: 'fishing', keywords: ['낚시', '낚시터', '배스낚시', '루어', '찌낚시', '바다낚시', '낚시대'] },
+  { hobbyId: 'photo', keywords: ['사진', '카메라', '출사', '스냅', '필름카메라', '인생샷', '사진관'] },
+  { hobbyId: 'drive', keywords: ['드라이브코스', '로드트립', '드라이브'] },
+  { hobbyId: 'domestic', keywords: ['국내여행', '제주여행', '강릉여행', '부산여행', '기차여행', '당일치기', '제주도', '국내'] },
+  { hobbyId: 'travel', keywords: ['해외여행', '유럽여행', '일본여행', '배낭여행', '세계여행', '동남아', '해외'] },
+
+  /* ---- 문화·예술 ---- */
+  { hobbyId: 'movie', keywords: ['영화관', '영화모임', '영화제', '애니메이션', '넷플릭스', '디즈니', '스타워즈', '영화', '극장', '시네마', '왓챠', '티빙', '마블', 'ott', '팝콘'] },
+  { hobbyId: 'performance', keywords: ['뮤지컬', '연극', '공연장', '공연'] },
+  { hobbyId: 'music', keywords: ['인디밴드', '기타연주', '페스티벌', '콘서트', '클래식', '재즈', '힙합', '음악', '밴드', '드럼', '피아노', '작곡', '보컬', '합주'] },
+  { hobbyId: 'dance', keywords: ['스트리트댄스', '커버댄스', '댄스', '안무', '춤'] },
+  { hobbyId: 'gallery', keywords: ['미술관', '전시회', '갤러리', '드로잉', '도슨트', '수채화', '크로키', '미술', '전시', '그림', '유화', '아트'] },
+
+  /* ---- 일상·기타 ---- */
+  { hobbyId: 'pet', keywords: ['반려동물', '반려견', '반려묘', '반려식물', '강아지', '고양이', '댕댕이', '냥이', '멍냥', '애견', '반려', '펫'] },
+  { hobbyId: 'plant', keywords: ['가드닝', '플랜테리어', '반려식물', '식물', '화분', '원예', '다육', '텃밭', '정원'] },
+  { hobbyId: 'fashion', keywords: ['스타일링', '패션모임', '패션', '코디', '빈티지', '옷장'] },
+  { hobbyId: 'volunteer', keywords: ['자원봉사', '봉사활동', '재능기부', '봉사', '기부', '나눔'] },
+  { hobbyId: 'study', keywords: ['스터디모임', '언어교환', '자격증', '스터디', '공부', '영어', '일본어', '중국어', '코딩', '토익', '오픽', '회화'] }
+];
+
+/** 대분류만 걸리는 말 — 세부 취미는 이용자가 고른다. */
+const HOBBY_SUGGEST_CATEGORIES = [
+  { categoryId: 'sports', keywords: ['스포츠', '체육', '운동'] },
+  { categoryId: 'game', keywords: ['게임', '겜'] },
+  { categoryId: 'read', keywords: ['독서', '책', '글'] },
+  { categoryId: 'food', keywords: ['맛집', '먹방', '음식', '요리', '카페'] },
+  { categoryId: 'travel', keywords: ['여행', '여행지', '나들이'] },
+  { categoryId: 'culture', keywords: ['문화', '예술', '공연', '전시'] },
+  { categoryId: 'daily', keywords: ['일상', '취미'] }
+];
+
+/** 짧은 말이 다른 낱말 안에 들어 있을 때 — 그 낱말을 지운 사본에서 다시 찾는다. */
+const SUGGEST_BLOCKERS = {
+  '롤': ['컨트롤', '롤러', '롤케이크', '롤케익', '롤모델', '롤스로이스', '롤링'],
+  '스타': ['스타벅스', '스타트업', '스타일', '스타킹', '스타필드', '스타디움', '스타트', '스타강사', '슈퍼스타'],
+  '마크': ['북마크', '마크업'],
+  '술': ['기술', '예술', '미술', '술어', '술사', '요술'],
+  '그림': ['그림자'],
+  '아트': ['스마트', '아트웍'],
+  '춤': ['맞춤', '춤법'],
+  '보드': ['키보드', '스노보드', '스노우보드', '마더보드', '스키보드', '화이트보드', '사운드보드'],
+  '카페': ['카페인'],
+  '코디': ['코디네이터'],
+  '드라이브': ['하드드라이브', '외장드라이브', 'usb드라이브', '드라이브설치'],
+  '스키': ['스키니'],
+  '책': ['산책', '정책', '책임', '대책', '문책', '과책'],
+  '글': ['글자', '글쎄', '글씨', '글귀'],
+  '3대': ['3대째']
+};
+
+/** 검색용 색인 — 한 번만 만든다(말 → 취미). */
+const HOBBY_SUGGEST_INDEX = HOBBY_SUGGEST_RULES.reduce((rows, rule) => rows.concat(
+  rule.keywords.map((k) => ({ k: String(k).toLowerCase(), hobbyId: rule.hobbyId }))
+), []);
+
+/** 비교용으로 글자를 낮추고 공백을 하나로 — 저장된 이름·소개는 건드리지 않는다. */
+function normalizeSuggestText(text) {
+  return String(text == null ? '' : text)
+    .toLowerCase()
+    .replace(/[\u200b-\u200d\ufeff]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** 말 하나를 찾는다. 오해할 낱말(블로커)은 지운 사본에서 본다. */
+function findSuggestKeyword(text, keyword) {
+  const k = String(keyword == null ? '' : keyword).toLowerCase();
+  if (!k) return -1;
+  let copy = text;
+  const blockers = SUGGEST_BLOCKERS[k];
+  if (blockers && blockers.length) blockers.forEach((b) => { copy = copy.split(b).join(' '); });
+  return copy.indexOf(k);
+}
 
 /* ============================================================================
  * Sprint 25 — 지역 시드 (데모 계정 · 테스트 · #demo 미리보기 전용)
@@ -7500,6 +7635,90 @@ class Store {
    * ======================================================================== */
   getHobbyChip(hobbyId) {
     return this.getHobbyChips().find((h) => h.id === hobbyId) || null;
+  }
+
+  /**
+   * v33.5 — 모임 이름·한 줄 소개에서 취미를 찾아 추천한다(2단계 '취미 선택').
+   *  · 긴 말이 이기고(보드게임 > 게임), 같으면 앞에 나온 말이 이긴다.
+   *  · 세부 취미까지 찾으면 scope:'hobby', 대분류만 찾으면 scope:'category'.
+   *  · 아무것도 못 찾으면 { ok:false, reason:'no_match' } — 화면은 추천을 그리지 않는다.
+   * @returns {{ok:boolean, reason?:string, scope?:string, keyword?:string,
+   *   hobbyId?:string|null, hobbyName?:string|null, categoryId?:string, categoryName?:string,
+   *   alts?:Array<object>}}
+   */
+  suggestHobbyFromText(text) {
+    const raw = normalizeSuggestText(text);
+    if (!raw) return { ok: false, reason: 'empty' };
+
+    const hits = [];
+    HOBBY_SUGGEST_INDEX.forEach((row, order) => {
+      const at = findSuggestKeyword(raw, row.k);
+      if (at < 0) return;
+      hits.push({ k: row.k, hobbyId: row.hobbyId, at, order });
+    });
+
+    /* 취미별로 묶는다 — **그 취미에서 가장 구체적인 말**(긴 말)이 그 취미의 점수,
+       인용할 말은 **앞에 나온 말**.“롤 … 하스스톤”은 둘 다 PC·e스포츠라 ‘롤’을 인용한다. */
+    const groups = [];
+    hits.forEach((hit) => {
+      let g = groups.find((x) => x.hobbyId === hit.hobbyId);
+      if (!g) {
+        g = { hobbyId: hit.hobbyId, score: hit.k.length, at: hit.at, quote: hit, order: hit.order };
+        groups.push(g);
+        return;
+      }
+      if (hit.k.length > g.score) g.score = hit.k.length;
+      if (hit.at < g.quote.at || (hit.at === g.quote.at && hit.k.length > g.quote.k.length)) g.quote = hit;
+      if (hit.at < g.at) g.at = hit.at;
+    });
+    groups.sort((a, b) => (b.score - a.score) || (a.at - b.at) || (a.order - b.order));
+
+    /* 같은 말이 두 취미에 걸리면(반려식물 → 반려동물·식물) 둘 다 후보로 남긴다. */
+    const alts = [];
+    groups.forEach((g) => {
+      if (alts.length >= 3) return;
+      const chip = this.getHobbyChip(g.hobbyId);
+      if (!chip) return;
+      if (alts.some((a) => a.hobbyId === chip.id)) return;
+      alts.push({
+        hobbyId: chip.id, hobbyName: chip.name, categoryId: chip.categoryId,
+        categoryName: chip.categoryName, keyword: g.quote.k
+      });
+    });
+
+    if (alts.length) {
+      const top = alts[0];
+      return {
+        ok: true, scope: 'hobby', keyword: top.keyword,
+        hobbyId: top.hobbyId, hobbyName: top.hobbyName,
+        categoryId: top.categoryId, categoryName: top.categoryName,
+        alts: alts.slice(1)
+      };
+    }
+
+    /* 세부 취미가 아니라 대분류만 걸리는 말('여행', '스포츠') */
+    let catHit = null;
+    HOBBY_SUGGEST_CATEGORIES.forEach((row) => {
+      row.keywords.forEach((k) => {
+        const at = findSuggestKeyword(raw, k);
+        if (at < 0) return;
+        const len = String(k).length;
+        if (!catHit || len > catHit.len || (len === catHit.len && at < catHit.at)) {
+          catHit = { categoryId: row.categoryId, keyword: k, at, len };
+        }
+      });
+    });
+    if (catHit) {
+      const cat = HOBBY_TAXONOMY.find((c) => c.id === catHit.categoryId);
+      if (cat) {
+        return {
+          ok: true, scope: 'category', keyword: catHit.keyword,
+          hobbyId: null, hobbyName: null,
+          categoryId: cat.id, categoryName: cat.name, alts: []
+        };
+      }
+    }
+    return { ok: false, reason: 'no_match' };
   }
 
   /* ==========================================================================

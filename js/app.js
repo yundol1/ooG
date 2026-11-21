@@ -624,6 +624,19 @@ document.addEventListener('DOMContentLoaded', () => {
     createGroupHangoutLead: $('#create-group-hangout-lead'),
     createGroupSummary: $('#create-group-summary'),
     createGroupResume: $('#create-group-resume'),
+    /* v33.5 — 1단계 실시간 미리보기 · 2단계 자동 추천 */
+    createGroupPreview: $('#create-group-preview'),
+    createPreviewCover: $('#create-preview-cover'),
+    createPreviewTile: $('#create-preview-tile'),
+    createPreviewCardName: $('#create-preview-card-name'),
+    createPreviewCardDesc: $('#create-preview-card-desc'),
+    createPreviewTag: $('#create-preview-tag'),
+    createPreviewName: $('#create-preview-name'),
+    createPreviewMeta: $('#create-preview-meta'),
+    createPreviewDesc: $('#create-preview-desc'),
+    createGroupSuggest: $('#create-group-suggest'),
+    createGroupSuggestText: $('#create-group-suggest-text'),
+    createGroupSuggestApply: $('#btn-create-group-suggest-apply'),
     /* H2 — 홈 인스타형 추천 피드 · 모임 찾기 지역·아지트 필터 · 댓글 시트 */
     homeFeedStatus: $('#home-feed-status'),
     homeFeedStatusText: $('#home-feed-status-text'),
@@ -10334,7 +10347,7 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     {
       id: 2, label: '취미', title: '어떤 취미 모임인가요?',
-      desc: '큰 분류를 고르면 세부 취미가 나와요. 목록에 없으면 직접 적어도 돼요.'
+      desc: '큰 분류를 고르면 세부 취미가 나와요. 없으면 직접 적어도 돼요.'
     },
     {
       id: 3, label: '대표 이미지', title: '대표 이미지를 골라 주세요',
@@ -10366,6 +10379,9 @@ document.addEventListener('DOMContentLoaded', () => {
       step: 1,
       name: '', desc: '',
       hobbyId: null, categoryId: null,
+      /* v33.5 — 이름·소개에서 찾은 추천. autoHobby = 앱이 골라 둔 취미,
+         manualHobby = 이용자가 직접 고름(추천이 덮지 않는다). */
+      suggest: null, autoHobby: null, manualHobby: false,
       /* circle·card 는 크롭 한 번으로 만든 두 장. presetId 는 기본 커버 8종. */
       cover: { src: null, circle: null, card: null, presetId: null, zoom: 1, panX: 0, panY: 0, natW: 0, natH: 0 },
       sidoId: my ? my.sidoId : 'seoul',
@@ -10389,6 +10405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const d = ui.groupDraft;
     const payload = {
       step: d.step, name: d.name, desc: d.desc, hobbyId: d.hobbyId, categoryId: d.categoryId,
+      autoHobby: d.autoHobby || null, manualHobby: d.manualHobby === true,
       cover: d.cover, sidoId: d.sidoId, sigunguId: d.sigunguId,
       hangoutIds: d.hangoutIds, privacyType: d.privacyType, ageLimit: d.ageLimit,
       ageMin: d.ageMin, ageMax: d.ageMax,
@@ -10586,6 +10603,157 @@ document.addEventListener('DOMContentLoaded', () => {
     return { circle: c.circle, card: c.card };
   }
 
+  /* ------------------------------------------------ v33.5 · 1단계 실시간 미리보기 */
+  /* 11/22 01:02 루키 님: "이름이나 한 줄 소개를 적게 되면 ... 쓰는 그대로 미리보기 화면에
+     노출되었으면 좋겠어". 글자를 입력할 때마다 **글자만** 갈아 끼운다 — 입력창·커서는 건드리지
+     않고, 무거운 재렌더(취미 80행·아지트 80행)도 하지 않는다. */
+  const PREVIEW_NAME_HINT = '모임 이름이 여기에 보여요';
+  const PREVIEW_DESC_HINT = '한 줄 소개가 여기에 보여요';
+
+  function setPreviewText(node, value, hint) {
+    if (!node) return;
+    const text = value || hint;
+    if (node.textContent !== text) node.textContent = text;
+    node.classList.toggle('is-empty', !value);
+  }
+
+  function currentDraftName() {
+    const d = ui.groupDraft;
+    const v = el.createGroupName ? el.createGroupName.value : (d ? d.name : '');
+    return String(v == null ? '' : v).trim();
+  }
+
+  function currentDraftDesc() {
+    const d = ui.groupDraft;
+    const v = el.createGroupDesc ? el.createGroupDesc.value : (d ? d.desc : '');
+    return String(v == null ? '' : v).trim();
+  }
+
+  /** 이름·한 줄 소개가 실제로 보이는 두 곳(모임 카드 · 모임 화면 상단)을 지금 글자로 그린다. */
+  function renderCreatePreview() {
+    if (!ui.groupDraft) return;
+    const d = ui.groupDraft;
+    const name = currentDraftName();
+    const desc = currentDraftDesc();
+    setPreviewText(el.createPreviewCardName, name, PREVIEW_NAME_HINT);
+    setPreviewText(el.createPreviewName, name, PREVIEW_NAME_HINT);
+    setPreviewText(el.createPreviewCardDesc, desc, PREVIEW_DESC_HINT);
+    setPreviewText(el.createPreviewDesc, desc, PREVIEW_DESC_HINT);
+
+    /* 취미를 골랐다면 그 취미의 색·아이콘으로 — 아직이면 중립 점토.
+       (1단계로 돌아와도 2단계에서 고른 취미가 그대로 보인다.) */
+    const chip = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
+    if (el.createPreviewCover) {
+      const tone = `tone-${(chip && chip.tone) || 'neutral'}`;
+      Array.from(el.createPreviewCover.classList).forEach((c) => {
+        if (c.indexOf('tone-') === 0 && c !== tone) el.createPreviewCover.classList.remove(c);
+      });
+      el.createPreviewCover.classList.add(tone);
+    }
+    if (el.createPreviewTile) {
+      const iconName = (chip && chip.icon) || 'sparkle';
+      if (el.createPreviewTile.dataset.icon !== iconName) {
+        el.createPreviewTile.dataset.icon = iconName;
+        el.createPreviewTile.innerHTML = ic(iconName);
+      }
+    }
+    if (el.createPreviewTag) {
+      const tag = chip ? chip.categoryName : '취미';
+      if (el.createPreviewTag.textContent !== tag) el.createPreviewTag.textContent = tag;
+      el.createPreviewTag.classList.toggle('is-empty', !chip);
+    }
+    if (el.createPreviewMeta) {
+      const azit = (d.hangoutIds || []).length ? store.findAzit(d.hangoutIds[0]) : null;
+      const meta = `${azit ? azit.name : '아지트'} · 멤버 1명`;
+      if (el.createPreviewMeta.textContent !== meta) el.createPreviewMeta.textContent = meta;
+    }
+  }
+
+  /* ------------------------------------------------ v33.5 · 2단계 자동 추천 */
+  /**
+   * 이름·소개에서 취미를 찾아 2단계 선택을 미리 맞춘다.
+   *  · 아직 아무것도 안 골랐으면 찾은 취미를 골라 둔다(자동 선택).
+   *  · 직접 고른 취미가 있으면(manualHobby) 덮지 않는다 — 배너에서 '적용'을 눌렀을 때만 바뀐다.
+   */
+  function ensureHobbySuggestion() {
+    const d = ui.groupDraft;
+    if (!d) return;
+    const text = [currentDraftName(), currentDraftDesc()].filter(Boolean).join(' ').trim();
+    const res = store.suggestHobbyFromText(text);
+    d.suggest = res && res.ok ? res : null;
+    if (!d.suggest || d.manualHobby) return;
+    if (res.scope === 'hobby' && res.hobbyId) {
+      d.hobbyId = res.hobbyId;
+      d.categoryId = res.categoryId;
+      d.autoHobby = res.hobbyId;
+    } else if (res.scope === 'category') {
+      /* 대분류만 걸렸다 = 글에 취미 이름이 없다. 앞서 자동으로 골라 둔 취미가 다른 대분류면
+         비우고, 이 대분류에서 세부 취미를 직접 고르게 한다. */
+      const chip = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
+      if (d.hobbyId && d.autoHobby === d.hobbyId && chip && chip.categoryId !== res.categoryId) {
+        d.hobbyId = null;
+      }
+      if (!d.hobbyId) d.categoryId = res.categoryId;
+      d.autoHobby = null;
+    }
+  }
+
+  /** 추천 배너 — "이름·소개에서 '롤'을 찾았어요" + (안 골랐을 때) 적용 버튼. */
+  function renderCreateSuggestion() {
+    const box = el.createGroupSuggest;
+    if (!box) return;
+    const d = ui.groupDraft;
+    const s = d && d.suggest;
+    if (!s) {
+      box.hidden = true;
+      if (el.createGroupSuggestApply) el.createGroupSuggestApply.hidden = true;
+      return;
+    }
+    const where = `${escapeHtml(s.categoryName)}${s.hobbyName ? ` · ${escapeHtml(s.hobbyName)}` : ''}`;
+    const word = `<strong>'${escapeHtml(s.keyword)}'</strong>`;
+    const applied = !!(s.hobbyId && d.hobbyId === s.hobbyId && d.autoHobby === s.hobbyId && d.categoryId === s.categoryId);
+    const eul = josa(s.keyword, '을', '를');
+    let text;
+    if (s.scope === 'category') {
+      text = `${word}${josa(s.keyword, '이라는', '라는')} 말이 보여요 · <strong>${where}</strong>의 세부 취미를 골라 주세요`;
+    } else if (applied) {
+      text = `이름·소개에서 ${word}${eul} 찾아 <strong>${where}</strong>${josa(s.hobbyName || s.categoryName, '을', '를')} 골라 뒀어요`;
+    } else {
+      text = `${word}${josa(s.keyword, '이', '가')} 보여요 · 추천은 <strong>${where}</strong>`;
+    }
+    if (el.createGroupSuggestText && el.createGroupSuggestText.innerHTML !== text) {
+      el.createGroupSuggestText.innerHTML = text;
+    }
+    if (el.createGroupSuggestApply) {
+      const needs = s.scope === 'hobby' && s.hobbyId && !applied;
+      el.createGroupSuggestApply.hidden = !needs;
+    }
+    box.hidden = false;
+    hydrateIcons(box);
+  }
+
+  /** 추천을 그대로 적용 — 배지·고른 취미 문구까지 함께 바뀐다. */
+  function applyHobbySuggestion() {
+    const d = ui.groupDraft;
+    const s = d && d.suggest;
+    if (!s || !s.ok) return;
+    if (s.hobbyId) {
+      d.hobbyId = s.hobbyId;
+      d.categoryId = s.categoryId;
+      d.autoHobby = s.hobbyId;
+    } else {
+      d.categoryId = s.categoryId;
+      d.autoHobby = null;
+    }
+    d.manualHobby = false;
+    renderCreateHobbies();
+    renderCreateSuggestion();
+    const btnSubmit = $('#btn-create-group-submit');
+    if (btnSubmit) { const ready = createStepReady(d.step); btnSubmit.disabled = !ready; }
+    if (el.createGroupFootHint) el.createGroupFootHint.textContent = createFootHint();
+    queueCreateDraftSave();
+  }
+
   /** 취미 — 대분류 칩을 고르면 그 아래 세부 취미가 나온다. */
   function renderCreateHobbies() {
     const d = ui.groupDraft;
@@ -10593,24 +10761,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const picked = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
     const catId = d.categoryId || (picked ? picked.categoryId : cats[0].id);
     d.categoryId = catId;
+    /* v33.5 — 이름·소개에서 찾은 취미는 대분류·세부 취미 칩에 '추천' 배지로 표시한다.
+       (대분류만 찾았을 때는 대분류 칩에만) */
+    const sug = d.suggest && d.suggest.ok ? d.suggest : null;
+    const sugCat = sug ? sug.categoryId : null;
+    const sugHobby = sug && sug.scope === 'hobby' ? sug.hobbyId : null;
     if (el.createGroupCats) {
       el.createGroupCats.innerHTML = cats.map((c) => `
-        <button class="create-cat ${catId === c.id ? 'active' : ''}" data-create-cat="${c.id}"
+        <button class="create-cat ${catId === c.id ? 'active' : ''} ${sugCat === c.id ? 'is-suggest' : ''}"
+                data-create-cat="${c.id}"
                 type="button" aria-pressed="${catId === c.id}">
-          ${ic(c.icon)}<span>${escapeHtml(c.name.split('·')[0])}</span>
+          ${ic(c.icon)}<span>${escapeHtml(c.name.split('·')[0])}</span>${sugCat === c.id ? '<span class="pick-badge">추천</span>' : ''}
         </button>`).join('');
     }
     const cat = cats.find((c) => c.id === catId) || cats[0];
     if (el.createGroupHobbies) {
       el.createGroupHobbies.innerHTML = cat.hobbies.map((h) => `
-        <button class="tag-pick ${d.hobbyId === h.id ? 'active' : ''}" data-hobby-pick="${h.id}"
-                data-hobby-scope="group" type="button">
-          ${ic(h.icon || 'sparkle')} ${escapeHtml(h.name)}
+        <button class="tag-pick ${d.hobbyId === h.id ? 'active' : ''} ${sugHobby === h.id ? 'is-suggest' : ''}"
+                data-hobby-pick="${h.id}" data-hobby-scope="group" type="button">
+          ${ic(h.icon || 'sparkle')} ${escapeHtml(h.name)}${sugHobby === h.id ? '<span class="pick-badge">추천</span>' : ''}
         </button>`).join('');
     }
     if (el.createGroupHobbyPicked) {
+      const auto = picked && d.autoHobby === picked.id;
       el.createGroupHobbyPicked.textContent = picked
-        ? `고른 취미 · ${picked.name}`
+        ? `고른 취미 · ${picked.name}${auto ? ' · 이름·소개에서 찾은 추천' : ''}`
         : '아직 고르지 않았어요';
     }
   }
@@ -10764,11 +10939,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.createGroupStepDesc) el.createGroupStepDesc.textContent = meta.desc;
     if (el.createGroupPrev) el.createGroupPrev.hidden = d.step === 1;
 
+    /* v33.5 — 2단계로 들어올 때 이름·소개에서 취미를 찾아 미리 골라 둔다. */
+    if (d.step === 2) ensureHobbySuggestion();
     renderCreateHobbies();
+    renderCreateSuggestion();
     renderCreateCover();
     renderCreateRegion();
     renderCreateHangouts();
     renderCreateSummary();
+    renderCreatePreview();
 
     if (el.createGroupPrivacy) {
       const options = [
@@ -10845,6 +11024,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ['name', 'desc', 'hobbyId', 'categoryId', 'sidoId', 'sigunguId', 'privacyType', 'ageLimit', 'question'].forEach((k) => {
         if (saved[k] != null) d[k] = saved[k];
       });
+      if (saved.autoHobby) d.autoHobby = saved.autoHobby;
+      if (saved.manualHobby === true) d.manualHobby = true;
       /* H4 — 슬라이더 범위를 우선 복원하고, 옛 임시저장(ageLimit id)은 같은 범위로 바꿔 준다. */
       if (saved.ageMin != null || saved.ageMax != null) {
         const r = normalizeAgeRange(saved.ageMin, saved.ageMax);
@@ -10896,8 +11077,16 @@ document.addEventListener('DOMContentLoaded', () => {
   el.createGroupCats && el.createGroupCats.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-create-cat]');
     if (!btn) return;
-    ui.groupDraft.categoryId = btn.dataset.createCat;
+    const d = ui.groupDraft;
+    /* 추천 대분류가 아닌 곳을 직접 누르면 추천이 끌고 가지 않게 표시해 둔다. */
+    const sug = d.suggest && d.suggest.ok ? d.suggest : null;
+    if (!(sug && sug.categoryId === btn.dataset.createCat)) {
+      d.manualHobby = true;
+      d.autoHobby = null;
+    }
+    d.categoryId = btn.dataset.createCat;
     renderCreateHobbies();
+    renderCreateSuggestion();
     queueCreateDraftSave();
   });
 
@@ -10905,12 +11094,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const chip = e.target.closest('[data-hobby-pick]');
     if (!chip || chip.dataset.hobbyScope !== 'group') return;
     const d = ui.groupDraft;
+    /* 방금 추천으로 골라 둔 칩을 그대로 누른 것뿐이면 '직접 고름'으로 보지 않는다. */
+    if (!(d.autoHobby && d.autoHobby === chip.dataset.hobbyPick)) {
+      d.manualHobby = true;
+      d.autoHobby = null;
+    }
     d.hobbyId = chip.dataset.hobbyPick;
     const picked = store.getHobbyChip(d.hobbyId);
     if (picked) d.categoryId = picked.categoryId;
     renderGroupWizard();
     queueCreateDraftSave();
   });
+
+  /* v33.5 — 추천 배너의 '적용' */
+  el.createGroupSuggestApply && el.createGroupSuggestApply.addEventListener('click', () => applyHobbySuggestion());
 
   el.createGroupRegionSido && el.createGroupRegionSido.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-create-sido]');
@@ -11069,13 +11266,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  function syncDraftText() {
+    const d = ui.groupDraft;
+    if (!d) return;
+    if (el.createGroupName) d.name = el.createGroupName.value;
+    if (el.createGroupDesc) d.desc = el.createGroupDesc.value;
+  }
+
+  /** 1단계에서 글자를 적을 때 — 무거운 재렌더 대신 미리보기·버튼 상태만 새로 고친다. */
+  function refreshCreateStep1() {
+    const d = ui.groupDraft;
+    if (!d) return;
+    renderCreatePreview();
+    const btn = $('#btn-create-group-submit');
+    if (btn) {
+      const ready = createStepReady(d.step);
+      btn.disabled = !ready;
+      btn.classList.toggle('ready', ready);
+    }
+    if (el.createGroupFootHint) el.createGroupFootHint.textContent = createFootHint();
+  }
+
   el.createGroupName && el.createGroupName.addEventListener('input', () => {
-    ui.groupDraft.name = el.createGroupName.value;
-    if (ui.groupDraft.step === 1) renderGroupWizard();
+    syncDraftText();
+    if (ui.groupDraft.step === 1) refreshCreateStep1();
     queueCreateDraftSave();
   });
   el.createGroupDesc && el.createGroupDesc.addEventListener('input', () => {
-    ui.groupDraft.desc = el.createGroupDesc.value;
+    syncDraftText();
+    if (ui.groupDraft.step === 1) refreshCreateStep1();
     queueCreateDraftSave();
   });
   if (el.createGroupQuestion) el.createGroupQuestion.addEventListener('input', () => { ui.groupDraft.question = el.createGroupQuestion.value; queueCreateDraftSave(); });

@@ -908,10 +908,44 @@
               <label class="field-label" for="create-group-desc">한 줄 소개 <span class="field-hint">선택</span></label>
               <textarea id="create-group-desc" class="text-area" maxlength="300" placeholder="어떤 사람들이 모이는 모임인지 짧게 적어주세요"></textarea>
             </div>
+
+            <!-- v33.5 — 11/22 01:02 루키 님: "이름이나 한 줄 소개를 적게 되면 ... 쓰는 그대로
+                 미리보기 화면에 노출되었으면 좋겠어". 탐색·홈의 모임 카드와 모임 첫 화면
+                 (가입 화면 상단) 두 곳을 나란히 두고, 입력하는 대로 글자만 바꾼다. -->
+            <div class="wizard-preview" id="create-group-preview" role="group"
+                 aria-label="모임 카드와 모임 화면 미리보기">
+              <div class="wizard-preview-head">
+                <h5 class="wizard-preview-title">미리보기</h5>
+                <span class="wizard-preview-note">적는 그대로 보여요</span>
+              </div>
+              <div class="wizard-preview-grid">
+                <div class="pv-card">
+                  <span class="pv-label">모임 카드</span>
+                  <span class="pv-card-cover tone-neutral" id="create-preview-cover" aria-hidden="true">
+                    <span class="pv-card-tile" id="create-preview-tile"></span>
+                  </span>
+                  <span class="pv-card-name is-empty" id="create-preview-card-name">모임 이름이 여기에 보여요</span>
+                  <span class="pv-card-desc is-empty" id="create-preview-card-desc">한 줄 소개가 여기에 보여요</span>
+                </div>
+                <div class="pv-detail">
+                  <span class="pv-label">모임 화면</span>
+                  <span class="pv-detail-tag" id="create-preview-tag">취미</span>
+                  <span class="pv-detail-name is-empty" id="create-preview-name">모임 이름이 여기에 보여요</span>
+                  <span class="pv-detail-meta" id="create-preview-meta">아지트 · 멤버 1명</span>
+                  <span class="pv-detail-desc is-empty" id="create-preview-desc">한 줄 소개가 여기에 보여요</span>
+                </div>
+              </div>
+            </div>
           </section>
 
           <!-- 2. 취미 — 대분류 → 세부, 직접 입력도 허용 -->
           <section class="wizard-panel" data-create-step="2" hidden>
+            <!-- v33.5 — 1단계 이름·소개에서 찾은 취미를 먼저 권한다. 직접 고르면 그 선택을 지킨다. -->
+            <div class="wizard-suggest" id="create-group-suggest" hidden>
+              <span class="wizard-suggest-ic" aria-hidden="true" data-oog-icon="sparkle"></span>
+              <p class="wizard-suggest-text" id="create-group-suggest-text" aria-live="polite"></p>
+              <button class="wizard-suggest-act" id="btn-create-group-suggest-apply" type="button" hidden>적용</button>
+            </div>
             <div class="create-cat-row" id="create-group-cats" role="group" aria-label="취미 대분류"><!-- JS --></div>
             <div class="composer-tag-list" id="create-group-hobbies"><!-- JS --></div>
             <div class="hobby-custom hobby-custom-inline" data-hobby-custom-scope="group">
