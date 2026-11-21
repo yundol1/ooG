@@ -24113,11 +24113,10 @@ button.caption-author::after {
 .match-avatar.me,
 .match-avatar.them { color: #FFFFFF; }
 
-/* 사진 없는 내 큰 아바타(중립 면)는 이미 --text-sub — 잉크로 통일한다. */
+/* 사진 없는 내 큰 아바타는 **중립 면**(라이트 #F7F8FA · 다크 #1B222B)이라 잉크를 쓰지 않는다 —
+   두 테마 모두 보조 글자색(라이트 #4B5563 · 다크 밝은 회색)이 이미 4.5:1 을 넘긴다. */
 .profile-avatar-large .avatar-letter,
-.myprofile-avatar .avatar-letter { color: var(--avatar-ink); }
-:root[data-theme="dark"] .profile-avatar-large .avatar-letter,
-:root[data-theme="dark"] .myprofile-avatar .avatar-letter { color: var(--avatar-ink); }
+.myprofile-avatar .avatar-letter { color: var(--text-sub); }
 
 /* ============================================================================
    Sprint 33 — MATCH 팝업 추천 멘트 칩: **2열**
@@ -24372,4 +24371,37 @@ button.caption-author::after {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+
+/* ============================================================================
+   Sprint 33 — 인스타형 피드 글의 작은 버튼(아바타·이름·숫자·댓글)에 44px 손가락 영역
+   통합 피드가 첫 화면부터 차면서 r5 감사가 이 버튼들을 재게 됐다. 보이는 크기는 그대로 두고
+   ::after 로 위아래를 넓혀 손가락 하한(44px)을 맞춘다 — 이웃 버튼과 겹치지 않게 좌우는 4px 만.
+   ========================================================================== */
+.ig-post .ig-avatar,
+.ig-post .ig-author,
+.ig-post .ig-act,
+.ig-post .ig-caption-author,
+.ig-post .ig-comments-all,
+.ig-post .ig-comment-name,
+.ig-post .ig-add-comment {
+  position: relative;
+}
+.ig-post .ig-avatar::after,
+.ig-post .ig-author::after,
+.ig-post .ig-act::after,
+.ig-post .ig-caption-author::after,
+.ig-post .ig-comments-all::after,
+.ig-post .ig-comment-name::after,
+.ig-post .ig-add-comment::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  min-width: 44px;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+  border-radius: 8px;
 }
