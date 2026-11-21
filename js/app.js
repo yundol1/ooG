@@ -7928,7 +7928,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<button class="switch-toggle ${perms.deputyCanModerate ? 'on' : ''}" data-deputy-moderate-toggle="${grp.id}"
                        role="switch" aria-checked="${perms.deputyCanModerate}" type="button"
                        aria-label="부방장에게 멤버 승인·강퇴 권한 주기"><span class="switch-knob" aria-hidden="true"></span></button>`
-            : `<span class="ops-state ${perms.deputyCanModerate ? 'on' : 'off'}'>${perms.deputyCanModerate ? '함께 관리' : '모임장만'}</span>`}
+            : `<span class="ops-state ${perms.deputyCanModerate ? 'on' : 'off'}">${perms.deputyCanModerate ? '함께 관리' : '모임장만'}</span>`}
         </div>
         <div class="ops-toggle-row">
           <span class="ops-toggle-text">
