@@ -321,17 +321,19 @@ img, svg { display: block; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  /* v34.5 (#22862 · IMG_4584) — 반투명 유리 + 블러를 걷어 **또렷한 불투명 바탕**으로.
+     스크롤 내용이 비치며 흐릿해 보이던 원인을 없앤다. 구분선도 두지 않는다. */
+  background: var(--bg-app);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   position: relative;
   z-index: 60;
-  border-bottom: 1px solid var(--divider);
+  border-bottom: 0;
 }
 
 .app-header.scrolled {
   box-shadow: none;
-  border-bottom-color: var(--divider);
+  border-bottom: 0;
 }
 
 .header-brand {
@@ -13494,13 +13496,14 @@ body {
 }
 
 .app-header {
-  background: var(--bg-glass);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 12px 24px -24px rgba(20, 66, 50, 0.6);
+  background: var(--bg-app);
+  border-bottom: 0;
+  box-shadow: none;
 }
 
 .app-header.scrolled {
-  box-shadow: 0 10px 26px -18px rgba(20, 66, 50, 0.42);
+  box-shadow: none;
+  border-bottom: 0;
 }
 
 .brand-tag { color: var(--text-muted); }
@@ -17823,7 +17826,7 @@ img[loading="lazy"] { content-visibility: auto; }
   box-shadow: none;
 }
 :root[data-theme="dark"] .app-header {
-  border-bottom: 1px solid var(--divider);
+  border-bottom: 0;
   box-shadow: none;
 }
 :root[data-theme="dark"] .bottom-nav-bar {
@@ -18254,17 +18257,18 @@ body {
 }
 
 /* ---------------------------------------- 30-2. 상단바 · 하단 탭바 */
+/* v34.5 (#22862) — 상단바는 불투명·블러 없음·구분선 없음(스크롤 내용이 비치지 않는다). */
 .app-header {
-  background: var(--bg-glass);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
-  border-bottom: 1px solid var(--border);
+  background: var(--bg-app);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-bottom: 0;
   box-shadow: none;
 }
 
 .app-header.scrolled {
   box-shadow: none;
-  border-bottom-color: var(--divider);
+  border-bottom: 0;
 }
 
 .bottom-nav-bar {
@@ -26554,25 +26558,8 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
    ④ 타인 프로필의 숫자 3칸 + 다녀온 모임·모임 목록 시트
    ========================================================================== */
 
-/* ① 상단 바 중앙 아이디 — 인스타그램 프로필 머리말처럼 가운데만 굵게. */
-.header-center-id {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  max-width: 46%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
-  color: var(--text-strong);
-  pointer-events: none;
-}
-.header-center-id[hidden] { display: none !important; }
-/* 아이디가 가운데 자리를 쓰는 동안에는 왼쪽 브랜드의 작은 영문 태그를 접는다. */
-.app-header.is-profile .brand-tag { display: none; }
+/* ① @아이디 — v34.5 (#22887) 부터는 헤더 안이 아니라 **본문 맨 위 중앙**에 둔다.
+   (헤더의 ooG 로고·알림·삼선바는 제자리에서 겹치지 않는다.) */
 
 /* ② 프로필 상단 두 칸 — 왼쪽 큰 사진 · 오른쪽 이름/통계 */
 .mp-top {
@@ -26769,10 +26756,7 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 .ob-handle-hint.is-ok { color: var(--green-text); font-weight: var(--fw-label); }
 .ob-handle-hint.is-warn { color: var(--red); font-weight: var(--fw-label); }
 
-/* v34.4 — 프로필 머리말에서는 검색 버튼을 접어 아이디가 화면 가운데에 놓이게 한다
-   (검색은 아래 '탐색' 탭이 그대로 맡는다). 좁은 화면에서도 아이콘과 겹치지 않는다. */
-.app-header.is-profile #btn-header-search { display: none; }
-.header-center-id { max-width: 40%; font-size: 16px; }
+/* v34.5 (#22887) — 아이디가 헤더에서 본문으로 내려와, 프로필 탭에서도 검색 버튼을 그대로 둔다. */
 
 /* v34.4 — 프로필 위에 겹쳐 여는 목록 시트는 풀스크린 페이지(프로필)보다 위에 온다. */
 #profile-groups-modal,
@@ -26781,13 +26765,130 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 /* v34.4 — 닉네임은 인스타그램처럼 조금 크게(#myprofile-name 의 16px 규칙을 덮는다). */
 #myprofile-name { font-size: 20px; font-weight: var(--fw-display); letter-spacing: -0.4px; }
 
-/* v34.4 — 좁은 화면(≤380)에서는 아이디를 조금 줄여 오른쪽 아이콘과 겹치지 않게 한다. */
-@media (max-width: 380px) {
-  .header-center-id { max-width: 32%; font-size: 15px; }
-}
+/* v34.5 (#22887) — 아이디는 이제 본문 맨 위라 좁은 화면에서도 겹칠 일이 없다. */
 
 /* v34.4 — 좁은 화면에서는 사진 장수 표기가 원형 줄 아래로 내려간다(글자 세로 꺾임 방지). */
 @media (max-width: 380px) {
   .mp-rings-line { flex-wrap: wrap; row-gap: 6px; }
   .mp-rings-line .mp-photos-note { margin-left: 0; width: 100%; }
+}
+
+/* ============================================================================
+   v34.5 (2026-11-22 23:1x, #22862 · #22875 · #22887 · #22899 · #22911)
+   ① 프로필 본문 맨 위 중앙 @아이디 — 헤더(로고·알림·삼선바)와 분리, 21px 굵게
+   ② 타인 프로필 = 내 프로필과 같은 인스타형 화면(1번 큰 사진 + 닉네임·3열 통계
+      + 공개 사진 원형 + 소개 + 하단 3:4 격자/피드 전환). 취미 스펙 박스는 없다.
+   ③ 회원가입 대표 사진(공개 사진 1번) 단계 · 아지트 선택
+   ④ 바텀시트 바깥(배경)을 눌러도 닫힘 — 스타일 변화 없음(동작은 app.js)
+   ========================================================================== */
+
+/* ① @아이디 — 인스타그램 프로필 머리말처럼 본문 첫 줄 가운데. */
+.profile-top-id,
+.person-top-id {
+  margin: -4px 0 10px;
+  text-align: center;
+  font-size: 21px;
+  /* 앱의 가장 굵은 위계(700) — 21px 에서 충분히 굵고, 800·900 금지 규칙을 지킨다. */
+  font-weight: var(--fw-display);
+  letter-spacing: -0.4px;
+  line-height: 1.25;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-top-id[hidden],
+.person-top-id[hidden] { display: none !important; }
+
+/* ② 타인 프로필 — 뒤로가기 한 줄(구분선 없음) + 본문 맨 위 중앙 아이디 */
+/* 풀스크린 페이지 시트 — 위아래 여백은 is-page 규칙을 따르고, 머리말만 붙인다.
+   바탕은 앱 바탕과 같은 색으로 둬 뒤로가기 줄과 본문이 한 면으로 이어진다(다크에서 띠가 지지 않게). */
+.modal-overlay.is-page .modal-sheet.person-sheet {
+  padding-top: 0;
+  background: var(--bg-app);
+}
+.person-head {
+  border-bottom: 0;
+  background: var(--bg-app);
+  margin-bottom: 2px;
+}
+.match-detail-body .person-top-id { margin-top: 2px; }
+
+/* 왼쪽 큰 1번 사진 · 오른쪽 닉네임 + 3열 통계 */
+.detail-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.detail-top .detail-photo {
+  flex: 0 0 116px;
+  width: 116px;
+  height: 116px;
+  margin: 0;
+  aspect-ratio: auto;
+  border-radius: 18px;
+  overflow: hidden;
+}
+.detail-id-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.detail-id-col .detail-name { font-size: 20px; font-weight: var(--fw-display); line-height: 1.2; }
+.detail-id-col .detail-badges { margin-top: 0; }
+.detail-id-col .detail-stats {
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  gap: 2px;
+  justify-content: space-between;
+}
+.detail-id-col .detail-stat {
+  flex: 1 1 0;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 2px;
+}
+.detail-id-col .detail-stat strong { font-size: var(--fs-title); }
+.detail-id-col .detail-stat span { white-space: nowrap; }
+
+/* 원형(공개 사진 2~4번) — 사진·통계 아래 한 줄 · 소개는 그 아래 */
+.match-detail-body .detail-photo-rings { margin: 14px 0 12px; }
+.match-detail-body .detail-bio { margin: 0 0 4px; }
+
+/* 하단 피드 — 내 프로필과 같은 3:4 풀블리드 격자 / 인스타형 피드 전환 */
+.pp-feed { margin-top: 18px; }
+.pp-feed .mp-feed-grid {
+  margin-left: calc(-1 * var(--sheet-pad-x));
+  margin-right: calc(-1 * var(--sheet-pad-x));
+}
+
+/* 좁은 화면에서 큰 사진이 줄어 넘치지 않게 */
+@media (max-width: 360px) {
+  .detail-top { gap: 12px; }
+  .detail-top .detail-photo { flex-basis: 96px; width: 96px; height: 96px; }
+  .profile-top-id, .person-top-id { font-size: 20px; }
+}
+
+/* ③ 회원가입 — 대표 사진 단계 안내 한 줄 */
+.ob-photo-stage-lg { gap: 12px; }
+.ob-photo-caption {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  line-height: 1.5;
+  color: var(--text-muted);
+  word-break: keep-all;
+}
+
+/* 대표 사진 미리보기는 동그라미가 아니라 **프로필에 놓일 모양(둥근 네모)** 으로 보여 준다. */
+.ob-photo-preview-lg {
+  width: 148px;
+  height: 148px;
+  border-radius: 24px;
+  font-size: 40px;
 }

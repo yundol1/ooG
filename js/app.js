@@ -306,7 +306,8 @@ document.addEventListener('DOMContentLoaded', () => {
     mySecretCount: $('#mp-secret-count'),
     /* v34.4 — 상단 바 중앙 @아이디 · 다녀온 모임 공개 범위 · 모임/다녀온 모임 시트 */
     appHeader: document.querySelector('.app-header'),
-    headerProfileHandle: $('#header-profile-handle'),
+    /* v34.5 (#22887) — 프로필 본문 맨 위 중앙의 아이디 */
+    profileTopHandle: $('#profile-top-handle'),
     myScheduleTitle: $('#my-schedule-title'),
     myScheduleShare: $('#my-schedule-share'),
     myScheduleShareToggle: $('#my-schedule-share-toggle'),
@@ -931,7 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
       loginId: '', password: '', passwordConfirm: '', quickStart: false,
       nickname: '', handle: store.suggestHandle(), photoUrl: null,
       avatarGradient: (store.getOnboardingState().avatarGradients || [SIGNUP_FALLBACK_GRADIENT])[0],
-      age: '', regionId: '', hobbies: []
+      age: '', regionId: '', azitId: '', hobbies: []
     };
   }
 
@@ -964,9 +965,12 @@ document.addEventListener('DOMContentLoaded', () => {
        ① 계정(이메일 → 인증 → 비밀번호) ② 닉네임 ③ 나이·지역
        프로필 사진은 가입에서 빼고, 홈의 '프로필 사진 추가' 카드로 유도한다.
        (예전 photo 단계의 렌더 코드는 되돌리기 쉽도록 남겨 둔다) */
-  const SIGNUP_FLOW = ['email', 'code', 'password', 'nickname', 'me'];
-  const SIGNUP_STAGES = { email: 1, code: 1, password: 1, nickname: 2, me: 3, photo: 3, age: 3, region: 3 };
-  const SIGNUP_STAGE_COUNT = 3;
+  /* v34.5 (#22862) — 사진 단계를 **대표 사진(공개 사진 1번)** 단계로 되살렸다.
+     가입을 마치면 그 사진이 내 프로필의 큰 1번 사진으로 그대로 쓰인다.
+     ① 계정(이메일 → 인증 → 비밀번호) ② 닉네임·아이디 ③ 대표 사진 ④ 나이·아지트 */
+  const SIGNUP_FLOW = ['email', 'code', 'password', 'nickname', 'photo', 'me'];
+  const SIGNUP_STAGES = { email: 1, code: 1, password: 1, nickname: 2, photo: 3, me: 4, age: 4, region: 4 };
+  const SIGNUP_STAGE_COUNT = 4;
   const RESET_FLOW = ['reset-email', 'reset-code', 'reset-password'];
 
   function obFlow() { return ui.onboardingMode === 'reset' ? RESET_FLOW : SIGNUP_FLOW; }
@@ -1003,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * ---------------------------------------------------------------- */
   const OB_KICKERS = {
     email: '이메일', code: '인증', password: '비밀번호', nickname: '닉네임',
-    me: '나이 · 동네', photo: '프로필 사진', age: '나이', region: '동네',
+    me: '나이 · 아지트', photo: '대표 사진', age: '나이', region: '아지트',
     'reset-email': '비밀번호 찾기', 'reset-code': '인증', 'reset-password': '새 비밀번호'
   };
 
@@ -1220,14 +1224,12 @@ document.addEventListener('DOMContentLoaded', () => {
     st.active = false; st.done = true; st.step = stepId; st.answerShown = true;
     if (!hero || !answer) return;
 
-    let hint = hero.querySelector('.ob-skip-hint');
-    if (!hint) {
-      hint = document.createElement('p');
-      hint.className = 'ob-skip-hint';
-      hint.innerHTML = `<span class="ob-skip-line" aria-hidden="true"></span><span>문구를 탭하면 바로 시작해요</span>`;
-      hero.appendChild(hint);
-    }
-    hint.classList.remove('is-on');
+    /* v34.5 (#22862) — '문구를 탭하면 바로 시작해요' 같은 안내 문구는 지웠다.
+       화면을 누르면 지금처럼 기다리지 않고 넘어가지만, 안내는 띄우지 않는다.
+       (혹시 남아 있는 옛 힌트 노드도 같이 걷어낸다.) */
+    const hint = null;
+    const staleHint = hero.querySelector('.ob-skip-hint');
+    if (staleHint) staleHint.remove();
     const titleNode = hero.querySelector('.ob-title');
     const descNode = hero.querySelector('.ob-desc');
 
@@ -1246,7 +1248,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ui.narrSeen[seenKey] || !narrationEnabled()) {
       step.classList.add('narr-done');
       answer.hidden = false;
-      hint.remove();
       clearNarrationTimers();
       return;
     }
@@ -1259,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     playNarration({
       titleNode,
       descNode,
-      hintNode: hint,
+      hintNode: null,
       hintDelay: narrationHintDelay(stepIndex === 0),
       onStart: () => { answer.hidden = false; },
       onDescIn: () => step.classList.add('narr-desc-in'),
@@ -1417,15 +1418,16 @@ document.addEventListener('DOMContentLoaded', () => {
           <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
         </div>`;
     } else if (stepId === 'me') {
-      /* Sprint 28.5 — 나이와 동네를 한 화면에서. 둘 다 선택이라 '건너뛰기'로도 넘어간다. */
+      /* Sprint 28.5 — 나이와 아지트를 한 화면에서. 둘 다 선택이다.
+         v34.5 (#22899) — '지역'이 아니라 **아지트** 하나로 통일했다(모임 만들기 4단계와 같은 말·같은 목록). */
       onboardingProgressVisible(true);
       onboardingProgress();
       const ageVal = String(d.age || '').trim();
-      const regionName = d.regionId ? ((store.getRegion(d.regionId) || {}).name || '') : '';
+      const azit = d.azitId ? store.findAzit(d.azitId) : null;
       body = `
         ${obKicker('me')}
         <div class="ob-hero">
-          <h1 class="ob-title">마지막으로<br>나이와 동네예요</h1>
+          <h1 class="ob-title">마지막으로<br>나이와 아지트예요</h1>
           <p class="ob-desc">나이 제한이 있는 모임을 가려내고, 가까운 모임을 먼저 보여드리는 데만 써요. 나중에 내정보에서 바꿀 수 있어요.</p>
         </div>
         <div class="ob-field">
@@ -1434,46 +1436,55 @@ document.addEventListener('DOMContentLoaded', () => {
                  value="${escapeHtml(ageVal)}" placeholder="예: 26">
         </div>
         <div class="ob-field">
-          <label class="ob-label" for="ob-region">활동 지역 <span class="ob-hint">선택</span></label>
-          <select class="ob-input ob-input-lg" id="ob-region">
-            <option value="">지역 선택 안 함</option>
-            ${regionSelectHTML(d.regionId || '').replace('<option value="">동네 선택</option>', '').replace('<option value="">지역 선택</option>', '')}
+          <label class="ob-label" for="ob-azit">활동 아지트 <span class="ob-hint">선택</span></label>
+          <select class="ob-input ob-input-lg" id="ob-azit" aria-describedby="ob-azit-note">
+            ${azitSelectHTML(d.azitId || '')}
           </select>
         </div>
         ${errHTML}
-        <p class="ob-note">${regionName ? `${escapeHtml(regionName)} 근처 모임을 먼저 보여드릴게요.` : '동네를 고르면 가까운 모임과 이웃을 먼저 보여드려요.'}</p>
+        <p class="ob-note" id="ob-azit-note">${azit
+          ? `${escapeHtml(azit.name)} 근처 모임을 먼저 보여드릴게요.`
+          : '아지트를 고르면 가까운 모임과 이웃을 먼저 보여드려요.'}</p>
         <div class="ob-actions">
           <button class="ob-btn primary" id="ob-submit" type="button">우그 시작하기</button>
           <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
         </div>`;
     } else if (stepId === 'photo') {
+      /* v34.5 (#22862) — 회원가입에서 **대표 사진(공개 사진 1번)** 을 직접 고른다.
+         · 고른 사진은 가입이 끝나면 내 프로필 맨 위 큰 1번 사진이 된다.
+         · 사진은 권하지 않을 뿐 필수는 아니다(사진 없이 넘어가면 기본 아바타 색을 쓴다). */
       onboardingProgressVisible(true);
       onboardingProgress();
+      const picked = !!d.photoUrl;
       body = `
         ${obKicker('photo')}
         <div class="ob-hero">
-          <h1 class="ob-title">프로필 사진을<br>올려볼까요?</h1>
-          <p class="ob-desc">얼굴이 아니어도 괜찮아요. 좋아하는 취미 사진이면 충분해요. 사진 없이 넘어가도 돼요.</p>
+          <h1 class="ob-title">프로필에 크게 보일<br>대표 사진이에요</h1>
+          <p class="ob-desc">내 프로필 맨 위에 큰 1번 사진으로 보여요. 얼굴이 아니어도 괜찮아요 —
+            좋아하는 취미 사진이면 충분하고, 나중에 내 프로필에서 바꿀 수 있어요.</p>
         </div>
-        <div class="ob-photo-stage">
+        <div class="ob-photo-stage ob-photo-stage-lg">
           <div class="ob-photo-preview ob-photo-preview-lg ${d.avatarGradient === SIGNUP_FALLBACK_GRADIENT ? 'brand' : ''}" id="ob-photo-preview"
                style="background:${d.photoUrl ? 'transparent' : d.avatarGradient}">
-            ${d.photoUrl ? avatarImgHTML(d.photoUrl, '프로필 사진 미리보기') : escapeHtml((d.nickname || '').charAt(0) || 'ooG')}
+            ${d.photoUrl ? avatarImgHTML(d.photoUrl, '대표 사진 미리보기') : escapeHtml((d.nickname || '').charAt(0) || 'ooG')}
           </div>
+          <p class="ob-photo-caption" id="ob-photo-caption">${picked
+            ? '공개 사진 1번 · 대표 사진으로 등록돼요'
+            : '아직 사진을 고르지 않았어요 · 사진 없이도 시작할 수 있어요'}</p>
           <div class="ob-photo-btns">
-            <button class="ob-btn ghost" id="ob-photo-album" type="button">앨범에서 고르기</button>
+            <button class="ob-btn ghost" id="ob-photo-album" type="button">${picked ? '다른 사진 고르기' : '앨범에서 고르기'}</button>
             <button class="ob-btn ghost" id="ob-photo-camera-btn" type="button">사진 찍기</button>
           </div>
-          <input class="ob-file-hidden" id="ob-photo-input" type="file" accept="image/*" aria-label="앨범에서 프로필 사진 고르기">
-          <input class="ob-file-hidden" id="ob-photo-camera" type="file" accept="image/*" capture="environment" aria-label="카메라로 프로필 사진 찍기">
-          <div class="ob-swatches" id="ob-swatches" role="group" aria-label="기본 아바타 색">
+          <input class="ob-file-hidden" id="ob-photo-input" type="file" accept="image/*" aria-label="앨범에서 대표 사진 고르기">
+          <input class="ob-file-hidden" id="ob-photo-camera" type="file" accept="image/*" capture="environment" aria-label="카메라로 대표 사진 찍기">
+          <div class="ob-swatches" id="ob-swatches" role="group" aria-label="사진 없이 시작할 때 쓸 기본 아바타 색">
             ${(ob.avatarGradients || []).map((g, i) =>
               `<button class="ob-swatch ${d.avatarGradient === g ? 'on' : ''}" data-ob-gradient="${i}" type="button" style="background:${g}" aria-label="기본 아바타 ${i + 1}"></button>`).join('')}
           </div>
         </div>
         ${errHTML}
         <div class="ob-actions">
-          <button class="ob-btn primary" id="ob-next" type="button">${d.photoUrl ? '다음' : '사진 없이 다음'}</button>
+          <button class="ob-btn primary" id="ob-next" type="button">${picked ? '이 사진으로 다음' : '사진 없이 다음'}</button>
           <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
         </div>`;
     } else if (stepId === 'age') {
@@ -1501,14 +1512,13 @@ document.addEventListener('DOMContentLoaded', () => {
       body = `
         ${obKicker('region')}
         <div class="ob-hero">
-          <h1 class="ob-title">어디서 취미를<br>즐기세요?</h1>
-          <p class="ob-desc">동네를 알려주면 가까운 모임을 먼저 보여드려요. 나중에 언제든 바꿀 수 있어요.</p>
+          <h1 class="ob-title">어느 아지트에서<br>취미를 즐기세요?</h1>
+          <p class="ob-desc">아지트를 알려주면 가까운 모임을 먼저 보여드려요. 나중에 언제든 바꿀 수 있어요.</p>
         </div>
         <div class="ob-field">
-          <label class="ob-label" for="ob-region">활동 지역</label>
-          <select class="ob-input ob-input-lg" id="ob-region">
-            <option value="">지역 선택 안 함</option>
-            ${regionSelectHTML(d.regionId || '').replace('<option value="">동네 선택</option>', '')}
+          <label class="ob-label" for="ob-azit">활동 아지트</label>
+          <select class="ob-input ob-input-lg" id="ob-azit">
+            ${azitSelectHTML(d.azitId || '')}
           </select>
         </div>
         ${errHTML}
@@ -1549,6 +1559,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (obField('ob-nickname')) d.nickname = val('ob-nickname');
     if (obField('ob-handle')) d.handle = val('ob-handle');
     if (obField('ob-age')) d.age = val('ob-age');
+    if (obField('ob-azit')) d.azitId = val('ob-azit');
     if (obField('ob-region')) d.regionId = val('ob-region');
     return d;
   }
@@ -1654,13 +1665,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function submitOnboarding() {
     const d = collectOnboardingInputs();
-    const region = d.regionId ? store.getRegion(d.regionId) : null;
     const res = store.signUp({
       email: d.email, password: d.password, passwordConfirm: d.passwordConfirm || d.password,
       quickStart: d.quickStart === true,
       nickname: d.nickname, handle: d.handle, photoUrl: d.photoUrl, avatarGradient: d.avatarGradient,
       age: String(d.age || '').trim() === '' ? null : Number(d.age),
-      location: region ? `${region.name.split('·')[0]} ${region.short}` : '',
+      azitId: d.azitId || null,
       hobbies: d.hobbies
     });
     if (!res.ok) return showOnboardingError(onboardingError(res.reason));
@@ -1900,6 +1910,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openModal(node) {
     closeAllPostMenus();
+    /* v34.5 — 이미 열려 있는 화면(타인 프로필 210 · 글 상세 205 등) 위에 새 화면을 열 때는
+       그보다 위에 오도록 층을 올린다. 프로필 위의 글·댓글·좋아요 목록이 뒤로 가려지지 않는다.
+       (겹쳐 열 일이 없으면 CSS 가 정한 층 그대로 쓴다.) */
+    if (node && node.style) {
+      const others = [...document.querySelectorAll('.modal-overlay.active')].filter((n) => n !== node);
+      if (others.length) {
+        const top = Math.max(...others.map((n) => Number(getComputedStyle(n).zIndex) || 0));
+        node.style.zIndex = String(top + 2);
+      } else {
+        node.style.zIndex = '';
+      }
+    }
     /* Sprint 33 — 어떤 화면이 페이지이고 어떤 화면이 시트인지는 여기서 한 번에 정한다. */
     const asPage = !!node && PAGE_MODALS.has(node.id);
     node.classList.toggle('is-page', asPage);
@@ -1985,15 +2007,18 @@ document.addEventListener('DOMContentLoaded', () => {
    * v34.4 (#22772) — 내 프로필 탭(모임 밖)에서는 상단 바 **중앙**에 인스타그램처럼 @아이디.
    * 다른 탭이나 모임 안에서는 감춘다(모임 안은 모임 이름을 쓰는 기존 머리말 그대로).
    */
+  /**
+   * 프로필 본문 맨 위 중앙의 @아이디 — v34.5 (#22887) 부터는 헤더(로고·알림·삼선바)가 아니라
+   * 본문 첫 줄에 크게 둔다. 내 프로필 탭(모임 밖)에서만 보인다.
+   */
   function syncHeaderProfileId() {
     const onProfile = ui.activeTab === 'tab-myprofile' && !isGroupMode();
     const me = store.currentUser || {};
     const handle = store.isSignedIn() ? displayHandleOf(me) : '';
-    if (el.headerProfileHandle) {
-      el.headerProfileHandle.textContent = handle ? `@${handle}` : '';
-      el.headerProfileHandle.hidden = !(onProfile && handle);
+    if (el.profileTopHandle) {
+      el.profileTopHandle.textContent = handle ? `@${handle}` : '';
+      el.profileTopHandle.hidden = !(onProfile && handle);
     }
-    if (el.appHeader) el.appHeader.classList.toggle('is-profile', onProfile);
   }
 
   /* ==========================================================================
@@ -6759,6 +6784,19 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     el.onboardingBody.addEventListener('change', (e) => {
+      /* v34.5 (#22899) — 아지트를 고르면 그 자리에서 안내 문구가 그 아지트로 바뀐다. */
+      if (e.target && e.target.id === 'ob-azit') {
+        const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+        d.azitId = e.target.value || '';
+        const azit = d.azitId ? store.findAzit(d.azitId) : null;
+        const note = obField('ob-azit-note');
+        if (note) {
+          note.textContent = azit
+            ? `${azit.name} 근처 모임을 먼저 보여드릴게요.`
+            : '아지트를 고르면 가까운 모임과 이웃을 먼저 보여드려요.';
+        }
+        return;
+      }
       const input = e.target.closest('#ob-photo-input, #ob-photo-camera');
       if (!input) return;
       const file = input.files && input.files[0];
@@ -8605,6 +8643,15 @@ document.addEventListener('DOMContentLoaded', () => {
    *        매칭 카드 사람이 아니면(모임 사람·이름만 아는 사람) '관심 보내기'는 숨기고
    *        1:1 대화만 남긴다. 내가 누르면 '내 프로필 열기'.
    */
+  /**
+   * v34.5 (#22862) — 타인 프로필은 **내 프로필과 같은 인스타그램형 화면**이다.
+   *  ① 본문 맨 위 중앙 @아이디(헤더 바와 분리 · #22887)
+   *  ② 왼쪽 큰 1번 사진 + 오른쪽 닉네임 · 3열 통계(게시물 · 다녀온 모임 · 모임)
+   *  ③ 통계 아래 공개 사진 2~4번 원형(타인에게 비밀앨범·+ 칸은 없다)
+   *  ④ 소개 · 대화 버튼
+   *  ⑤ 하단에 그 사람이 올린 피드(3:4 풀블리드 격자 ↔ 인스타형 피드 전환)
+   *  · '취미 스펙' 같은 부가 박스는 두지 않는다(#22875 · 내 프로필에 없는 것).
+   */
   function openPersonDetail(profileOrId) {
     const p = (profileOrId && typeof profileOrId === 'object')
       ? profileOrId
@@ -8631,21 +8678,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeAction = `<button class="detail-btn ghost" data-person-action="close" type="button">닫기</button>`;
 
     const metaBadges = [
+      p.age ? `<span class="detail-age">${p.age}세</span>` : '',
       p.location ? `<span class="detail-badge">${escapeHtml(p.location)}${p.distanceKm != null ? ` · ${p.distanceKm}km` : ''}</span>` : '',
       p.cycle ? `<span class="detail-badge">${escapeHtml(p.cycle)}</span>` : ''
     ].filter(Boolean).join('');
-
-    const specChips = p.specChips || [];
-    const specBlock = specChips.length ? `
-      <div class="detail-spec-title">취미 스펙</div>
-      <div class="detail-spec-grid">
-        ${specChips.map((s) => `
-          <div class="detail-spec-cell">
-            <span class="detail-spec-icon" aria-hidden="true">${ic(s.icon)}</span>
-            <span class="detail-spec-label">${escapeHtml(s.label)}</span>
-            <strong class="detail-spec-value">${escapeHtml(s.value)}</strong>
-          </div>`).join('')}
-      </div>` : '';
 
     /* v34.4 (#22760) — 타인 프로필도 인스타그램처럼 숫자 3칸. 다녀온 모임·모임은 눌러서 목록.
        다녀온 모임을 비공개로 둔 사람은 숫자 대신 '비공개'(눌러도 안내만). */
@@ -8665,39 +8701,123 @@ document.addEventListener('DOMContentLoaded', () => {
         </button>
       </div>`;
 
+    const handle = `@${store.personHandle(p)}`;
+    const bio = String(p.bio || '').trim();
+
     el.personDetailBody.innerHTML = `
-      <div class="detail-photo" ${p.photoUrl ? '' : `style="background:${p.avatarGradient || 'linear-gradient(135deg,#10B981,#047857)'}"`}>
-        ${p.photoUrl
-          ? `<img class="detail-photo-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.nickname)} 프로필 사진" loading="lazy" decoding="async">`
-          : `<span class="detail-photo-initial" aria-hidden="true">${escapeHtml(p.avatarText || String(p.nickname).charAt(0))}</span>`}
-        <span class="person-badge detail-photo-badge">${escapeHtml(p.badge || '')}</span>
-      </div>
-      ${personPhotoRingsHTML(p)}
-      <div class="detail-head">
-        <div class="detail-name-row">
+      <p class="person-top-id" id="person-top-id" ${handle ? '' : 'hidden'}>${escapeHtml(handle)}</p>
+      <div class="detail-top">
+        <div class="detail-photo" ${p.photoUrl ? '' : `style="background:${p.avatarGradient || 'linear-gradient(135deg,#10B981,#047857)'}"`}>
+          ${p.photoUrl
+            ? `<img class="detail-photo-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.nickname)} 대표 사진" loading="lazy" decoding="async">`
+            : `<span class="detail-photo-initial" aria-hidden="true">${escapeHtml(p.avatarText || String(p.nickname).charAt(0))}</span>`}
+        </div>
+        <div class="detail-id-col">
           <h2 class="detail-name">${escapeHtml(p.nickname)}</h2>
           ${isMe ? '<span class="me-badge">나</span>' : ''}
-          ${p.age ? `<span class="detail-age">${p.age}세</span>` : ''}
-          ${p.verified ? `<span class="detail-verified">${ic('check')} 취미 인증</span>` : ''}
+          ${metaBadges ? `<div class="detail-badges">${metaBadges}</div>` : ''}
+          ${personStats}
         </div>
-        <p class="detail-style">${escapeHtml(p.hobbyStyle || p.hobbyLabel || '')}</p>
-        ${p.handle ? `<p class="detail-handle">@${escapeHtml(String(p.handle).replace(/^@+/, ''))}</p>` : ''}
-        ${metaBadges ? `<div class="detail-badges">${metaBadges}</div>` : ''}
       </div>
-      ${personStats}
-      <p class="detail-bio">${escapeHtml(p.bio || '')}</p>
-      ${commonChipsHTML(p)}
-      ${specBlock}
-      ${(p.hobbies || []).length ? `
-      <div class="detail-hobby-list">
-        ${p.hobbies.map((h) => `<span class="detail-hobby-pill">#${escapeHtml(h)}</span>`).join('')}
-      </div>` : ''}
+      ${personPhotoRingsHTML(p)}
+      ${bio ? `<p class="detail-bio">${escapeHtml(bio)}</p>` : ''}
       <div class="detail-actions">
         ${primary}
         ${secondary}
         ${closeAction}
-      </div>`;
+      </div>
+      ${personFeedHTML(p, personPosts)}
+    `;
+    renderPersonFeed(p.id);
     openModal(el.personDetailModal);
+  }
+
+  /** 타인 피드의 글 한 장 — 홈·내 피드와 같은 카드(igPostHTML)를 쓴다. */
+  function personFeedItemOf(post) {
+    const grp = post.groupId ? store.getGroup(post.groupId) : null;
+    const chip = (grp && store.getHobbyChip(grp.hobbyId || grp.category)) || null;
+    return {
+      post,
+      group: grp,
+      groupName: grp ? grp.name : (post.groupId ? '모임 피드' : '자유 피드'),
+      uid: `personfeed-${post.id}`,
+      tone: chip ? chip.tone : 'neutral',
+      hobbyIcon: chip ? chip.icon : 'sparkle',
+      azitName: grp ? (grp.azitName || '') : '',
+      regionName: '',
+      round: 0
+    };
+  }
+
+  /** 타인 프로필 하단 피드 껍데기 — 3:4 풀블리드 격자 ↔ 인스타형 피드 전환. */
+  function personFeedHTML(p, count) {
+    return `
+      <section class="myprofile-feed pp-feed" aria-labelledby="person-feed-title">
+        <div class="myprofile-feed-head">
+          <h3 class="myprofile-feed-title" id="person-feed-title">피드 <span class="section-count" id="person-feed-count">${count}</span></h3>
+          <div class="mp-feed-seg" id="person-feed-seg" role="group" aria-label="${escapeHtml(p.nickname)}님 피드 보기 방식">
+            <button class="mp-feed-view-btn active" data-person-view="grid" type="button"
+                    aria-pressed="true" aria-label="격자로 보기">
+              ${ic('grid')}
+            </button>
+            <button class="mp-feed-view-btn" data-person-view="feed" type="button"
+                    aria-pressed="false" aria-label="피드로 보기">
+              ${ic('note')}
+            </button>
+          </div>
+        </div>
+        <div class="mp-feed-grid pp-feed" id="person-feed-grid" aria-live="polite"><!-- JS --></div>
+        <div class="mp-feed-list ig-feed" id="person-feed-list" aria-live="polite" hidden><!-- JS --></div>
+      </section>`;
+  }
+
+  /** 타인 피드 다시 그리기 — 격자(3:4) / 인스타형 카드. */
+  function renderPersonFeed(personId) {
+    const id = personId || ui.personSheetId;
+    if (!id) return;
+    const posts = store.getPersonFeedPosts(id);
+    const view = ui.personFeedView === 'feed' ? 'feed' : 'grid';
+    const count = $('#person-feed-count');
+    if (count) count.textContent = String(posts.length);
+    const seg = $('#person-feed-seg');
+    if (seg) {
+      seg.querySelectorAll('[data-person-view]').forEach((b) => {
+        const on = b.dataset.personView === view;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    }
+    const grid = $('#person-feed-grid');
+    const list = $('#person-feed-list');
+    if (grid) {
+      grid.hidden = view !== 'grid';
+      grid.innerHTML = posts.length
+        ? posts.map((post) => {
+          const images = postImages(post);
+          const thumb = images.length
+            ? `<img class="media-img" src="${escapeHtml(images[0])}" alt="올린 사진" loading="lazy" decoding="async">`
+            : `<span class="mp-tile-text">${escapeHtml(String(post.caption || '').trim().slice(0, 60) || '글')}</span>`;
+          return `<button class="mp-feed-tile" data-person-post="${escapeHtml(post.id)}" type="button"
+                  aria-label="올린 글 열기">
+            <span class="mp-feed-thumb">${thumb}${images.length > 1
+              ? `<span class="mp-tile-badge" aria-hidden="true">${ic('image')} ${images.length}</span>` : ''}</span>
+            <span class="mp-feed-tile-meta"><span aria-hidden="true">${ic('heart', { filled: true })}</span> ${fmtCount(post.likes || 0)}</span>
+          </button>`;
+        }).join('')
+        : `<div class="mp-feed-empty">
+             <p class="mp-feed-empty-title">아직 올린 피드가 없어요</p>
+             <p class="mp-feed-empty-desc">이 사람이 사진을 올리면 여기에 쌓여요.</p>
+           </div>`;
+    }
+    if (list) {
+      list.hidden = view !== 'feed';
+      list.innerHTML = posts.length
+        ? posts.map((post) => igPostHTML(personFeedItemOf(post))).join('')
+        : `<div class="mp-feed-empty">
+             <p class="mp-feed-empty-title">아직 올린 피드가 없어요</p>
+             <p class="mp-feed-empty-desc">이 사람이 사진을 올리면 여기에 쌓여요.</p>
+           </div>`;
+    }
   }
 
   /* ==========================================================================
@@ -8961,8 +9081,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === el.matchPopup) closeMatchPopup();
   });
 
-  const btnClosePersonDetail = $('#btn-close-match-detail');
-  btnClosePersonDetail && btnClosePersonDetail.addEventListener('click', () => closeModal(el.personDetailModal));
+  /* v34.5 — 이용자 프로필은 풀스크린 페이지이고, 닫기는 위쪽 '<' 뒤로가기가 맡는다. */
+
+  /* v34.5 — 이용자 프로필 풀스크린 페이지: '<' 뒤로가기 · 피드 격자/피드 전환 · 격자 타일 → 글 상세. */
+  const btnPersonBack = $('#btn-person-back');
+  btnPersonBack && btnPersonBack.addEventListener('click', () => closeModal(el.personDetailModal));
+  if (el.personDetailBody) {
+    el.personDetailBody.addEventListener('click', (e) => {
+      const seg = e.target.closest('[data-person-view]');
+      if (seg) {
+        ui.personFeedView = seg.dataset.personView === 'feed' ? 'feed' : 'grid';
+        renderPersonFeed(ui.personSheetId);
+        return;
+      }
+      const tile = e.target.closest('[data-person-post]');
+      if (tile) openHomePost(tile.dataset.personPost);
+    });
+    /* 인스타형 카드의 좋아요·댓글·카드 열기도 같은 글 화면으로 이어진다. */
+    wireIgFeed(el.personDetailBody);
+  }
 
   /* ==========================================================================
    * 3. 모임 상세 시트 + 말머리 태그 관리 (모임장 전용)
@@ -11340,6 +11477,29 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 하위 권역이 여럿인 큰 분류: <optgroup label="서울"> + 권역들
    *  · 하위 권역이 없는 곳(제주·해외·베어): optgroup 없이 큰 분류 이름 그대로
    */
+  /**
+   * v34.5 (#22899) — 회원가입의 **아지트** 고르기. 모임 만들기 4단계와 같은 목록(역·대학교·랜드마크)을
+   * 시·군·구로 묶어 보여 준다. 주소는 받지 않고 아지트 이름만 쓴다.
+   */
+  function azitSelectHTML(selectedId) {
+    const selected = selectedId || '';
+    const spots = store.getHangouts({ limit: 400 });
+    const groups = new Map();
+    spots.forEach((h) => {
+      const key = h.sigunguId || h.areaId || 'etc';
+      if (!groups.has(key)) {
+        groups.set(key, {
+          label: [h.sidoName, h.sigunguName || h.areaName].filter(Boolean).join(' ') || '아지트',
+          rows: []
+        });
+      }
+      groups.get(key).rows.push(h);
+    });
+    return '<option value="">아지트 선택 안 함</option>' + [...groups.values()].map((g) =>
+      `<optgroup label="${escapeHtml(g.label)}">${g.rows.map((h) =>
+        `<option value="${escapeHtml(h.id)}" ${selected === h.id ? 'selected' : ''}>${escapeHtml(h.name)}</option>`).join('')}</optgroup>`).join('');
+  }
+
   function regionSelectHTML(selectedId) {
     const selected = selectedId || '';
     return `<option value="">동네 선택</option>` + store.getRegionGroups().map((g) => {
@@ -11635,9 +11795,9 @@ document.addEventListener('DOMContentLoaded', () => {
       el.myProfileHandle.textContent = handle ? `@${handle}` : '';
       el.myProfileHandle.hidden = !handle;
     }
-    /* v34.4 — 상단 바 중앙 아이디도 저장 전에 바로 바뀐다. */
-    if (el.headerProfileHandle && !el.headerProfileHandle.hidden) {
-      el.headerProfileHandle.textContent = handle ? `@${handle}` : '';
+    /* v34.5 — 프로필 본문 맨 위 중앙 아이디도 저장 전에 바로 바뀐다. */
+    if (el.profileTopHandle && !el.profileTopHandle.hidden) {
+      el.profileTopHandle.textContent = handle ? `@${handle}` : '';
     }
     if (el.myProfileBio) {
       const bio = el.editBio ? el.editBio.value.trim() : (u.bio || '');
@@ -14996,19 +15156,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ==========================================================================
+   * v34.5 (#22911) — 바텀시트는 **시트 바깥(어두운 배경)을 눌러도** 닫힌다.
+   * ------------------------------------------------------------------------
+   *  · 아래에서 올라오는 모든 시트(.modal-overlay)에 한 곳에서 일괄로 건다.
+   *    (예전에는 몇몇 시트만 목록에 적혀 있어 열심히 골라 닫아야 했다.)
+   *  · 글을 쓰는 중인 폼(글쓰기·동네 글·프로필 수정)은 실수로 지우지 않게 뺐다.
+   *  · 풀스크린 페이지(is-page)는 시트가 화면을 가득 채워 바깥 자리가 없다(그대로).
+   * ========================================================================== */
+  const BACKDROP_CLOSE_SKIP = new Set(['composer-modal', 'explore-compose-modal', 'profile-edit-modal']);
+  document.addEventListener('click', (e) => {
+    const overlay = e.target instanceof Element ? e.target.closest('.modal-overlay.active') : null;
+    if (!overlay || e.target !== overlay) return;
+    if (overlay.classList.contains('is-page')) return;
+    if (BACKDROP_CLOSE_SKIP.has(overlay.id) || overlay.dataset.backdropClose === 'off') return;
+    closeModal(overlay);
+  });
+
+  /* ==========================================================================
    * 8. 모달 닫기 / 헤더 버튼 / 초기 마운트
    * ======================================================================== */
   const closeGroupModalBtn = $('#btn-close-modal');
   closeGroupModalBtn && closeGroupModalBtn.addEventListener('click', () => closeModal(el.groupModal));
 
-  [el.groupModal, el.composerModal, el.joinedModal, el.personDetailModal,
-   el.postModal, el.exploreComposeModal, el.profileEditModal, el.groupCreateModal,
-   el.groupApplyModal, el.myApplicationsModal, el.notifModal, el.activityModal,
-   el.hotModal, el.filterModal].forEach((overlay) => {
-    overlay && overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal(overlay);
-    });
-  });
+  /* v34.5 — 시트 바깥(배경)을 누르면 닫히는 일은 위의 전역 처리 한 곳이 맡는다(모든 시트). */
 
   /* ==========================================================================
    * Sprint 12·13 — 시트를 아래로 당겨 닫기.

@@ -94,8 +94,7 @@
         <span class="brand-logo">ooG</span>
         <span class="brand-tag">Our Own Group</span>
       </button>
-      <!-- v34.4 (#22772) — 내 프로필 탭(모임 밖)에서는 인스타그램처럼 상단 바 중앙에 @아이디 -->
-      <span class="header-center-id" id="header-profile-handle" hidden></span>
+      <!-- v34.5 (#22887) — @아이디는 헤더(로고·알림·삼선바) 안이 아니라 프로필 본문 맨 위 중앙에 둔다. -->
       <div class="header-actions">
         <button class="icon-btn" id="btn-header-search" aria-label="모임 찾기 — 이름·아지트로 검색">
           <span class="oo-icon-20" aria-hidden="true" data-oog-icon="search"></span>
@@ -608,6 +607,9 @@
              왼쪽에 큰 1번 대표 사진, 그 오른쪽에 2·3·4번 작은 원형을 나란히,
              그 옆 자물쇠 원형이 5번째부터의 비밀앨범으로 이어진다.
              (예전처럼 아래에 '공개 사진 0 / 4' 칸을 따로 두지 않는다 — 위 한 줄로 통합.) -->
+        <!-- v34.5 (#22887 · #22862) — 인스타그램처럼 프로필 본문 맨 위 중앙에 @아이디를 크게.
+             헤더 바와 분리해 ooG 로고·알림·삼선바와 겹치지 않는다. -->
+        <p class="profile-top-id" id="profile-top-handle" hidden></p>
         <div class="myprofile-head" id="myprofile-head">
           <!-- v34.4 (#22760 · IMG_4583) — 인스타그램 프로필 배치:
                왼쪽 큰 1번 사진 · 오른쪽 위 닉네임 + 바로 아래 3열 통계(게시물 · 다녀온 모임 · 내 그룹).
@@ -794,11 +796,16 @@
       </div>
     </div>
 
-    <!-- ==================== 모달 4. 취미친구 프로필 상세 ==================== -->
-    <div class="modal-overlay" id="match-detail-modal" role="dialog" aria-modal="true" aria-label="취미친구 프로필 상세">
-      <div class="modal-sheet match-detail-sheet" tabindex="-1">
-        <div class="sheet-grabber"></div>
-        <button class="sheet-close-btn" id="btn-close-match-detail" aria-label="닫기">&times;</button>
+    <!-- ==================== 모달 4. 이용자 프로필 상세 (v34.5 — 내 프로필과 같은 인스타형 화면) ====================
+         풀스크린 페이지(is-page) · 위에는 뒤로가기 한 줄만 두고, @아이디는 헤더가 아니라
+         본문 맨 위 중앙에 크게 둔다(내 프로필과 같은 규칙 · #22887). -->
+    <div class="modal-overlay" id="match-detail-modal" role="dialog" aria-modal="true" aria-label="이용자 프로필">
+      <div class="modal-sheet match-detail-sheet person-sheet" tabindex="-1">
+        <header class="page-head person-head" data-own-head="1">
+          <button class="page-back" id="btn-person-back" type="button" aria-label="뒤로 가기">
+            <span aria-hidden="true" data-oog-icon="chevronLeft"></span>
+          </button>
+        </header>
         <div class="match-detail-body" id="match-detail-body"><!-- JS --></div>
       </div>
     </div>

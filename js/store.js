@@ -4313,7 +4313,7 @@ function samplePeople(regionId) {
   const area = (regionDef(regionId) || {}).name || '우리 동네';
   const rows = [
     {
-      id: 'sample_p_mora', nickname: '모래', age: 28, hobbyIds: ['run'], hobbyLabel: '러닝',
+      id: 'sample_p_mora', nickname: '모래', handle: '@mora.run', age: 28, hobbyIds: ['run'], hobbyLabel: '러닝',
       photoUrl: EXAMPLE_AVATARS.morae,
       hobbyStyle: '아침 러닝 · 5K', badge: '아침 러닝 3년', ratio: 'mid',
       avatarText: '모', avatarGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)',
@@ -4327,7 +4327,7 @@ function samplePeople(regionId) {
       verified: true
     },
     {
-      id: 'sample_p_haru', nickname: '하루', age: 31, hobbyIds: ['fitness'], hobbyLabel: '크로스핏',
+      id: 'sample_p_haru', nickname: '하루', handle: '@haru.wod', age: 31, hobbyIds: ['fitness'], hobbyLabel: '크로스핏',
       photoUrl: EXAMPLE_AVATARS.haru,
       hobbyStyle: '퇴근 후 와드 · 3년차', badge: '와드 3년차', ratio: 'square',
       avatarText: '하', avatarGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
@@ -4341,7 +4341,7 @@ function samplePeople(regionId) {
       verified: false
     },
     {
-      id: 'sample_p_danchu', nickname: '단추', age: 26, hobbyIds: ['boardgame'], hobbyLabel: '보드게임',
+      id: 'sample_p_danchu', nickname: '단추', handle: '@danchu.play', age: 26, hobbyIds: ['boardgame'], hobbyLabel: '보드게임',
       photoUrl: EXAMPLE_AVATARS.danchu,
       hobbyStyle: '전략게임 · 뉴비 환영', badge: '설명 잘해요', ratio: 'wide',
       avatarText: '단', avatarGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
@@ -4355,7 +4355,7 @@ function samplePeople(regionId) {
       verified: true
     },
     {
-      id: 'sample_p_choko', nickname: '초코', age: 33, hobbyIds: ['hike'], hobbyLabel: '등산',
+      id: 'sample_p_choko', nickname: '초코', handle: '@choko.hike', age: 33, hobbyIds: ['hike'], hobbyLabel: '등산',
       photoUrl: EXAMPLE_AVATARS.choko,
       hobbyStyle: '주말 산행 · 천천히', badge: '하산 맛집 담당', ratio: 'square',
       avatarText: '초', avatarGradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)',
@@ -6824,6 +6824,12 @@ class Store {
 
   /** 내 동네의 첫 아지트 — '내 아지트' 기본값. 같은 시·군·구 → 같은 권역 → 성수역 순. */
   getMyAzit() {
+    const u = this.currentUser || {};
+    /* v34.5 (#22899) — 가입할 때 고른 아지트가 있으면 그것을 먼저 쓴다. */
+    if (u.azitId) {
+      const picked = azitView(azitDef(u.azitId));
+      if (picked) return picked;
+    }
     const area = this.getMyArea();
     const primary = AZIT_SPOTS.filter((s) => !s.legacy);
     const sameArea = area ? primary.filter((s) => s.sigunguId === area.sigunguId) : [];
@@ -11185,10 +11191,47 @@ class Store {
       || (Array.isArray(g.members) && g.members.some((m) => m && m.id === id))));
   }
 
+  /**
+   * v34.5 (#22862) — 사람 프로필의 @아이디. 저장된 값이 없으면 id·닉네임에서 만들어
+   * 타인 프로필 맨 위에도 늘 아이디가 보이게 한다(가입자 아닌 예시·쪽지 상대 포함).
+   */
+  personHandle(person) {
+    const raw = String((person && person.handle) || '').replace(/^@+/, '').trim();
+    if (raw) return raw;
+    const base = String((person && (person.id || person.nickname)) || 'oog')
+      .replace(/^sample_p_/, '')
+      .replace(/^by-name:/, '')
+      .replace(/[^a-zA-Z0-9._]/g, '')
+      .toLowerCase();
+    return base.length >= 2 ? base : 'oog';
+  }
+
   /** 한 사람이 올린 글 수(내 글·타인 글 모두 같은 기준). */
   getPersonPostCount(personId) {
     const id = personId || (this.currentUser || {}).id;
     return (this.state.feedPosts || []).filter((p) => p && p.authorId === id).length;
+  }
+
+  /**
+   * v34.5 (#22862) — 한 사람이 올린 피드(최신순). 내 프로필의 getMyFeedPosts 와 같은 모양이라
+   * 타인 프로필 하단 피드도 같은 카드·같은 격자로 그릴 수 있다.
+   */
+  getPersonFeedPosts(personId = 0) {
+    const id = personId || (this.currentUser || {}).id;
+    return (this.state.feedPosts || [])
+      .filter((p) => p && p.authorId === id)
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map((p) => {
+        const g = this.getGroup(p.groupId);
+        return {
+          ...p,
+          groupName: g ? g.name : (p.groupId ? '' : '자유 피드'),
+          groupIcon: g ? g.icon : (p.groupId ? '' : 'globe'),
+          commentCount: (p.comments || []).length,
+          photo: !!p.photoUrl
+        };
+      });
   }
 
   /** 참석/대기/불참 — 한 사람은 한 상태만.
@@ -12638,7 +12681,15 @@ class Store {
       .filter((h) => !!this.getHobbyChip(h))
       .filter((h, i, arr) => arr.indexOf(h) === i)
       .slice(0, 3);
-    const location = String(d.location || '').trim().slice(0, 30);
+    const location = (() => {
+      /* v34.5 (#22899) — 회원가입에서 고른 **아지트**가 있으면 그것을 활동 기준으로 삼는다.
+         (주소는 받지 않고, 시·군·구 + 아지트 이름만 남긴다.) */
+      const azit = d.azitId ? this.findAzit(d.azitId) : null;
+      const given = String(d.location || '').trim();
+      if (given) return given.slice(0, 30);
+      return azit ? [azit.sigunguName, azit.name].filter(Boolean).join(' ').slice(0, 30) : '';
+    })();
+    const signupAzit = d.azitId ? this.findAzit(d.azitId) : null;
     const photoUrl = typeof d.photoUrl === 'string' && d.photoUrl.startsWith('data:image/') ? d.photoUrl : null;
     const gradient = SIGNUP_AVATAR_GRADIENTS.includes(d.avatarGradient)
       ? d.avatarGradient : SIGNUP_AVATAR_GRADIENTS[0];
@@ -12668,9 +12719,23 @@ class Store {
     user.registered = true;
     user.age = age;
     user.location = location;
-    user.regionId = location ? (deriveRegionId(location) || null) : null;
+    user.regionId = user.regionId || (location ? (deriveRegionId(location) || null) : null);
     user.hobbies = hobbies.map((id) => this.getHobbyChip(id).name);
     user.hobbyIds = hobbies.slice();
+    /* v34.5 (#22862) — 가입 때 고른 **대표 사진**은 공개 앨범 1번으로 그대로 저장한다.
+       (내 프로필의 큰 1번 사진 · 공개 사진 1/4 가 바로 그 사진이 된다.) */
+    if (photoUrl) {
+      user.album = {
+        public: [{ id: `ph_public_${Date.now().toString(36)}_signup`, url: photoUrl, caption: '', at: new Date().toISOString() }],
+        secret: []
+      };
+    }
+    /* v34.5 (#22899) — 고른 아지트를 지역 기준으로 남긴다(프로필·탐색·모임 찾기가 같은 값으로 이어진다). */
+    if (signupAzit) {
+      user.azitId = signupAzit.id;
+      user.areaId = signupAzit.sigunguId || null;
+      user.regionId = signupAzit.regionId || null;
+    }
     user.bio = String(d.bio || '').trim().slice(0, 120);
     user.exploreProfileVisible = d.exploreProfileVisible === true;
     user.exploreCard = {
