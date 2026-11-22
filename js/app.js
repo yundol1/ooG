@@ -265,6 +265,9 @@ document.addEventListener('DOMContentLoaded', () => {
     findSub: $('#find-sub'),
     findGrid: $('#find-grid'),
     btnFindMore: $('#btn-find-more'),
+    findEvents: $('#find-events'),
+    findEventsList: $('#find-events-list'),
+    findEventsSub: $('#find-events-sub'),
     spotlight: $('#spotlight'),
     spotlightHole: $('#spotlight-hole'),
     spotlightVeil: $('#spotlight-veil'),
@@ -470,8 +473,6 @@ document.addEventListener('DOMContentLoaded', () => {
     homeTagChips: $('#home-tag-chips'),
     homePhotoGrid: $('#home-photo-grid'),
     homePhotoCount: $('#home-photo-count'),
-    homeChatPreview: $('#home-chat-preview'),
-    homeChatOpen: $('#btn-home-chat-open'),
     navHomeBadge: $('#nav-home-badge'),
     /* Sprint 15 — 공지 바 · 일정 상세 · 내 피드 */
     homePinned: $('#home-pinned'),
@@ -654,16 +655,12 @@ document.addEventListener('DOMContentLoaded', () => {
     homeFeedStatus: $('#home-feed-status'),
     homeFeedStatusText: $('#home-feed-status-text'),
     homeFeedMore: $('#btn-home-feed-more'),
-    findRegionBtn: $('#btn-find-region'),
     findHangoutBtn: $('#btn-find-hangout'),
-    findRegionLabel: $('#find-region-label'),
     findHangoutLabel: $('#find-hangout-label'),
     findReset: $('#btn-find-reset'),
-    findRegionModal: $('#find-region-modal'),
-    findRegionSido: $('#find-region-sido'),
-    findRegionSigungu: $('#find-region-sigungu'),
-    findRegionCurrent: $('#find-region-current'),
     findHangoutModal: $('#find-hangout-modal'),
+    findHangoutSido: $('#find-hangout-sido'),
+    findHangoutSigungu: $('#find-hangout-sigungu'),
     findHangoutSearch: $('#find-hangout-search'),
     findHangoutClear: $('#find-hangout-clear'),
     findHangoutList: $('#find-hangout-list'),
@@ -2537,15 +2534,19 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderHomeSuggestEventsLegacy(items) {
     if (!items.length) { el.homeSuggestEventsList.innerHTML = ''; return; }
     if (el.homeSuggestEventsSub) el.homeSuggestEventsSub.textContent = '게스트로 참여할 수 있는 일정이에요 · 모임장이 수락하면 참석돼요';
-    el.homeSuggestEventsList.innerHTML = items.map((it) => {
-      const ev = it.event;
-      const join = suggestEventJoinState(it);
-      const d = new Date(ev.when);
-      const days = ['일', '월', '화', '수', '목', '금', '토'];
-      const day = `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
-      const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      const azit = it.azit || (it.group ? store.getGroupAzit(it.group) : null);
-      return `
+    el.homeSuggestEventsList.innerHTML = items.map(suggestEventRowHTML).join('');
+  }
+
+  /** 추천 일정 한 줄(행) — 홈 옛 자리와 모임 찾기(v34.1)가 같은 모양을 쓴다. */
+  function suggestEventRowHTML(it) {
+    const ev = it.event;
+    const join = suggestEventJoinState(it);
+    const d = new Date(ev.when);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const day = `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
+    const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const azit = it.azit || (it.group ? store.getGroupAzit(it.group) : null);
+    return `
         <article class="suggest-row" data-suggest-event="${ev.id}">
           <div class="suggest-row-when">
             <span class="suggest-row-date">${escapeHtml(day)}</span>
@@ -2560,7 +2561,47 @@ document.addEventListener('DOMContentLoaded', () => {
             ${join.label}
           </button>
         </article>`;
-    }).join('');
+  }
+
+  /**
+   * v34.1 — 게스트 참석 버튼 한 곳. 홈 추천 일정과 모임 찾기 추천 일정이 같이 쓴다.
+   *  · 승인 대기/승인됨이면 취소, 모임 일정이면 상세 열기, 아니면 모임장 승인 대기로 신청.
+   */
+  function handleGuestEventButton(btn, rerender) {
+    const id = btn.dataset.guestEvent;
+    const state = btn.dataset.guestState;
+    const redraw = typeof rerender === 'function' ? rerender : renderHomeSuggestEvents;
+    if (state === 'mine') {
+      const ev = store.getGroupEvent(id);
+      if (ev) openEventDetail(ev.id);
+      return;
+    }
+    if (state === 'pending' || state === 'approved') {
+      const res = store.cancelGuestSeat(id);
+      if (!res.ok) { showToast('신청을 취소하지 못했어요', 'warning'); return; }
+      redraw();
+      showToast(state === 'pending' ? '게스트 신청을 취소했어요' : '게스트 참석을 취소했어요');
+      return;
+    }
+    /* H3 — 바로 참석이 아니라 **모임장 승인 대기**로 들어간다. */
+    const res = store.requestGuestSeat(id);
+    if (!res.ok) {
+      const why = { full: '자리가 다 찼어요', past: '지난 일정이에요', guest_closed: '게스트를 받지 않는 일정이에요', member: '이미 가입한 모임이에요' };
+      showToast(why[res.reason] || '참석을 신청하지 못했어요', 'warning');
+      return;
+    }
+    redraw();
+    showToast('게스트 참석을 신청했어요 · 모임장이 수락하면 참석돼요');
+  }
+
+  /** v34.1 (#22485) — 모임 찾기 안의 추천 일정. 게스트로 참여할 수 있는 일정만 보여 준다. */
+  function renderFindEvents() {
+    if (!el.findEvents || !el.findEventsList) return;
+    const items = store.getRecommendedEvents({ limit: 4 });
+    el.findEvents.hidden = !items.length;
+    if (!items.length) { el.findEventsList.innerHTML = ''; return; }
+    if (el.findEventsSub) el.findEventsSub.textContent = '게스트로 참여할 수 있어요';
+    el.findEventsList.innerHTML = items.map(suggestEventRowHTML).join('');
   }
 
   /* ---------------------------------------- 추천 피드 (H2 — 인스타그램형 · 무제한 스크롤) */
@@ -3283,15 +3324,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!ui.find) {
       ui.find = {
         query: '', categoryId: 'all', azitId: 'all', sort: 'recommend', limit: FIND_PAGE,
-        /* H2 — 지역(시·도/시·군·구)과 아지트 필터 */
+        /* v34.1 — 지역·아지트는 **아지트 하나**로 통일(권역 = 시·도/시·군·구). */
         sidoId: 'all', sigunguId: 'all', hangoutId: 'all',
-        hangoutQuery: '', regionSidoDraft: null
+        hangoutQuery: '', azitSidoDraft: 'all', azitSigunguDraft: 'all'
       };
     }
     if (!ui.find.azitId) ui.find.azitId = 'all';
     if (!ui.find.sidoId) ui.find.sidoId = 'all';
     if (!ui.find.sigunguId) ui.find.sigunguId = 'all';
     if (!ui.find.hangoutId) ui.find.hangoutId = 'all';
+    if (!ui.find.azitSidoDraft) ui.find.azitSidoDraft = 'all';
+    if (!ui.find.azitSigunguDraft) ui.find.azitSigunguDraft = 'all';
     return ui.find;
   }
 
@@ -3300,21 +3343,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.findGrid) return;
     const s = findState();
     if (el.findSearchClear) el.findSearchClear.classList.toggle('hide', !s.query);
-    /* H2 — 지역·아지트 필터 버튼의 지금 값 */
+    /* v34.1 — 버튼 하나('아지트')의 지금 값: 아지트 > 권역(시·군·구) > 시·도 > 전체 */
     const areaSel = s.sigunguId && s.sigunguId !== 'all' ? store.findSigungu(s.sigunguId) : null;
     const hangoutSel = s.hangoutId && s.hangoutId !== 'all' ? store.findAzit(s.hangoutId) : null;
-    if (el.findRegionLabel) {
-      el.findRegionLabel.textContent = areaSel
-        ? areaSel.label
-        : (s.sidoId && s.sidoId !== 'all'
-          ? (store.getRegionSido().find((x) => x.id === s.sidoId) || {}).short || '전체'
-          : '전체');
-    }
+    const sidoSel = s.sidoId && s.sidoId !== 'all'
+      ? (store.getRegionSido().find((x) => x.id === s.sidoId) || null) : null;
     if (el.findHangoutLabel) {
-      el.findHangoutLabel.textContent = hangoutSel ? hangoutSel.name : '전체';
+      el.findHangoutLabel.textContent = hangoutSel
+        ? hangoutSel.name
+        : (areaSel ? areaSel.name : (sidoSel ? (sidoSel.short || sidoSel.name) : '전체'));
     }
-    if (el.findRegionBtn) el.findRegionBtn.classList.toggle('has-value', !!(areaSel || (s.sidoId && s.sidoId !== 'all')));
-    if (el.findHangoutBtn) el.findHangoutBtn.classList.toggle('has-value', !!hangoutSel);
+    if (el.findHangoutBtn) el.findHangoutBtn.classList.toggle('has-value', !!(hangoutSel || areaSel || sidoSel));
     if (el.findReset) {
       el.findReset.classList.toggle('hide', !(s.query || s.categoryId !== 'all'
         || (s.azitId && s.azitId !== 'all') || (s.sidoId && s.sidoId !== 'all')
@@ -3334,6 +3373,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   type="button" aria-pressed="${on}">${escapeHtml(o.label)}</button>`;
       }).join('');
     }
+    /* v34.1 — 추천 그룹 '더 보기'로 왔을 때 추천 일정도 같은 화면에 보인다. */
+    renderFindEvents();
     const res = store.getGroupBrowse({
       query: s.query, categoryId: s.categoryId, sort: s.sort, azitId: s.azitId,
       sidoId: s.sidoId, sigunguId: s.sigunguId, hangoutId: s.hangoutId, limit: s.limit
@@ -3341,7 +3382,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const cat = store.getGroupBrowseCategories().find((c) => c.id === s.categoryId);
     const azitSel = s.azitId && s.azitId !== 'all' ? store.findAzit(s.azitId) : null;
     if (el.findSub) {
-      const where = areaSel ? `${areaSel.name} · ` : (hangoutSel ? `${hangoutSel.name} · ` : '');
+      /* v34.1 — 아지트를 골랐으면 아지트 이름을, 아니면 권역(시·군·구 → 시·도)을 적는다. */
+      const where = hangoutSel ? `${hangoutSel.name} · `
+        : (areaSel ? `${areaSel.name} · ` : (sidoSel ? `${sidoSel.short || sidoSel.name} · ` : ''));
       el.findSub.textContent = res.total
         ? `${s.query ? `'${s.query}' · ` : ''}${where}${azitSel ? `${azitSel.name} · ` : ''}${cat && cat.id !== 'all' ? `${cat.name} · ` : ''}모임 ${res.total}개`
         : '아직 둘러볼 모임이 없어요';
@@ -3457,36 +3500,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    /* 추천 일정 — 게스트 참석 신청/취소 · 내 모임 일정이면 상세 */
+    /* 추천 일정 — 게스트 참석 신청/취소 · 내 모임 일정이면 상세 (v34.1 — 한 곳으로 합침) */
     if (el.homeSuggestEventsList) {
       el.homeSuggestEventsList.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-guest-event]');
-        if (btn) {
-          const id = btn.dataset.guestEvent;
-          const state = btn.dataset.guestState;
-          if (state === 'mine') {
-            const ev = store.getGroupEvent(id);
-            if (ev) openEventDetail(ev.id);
-            return;
-          }
-          if (state === 'pending' || state === 'approved') {
-            const res = store.cancelGuestSeat(id);
-            if (!res.ok) { showToast('신청을 취소하지 못했어요', 'warning'); return; }
-            renderHomeSuggestEvents();
-            showToast(state === 'pending' ? '게스트 신청을 취소했어요' : '게스트 참석을 취소했어요');
-            return;
-          }
-          /* H3 — 바로 참석이 아니라 **모임장 승인 대기**로 들어간다. */
-          const res = store.requestGuestSeat(id);
-          if (!res.ok) {
-            const why = { full: '자리가 다 찼어요', past: '지난 일정이에요', guest_closed: '게스트를 받지 않는 일정이에요', member: '이미 가입한 모임이에요' };
-            showToast(why[res.reason] || '참석을 신청하지 못했어요', 'warning');
-            return;
-          }
-          renderHomeSuggestEvents();
-          showToast('게스트 참석을 신청했어요 · 모임장이 수락하면 참석돼요');
-          return;
-        }
+        if (btn) { handleGuestEventButton(btn, renderHomeSuggestEvents); return; }
         const row = e.target.closest('[data-suggest-event]');
         if (row) {
           const ev = store.getGroupEvent(row.dataset.suggestEvent);
@@ -3581,95 +3599,67 @@ document.addEventListener('DOMContentLoaded', () => {
         renderFindScreen();
       });
     }
-    /* H2 — 지역(시·도/시·군·구) 시트 */
-    function openFindRegionSheet() {
-      const s2 = findState();
-      s2.regionSidoDraft = s2.sidoId && s2.sidoId !== 'all' ? s2.sidoId : null;
-      renderFindRegionSheet();
-      openModal(el.findRegionModal);
-    }
-    function renderFindRegionSheet() {
-      const s2 = findState();
-      const sidoId = s2.regionSidoDraft || (s2.sidoId !== 'all' ? s2.sidoId : null);
-      if (el.findRegionSido) {
-        el.findRegionSido.innerHTML = [`<button class="region-chip ${!sidoId ? 'active' : ''}" data-find-region-all="1" type="button">전체</button>`]
-          .concat(store.getRegionSido().map((x) => `
-            <button class="region-chip ${sidoId === x.id ? 'active' : ''}" data-find-sido="${x.id}"
-                    type="button" aria-pressed="${sidoId === x.id}">${escapeHtml(x.short)}</button>`)).join('');
-      }
-      if (el.findRegionSigungu) {
-        const rows = sidoId ? store.getRegionSigungu(sidoId) : [];
-        el.findRegionSigungu.innerHTML = rows.length
-          ? rows.map((g) => `
-              <button class="region-gu ${s2.sigunguId === g.sigunguId ? 'active' : ''}" data-find-sigungu="${g.sigunguId}"
-                      type="button" aria-pressed="${s2.sigunguId === g.sigunguId}">${escapeHtml(g.name)}</button>`).join('')
-          : '<p class="azit-empty">시·도를 먼저 골라 주세요.</p>';
-      }
-      const area = s2.sigunguId !== 'all' ? store.findSigungu(s2.sigunguId) : null;
-      const sidoRow = sidoId ? store.getRegionSido().find((x) => x.id === sidoId) : null;
-      if (el.findRegionCurrent) {
-        el.findRegionCurrent.textContent = area ? area.label : (sidoRow ? sidoRow.name : '전체 지역');
-      }
-    }
-    if (el.findRegionBtn) el.findRegionBtn.addEventListener('click', openFindRegionSheet);
-    const closeFindRegion = $('#btn-close-find-region');
-    if (closeFindRegion) closeFindRegion.addEventListener('click', () => closeModal(el.findRegionModal));
-    if (el.findRegionSido) {
-      el.findRegionSido.addEventListener('click', (e) => {
-        if (e.target.closest('[data-find-region-all]')) {
-          const s2 = findState();
-          s2.sidoId = 'all'; s2.sigunguId = 'all'; s2.hangoutId = 'all';
-          s2.regionSidoDraft = null;
-          s2.limit = FIND_PAGE;
-          closeModal(el.findRegionModal);
-          renderFindScreen();
-          return;
-        }
-        const chip = e.target.closest('[data-find-sido]');
-        if (!chip) return;
-        findState().regionSidoDraft = chip.dataset.findSido;
-        renderFindRegionSheet();
-      });
-    }
-    if (el.findRegionSigungu) {
-      el.findRegionSigungu.addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-find-sigungu]');
-        if (!btn) return;
-        const s2 = findState();
-        const area = store.findSigungu(btn.dataset.findSigungu);
-        s2.sidoId = area ? area.sidoId : 'all';
-        s2.sigunguId = btn.dataset.findSigungu;
-        s2.hangoutId = 'all';
-        s2.limit = FIND_PAGE;
-        closeModal(el.findRegionModal);
-        renderFindScreen();
-      });
-    }
-
-    /* H2 — 아지트 시트 (지역 후보 먼저 · 검색은 전체) */
+    /* v34.1 (#22485) — '지역'과 '아지트'는 같은 말이라 시트 하나로 합쳤다.
+       권역(시·도 → 시·군·구)을 고르면 아래 아지트 목록이 그 권역으로 좁혀지고,
+       아지트를 누르면 그 아지트로 거른 채 닫힌다. 권역만 고르려면 '이 권역 전체'를 누른다. */
     function openFindHangoutSheet() {
-      findState().hangoutQuery = '';
+      const s2 = findState();
+      s2.hangoutQuery = '';
+      s2.azitSidoDraft = s2.sidoId && s2.sidoId !== 'all' ? s2.sidoId : 'all';
+      s2.azitSigunguDraft = s2.sigunguId && s2.sigunguId !== 'all' ? s2.sigunguId : 'all';
       if (el.findHangoutSearch) el.findHangoutSearch.value = '';
       renderFindHangoutSheet();
       openModal(el.findHangoutModal);
     }
     function renderFindHangoutSheet() {
       const s2 = findState();
-      const area = s2.sigunguId !== 'all' ? store.findSigungu(s2.sigunguId) : null;
+      const sidoId = s2.azitSidoDraft && s2.azitSidoDraft !== 'all' ? s2.azitSidoDraft : null;
+      const sigunguId = s2.azitSigunguDraft && s2.azitSigunguDraft !== 'all' ? s2.azitSigunguDraft : null;
+      const sidoRow = sidoId ? store.getRegionSido().find((x) => x.id === sidoId) : null;
+      const area = sigunguId ? store.findSigungu(sigunguId) : null;
       const query = s2.hangoutQuery || '';
       if (el.findHangoutClear) el.findHangoutClear.classList.toggle('hide', !query);
-      if (el.findHangoutCurrent) {
-        const sel = s2.hangoutId !== 'all' ? store.findAzit(s2.hangoutId) : null;
-        el.findHangoutCurrent.textContent = sel ? sel.name : (area ? `${area.name} 근처` : '전체 아지트');
+
+      /* 1) 권역 — 시·도 */
+      if (el.findHangoutSido) {
+        el.findHangoutSido.innerHTML = [`<button class="region-chip ${!sidoId ? 'active' : ''}" data-find-azit-sido="all"
+            type="button" aria-pressed="${!sidoId}">전체</button>`]
+          .concat(store.getRegionSido().map((x) => `
+            <button class="region-chip ${sidoId === x.id ? 'active' : ''}" data-find-azit-sido="${x.id}"
+                    type="button" aria-pressed="${sidoId === x.id}">${escapeHtml(x.short)}</button>`)).join('');
       }
+      /* 2) 권역 — 시·군·구. 고르면 아래 목록이 그 권역으로 좁혀진다. */
+      if (el.findHangoutSigungu) {
+        const rows = sidoId ? store.getRegionSigungu(sidoId) : [];
+        el.findHangoutSigungu.innerHTML = sidoId
+          ? [`<button class="region-gu ${!sigunguId ? 'active' : ''}" data-find-azit-sigungu="all"
+                type="button" aria-pressed="${!sigunguId}">${escapeHtml((sidoRow && sidoRow.short) || '권역')} 전체</button>`]
+            .concat(rows.map((g) => `
+              <button class="region-gu ${sigunguId === g.sigunguId ? 'active' : ''}" data-find-azit-sigungu="${g.sigunguId}"
+                      type="button" aria-pressed="${sigunguId === g.sigunguId}">${escapeHtml(g.name)}</button>`)).join('')
+          : '<p class="azit-empty">권역(시·도)을 먼저 골라 주세요.</p>';
+      }
+
+      const sel = s2.hangoutId !== 'all' ? store.findAzit(s2.hangoutId) : null;
+      if (el.findHangoutCurrent) {
+        el.findHangoutCurrent.textContent = sel ? sel.name
+          : (area ? `${area.name} 아지트` : (sidoRow ? `${sidoRow.short} 아지트` : '전체 아지트'));
+      }
+
       if (el.findHangoutList) {
-        let rows = store.getHangouts({ query, sigunguId: query ? 'all' : (area ? area.sigunguId : 'all'), limit: 80 });
+        let rows = store.getHangouts({
+          query,
+          sidoId: query ? 'all' : (sidoId || 'all'),
+          sigunguId: query ? 'all' : (sigunguId || 'all'),
+          limit: 80
+        });
         if (!rows.length && !query) rows = store.getHangouts({ limit: 80 });
-        const head = `<button class="azit-row ${s2.hangoutId === 'all' ? 'active' : ''}" data-find-hangout-pick="all" type="button">
+        const whole = !sidoId && !sigunguId;
+        const head = `<button class="azit-row ${s2.hangoutId === 'all' && !query ? 'active' : ''}" data-find-hangout-pick="all" type="button">
             <span class="azit-row-ic" aria-hidden="true">${ic('map')}</span>
-            <span class="azit-row-text"><span class="azit-row-name">아지트 전체</span>
-              <span class="azit-row-meta">지역만으로 거르기</span></span>
-            <span class="azit-row-check" aria-hidden="true">${s2.hangoutId === 'all' ? ic('check') : ''}</span>
+            <span class="azit-row-text"><span class="azit-row-name">${whole ? '아지트 전체' : '이 권역 전체'}</span>
+              <span class="azit-row-meta">${whole ? '모든 아지트에서 찾기' : '아지트를 고르지 않고 권역으로만 거르기'}</span></span>
+            <span class="azit-row-check" aria-hidden="true">${s2.hangoutId === 'all' && !query ? ic('check') : ''}</span>
           </button>`;
         el.findHangoutList.innerHTML = head + rows.map((h) => `
           <button class="azit-row ${s2.hangoutId === h.id ? 'active' : ''}" data-find-hangout-pick="${h.id}"
@@ -3687,6 +3677,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.findHangoutBtn) el.findHangoutBtn.addEventListener('click', openFindHangoutSheet);
     const closeFindHangout = $('#btn-close-find-hangout');
     if (closeFindHangout) closeFindHangout.addEventListener('click', () => closeModal(el.findHangoutModal));
+    if (el.findHangoutSido) {
+      el.findHangoutSido.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-find-azit-sido]');
+        if (!chip) return;
+        const s2 = findState();
+        s2.azitSidoDraft = chip.dataset.findAzitSido || 'all';
+        s2.azitSigunguDraft = 'all';
+        renderFindHangoutSheet();
+      });
+    }
+    if (el.findHangoutSigungu) {
+      el.findHangoutSigungu.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-find-azit-sigungu]');
+        if (!btn) return;
+        findState().azitSigunguDraft = btn.dataset.findAzitSigungu || 'all';
+        renderFindHangoutSheet();
+      });
+    }
     if (el.findHangoutSearch) {
       el.findHangoutSearch.addEventListener('input', () => {
         findState().hangoutQuery = el.findHangoutSearch.value.trim();
@@ -3705,10 +3713,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = e.target.closest('[data-find-hangout-pick]');
         if (!btn) return;
         const s2 = findState();
-        s2.hangoutId = btn.dataset.findHangoutPick || 'all';
+        const picked = btn.dataset.findHangoutPick || 'all';
+        s2.hangoutId = picked;
+        if (picked !== 'all') {
+          /* 아지트를 고르면 그 아지트가 속한 권역까지 함께 맞춘다. */
+          const az = store.findAzit(picked);
+          s2.sidoId = (az && az.sidoId) || 'all';
+          s2.sigunguId = (az && az.sigunguId) || 'all';
+        } else {
+          s2.sidoId = s2.azitSidoDraft || 'all';
+          s2.sigunguId = s2.azitSigunguDraft || 'all';
+        }
         s2.limit = FIND_PAGE;
         closeModal(el.findHangoutModal);
         renderFindScreen();
+      });
+    }
+
+    /* v34.1 (#22485) — 모임 찾기의 추천 일정(게스트 참여 가능) — 추천 그룹 '더 보기'와 함께 보인다. */
+    if (el.findEventsList) {
+      el.findEventsList.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-guest-event]');
+        if (btn) { handleGuestEventButton(btn, renderFindEvents); return; }
+        const row = e.target.closest('[data-suggest-event]');
+        if (!row) return;
+        const ev = store.getGroupEvent(row.dataset.suggestEvent);
+        if (ev) openEventDetail(ev.id);
       });
     }
     if (el.findReset) {
@@ -4847,18 +4877,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * v33.7 — 모임 공간 상단에는 **큰 대표 배너 카드를 두지 않는다** (`#22036`).
-   *  · 모임 이름·분류·멤버 수는 바로 위 상단 바(`#group-space-name`·`#group-space-meta`)에 이미 있다.
-   *    같은 말을 큰 카드로 한 번 더 하던 자리였다.
-   *  · 여기에는 핵심 버튼 세 개(단체 채팅 · 사진 올리기 · 멤버)만 한 줄로 남긴다.
+   * v34.1 (#22485) — 모임 공간 상단의 버튼 줄에는 **'멤버' 하나만** 남긴다.
+   *  · '채팅'은 바로 위 탭(피드 | 채팅 | 일정)에 이미 있다.
+   *  · '사진 올리기'는 오른쪽 아래 + 버튼(글쓰기)과 같은 일을 한다.
+   *  · 모임 이름·분류·인원은 위 상단 바(#group-space-name·#group-space-meta)가 적는다.
    *  · 대표 이미지는 모임에 들어갈 때 잠깐 뜨는 진입 로딩 화면이 맡는다(showGroupSplash).
    */
   function renderHomeHero(grp) {
     if (!el.homeHero) return;
     el.homeHero.innerHTML = `
       <div class="home-hero-actions group-quick-actions">
-        <button class="home-hero-btn primary" data-home-chat="${grp.id}" type="button">단체 채팅</button>
-        <button class="home-hero-btn" data-home-write="${grp.id}" type="button">사진 올리기</button>
         <button class="home-hero-btn" data-home-members="${grp.id}" type="button">멤버</button>
       </div>`;
   }
@@ -5333,7 +5361,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="member-row-wrap ${open ? 'is-open' : ''}">
         <button class="member-row" data-member-open="${member.id}" type="button"
                 aria-expanded="${open}">
-          <span class="member-row-avatar" style="background:${member.gradient}">${escapeHtml(member.avatarText)}</span>
+          <span class="member-row-avatar" style="background:${member.gradient}">${member.photoUrl ? avatarImgHTML(member.photoUrl, member.name) : escapeHtml(member.avatarText)}</span>
           <span class="member-row-body">
             <span class="member-row-name">${escapeHtml(member.name)} ${roleBadge}</span>
             <span class="member-row-meta">${hobbyTags || `<span class="member-hobby">${escapeHtml(groupName)} 멤버</span>`}</span>
@@ -5485,7 +5513,7 @@ document.addEventListener('DOMContentLoaded', () => {
            </span>`;
       return `
         <div class="drawer-member ${m.isMe ? 'is-me' : ''}">
-          <span class="drawer-member-avatar" style="background:${m.gradient}">${escapeHtml(m.avatarText)}</span>
+          <span class="drawer-member-avatar" style="background:${m.gradient}">${m.photoUrl ? avatarImgHTML(m.photoUrl, m.name) : escapeHtml(m.avatarText)}</span>
           <span class="drawer-member-name">${escapeHtml(m.name)} ${badges}</span>
           ${actions}
         </div>`;
@@ -6780,14 +6808,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (el.homeChatPreview) {
-    el.homeChatPreview.addEventListener('click', (e) => {
-      const open = e.target.closest('[data-home-chat]');
-      if (open) openGroupChat(open.dataset.homeChat);
-    });
-  }
-
-  el.homeChatOpen && el.homeChatOpen.addEventListener('click', () => openGroupChat(ui.homeGroupId || store.getHomeGroupId()));
+  /* v34.1 (#22485) — 모임 피드 아래의 '모임 단체 채팅' 카드는 걷어냈다(위 탭 '채팅' 하나로). */
   el.homeEventNew && el.homeEventNew.addEventListener('click', () => openEventForm(ui.homeGroupId || store.getHomeGroupId()));
 
   if (el.chatGroupRooms) {
@@ -8786,7 +8807,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${info.people.slice(0, 6).map((p) => `
             <button class="member-chip" data-open-members="${grp.id}" data-member-focus="${escapeHtml(p.name)}" type="button"
                     title="${escapeHtml(p.name)}${p.role === 'leader' ? ' · 모임장' : ''}">
-              <span class="member-avatar" style="background:${p.gradient}">${escapeHtml(p.avatarText)}</span>
+              <span class="member-avatar" style="background:${p.gradient}">${p.photoUrl ? avatarImgHTML(p.photoUrl, p.name) : escapeHtml(p.avatarText)}</span>
               <span class="member-name">${escapeHtml(p.name)}</span>
               ${p.role === 'leader' ? '<span class="member-role" aria-label="모임장">모임장</span>' : ''}
               ${p.role === 'me' ? '<span class="member-role member-role-me" aria-label="나">나</span>' : ''}

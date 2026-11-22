@@ -4238,7 +4238,7 @@ function stripAllContent(state) {
  *    tools/prepare_example_images_v337.py
  *  · `#demo` 시드(예전 데모 계정)와는 id 접두사(sample_)로 분리해 서로 덮지 않는다.
  * ========================================================================== */
-const SAMPLE_DATA_VERSION = 4;
+const SAMPLE_DATA_VERSION = 5;
 const SAMPLE_FALLBACK_REGION = 'seoul-seongdong-gwangjin';
 /* 예시 중 **내가 가입한 모임** 두 곳 — 나머지 셋은 둘러보기용이다. */
 const SAMPLE_JOINED_GROUP_IDS = ['sample_grp_run', 'sample_grp_board'];
@@ -4271,6 +4271,26 @@ const EXAMPLE_PHOTOS = {
   groupDinner: 'assets/examples/example-group-dinner.jpg'      /* 모임 회식 */
 };
 
+/**
+ * v34.1 (#22485) — 예시 이용자 **프로필 사진** 4장(이름·이니셜만 있던 자리).
+ *  · 실제 인물 사진이 아니라 **그린 그림**(지어낸 사람)이라 개인정보·가명 원칙에 걸리지 않는다.
+ *  · 글 사진(우그 갤러리)과 섞이지 않도록 EXAMPLE_PHOTOS 와 따로 둔다.
+ */
+const EXAMPLE_AVATARS = {
+  morae: 'assets/examples/avatar-morae.jpg',
+  haru: 'assets/examples/avatar-haru.jpg',
+  danchu: 'assets/examples/avatar-danchu.jpg',
+  choko: 'assets/examples/avatar-choko.jpg'
+};
+
+/** 예시 사람 id → 프로필 사진 (시드·마이그레이션이 같은 표를 쓴다). */
+const EXAMPLE_PERSON_AVATARS = {
+  sample_p_mora: EXAMPLE_AVATARS.morae,
+  sample_p_haru: EXAMPLE_AVATARS.haru,
+  sample_p_danchu: EXAMPLE_AVATARS.danchu,
+  sample_p_choko: EXAMPLE_AVATARS.choko
+};
+
 /* 예시 사진이 놓인 폴더 — 문자열을 이어 붙여 만든다(단일 HTML 번들에서 경로를 잘못 찾지 않게). */
 const EXAMPLE_PHOTO_DIR = ['assets', 'examples', ''].join('/');
 
@@ -4289,6 +4309,7 @@ function samplePeople(regionId) {
   const rows = [
     {
       id: 'sample_p_mora', nickname: '모래', age: 28, hobbyIds: ['run'], hobbyLabel: '러닝',
+      photoUrl: EXAMPLE_AVATARS.morae,
       hobbyStyle: '아침 러닝 · 5K', badge: '아침 러닝 3년', ratio: 'mid',
       avatarText: '모', avatarGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)',
       bio: '출근 전에 5K만 뛰고 하루를 시작해요. 속도보다 같이 나오는 게 어려운 거더라고요.',
@@ -4302,6 +4323,7 @@ function samplePeople(regionId) {
     },
     {
       id: 'sample_p_haru', nickname: '하루', age: 31, hobbyIds: ['fitness'], hobbyLabel: '크로스핏',
+      photoUrl: EXAMPLE_AVATARS.haru,
       hobbyStyle: '퇴근 후 와드 · 3년차', badge: '와드 3년차', ratio: 'square',
       avatarText: '하', avatarGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
       bio: '퇴근하고 한 시간 땀 흘리면 그날 있었던 일이 다 정리돼요. 초보자 질문 환영합니다.',
@@ -4315,6 +4337,7 @@ function samplePeople(regionId) {
     },
     {
       id: 'sample_p_danchu', nickname: '단추', age: 26, hobbyIds: ['boardgame'], hobbyLabel: '보드게임',
+      photoUrl: EXAMPLE_AVATARS.danchu,
       hobbyStyle: '전략게임 · 뉴비 환영', badge: '설명 잘해요', ratio: 'wide',
       avatarText: '단', avatarGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
       bio: '주말 오후에 보드게임 카페에서 두어 판 합니다. 처음 하는 사람에게 설명하는 걸 좋아해요.',
@@ -4328,6 +4351,7 @@ function samplePeople(regionId) {
     },
     {
       id: 'sample_p_choko', nickname: '초코', age: 33, hobbyIds: ['hike'], hobbyLabel: '등산',
+      photoUrl: EXAMPLE_AVATARS.choko,
       hobbyStyle: '주말 산행 · 천천히', badge: '하산 맛집 담당', ratio: 'square',
       avatarText: '초', avatarGradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)',
       bio: '일요일 아침에 가까운 산 하나 오르고 내려와서 국밥 한 그릇. 그게 제 주말입니다.',
@@ -4424,8 +4448,8 @@ function sampleGroups(regionId, areaId) {
       joinPolicy: ['토 08:00 정기런'], joinMode: 'open', joinQuestions: [],
       createdAt: ago(42 * 24 * HOUR),
       members: [
-        { id: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', hobbies: ['크로스핏'], joinedAt: ago(21 * 24 * HOUR) },
-        { id: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', hobbies: ['보드게임'], joinedAt: ago(9 * 24 * HOUR) }
+        { id: 'sample_p_haru', name: '하루', avatarText: '하', photoUrl: EXAMPLE_AVATARS.haru, gradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', hobbies: ['크로스핏'], joinedAt: ago(21 * 24 * HOUR) },
+        { id: 'sample_p_danchu', name: '단추', avatarText: '단', photoUrl: EXAMPLE_AVATARS.danchu, gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', hobbies: ['보드게임'], joinedAt: ago(9 * 24 * HOUR) }
       ]
     },
     {
@@ -4444,7 +4468,7 @@ function sampleGroups(regionId, areaId) {
       joinPolicy: ['토·일 15:00'],
       createdAt: ago(60 * 24 * HOUR),
       members: [
-        { id: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)', hobbies: ['등산'], joinedAt: ago(30 * 24 * HOUR) }
+        { id: 'sample_p_choko', name: '초코', avatarText: '초', photoUrl: EXAMPLE_AVATARS.choko, gradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)', hobbies: ['등산'], joinedAt: ago(30 * 24 * HOUR) }
       ]
     },
     {
@@ -4655,6 +4679,34 @@ function upgradeSampleData(state) {
   if (!hasHike && hasHikeGroup) {
     state.groupEvents = (state.groupEvents || []).concat(sampleGroupEvents().filter((e) => e.id === 'sample_evt_hike'));
   }
+  return state;
+}
+
+/**
+ * v34.1 (#22485) — 예전에 저장된 예시 이용자에게 **프로필 사진**을 붙인다.
+ *  · 이름·이니셜만 있던 자리가 불편하다는 지시로 예시 사람 4명(모래·하루·단추·초코)에
+ *    그린 그림 아바타(avatar-*.jpg 예시 그림)를 연결한다.
+ *  · 내가 넣은 사진(photoUrl 이 이미 있는 사람)은 건드리지 않는다.
+ */
+function upgradeSampleAvatars(state) {
+  if (!state) return state;
+  const fill = (person) => {
+    if (!person || person.photoUrl) return;
+    const url = EXAMPLE_PERSON_AVATARS[person.id];
+    if (url) person.photoUrl = url;
+  };
+  (state.matchProfiles || []).forEach(fill);
+  (state.partnerProfiles || []).forEach(fill);
+  (state.groups || []).forEach((g) => {
+    if (!g) return;
+    (g.members || []).forEach((m) => fill(m));
+  });
+  (state.feedPosts || []).forEach((p) => {
+    if (p && !p.authorPhotoUrl) {
+      const url = EXAMPLE_PERSON_AVATARS[p.authorId];
+      if (url) p.authorPhotoUrl = url;
+    }
+  });
   return state;
 }
 
@@ -5329,6 +5381,7 @@ class Store {
         && Number(merged.sampleData.version || 1) < SAMPLE_DATA_VERSION) {
         upgradeSampleData(merged);
         upgradeSampleImages(merged);
+        upgradeSampleAvatars(merged);
       }
       /* H2 — 저장된 모임에 아지트·지역·기본값이 없으면(옛 상태) 조용히 채운다. */
       upgradeGroupGeo(merged);
@@ -5428,10 +5481,12 @@ class Store {
     if (!group) return { people: [], hidden: 0, total: 0 };
     const roster = this.getGroupRoster(groupId);
     const people = roster.members.slice(0, 8).map((m) => ({
+      id: m.id,
       name: m.name,
       role: m.role === 'leader' ? 'leader' : (m.isMe ? 'me' : 'member'),
       gradient: m.gradient,
-      avatarText: m.avatarText
+      avatarText: m.avatarText,
+      photoUrl: m.photoUrl || null
     }));
     return { people, hidden: Math.max(0, roster.total - people.length), total: roster.total };
   }
@@ -8407,6 +8462,7 @@ class Store {
           name,
           avatarText: member.avatarText,
           avatarGradient: member.gradient,
+          photoUrl: member.photoUrl || EXAMPLE_PERSON_AVATARS[member.id] || null,
           hobbyLabel: group.categoryName || '모임 사람',
           location: group.location || ''
         });
@@ -11030,6 +11086,7 @@ class Store {
 
     /* 1) 모임장 */
     const leaderIsMe = group.leaderId === me.id;
+    const avatarOf = (personId) => EXAMPLE_PERSON_AVATARS[personId] || null;
     push({
       id: group.leaderId || 'leader',
       name: leaderIsMe ? me.nickname : (group.leaderName || '모임장'),
@@ -11037,6 +11094,7 @@ class Store {
       isLeader: true,
       isMe: leaderIsMe,
       avatarText: leaderIsMe ? (me.avatarText || me.nickname.charAt(0)) : (group.leaderName || '그').charAt(0),
+      photoUrl: leaderIsMe ? (me.photoUrl || null) : avatarOf(group.leaderId),
       gradient: leaderIsMe ? me.avatarGradient : GROUP_ROSTER_GRADIENTS[0],
       hobbies: leaderIsMe ? hobbyList(me.hobbies) : [],
       joinedAt: group.createdAt || null,
@@ -11051,6 +11109,7 @@ class Store {
         isLeader: false,
         isMe: m.id === me.id,
         avatarText: m.avatarText || String(m.name).charAt(0),
+        photoUrl: m.photoUrl || avatarOf(m.id),
         gradient: m.gradient || GROUP_ROSTER_GRADIENTS[members.length % GROUP_ROSTER_GRADIENTS.length],
         hobbies: hobbyList(m.hobbies),
         joinedAt: m.joinedAt || null,
@@ -11066,6 +11125,7 @@ class Store {
         isLeader: false,
         isMe: p.authorId === me.id,
         avatarText: p.authorAvatarText || String(p.authorName || '').charAt(0),
+        photoUrl: avatarOf(p.authorId),
         gradient: p.authorGradient || GROUP_ROSTER_GRADIENTS[members.length % GROUP_ROSTER_GRADIENTS.length],
         hobbies: [],
         joinedAt: null,

@@ -217,9 +217,9 @@
           <!-- 인스타그램형 24시간 스토리 바 -->
           <div class="story-bar" id="story-bar" aria-label="모임 스토리"><!-- JS --></div>
 
-          <!-- v33.7 (#22036) — 큰 대표 배너 카드는 뺐다. 모임 이름·인원은 위 상단 바에 이미 있고,
-               여기에는 핵심 버튼 세 개(단체 채팅 · 사진 올리기 · 멤버)만 한 줄로 남긴다.
-               대표 이미지는 모임에 들어갈 때 잠깐 뜨는 진입 로딩(#group-splash)이 맡는다. -->
+          <!-- v34.1 (#22485) — 채팅은 위 탭(피드 | 채팅 | 일정) 하나로 모았다.
+               '단체 채팅'·'사진 올리기'는 +버튼·채팅 탭과 겹치므로 걷어냈고,
+               여기에는 '멤버' 하나만 남긴다. -->
           <div class="home-hero group-actions-row" id="home-hero"><!-- JS --></div>
 
           <!-- 본문 — 아래로 스크롤하며 보는 모임 피드 -->
@@ -234,15 +234,6 @@
             <div class="home-photo-grid" id="home-photo-grid" aria-live="polite" hidden><!-- JS --></div>
             <!-- v33.7 — 홈 탭과 **같은 인스타형 카드**(.ig-post / renderGroupFeed)로 그린다. -->
             <div class="feed-container ig-feed group-feed" id="feed-posts-container" aria-live="polite"><!-- JS --></div>
-          </section>
-
-          <!-- 모임 단체 채팅 — 피드 아래 바로가기 -->
-          <section class="home-block home-chat-block" aria-labelledby="home-chat-title">
-            <div class="home-block-head">
-              <h3 class="home-block-title" id="home-chat-title">모임 단체 채팅</h3>
-              <button class="home-block-more" id="btn-home-chat-open" type="button">들어가기 ›</button>
-            </div>
-            <div class="home-chat-card" id="home-chat-preview"><!-- JS --></div>
           </section>
         </div>
       </section>
@@ -295,13 +286,9 @@
           </div>
         </header>
         <div class="subscreen-body" id="find-body">
-          <!-- H2 — 지역(시·도/시·군·구) · 아지트 필터. 누르면 시트에서 목록으로만 고른다. -->
+          <!-- v34.1 (#22485) — '지역'과 '아지트'는 같은 말이라 **아지트 하나**로 합쳤다.
+               한 시트 안에서 권역(시·도 → 시·군·구)을 먼저 고르고 그 안의 아지트를 고른다. -->
           <div class="find-filter-bar">
-            <button class="find-filter-btn" id="btn-find-region" type="button" aria-haspopup="dialog">
-              <span class="find-filter-kicker">지역</span>
-              <span class="find-filter-value" id="find-region-label">전체</span>
-              <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronDown"></span>
-            </button>
             <button class="find-filter-btn" id="btn-find-hangout" type="button" aria-haspopup="dialog">
               <span class="find-filter-kicker">아지트</span>
               <span class="find-filter-value" id="find-hangout-label">전체</span>
@@ -311,6 +298,14 @@
           </div>
           <div class="find-cats" id="find-cats" role="group" aria-label="취미 대분류"><!-- JS --></div>
           <div class="find-sorts" id="find-sorts" role="group" aria-label="모임 정렬"><!-- JS --></div>
+          <!-- v34.1 (#22485) — 추천 그룹 '더 보기'로 왔을 때 추천 일정도 함께 보이게. -->
+          <section class="find-events" id="find-events" aria-labelledby="find-events-title" hidden>
+            <div class="find-events-head">
+              <h3 class="find-events-title" id="find-events-title">추천 일정</h3>
+              <p class="find-events-sub" id="find-events-sub">게스트로 참여할 수 있는 일정</p>
+            </div>
+            <div class="find-events-list" id="find-events-list"><!-- JS --></div>
+          </section>
           <p class="find-sub" id="find-sub"></p>
           <div class="group-card-grid" id="find-grid" aria-live="polite"><!-- JS --></div>
           <div class="find-more-wrap">
@@ -1116,23 +1111,9 @@
       </div>
     </div>
 
-    <!-- ==================== 모달 8-B. 모임 찾기 · 지역 선택 (H2) ==================== -->
-    <div class="modal-overlay" id="find-region-modal" role="dialog" aria-modal="true" aria-label="지역 선택">
-      <div class="modal-sheet region-sheet" tabindex="-1">
-        <div class="sheet-grabber"></div>
-        <button class="sheet-close-btn" id="btn-close-find-region" aria-label="닫기">&times;</button>
-        <div class="filter-head">
-          <h2 class="sheet-title">지역</h2>
-          <p class="filter-current" id="find-region-current">전체 지역</p>
-        </div>
-        <div class="region-sheet-body">
-          <div class="region-pick-row" id="find-region-sido" role="group" aria-label="시·도"><!-- JS --></div>
-          <div class="region-pick-grid" id="find-region-sigungu" role="group" aria-label="시·군·구"><!-- JS --></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ==================== 모달 8-C. 모임 찾기 · 아지트 선택 (H2) ==================== -->
+    <!-- ==================== 모달 8-C. 모임 찾기 · 아지트 선택 (H2 · v34.1 통합) ====================
+         '지역'과 '아지트' 두 시트를 하나로 — 권역(시·도 → 시·군·구)을 고르면 아래 아지트 목록이
+         그 권역으로 좁혀지고, 아지트를 누르면 그 아지트로 거른 채 시트가 닫힌다. -->
     <div class="modal-overlay" id="find-hangout-modal" role="dialog" aria-modal="true" aria-label="아지트 선택">
       <div class="modal-sheet region-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>
@@ -1140,6 +1121,11 @@
         <div class="filter-head">
           <h2 class="sheet-title">아지트</h2>
           <p class="filter-current" id="find-hangout-current">전체 아지트</p>
+        </div>
+        <div class="azit-region-picks">
+          <p class="azit-pick-label">권역</p>
+          <div class="region-pick-row" id="find-hangout-sido" role="group" aria-label="시·도"><!-- JS --></div>
+          <div class="region-pick-grid" id="find-hangout-sigungu" role="group" aria-label="시·군·구"><!-- JS --></div>
         </div>
         <div class="azit-search">
           <span class="azit-search-icon" aria-hidden="true" data-oog-icon="search"></span>

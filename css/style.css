@@ -244,6 +244,9 @@
   --app-max: 440px;
   --nav-h: 56px;
   --header-h: 52px;
+  /* v34.1 — 아이폰 홈 인디케이터(아래 안전 영역). 탭바·글쓰기 버튼이 같은 값을 쓴다.
+     테스트에서는 이 변수만 34px 로 바꿔 아이폰 화면을 흉내 낸다. */
+  --safe-b: env(safe-area-inset-bottom, 0px);
 }
 
 /* ==========================================================================
@@ -1402,7 +1405,9 @@ img, svg { display: block; }
 .fab-write {
   position: absolute;
   right: 18px;
-  bottom: calc(var(--nav-h) + 18px);
+  /* v34.1 (#22485) — 아이폰에서 탭바가 안전 영역(34px)만큼 높아지는데 예전 값은 그걸
+     빼고 계산해 +버튼이 탭바에 16px 가려졌다. 탭바 높이 + 16px 여유 + 안전 영역. */
+  bottom: calc(var(--nav-h) + 16px + var(--safe-b));
   z-index: 55;
   display: inline-flex;
   align-items: center;
@@ -4195,9 +4200,10 @@ img, svg { display: block; }
 
 .bottom-nav-bar {
   position: relative;
-  flex: 0 0 calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
-  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* v34.1 — 안전 영역은 --safe-b 한 곳에서 온다(글쓰기 버튼과 같은 값). */
+  flex: 0 0 calc(var(--nav-h) + var(--safe-b));
+  height: calc(var(--nav-h) + var(--safe-b));
+  padding-bottom: var(--safe-b);
   display: flex;
   align-items: stretch;
   background: var(--bg-glass);
@@ -16800,7 +16806,7 @@ body.group-mode #bottom-nav,
 .bottom-nav-bar {
   background: var(--bg-glass);
   border-top: 1px solid var(--divider);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-b);
 }
 
 .nav-tab-item { color: var(--text-muted); }
@@ -22934,15 +22940,19 @@ body.subscreen-open { overflow: hidden; }
 .ig-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 .ig-act {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  /* v34.1 (#22485) — 인스타그램처럼 아이콘과 숫자를 붙여 놓는다. 예전에는 버튼마다
+     min-width 44px · 좌우 6px 여백이라 아이콘과 숫자 사이가 20px 가까이 벌어졌다.
+     누름 영역은 .ig-post .ig-act::after 가 따로 44px 로 넓힌다(보이는 폭만 줄인다). */
+  gap: 3px;
   min-height: 44px;
-  min-width: 44px;
-  padding: 0 6px;
+  min-width: 27px;
+  padding: 0 3px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -22951,6 +22961,9 @@ body.subscreen-open { overflow: hidden; }
   font-weight: var(--fw-label);
   cursor: pointer;
 }
+/* 숫자는 글자 폭만 차지한다(빈 공간 0). 누름 높이는 44px 그대로. */
+.ig-act-num { position: relative; }
+.ig-act-num::after { content: ''; position: absolute; inset: 0 -3px; }
 .ig-act .oo-ic { font-size: 21px; }
 .ig-act.on { color: var(--green-text); }
 .ig-act-count { font-size: var(--fs-caption); font-weight: var(--fw-label); }
@@ -23075,6 +23088,42 @@ body.subscreen-open { overflow: hidden; }
   padding: 0 8px;
 }
 .find-filter-reset.hide { display: none; }
+/* v34.1 (#22485) — 모임 찾기의 추천 일정 구획(추천 그룹 '더 보기'에서 함께 보인다). */
+.find-events {
+  padding: 4px 0 12px;
+  border-bottom: 1px solid var(--divider);
+}
+.find-events[hidden] { display: none; }
+.find-events-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0 2px;
+}
+.find-events-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-title);
+  color: var(--text-strong);
+  letter-spacing: -0.2px;
+}
+.find-events-sub {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.find-events-list { display: flex; flex-direction: column; }
+/* v34.1 — 하나로 합친 아지트 시트 안의 권역 고르기 */
+.azit-region-picks { padding: 2px 0 8px; }
+.azit-pick-label {
+  padding: 0 0 6px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  color: var(--text-muted);
+}
+.azit-region-picks .region-pick-grid { margin-top: 8px; max-height: 160px; overflow-y: auto; overscroll-behavior: contain; }
+.azit-region-picks .region-pick-grid .azit-empty { grid-column: 1 / -1; }
 
 /* ---------------------------------------- 7) 추천 피드 댓글 시트 */
 .feed-comment-sheet { display: flex; flex-direction: column; max-height: 78vh; }
@@ -23381,9 +23430,10 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
+  /* v34.1 (#22485) — 숫자 사이 빈 공간 축소: 44px 고정폭을 없애고 글자 폭만 쓴다. */
+  min-width: 0;
   min-height: 44px;
-  padding: 0 4px;
+  padding: 0 2px;
   border: 0;
   border-radius: var(--r-full);
   background: transparent;
@@ -23585,8 +23635,9 @@ button.ig-author { font-size: var(--fs-small); font-weight: var(--fw-display); c
 .ig-subline .ig-place { flex: 0 1 auto; }
 button.ig-caption-author { font-size: inherit; font-weight: var(--fw-display); color: var(--text-strong); }
 .ig-act-num {
-  min-width: 34px;
-  padding: 0 2px;
+  /* v34.1 — 숫자 버튼은 글자 폭만 쓴다(예전 34px 고정폭이 빈 공간을 만들었다). */
+  min-width: 0;
+  padding: 0 1px;
   justify-content: flex-start;
 }
 .ig-act-num .ig-act-count { font-size: var(--fs-sub); font-weight: var(--fw-label); color: var(--text-strong); }
@@ -24429,7 +24480,10 @@ button.caption-author::after {
   gap: 8px;
 }
 .group-actions-row .home-hero-btn {
+  /* v34.1 — 버튼이 '멤버' 하나뿐이라 화면 폭을 다 채우지 않고 글자 폭만 쓴다. */
+  flex: 0 0 auto;
   min-height: 42px;
+  padding: 0 16px;
   font-size: var(--fs-small);
   font-weight: var(--fw-label);
 }
@@ -25154,14 +25208,15 @@ button.feed-comment-author {
   /* 높이를 0 으로 만들면 translateY(100%) 도 0 이 되어 '내려가는' 느낌이 사라진다.
      그래서 탭바 높이는 그대로 두고 **음수 여백**으로 차지하던 자리만 걷는다 —
      탭바는 화면 아래로 완전히 빠지고, .app-main 은 그만큼(56px) 넓어진다. */
-  margin-bottom: calc(-1 * (var(--nav-h) + env(safe-area-inset-bottom, 0px))) !important;
+  margin-bottom: calc(-1 * (var(--nav-h) + var(--safe-b))) !important;
   border-top-color: transparent !important;
   pointer-events: none !important;
 }
 /* 탭바가 내려가면 글쓰기 버튼도 함께 내려와 제자리(아래 18px)에 앉는다. */
 #fab-write { transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
   box-shadow 0.2s ease, bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
-body.tabbar-scroll-down #fab-write { bottom: 18px; }
+/* 탭바가 내려가면 버튼도 제자리(아래 18px)로 — 홈 인디케이터가 있는 폰에서는 그만큼 더 띄운다. */
+body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 
 /* ---------------------------------------- ② 글쓰기 풀스크린 페이지 */
 #composer-modal.is-page { background: var(--bg-app); }

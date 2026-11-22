@@ -11,11 +11,11 @@
  *  · index.html 을 직접 열었다면(file://) Service Worker 는 등록되지 않는다 — 그때도 앱은 그대로 동작한다.
  * ========================================================================== */
 
-/* v34.0 — 피드를 내리면 하단 탭바가 아래로 숨고, 글쓰기는 사진이 주인공인 풀스크린
-   페이지(홈: 1단계 사진·내용 → 다음 → 2단계 올릴 곳 / 모임: 바로 게시) · 글자수 카운터 제거 ·
-   2단계 모임 대표 이미지는 원형.
+/* v34.1 — '지역'과 '아지트'를 아지트 하나로(시트 안에서 권역 → 아지트) · + 버튼이 탭바 위로
+   (아이폰 안전 영역 포함) · 피드 좋아요/댓글 숫자 간격 축소 · 모임 찾기에 추천 일정 ·
+   모임 공간의 중복 채팅 UI 제거(위 탭 '채팅' 하나) · 예시 이용자 프로필 사진.
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v34-0';
+const CACHE_VERSION = 'oog-shell-v34-1';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -41,7 +41,12 @@ const SHELL_ASSETS = [
   './assets/examples/example-gym-mirror.jpg',
   './assets/examples/example-bbq-grill.jpg',
   './assets/examples/example-summit-view.jpg',
-  './assets/examples/example-parade-day.jpg'
+  './assets/examples/example-parade-day.jpg',
+  /* v34.1 — 예시 이용자 프로필 사진 4장(오프라인에서도 같은 얼굴이 뜨게). */
+  './assets/examples/avatar-morae.jpg',
+  './assets/examples/avatar-haru.jpg',
+  './assets/examples/avatar-danchu.jpg',
+  './assets/examples/avatar-choko.jpg'
 ];
 
 /* ---------------------------------------------------------------- 설치 */
