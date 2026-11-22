@@ -670,50 +670,86 @@
       </div>
     </div>
 
-    <!-- ==================== 모달 2. 새 게시물 작성 ==================== -->
-    <div class="modal-overlay" id="composer-modal" role="dialog" aria-modal="true" aria-label="새 게시물 작성">
+    <!-- ==================== 모달 2. 새 게시물 작성 — v34.0 풀스크린 페이지 ====================
+         바텀시트가 아니라 인스타그램 글쓰기처럼 **화면을 가득 채우는 페이지**다
+         (오른쪽에서 미끄러져 들어오고, 머리말 '<' 로 닫거나 1단계로 돌아간다).
+           · 홈에서 열면 1단계(사진 · 내용) → '다음' → 2단계(올릴 곳 고르기)
+           · 모임 공간 안에서 열면 이미 모임이 정해져 있어 2단계 없이 1단계에서 '게시'
+           · 글자수 카운터 숫자는 보이지 않는다(500자 제한은 그대로 — maxlength + store 검사) -->
+    <div class="modal-overlay is-page" id="composer-modal" role="dialog" aria-modal="true" aria-label="새 게시물 작성">
       <div class="modal-sheet composer-sheet" tabindex="-1">
-        <div class="sheet-grabber"></div>
-        <div class="composer-header">
-          <button class="text-btn ghost" id="btn-composer-cancel">취소</button>
+        <header class="composer-head" data-own-head="1">
+          <button class="page-back" id="btn-composer-back" type="button" aria-label="뒤로 가기">
+            <span aria-hidden="true" data-oog-icon="chevronLeft"></span>
+          </button>
           <h3 class="composer-title" id="composer-title">새 게시물</h3>
-          <button class="btn-publish" id="btn-publish" disabled>게시</button>
-        </div>
-        <div class="composer-body ig-composer-body">
-          <!-- 모임 — 모임 공간 안에서 열면 그 모임이 이미 정해져 있어 숨긴다(v33.7). -->
-          <div class="field-group" id="composer-group-field">
-            <label class="field-label">모임 <span class="field-hint" id="composer-group-hint">고르지 않아도 올릴 수 있어요</span></label>
-            <div class="composer-group-list" id="composer-group-list"><!-- JS --></div>
-            <!-- v33.8 (#22181) — 모임을 고르지 않았을 때만 보이는 안내 -->
-            <p class="composer-free-note" id="composer-free-note" hidden>피드에 바로 올라가요 · 홈 '피드'에 무조건 보여요</p>
-          </div>
+          <button class="btn-publish" id="btn-publish" disabled>다음</button>
+        </header>
 
-          <!-- v33.7 — 인스타그램처럼 사진을 먼저 고른다. 여는 것은 **우그 자체 갤러리**(#gallery-modal)다. -->
-          <div class="field-group composer-photo-field">
-            <label class="field-label">사진 <span class="field-hint" id="composer-photo-hint">최대 10장 · 여러 장 고를 수 있어요</span></label>
-            <div class="composer-photos" id="composer-photos"><!-- JS --></div>
-            <button class="composer-photo-open" id="btn-composer-gallery" type="button">
+        <div class="composer-scroll" id="composer-scroll">
+
+        <!-- ---------- 1단계 — 사진이 주인공인 화면 ---------- -->
+        <section class="composer-step" id="composer-step1" aria-label="사진과 내용">
+          <div class="composer-stage" id="composer-stage">
+            <div class="composer-stage-track" id="composer-stage-track" aria-label="고른 사진"><!-- JS --></div>
+            <button class="composer-stage-empty" id="btn-composer-stage-empty" type="button">
+              <span class="oo-icon-24" aria-hidden="true" data-oog-icon="plus"></span>
+              <span class="composer-stage-empty-label">사진 선택</span>
+              <span class="composer-stage-empty-hint">우그 갤러리에서 최대 10장</span>
+            </button>
+            <span class="composer-stage-count" id="composer-stage-count" hidden>1 / 1</span>
+            <button class="composer-stage-change" id="btn-composer-gallery" type="button" hidden>
               <span class="oo-icon-17" aria-hidden="true" data-oog-icon="plus"></span>
-              사진 선택
+              <span class="composer-stage-change-label">사진 변경</span>
             </button>
           </div>
 
-          <div class="field-group">
-            <label class="field-label">내용</label>
-            <textarea id="composer-caption" class="text-area" aria-label="게시물 내용" maxlength="500" placeholder="오늘의 운동·취미 기록을 남겨보세요. #해시태그도 쓸 수 있어요."></textarea>
-            <div class="caption-counter"><span id="caption-count">0</span> / 500</div>
+          <!-- 고른 사진의 순서·빼기 (인스타그램처럼 얇은 썸네일 줄) -->
+          <div class="composer-photos" id="composer-photos" hidden><!-- JS --></div>
+
+          <div class="composer-caption-wrap">
+            <textarea id="composer-caption" class="composer-caption" aria-label="게시물 내용" maxlength="500"
+                      placeholder="오늘의 운동·취미 기록을 남겨보세요. #해시태그도 쓸 수 있어요."></textarea>
+          </div>
+        </section>
+
+        <!-- ---------- 2단계 — 올릴 곳 고르기 (홈에서 열었을 때만) ---------- -->
+        <section class="composer-step" id="composer-step2" hidden aria-label="올릴 곳 고르기">
+          <div class="composer-dest-head">
+            <h4 class="composer-dest-title">어디에 올릴까요?</h4>
+            <p class="composer-dest-sub" id="composer-dest-sub">모임을 고르거나, 그룹 없이 홈 피드에 올려요.</p>
           </div>
 
-          <!-- Sprint 32.5 — 추천 피드 공개 (H3: 체크박스 · 기본 꺼짐 · 올린 뒤 수정에서도 바꿀 수 있음) -->
-          <label class="feed-optin optin-row" id="composer-recommend-row" for="composer-recommend-check">
-            <span class="feed-optin-text">
-              <span class="feed-optin-title">추천 피드에 노출해도 괜찮아요</span>
-              <span class="feed-optin-desc">홈 '추천 피드'에 올라가요. 체크하지 않으면 이 모임 안에서만 보여요.</span>
-            </span>
-            <input type="checkbox" class="optin-check" id="composer-recommend-check"
-                   aria-label="추천 피드에 노출해도 괜찮아요">
-          </label>
+          <!-- 그룹 없이 올리기 토글 — 켜면 아래 모임 목록이 숨는다 -->
+          <div class="composer-toggle-row">
+            <div class="composer-toggle-text">
+              <strong class="composer-toggle-title">그룹 없이 올리기</strong>
+              <span class="composer-toggle-desc" id="composer-toggle-desc">홈 피드에 바로 올라가요</span>
+            </div>
+            <button class="switch-toggle" id="composer-nogroup-toggle" type="button" role="switch"
+                    aria-checked="false" aria-label="그룹 없이 올리기">
+              <span class="switch-knob"></span>
+            </button>
+          </div>
+
+          <!-- v33.8 (#22181) — 모임을 고르지 않았을 때만 보이는 안내 -->
+          <p class="composer-free-note" id="composer-free-note" hidden>홈 피드에 바로 올라가요</p>
+
+          <div class="composer-group-list" id="composer-group-list"><!-- JS --></div>
+          <p class="composer-groups-empty" id="composer-groups-empty" hidden>아직 가입한 모임이 없어요 · 그룹 없이 올리면 홈 피드에 보여요</p>
+        </section>
+
         </div>
+
+        <!-- Sprint 32.5 — 추천 피드 공개 (2단계 · 모임 공간 · 글 수정에서 보인다) -->
+        <label class="feed-optin optin-row composer-optin" id="composer-recommend-row" for="composer-recommend-check">
+          <span class="feed-optin-text">
+            <span class="feed-optin-title">추천 피드에 노출해도 괜찮아요</span>
+            <span class="feed-optin-desc">홈 '추천 피드'에 올라가요. 체크하지 않으면 이 모임 안에서만 보여요.</span>
+          </span>
+          <input type="checkbox" class="optin-check" id="composer-recommend-check"
+                 aria-label="추천 피드에 노출해도 괜찮아요">
+        </label>
       </div>
     </div>
 

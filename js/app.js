@@ -25,6 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const store = window.appStore;
   /* Sprint 20 — 이모지 대신 **우그가 직접 그린 아이콘**. 화면의 모든 아이콘은 이 두 함수로만 그린다. */
   const ic = (name, opts) => window.OOGIcons.render(name, opts);
+
+  /* v34.0 (#22322) — 피드를 내리면 하단 탭바가 아래로 숨는다.
+     상태·임계값을 맨 위에 두는 이유: 스크롤 복원·모달처럼 이른 시점에 불리는 코드도
+     같은 값을 안전하게 읽고 되돌릴 수 있어야 한다. */
+  const SCROLL_NAV_HIDE_AFTER = 18;   // 아래로 이만큼 내려가면 탭바가 내려간다
+  const SCROLL_NAV_SHOW_AFTER = 10;   // 위로 이만큼 올라오면 다시 올라온다
+  const SCROLL_NAV_TOP_EDGE = 10;     // 맨 위(<=10)로 돌아오면 무조건 보인다
+  const scrollNav = { lastTop: 0, down: 0, up: 0, hidden: false, bound: false, raf: 0 };
   /* Sprint R4 — 모임 카드 표지는 대분류 7종의 **단색 문양**을 쓴다(색조 → 문양 이름).
      세부 취미 아이콘은 목록·칩·메타 줄에 그대로 남는다. */
   const coverIc = (tone) => ic(window.OOGIcons.emblemName(tone));
@@ -509,15 +517,24 @@ document.addEventListener('DOMContentLoaded', () => {
     composerModal: $('#composer-modal'),
     joinedModal: $('#joined-modal'),
     joinedBody: $('#joined-groups-body'),
+    /* v34.0 — 풀스크린 글쓰기: 1단계(사진·내용) / 2단계(올릴 곳) */
+    composerStep1: $('#composer-step1'),
+    composerStep2: $('#composer-step2'),
+    composerScroll: $('#composer-scroll'),
+    composerStage: $('#composer-stage'),
+    composerStageTrack: $('#composer-stage-track'),
+    composerStageEmpty: $('#btn-composer-stage-empty'),
+    composerPhotoCount: $('#composer-stage-count'),
     composerGroupList: $('#composer-group-list'),
-    composerGroupField: $('#composer-group-field'),
+    composerGroupsEmpty: $('#composer-groups-empty'),
     composerFreeNote: $('#composer-free-note'),
-    composerGroupHint: $('#composer-group-hint'),
+    composerNoGroupToggle: $('#composer-nogroup-toggle'),
+    composerToggleDesc: $('#composer-toggle-desc'),
     composerPhotos: $('#composer-photos'),
     btnComposerGallery: $('#btn-composer-gallery'),
-    composerPhotoHint: $('#composer-photo-hint'),
+    btnComposerBack: $('#btn-composer-back'),
     composerCaption: $('#composer-caption'),
-    captionCount: $('#caption-count'),
+    composerRecommendRow: $('#composer-recommend-row'),
     publishBtn: $('#btn-publish'),
     // misc
     toast: $('#toast'),
@@ -1800,13 +1817,16 @@ document.addEventListener('DOMContentLoaded', () => {
     'event-detail-modal',   // 일정 상세
     'match-detail-modal',   // 이용자 프로필
     'likers-modal',         // 좋아요 목록
-    'gallery-modal'         // v33.7 우그 자체 갤러리(사진 고르기)
+    'gallery-modal',        // v33.7 우그 자체 갤러리(사진 고르기)
+    'composer-modal'        // v34.0 글쓰기 — 사진이 주인공인 풀스크린 페이지(머리말은 화면이 직접 그린다)
   ]);
 
   /** 풀스크린 페이지의 머리말 — 왼쪽 '<' 뒤로가기 + 제목. 한 번만 만든다. */
   function ensurePageHead(node) {
     const sheet = node.querySelector('.modal-sheet');
     if (!sheet) return null;
+    /* v34.0 — 글쓰기 페이지는 자기 머리말('<' · 제목 · 다음/게시)을 이미 갖고 있다. */
+    if (sheet.querySelector('[data-own-head]')) return null;
     let head = sheet.querySelector('.page-head');
     if (!head) {
       head = document.createElement('header');
@@ -1845,6 +1865,10 @@ document.addEventListener('DOMContentLoaded', () => {
     node.classList.add('active');
     document.body.classList.add('modal-open');
     if (el.main) el.main.style.overflow = 'hidden';   // 배경 스크롤 잠금
+    /* v34.0 — 창을 열면 하단 탭바는 제자리로 돌린다(어디서 닫혔든). */
+    setScrollNavHidden(false);
+    scrollNav.down = 0;
+    scrollNav.up = 0;
     const sheet = node.querySelector('.modal-sheet');
     if (sheet) setTimeout(() => sheet.focus({ preventScroll: true }), 60);
   }
@@ -1875,6 +1899,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!document.querySelector('.modal-overlay.active')) {
       document.body.classList.remove('modal-open');
       if (el.main) el.main.style.overflow = '';
+      /* v34.0 — 창을 닫으면 탭바는 다시 올라와 있는 상태로 시작한다. */
+      resetScrollNav();
     }
     restoreFocus(node);
   }
@@ -1950,6 +1976,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* 같은 탭 재선택이면 맨 위로, 탭 전환이면 기억한 위치로 (Sprint 9 — 복원 정확도 2차) */
     const saved = prevTab === tabId ? 0 : (ui.scrollByTab[tabId] || 0);
+    /* v34.0 — 탭을 옮기면 하단 탭바는 늘 다시 올라와 있다. */
+    resetScrollNav();
     restoreScroll(saved);
   }
 
@@ -1965,6 +1993,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const max = Math.max(0, el.main.scrollHeight - el.main.clientHeight);
       const y = Math.max(0, Math.min(Number(target) || 0, max));
       if (Math.abs(el.main.scrollTop - y) > 1) el.main.scrollTop = y;
+      /* v34.0 — 복원으로 생긴 스크롤 이동을 '내린 것'으로 세지 않는다. */
+      scrollNav.lastTop = el.main.scrollTop;
+      scrollNav.down = 0;
+      scrollNav.up = 0;
     };
     apply();
     requestAnimationFrame(apply);
@@ -9705,45 +9737,86 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ==========================================================================
    * 5. 글쓰기 (FAB + 작성 모달)
    * ======================================================================== */
+  /* v34.0 (#22322) — 글쓰기는 바텀시트가 아닌 **풀스크린 페이지**다.
+     · 홈에서 열면 1단계(사진 · 내용) → '다음' → 2단계(올릴 곳 고르기)
+     · 모임 공간 안에서 열면 이미 모임이 정해져 있어 2단계 없이 1단계에서 '게시'
+     · 글 수정은 1단계에서 '저장' — 모임은 그대로 두고 사진·내용만 고친다. */
   function openComposer(prefillGroupId) {
     const joined = store.getJoinedGroups();
-    /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다(모임 선택 한 번 줄임).
-       v33.7 — 모임 공간 안에서 열면 그 모임으로 **고정**되고 모임 선택 UI 는 숨긴다.
-       v33.8 (#22181) — 가입한 모임이 없어도, 모임을 고르지 않아도 글을 쓸 수 있다(자유 피드).
-         그런 글은 홈 '피드'(추천 피드)에 무조건 올라간다. */
+    /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다.
+       v33.7 — 모임 공간 안에서 열면 그 모임으로 **고정**된다(모임 고르기 없음).
+       v33.8 (#22181) — 모임 없이도 쓸 수 있는 '자유 피드' 글.
+       v34.0 (#22322) — 홈에서는 2단계에서 올릴 곳을 고른다(그룹 없이 올리기 토글). */
     const inGroup = isGroupMode();
-    const viewing = inGroup ? ui.groupSpaceId
-      : (ui.activeTab === 'tab-home' ? (ui.homeGroupId || store.getHomeGroupId()) : null);
-    /* 고를 수 있는 모임은 **지금 가입한 모임**뿐이다 — 탈퇴했거나 그룹이 0개면
-       그 자리는 비고, 글은 자유 피드(groupId 없음)로 올라간다. */
     const pick = (id) => {
       const g = id ? store.getGroup(id) : null;
       return (g && store.isGroupJoined(g.id)) ? g : null;
     };
-    const startGroup = pick(prefillGroupId) || pick(viewing) || pick(ui.feedGroupId) || joined[0] || null;
-    /* H3 — 글을 쓸 때마다 '추천 피드 노출'은 **꺼진 상태**로 시작한다(모임 기본값을 따르지 않음).
-       체크해야만 홈 추천 피드에 오른다. */
+    const startGroup = pick(prefillGroupId) || (inGroup ? pick(ui.groupSpaceId) : null) || pick(ui.feedGroupId);
+    const locked = (inGroup && startGroup) ? startGroup.id : null;
+    /* H3 — '추천 피드 노출'은 글을 쓸 때마다 꺼진 상태로 시작한다(모임 기본값을 따르지 않음). */
     ui.composer = {
-      editId: null, groupId: startGroup ? startGroup.id : null, tag: null, photoUrl: null,
-      images: [], recommendOptIn: false, lockedGroup: (inGroup && startGroup) ? startGroup.id : null
+      editId: null,
+      mode: locked ? 'group' : 'home',
+      step: 1,
+      groupId: locked || null,
+      lockedGroup: locked,
+      /* 홈에서 열면 2단계 토글은 가입 모임이 없을 때만 켜 둔다(그때는 고를 모임이 없다). */
+      noGroup: !locked && joined.length === 0,
+      tag: null, photoUrl: null, images: [], recommendOptIn: false
     };
-    if (el.composerTitle) el.composerTitle.textContent = '새 게시물';
-    if (el.publishBtn) el.publishBtn.textContent = '게시';
     composerResetFields();
+    renderComposerStep();
+    openModal(el.composerModal);
+  }
+
+  /** 글쓰기 현재 단계(1 = 사진·내용, 2 = 올릴 곳 고르기). */
+  function composerStepNo() {
+    return (ui.composer && ui.composer.step) === 2 ? 2 : 1;
+  }
+
+  /** 단계에 맞춰 머리말·버튼·본문을 한 번에 갈아 끼운다. */
+  function renderComposerStep() {
+    const c = ui.composer;
+    if (!c) return;
+    const step = composerStepNo();
+    const mode = c.mode || 'home';
+    if (el.composerStep1) el.composerStep1.hidden = step !== 1;
+    if (el.composerStep2) el.composerStep2.hidden = step !== 2;
+    const sheet = el.composerModal ? el.composerModal.querySelector('.composer-sheet') : null;
+    if (sheet) sheet.classList.toggle('is-step2', step === 2);
+    if (el.composerTitle) {
+      el.composerTitle.textContent = step === 2 ? '올릴 곳' : (c.editId ? '글 수정' : '새 게시물');
+    }
+    if (el.publishBtn) {
+      el.publishBtn.textContent = step === 2 ? '게시'
+        : (mode === 'home' ? '다음' : (c.editId ? '저장' : '게시'));
+    }
+    /* 추천 피드 체크는 2단계 · 모임 공간 · 글 수정에서만 보인다(renderComposerRecommend 가 판단). */
     renderComposerGroups();
-    renderMediaPicker();
+    renderComposerPhotos();
     renderComposerRecommend();
     updatePublishState();
-    openModal(el.composerModal);
+    if (el.composerScroll) {
+      el.composerScroll.scrollTop = 0;
+      if (el.composerStageTrack) el.composerStageTrack.scrollLeft = 0;
+    }
   }
 
   /** H3 — '추천 피드에 노출해도 괜찮아요' 체크박스(기본 꺼짐).
    *  v33.8 (#22181) — 모임 없이 올리는 '자유 피드' 글은 추천 피드에 **무조건** 노출이라
-   *  체크박스를 켜고 잠가 둔다(사유를 문구로 바뀌서 보여 준다). */
+   *  체크박스를 켜고 잠가 둔다(사유를 문구로 바꿔서 보여 준다). */
   function renderComposerRecommend() {
     if (!el.composerRecommendCheck) return;
-    const free = !ui.composer || ui.composer.groupId == null;
-    const on = free ? true : ui.composer.recommendOptIn === true;
+    const c = ui.composer || {};
+    const free = c.noGroup === true || c.groupId == null;
+    /* 추천 피드 체크는 **모임에 올릴 때만** 의미가 있다.
+       · 2단계에서 아직 모임을 고르지 않았거나 '그룹 없이 올리기'가 켜져 있으면 숨는다
+         (자유 피드는 무조건 홈에 노출 — 그 사실은 위쪽 안내 줄이 말한다).
+       · 1단계(모임 공간·수정)에서는 모임이 정해져 있으므로 그대로 보인다. */
+    const show = !free;
+    if (el.composerRecommendRow) el.composerRecommendRow.hidden = !show;
+    const on = free ? true : c.recommendOptIn === true;
     el.composerRecommendCheck.checked = on;
     el.composerRecommendCheck.disabled = free;
     const row = el.composerRecommendCheck.closest('.optin-row');
@@ -9756,7 +9829,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (desc) {
         desc.textContent = free
           ? '모임을 고르지 않고 올린 글은 홈 \'피드\'에 무조건 보여요.'
-          : '홈 \'추천 피드\'에 올라가요. 체크하지 않으면 이 모임 안에서만 보여요.';
+          : '체크하지 않으면 이 모임 안에서만 보여요.';
       }
     }
   }
@@ -9764,40 +9837,52 @@ document.addEventListener('DOMContentLoaded', () => {
   /* (DOM 초기화 헬퍼) 캡션/사진 비우기 */
   function composerResetFields() {
     if (el.composerCaption) { el.composerCaption.value = ''; }
-    if (el.captionCount) el.captionCount.textContent = '0';
     if (ui.composer) ui.composer.images = [];
     renderComposerPhotos();
   }
 
+  /** 2단계 — 올릴 곳. '그룹 없이 올리기'가 켜지면 모임 목록을 숨긴다.
+   *  목록의 모임 대표 이미지는 **원형**(#22335 "그룹은 원형으로 보이게해") —
+   *  사진이 있으면 그 사진, 없으면 취미 대분류 색 + 아이콘. */
   function renderComposerGroups() {
-    if (!el.composerGroupList) return;
-    /* v33.7 — 모임 공간 안에서 열었거나 글을 고치는 중이면 모임이 이미 정해져 있다(선택 UI 숨김). */
-    const locked = !!(ui.composer.lockedGroup || ui.composer.editId);
-    if (el.composerGroupField) el.composerGroupField.hidden = locked;
-    if (locked) { el.composerGroupList.innerHTML = ''; if (el.composerFreeNote) el.composerFreeNote.hidden = true; return; }
+    const c = ui.composer;
+    if (!c) return;
     const joined = store.getJoinedGroups();
-    const free = ui.composer.groupId == null;
-    /* v33.8 (#22181) — 모임을 고르지 않아도 올릴 수 있는 첫 칸. 이 글은 홈 피드에 무조건 올라간다. */
-    const freeChip = `
-      <button class="composer-group-chip is-free ${free ? 'active' : ''}" data-pick-group="" type="button">
-        <span class="chip-thumb">${ic('globe')}</span>
-        <span class="chip-text">
-          <strong>그룹 없이 올리기</strong>
-          <span>자유 피드 · 홈에 바로 보여요</span>
+    const noGroup = c.noGroup === true;
+    const inStep2 = composerStepNo() === 2;
+    const showList = inStep2 && !noGroup && joined.length > 0;
+    if (el.composerGroupList) {
+      el.composerGroupList.hidden = !showList;
+      el.composerGroupList.innerHTML = showList ? joined.map((g) => {
+        const vis = groupCoverVisual(g, 'circle');
+        const face = vis.photoUrl
+          ? `<img src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
+          : ic(vis.icon);
+        const on = c.groupId === g.id;
+        const meta = [g.categoryName, `멤버 ${g.memberCount}명`].filter(Boolean).join(' · ');
+        return `
+      <button class="composer-group-row ${on ? 'active' : ''}" data-pick-group="${g.id}" type="button"
+              aria-pressed="${on}" aria-label="${escapeHtml(g.name)}에 올리기">
+        <span class="composer-group-thumb tone-${escapeHtml(vis.tone)}" aria-hidden="true">${face}</span>
+        <span class="composer-group-text">
+          <span class="composer-group-name">${escapeHtml(g.name)}</span>
+          <span class="composer-group-meta">${escapeHtml(meta)}</span>
         </span>
-        <span class="chip-check">${ic('check')}</span>
+        <span class="composer-group-check" aria-hidden="true">${ic('check')}</span>
       </button>`;
-    el.composerGroupList.innerHTML = freeChip + joined.map((g) => `
-      <button class="composer-group-chip ${ui.composer.groupId === g.id ? 'active' : ''}" data-pick-group="${g.id}">
-        <span class="chip-thumb">${ic(g.icon)}</span>
-        <span class="chip-text">
-          <strong>${escapeHtml(g.name)}</strong>
-          <span>${escapeHtml(g.categoryName)} · 멤버 ${g.memberCount}명</span>
-        </span>
-        <span class="chip-check">${ic('check')}</span>
-      </button>
-    `).join('');
-    if (el.composerFreeNote) el.composerFreeNote.hidden = !free;
+      }).join('') : '';
+    }
+    if (el.composerGroupsEmpty) {
+      el.composerGroupsEmpty.hidden = !(inStep2 && !noGroup && joined.length === 0);
+    }
+    if (el.composerNoGroupToggle) {
+      el.composerNoGroupToggle.classList.toggle('on', noGroup);
+      el.composerNoGroupToggle.setAttribute('aria-checked', String(noGroup));
+    }
+    if (el.composerToggleDesc) {
+      el.composerToggleDesc.textContent = noGroup ? '모임을 고르지 않고 올려요' : '아래에서 올릴 모임을 골라요';
+    }
+    if (el.composerFreeNote) el.composerFreeNote.hidden = !(inStep2 && noGroup);
   }
 
   /** Sprint 18 · v33.7 — 말머리 선택 UI 는 없앴다(본문 #해시태그가 그 자리를 대신한다). */
@@ -9805,48 +9890,86 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderMediaPicker() { /* 없음 */ }
   function updatePhotoPreview() { /* 없음 — 이미지 URL 입력창을 없앴다 */ }
 
-  /** v33.7 — 고른 사진 썸네일(순서 배지 · 빼기). */
+  /** v34.0 — 고른 사진은 위에 크게(가로 스와이프), 아래에 순서 배지가 붙은 얇은 썸네일 줄. */
   function renderComposerPhotos() {
-    if (!el.composerPhotos) return;
     const images = (ui.composer && ui.composer.images) || [];
-    el.composerPhotos.innerHTML = images.length
-      ? images.map((url, i) => `
+    const has = images.length > 0;
+    if (el.composerStage) el.composerStage.classList.toggle('is-empty', !has);
+    if (el.composerStageTrack) {
+      el.composerStageTrack.innerHTML = images.map((url, i) => `
+        <span class="composer-slide"><img src="${escapeHtml(url)}" alt="${i + 1}번째 사진"></span>`).join('');
+    }
+    if (el.composerPhotoCount) {
+      el.composerPhotoCount.hidden = !has;
+      el.composerPhotoCount.textContent = has ? `1 / ${images.length}` : '';
+    }
+    if (el.btnComposerGallery) el.btnComposerGallery.hidden = !has;
+    if (el.composerPhotos) {
+      el.composerPhotos.innerHTML = has ? images.map((url, i) => `
         <span class="composer-thumb">
           <img src="${escapeHtml(url)}" alt="${i + 1}번째 사진">
           <span class="composer-thumb-num" aria-hidden="true">${i + 1}</span>
           <button class="composer-thumb-x" data-composer-photo-remove="${i}" type="button"
                   aria-label="${i + 1}번째 사진 빼기">×</button>
-        </span>`).join('')
-      : '';
-    el.composerPhotos.hidden = !images.length;
-    if (el.composerPhotoHint) {
-      el.composerPhotoHint.textContent = images.length
-        ? `${images.length}장 고름 · 최대 10장`
-        : '최대 10장 · 여러 장 고를 수 있어요';
-    }
-    if (el.btnComposerGallery) {
-      el.btnComposerGallery.classList.toggle('is-compact', images.length > 0);
-      const label = el.btnComposerGallery.lastChild;
-      if (label && label.nodeType === 3) label.textContent = images.length ? ' 사진 더 고르기' : ' 사진 선택';
+        </span>`).join('') : '';
+      el.composerPhotos.hidden = !has;
     }
   }
 
+  /** 버튼이 지금 눌릴 수 있는지 — 1단계는 내용·사진, 2단계는 올릴 곳까지 정해져야 한다. */
   function updatePublishState() {
-    if (!el.publishBtn || !el.composerCaption) return;
-    const caption = el.composerCaption.value.trim();
-    const hasPhoto = !!((ui.composer && ui.composer.images) || []).length;
-    /* v33.8 (#22181) — 모임을 고르지 않은 글(자유 피드)도 올릴 수 있다. */
-    el.publishBtn.disabled = !(caption || hasPhoto);
-    el.publishBtn.classList.toggle('ready', !el.publishBtn.disabled);
+    if (!el.publishBtn || !ui.composer) return;
+    const caption = el.composerCaption ? el.composerCaption.value.trim() : '';
+    const images = (ui.composer.images || []);
+    const hasContent = !!(caption || images.length);
+    let ok = hasContent;
+    if (composerStepNo() === 2 && ui.composer.mode === 'home') {
+      ok = ui.composer.noGroup === true ? hasContent : !!ui.composer.groupId;
+    }
+    el.publishBtn.disabled = !ok;
+    el.publishBtn.classList.toggle('ready', ok);
+  }
+
+  /** 올릴 모임 — 홈 2단계에서 '그룹 없이 올리기'가 켜져 있으면 null(자유 피드). */
+  function composerTargetGroupId() {
+    const c = ui.composer;
+    if (!c) return null;
+    if (c.mode === 'home') return c.noGroup === true ? null : (c.groupId || null);
+    return c.groupId || null;
+  }
+
+  /** '다음' — 홈 1단계면 2단계로, 그 밖(모임 공간·수정·2단계)이면 바로 올린다. */
+  function goComposerNext() {
+    const c = ui.composer;
+    if (!c) return;
+    if (composerStepNo() === 2 || c.mode !== 'home') { publishComposer(); return; }
+    c.step = 2;
+    renderComposerStep();
+  }
+
+  /** '<' — 2단계면 1단계로(사진·내용 그대로), 1단계면 창을 닫는다. */
+  function composerBack() {
+    const c = ui.composer;
+    if (!c) return;
+    if (composerStepNo() === 2) { c.step = 1; renderComposerStep(); return; }
+    closeModal(el.composerModal);
   }
 
   el.composerGroupList && el.composerGroupList.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-pick-group]');
-    if (!chip) return;
-    if (ui.composer.lockedGroup) return;      // 모임 공간 안에서는 그 모임 고정
-    /* 빈 값 = 그룹 없이 올리기(자유 피드) */
-    ui.composer.groupId = chip.dataset.pickGroup || null;
+    const row = e.target.closest('[data-pick-group]');
+    if (!row || !ui.composer) return;
+    ui.composer.groupId = row.dataset.pickGroup || null;
     ui.composer.tag = null;
+    if (ui.composer.groupId) ui.composer.noGroup = false;   // 모임을 고르면 토글은 내려간다
+    renderComposerGroups();
+    renderComposerRecommend();
+    updatePublishState();
+  });
+
+  el.composerNoGroupToggle && el.composerNoGroupToggle.addEventListener('click', () => {
+    if (!ui.composer) return;
+    ui.composer.noGroup = ui.composer.noGroup !== true;
+    if (ui.composer.noGroup) ui.composer.groupId = null;
     renderComposerGroups();
     renderComposerRecommend();
     updatePublishState();
@@ -9854,16 +9977,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.composerPhotos && el.composerPhotos.addEventListener('click', (e) => {
     const rm = e.target.closest('[data-composer-photo-remove]');
-    if (!rm) return;
+    if (!rm || !ui.composer) return;
     const idx = Number(rm.dataset.composerPhotoRemove);
     ui.composer.images.splice(idx, 1);
     renderComposerPhotos();
     updatePublishState();
   });
 
+  /* 사진을 넘길 때 '2 / 3' 표시를 따라 움직인다. */
+  el.composerStageTrack && el.composerStageTrack.addEventListener('scroll', () => {
+    const track = el.composerStageTrack;
+    const n = ((ui.composer && ui.composer.images) || []).length;
+    if (!n || !el.composerPhotoCount) return;
+    const idx = Math.min(Math.max(Math.round(track.scrollLeft / (track.clientWidth || 1)) + 1, 1), n);
+    el.composerPhotoCount.textContent = `${idx} / ${n}`;
+  }, { passive: true });
+
   if (el.composerRecommendCheck) {
     el.composerRecommendCheck.addEventListener('change', () => {
-      ui.composer.recommendOptIn = el.composerRecommendCheck.checked === true;
+      if (ui.composer) ui.composer.recommendOptIn = el.composerRecommendCheck.checked === true;
       renderComposerRecommend();
     });
   }
@@ -9874,31 +10006,42 @@ document.addEventListener('DOMContentLoaded', () => {
   wirePhotoPicker('explore', el.explorePhotoAlbum, el.explorePhotoCamera,
     $('#btn-explore-album'), $('#btn-explore-camera'), $('#btn-explore-photo-remove'));
 
-  el.composerCaption && el.composerCaption.addEventListener('input', () => {
-    el.captionCount.textContent = String(el.composerCaption.value.length);
-    updatePublishState();
-  });
+  el.composerCaption && el.composerCaption.addEventListener('input', updatePublishState);
 
-  el.publishBtn && el.publishBtn.addEventListener('click', () => {
-    const images = (ui.composer.images || []).slice(0, 10);
+  /* v34.0 — 카운터 숫자는 화면에 없다(500자 제한은 maxlength + store 의 slice(0,500) 그대로). */
+  el.publishBtn && el.publishBtn.addEventListener('click', goComposerNext);
+
+  function publishComposer() {
+    const c = ui.composer;
+    if (!c) return;
+    const images = (c.images || []).slice(0, 10);
+    const caption = el.composerCaption ? el.composerCaption.value : '';
+    const groupId = composerTargetGroupId();
+    if (c.mode === 'home' && composerStepNo() === 2 && c.noGroup !== true && !groupId) {
+      showToast('올릴 모임을 골라 주세요', 'warning');
+      return;
+    }
     const payload = {
       tag: null,
-      caption: el.composerCaption.value,
+      caption,
       images,
       photoUrl: images[0] || '',
-      recommendOptIn: ui.composer.recommendOptIn === true
+      recommendOptIn: groupId ? c.recommendOptIn === true : true
     };
+    if (!caption.trim() && !images.length) {
+      showToast('내용이나 사진을 하나는 남겨 주세요', 'warning');
+      return;
+    }
     /* H3 — 올린 글도 수정 화면에서 '추천 피드 노출'을 바꿀 수 있다(저장하면 홈 추천 피드에 바로 반영/해제). */
-    if (ui.composer.editId) {
-      const res = store.updatePost(ui.composer.editId, payload);
+    if (c.editId) {
+      const res = store.updatePost(c.editId, payload);
       if (!res.ok) {
         showToast(res.reason === 'empty' ? '내용이나 사진을 하나는 남겨 주세요' : '글을 고치지 못했어요', 'warning');
         return;
       }
       const post = res.post;
-      ui.composer.editId = null;
-      if (el.composerTitle) el.composerTitle.textContent = '새 게시물';
-      if (el.publishBtn) el.publishBtn.textContent = '게시';
+      c.editId = null;
+      c.step = 1;
       closeModal(el.composerModal);
       renderFeed();
       renderHomeSuggestFeed();
@@ -9913,8 +10056,8 @@ document.addEventListener('DOMContentLoaded', () => {
        실패하면 그 글을 걷어낸다(롤백). 글 id 를 화면이 만들어 재시도가 글을 두 개로 만들지 않는다. */
     const postId = `post_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
     /* v33.8 (#22181) — groupId 가 없으면 '자유 피드' 글: 홈 피드에 무조건 노출된다. */
-    const freePost = !ui.composer.groupId;
-    const post = store.createPost({ id: postId, groupId: ui.composer.groupId, ...payload });
+    const freePost = !groupId;
+    const post = store.createPost({ id: postId, groupId, ...payload });
     if (!post) {
       showToast(freePost ? '내용이나 사진을 하나는 남겨 주세요' : '모임과 내용을 확인해 주세요', 'warning');
       return;
@@ -9935,6 +10078,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ui.activeTab === 'tab-feed' || ui.groupSpaceId) renderFeed();
       showToast('글을 올리지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'error');
     });
+    c.step = 1;
     closeModal(el.composerModal);
     ui.lastCreatedPostId = post.id;
     if (post.groupId) {
@@ -9953,7 +10097,7 @@ document.addEventListener('DOMContentLoaded', () => {
     'success', null, { ms: 3600 });
     renderHomeSuggestFeed();
     scrollTop();
-  });
+  }
 
   /* H3 — 올린 글 수정. 글쓰기 화면을 그대로 쓰되 모임·말머리는 그대로 두고 내용과 노출 여부만 고친다. */
   function openComposerEditing(postId) {
@@ -9967,25 +10111,23 @@ document.addEventListener('DOMContentLoaded', () => {
     /* v33.8 — 모임 없이 올린 자유 피드 글도 고칠 수 있다. */
     if (post.groupId && !grp) { showToast('모임을 찾지 못했어요', 'warning'); return; }
     const keepImages = store.getPostImages(post).slice(0, 10);
+    /* v34.0 — 수정도 같은 풀스크린 창을 쓴다. 모임은 그대로 두고(2단계 없음) 사진·내용만 고친다. */
     ui.composer = {
       editId: post.id,
+      mode: 'edit',
+      step: 1,
       groupId: post.groupId || null,
+      lockedGroup: post.groupId || null,
+      noGroup: !post.groupId,
       tag: post.tag || null,
       photoUrl: post.photoUrl || null,
       images: [],
-      recommendOptIn: post.recommendOptIn === true,
-      lockedGroup: post.groupId || null
+      recommendOptIn: post.recommendOptIn === true
     };
     composerResetFields();
     ui.composer.images = keepImages;
     if (el.composerCaption) el.composerCaption.value = post.caption || '';
-    if (el.captionCount) el.captionCount.textContent = String((post.caption || '').length);
-    if (el.composerTitle) el.composerTitle.textContent = '글 수정';
-    if (el.publishBtn) el.publishBtn.textContent = '저장';
-    renderComposerGroups();
-    renderComposerPhotos();
-    renderComposerRecommend();
-    updatePublishState();
+    renderComposerStep();
     openModal(el.composerModal);
   }
 
@@ -10160,6 +10302,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   el.btnComposerGallery && el.btnComposerGallery.addEventListener('click', () => openComposerGallery());
+  el.composerStageEmpty && el.composerStageEmpty.addEventListener('click', () => openComposerGallery());
 
   el.fab && el.fab.addEventListener('click', () => openComposer());
 
@@ -14721,8 +14864,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('touchcancel', resetSwipeBack);
   }, { passive: true });
 
-  const composerCancel = $('#btn-composer-cancel');
-  composerCancel && composerCancel.addEventListener('click', () => closeModal(el.composerModal));
+  /* v34.0 — 글쓰기 '<' 는 2단계에서는 1단계로, 1단계에서는 창을 닫는다. */
+  el.btnComposerBack && el.btnComposerBack.addEventListener('click', composerBack);
 
   const postDetailClose = $('#btn-close-post-detail');
   postDetailClose && postDetailClose.addEventListener('click', () => closeModal(el.postModal));
@@ -14992,6 +15135,80 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       enabled: tabBar.enabled, hidden: tabBar.hidden,
       paused: !tabBarAutoHideAllowed(), delay: TAB_AUTOHIDE_MS
+    };
+  }
+
+
+  /** 탭바를 숨기면 안 되는 순간 — 모달·대화방이 떠 있을 때. */
+  function scrollNavPaused() {
+    if (document.querySelector('.modal-overlay.active')) return true;
+    if (document.querySelector('.chat-room-view:not([hidden])')) return true;
+    return false;
+  }
+
+  function setScrollNavHidden(hidden) {
+    const nodes = [el.bottomNav].filter(Boolean);
+    if (!nodes.length) return;
+    const want = !!hidden && !scrollNavPaused();
+    scrollNav.hidden = want;
+    nodes.forEach((node) => {
+      node.classList.toggle('is-scroll-hidden', want);
+      if (want) node.setAttribute('aria-hidden', 'true');
+      else node.removeAttribute('aria-hidden');
+    });
+    document.body.classList.toggle('tabbar-scroll-down', want);
+  }
+
+  /** 탭을 옮기거나 화면을 새로 열면 늘 제자리로 돌린다. */
+  function resetScrollNav() {
+    scrollNav.down = 0;
+    scrollNav.up = 0;
+    if (el.main) scrollNav.lastTop = el.main.scrollTop;
+    if (scrollNav.hidden) setScrollNavHidden(false);
+  }
+
+  function onMainScrollForNav() {
+    if (!el.main) return;
+    const top = el.main.scrollTop;
+    const dy = top - scrollNav.lastTop;
+    scrollNav.lastTop = top;
+    if (scrollNavPaused()) { scrollNav.down = 0; scrollNav.up = 0; if (scrollNav.hidden) setScrollNavHidden(false); return; }
+    if (top <= SCROLL_NAV_TOP_EDGE) {
+      scrollNav.down = 0; scrollNav.up = 0;
+      if (scrollNav.hidden) setScrollNavHidden(false);
+      return;
+    }
+    if (dy > 0) {
+      scrollNav.down += dy;
+      scrollNav.up = 0;
+      if (!scrollNav.hidden && scrollNav.down >= SCROLL_NAV_HIDE_AFTER) setScrollNavHidden(true);
+    } else if (dy < 0) {
+      scrollNav.up += -dy;
+      scrollNav.down = 0;
+      if (scrollNav.hidden && scrollNav.up >= SCROLL_NAV_SHOW_AFTER) setScrollNavHidden(false);
+    }
+  }
+
+  function initScrollNav() {
+    if (scrollNav.bound || !el.main) return;
+    scrollNav.bound = true;
+    scrollNav.lastTop = el.main.scrollTop;
+    el.main.addEventListener('scroll', () => {
+      if (scrollNav.raf) return;
+      scrollNav.raf = requestAnimationFrame(() => {
+        scrollNav.raf = 0;
+        onMainScrollForNav();
+      });
+    }, { passive: true });
+  }
+
+  function getScrollNavState() {
+    return {
+      hidden: scrollNav.hidden,
+      top: el.main ? Math.round(el.main.scrollTop) : null,
+      hideAfter: SCROLL_NAV_HIDE_AFTER,
+      showAfter: SCROLL_NAV_SHOW_AFTER,
+      paused: scrollNavPaused()
     };
   }
 
@@ -15971,6 +16188,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupExploreObserver();
   moveNavIndicator({ instant: true });
   initTabBarAutoHide();
+  /* v34.0 — 피드를 내리면 하단 탭바가 아래로 숨는다(#22322). */
+  initScrollNav();
   /* Sprint 4.5 — 알림: 브라우저 권한 미러링 → 설정 카드 · 권한 배너 · 알림함 */
   syncNotificationPermission();
   renderNotificationSettings();
@@ -16339,10 +16558,18 @@ document.addEventListener('DOMContentLoaded', () => {
     openComposerEditing,
     getComposerState: () => ({
       editId: ui.composer ? ui.composer.editId : null,
+      mode: ui.composer ? ui.composer.mode : null,
+      step: ui.composer ? ui.composer.step : null,
+      noGroup: !!(ui.composer && ui.composer.noGroup),
+      groupId: ui.composer ? ui.composer.groupId : null,
+      images: ui.composer ? (ui.composer.images || []).length : 0,
+      publishLabel: el.publishBtn ? el.publishBtn.textContent.trim() : '',
       recommendOptIn: !!(ui.composer && ui.composer.recommendOptIn),
       title: el.composerTitle ? el.composerTitle.textContent : '',
       open: !!(el.composerModal && el.composerModal.classList.contains('active'))
     }),
+    /* v34.0 — 탭바 스크롤 숨김 상태(검증·디버그용) */
+    getScrollNavState,
     openEventDetail, openFeedComments,
     demoGuestRequest: (eventId, guest) => store.simulateGuestRequest(eventId, guest),
     getGuestFlow: (eventId) => {
