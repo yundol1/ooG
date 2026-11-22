@@ -5493,6 +5493,8 @@ class Store {
       });
     } else {
       posts = posts.filter((p) => {
+        /* v33.8 — 그룹 없이 올린 자유 피드 글은 홈 피드에 공개되는 글이므로 함께 보인다. */
+        if (!p.groupId) return true;
         const g = this.getGroup(p.groupId);
         return g && (joined.includes(g.id) || g.privacyType === 'open');
       });
@@ -11332,8 +11334,9 @@ class Store {
         const g = this.getGroup(p.groupId);
         return {
           ...p,
-          groupName: g ? g.name : '',
-          groupIcon: g ? g.icon : '',
+          /* v33.8 — 그룹 없이 올린 글은 '자유 피드'로 보여 준다. */
+          groupName: g ? g.name : (p.groupId ? '' : '자유 피드'),
+          groupIcon: g ? g.icon : (p.groupId ? '' : 'globe'),
           commentCount: (p.comments || []).length,
           photo: !!p.photoUrl
         };
