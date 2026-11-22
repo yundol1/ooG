@@ -25027,8 +25027,9 @@ button.caption-author::after {
 
 /* ---------------------------------------- ⑤ 그룹 없이 올리는 자유 피드 (#22181)
    글쓰기 첫 칸 '그룹 없이 올리기' · 고르지 않았을 때의 안내 · 잠긴 추천 피드 체크. */
-.composer-group-chip.is-free .chip-thumb { background: var(--green-soft); color: var(--green-text); }
-.composer-group-chip.is-free .chip-text strong { color: var(--green-text); }
+/* 활성 칸은 진한 초록 바탕에 흰 글씨(.active 공통 규칙) — 그때는 초록 글자를 덮어쓰지 않는다. */
+.composer-group-chip.is-free:not(.active) .chip-thumb { background: var(--green-soft); color: var(--green-text); }
+.composer-group-chip.is-free:not(.active) .chip-text strong { color: var(--green-text); }
 .composer-free-note {
   margin: 2px 0 0;
   font-size: var(--fs-caption);
