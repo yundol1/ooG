@@ -9510,6 +9510,12 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(res.reason === 'permission' ? '모임장만 수락할 수 있어요' : '이미 처리된 신청서예요', 'warning');
         return;
       }
+      store.apiCall('group.decide', { applicationId: res.application.id, decision: 'approve' }).then((env) => {
+        if (env.ok) return;
+        renderGroupDetail(store.getGroup(res.application.groupId));
+        updateBadges();
+        showToast('수락을 저장하지 못했어요 · 다시 시도해 주세요', 'error');
+      });
       renderGroupDetail(res.group);
       renderExplore({ preserve: true });
       updateBadges();
@@ -9526,6 +9532,12 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(res.reason === 'permission' ? '모임장만 거절할 수 있어요' : '이미 처리된 신청서예요', 'warning');
         return;
       }
+      store.apiCall('group.decide', { applicationId: res.application.id, decision: 'reject' }).then((env) => {
+        if (env.ok) return;
+        renderGroupDetail(store.getGroup(res.application.groupId));
+        updateBadges();
+        showToast('거절을 저장하지 못했어요 · 다시 시도해 주세요', 'error');
+      });
       renderGroupDetail(res.group);
       renderExplore({ preserve: true });
       updateBadges();
@@ -11676,20 +11688,28 @@ document.addEventListener('DOMContentLoaded', () => {
     paintMyAvatars();
     if (el.profileBio) el.profileBio.textContent = u.bio || '한 줄 소개를 채워보세요';
     if (el.profileSpecs) {
-      const chips = [`<span class="spec-chip">${escapeHtml(u.location || '동네 미설정')}</span>`];
+      /* Sprint 34 — 모임 안 내정보도 v34.5 와 같은 말을 쓴다: 아지트 · 취미 · 나이.
+         (옛 '동네·활동 시간대' 칩은 프로필 설정에서 사라졌다.) */
+      const azit = store.getMyAzit ? store.getMyAzit() : null;
+      const place = azit ? azit.name : (u.location || '아지트 미설정');
+      const chips = [`<span class="spec-chip">${ic('pin')} ${escapeHtml(place)}</span>`];
       (u.hobbyIds || []).forEach((id) => {
         const chip = store.getHobbyChip(id);
         if (chip) chips.push(`<span class="spec-chip">${ic(chip.icon)} ${escapeHtml(chip.name)}</span>`);
       });
       if (u.age) chips.push(`<span class="spec-chip">${u.age}세</span>`);
-      chips.push(`<span class="spec-chip">${ic(u.activityIcon || 'repeat')} ${escapeHtml(u.activity || '상시')}</span>`);
       el.profileSpecs.innerHTML = chips.join('');
     }
     /* Sprint 18 — 내정보 상단 한 줄(설정은 사이드바로) */
-    if (el.profileTopbarTitle) el.profileTopbarTitle.textContent = u.nickname || '내정보';
+    /* Sprint 34 — 모임 안에서는 바로 위 줄이 모임 이름을 이미 보여 준다. 같은 이름을 두 번 쓰지 않는다. */
+    if (el.profileTopbarTitle) {
+      el.profileTopbarTitle.hidden = isGroupMode();
+      el.profileTopbarTitle.textContent = u.nickname || '내정보';
+    }
     if (el.profileTopbarSub) {
       const counts = store.getMyFeedStats();
-      el.profileTopbarSub.textContent = `${counts.total}개 글 · ${counts.photos}장 사진`;
+      const handle = String(u.handle || '').trim();
+      el.profileTopbarSub.textContent = `${counts.total}개 글 · ${counts.photos}장 사진${handle ? ` · ${handle}` : ''}`;
     }
   }
 
@@ -11824,6 +11844,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const btnSaveProfile = $('#btn-save-profile');
   btnSaveProfile && btnSaveProfile.addEventListener('click', () => {
+    /* Sprint 34 — 프로필 저장도 경계(`profile.update`)를 지난다. 실패하면 이전 값으로 되돌린다. */
+    const beforeProfile = {
+      nickname: store.currentUser.nickname,
+      handle: store.currentUser.handle || '',
+      bio: store.currentUser.bio || '',
+      hobbyIds: (store.currentUser.hobbyIds || []).slice()
+    };
     const result = store.updateProfile({
       nickname: el.editNickname ? el.editNickname.value : '',
       handle: el.editHandle ? el.editHandle.value : undefined,
@@ -11842,6 +11869,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (result.reason === 'handle' && el.editHandle) el.editHandle.focus();
       return;
     }
+    store.apiCall('profile.update', {
+      nickname: store.currentUser.nickname,
+      handle: store.currentUser.handle || undefined,
+      bio: store.currentUser.bio || '',
+      hobbyIds: (store.currentUser.hobbyIds || []).slice()
+    }).then((env) => {
+      if (env.ok) return;
+      store.updateProfile(beforeProfile);
+      renderProfileHeader();
+      renderMyProfileTab();
+      showToast('프로필을 저장하지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'error');
+    });
     closeModal(el.profileEditModal);
     renderProfileHeader();
     renderMyProfileTab();
@@ -13159,7 +13198,11 @@ document.addEventListener('DOMContentLoaded', () => {
       goCreateStep(d.step + 1);
       return;
     }
+    /* Sprint 34 — 모임 개설도 경계(`group.create`)를 지난다. id 는 화면이 만들어
+       재시도·오프라인 큐가 모임을 두 개로 만들지 않는다. 실패하면 방금 만든 모임을 걷어낸다. */
+    const newGroupId = `grp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
     const result = store.createGroup({
+      id: newGroupId,
       name: d.name,
       hobbyId: d.hobbyId,
       description: d.desc,
@@ -13184,6 +13227,24 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(messages[result.reason] || '모임을 만들지 못했어요', 'warning');
       return;
     }
+    store.apiCall('group.create', {
+      groupId: result.group.id,
+      name: result.group.name,
+      hobbyId: result.group.hobbyId || null,
+      description: result.group.description || '',
+      hangoutIds: (result.group.hangouts || []).map((h) => h.id),
+      sigunguId: (result.group.region && result.group.region.sigunguId) || null,
+      joinMode: result.group.joinMode,
+      ageMin: result.group.ageMin,
+      ageMax: result.group.ageMax,
+      joinQuestions: result.group.joinQuestions || []
+    }).then((env) => {
+      if (env.ok) return;
+      store.deleteGroup(result.group.id);
+      renderGallery();
+      renderExplore();
+      showToast('모임을 만들지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'error');
+    });
     clearCreateDraft();
     closeCreateCrop();
     closeModal(el.groupCreateModal);
@@ -13637,6 +13698,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.notifUnreadOnly = false;
     renderNotificationList();
     store.markNotificationsRead();
+    /* Sprint 34 — 알림 읽음도 경계(`notif.read`)를 지난다(실패해도 화면은 그대로, 로그만 남긴다). */
+    store.apiCall('notif.read', { all: true }).then((env) => {
+      if (!env.ok && console && console.warn) console.warn('[ooG] notif.read 실패', env.error);
+    });
     updateBadges();
     openModal(el.notifModal);
   }
@@ -13826,6 +13891,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const group = resolveNotifGroup(keyOrId);
     if (!group) return;
     const changed = store.markNotificationsReadByIds(group.ids);
+    store.apiCall('notif.read', { ids: group.ids.slice() }).then((env) => {
+      if (!env.ok && console && console.warn) console.warn('[ooG] notif.read 실패', env.error);
+    });
     ui.notifSessionUnread = (ui.notifSessionUnread || []).filter((x) => !group.ids.includes(x));
     renderNotificationList();
     updateBadges();
@@ -14875,6 +14943,21 @@ document.addEventListener('DOMContentLoaded', () => {
   function submitApplication() {
     const groupId = ui.applyGroupId;
     const res = store.applyToGroup(groupId, ui.applyAnswers);
+    /* Sprint 34 — 가입 신청도 경계(`group.apply`)를 지난다. 실패하면 방금 낸 신청을 되돌린다. */
+    if (res && res.ok) {
+      store.apiCall('group.apply', {
+        groupId,
+        answers: (res.application ? (res.application.answers || []).map((a) => a.answer) : (ui.applyAnswers || []).map((a) => a.answer || a))
+      }).then((env) => {
+        if (env.ok) return;
+        if (res.joined) store.leaveGroup(groupId);
+        else if (res.application) store.cancelApplication(res.application.id);
+        renderGroupDetail(store.getGroup(groupId));
+        renderExplore({ preserve: true });
+        updateBadges();
+        showToast('가입 신청을 보내지 못했어요', 'error');
+      });
+    }
     if (!res.ok) {
       const messages = {
         age: res.message || '이 모임은 나이 제한이 있어요',
@@ -15000,14 +15083,20 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 프로필 탭 활동 요약 (내 글 · 받은 좋아요 · 내 댓글) */
   function renderProfileStats() {
     if (!el.statPosts) return;
+    /* Sprint 34 — 모임 안 내정보의 세 숫자도 v34.4 와 같은 뜻으로 맞춘다:
+       게시물 · 다녀온 모임 · 내 그룹(옛 '받은 좋아요·내 댓글'은 내 프로필 탭에 없다). */
     const me = store.currentUser;
     const mine = store.state.feedPosts.filter((p) => p.authorId === me.id);
-    const likes = mine.reduce((sum, p) => sum + p.likes, 0);
-    const comments = store.state.feedPosts.reduce(
-      (sum, p) => sum + p.comments.filter((c) => c.authorId === me.id).length, 0);
+    const past = store.getPastMeetingPrivacy ? store.getPastMeetingPrivacy() : { total: 0 };
+    const groups = store.getJoinedGroups ? store.getJoinedGroups().length : 0;
     el.statPosts.textContent = String(mine.length);
-    el.statLikes.textContent = String(likes);
-    el.statComments.textContent = String(comments);
+    el.statLikes.textContent = String(past.total);
+    el.statComments.textContent = String(groups);
+    const labels = ['게시물', '다녀온 모임', '내 그룹'];
+    const cells = document.querySelectorAll('#tab-profile .profile-stats .stat-cell span');
+    cells.forEach((n, i) => { if (labels[i]) n.textContent = labels[i]; });
+    if (el.statLikes) el.statLikes.setAttribute('aria-label', `다녀온 모임 ${past.total}개`);
+    if (el.statComments) el.statComments.setAttribute('aria-label', `내 그룹 ${groups}개`);
   }
 
   /* ==========================================================================

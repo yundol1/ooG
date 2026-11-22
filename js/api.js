@@ -463,17 +463,258 @@
         };
       }
     },
+    /* ------------------------------------------------------------------
+     * Sprint 34 — 모임·가입·채팅·알림을 경계로(3단계)
+     *  · 화면이 먼저 그리고(낙관적) 경계가 확정한다. 실패하면 화면이 되돌린다.
+     *  · id(모임·신청)는 화면이 만들거나 스토어가 돌려준 값을 그대로 쓴다 → 재시도가 중복을 만들지 않는다.
+     * ------------------------------------------------------------------ */
+    'group.create': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        name: { type: 'string', required: true, min: 2, max: 30 },
+        hobbyId: { type: 'string', required: true, max: 40 },
+        description: { type: 'string', optional: true, max: 300 },
+        hangoutIds: { type: 'array', optional: true, maxItems: 3, itemMax: 80 },
+        sigunguId: { type: 'string', optional: true, max: 60 },
+        joinMode: { type: 'string', optional: true, enum: ['open', 'approval'] },
+        ageMin: { type: 'number', optional: true, min: 14, max: 99 },
+        ageMax: { type: 'number', optional: true, min: 14, max: 99 },
+        joinQuestions: { type: 'array', optional: true, maxItems: 2, itemMax: 200 },
+        coverCircle: { type: 'string', optional: true, max: 8000000 },
+        coverCard: { type: 'string', optional: true, max: 8000000 },
+        groupId: { type: 'string', optional: true, max: 80 },
+        id: { type: 'string', optional: true, max: 80 }
+      },
+      response: ['ok', 'group', 'reused'],
+      local: (store, p) => {
+        const groupId = p.groupId || p.id || null;
+        const existing = groupId ? store.getGroup(groupId) : null;
+        if (existing) return { ok: true, group: slimGroup(existing), reused: true };
+        const groupIdForNew = groupId || `grp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
+        const res = store.createGroup({
+          id: groupIdForNew,
+          name: p.name,
+          hobbyId: p.hobbyId,
+          description: p.description || '',
+          hangoutIds: p.hangoutIds || [],
+          region: p.sigunguId ? store.findSigungu(p.sigunguId) : null,
+          joinMode: p.joinMode || 'open',
+          ageMin: p.ageMin,
+          ageMax: p.ageMax,
+          joinQuestions: p.joinQuestions || [],
+          coverImage: { circle: p.coverCircle || null, card: p.coverCard || null }
+        });
+        if (!res || !res.ok) {
+          const reason = (res && res.reason) || 'validation';
+          const code = reason === 'hangout' || reason === 'too_many_hangouts' ? 'validation'
+            : reason === 'hobby' ? 'validation' : 'validation';
+          const message = reason === 'hobby' ? '취미를 골라 주세요'
+            : reason === 'hangout' ? '아지트를 1곳 이상 골라 주세요'
+              : reason === 'too_many_hangouts' ? '아지트는 3곳까지예요'
+                : '모임명은 2~30자로 정해 주세요';
+          throw new ApiError(code, message, { details: { reason } });
+        }
+        return { ok: true, group: slimGroup(res.group), reused: false };
+      }
+    },
+    'group.apply': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        groupId: { type: 'string', required: true, max: 80 },
+        answers: { type: 'array', optional: true, maxItems: 2, itemMax: 300 }
+      },
+      response: ['ok', 'joined', 'application', 'group'],
+      local: (store, p) => {
+        const res = store.applyToGroup(p.groupId, p.answers || []);
+        /* 멱등 — 화면이 먼저 신청했으니(낙관적) 같은 신청이 다시 오면 그 신청서를 그대로 확정한다. */
+        if (res && res.reason === 'already_pending' && res.application) {
+          return { ok: true, joined: false, application: slimApplication(res.application), group: slimGroup(res.group) };
+        }
+        if (res && res.reason === 'already_member') {
+          return { ok: true, joined: true, application: null, group: slimGroup(res.group) };
+        }
+        if (!res || !res.ok) {
+          const reason = (res && res.reason) || 'not_found';
+          const code = reason === 'not_found' ? 'not_found'
+            : reason === 'already_member' || reason === 'already_pending' || reason === 'full' ? 'conflict'
+              : reason === 'age' ? 'conflict' : 'validation';
+          const message = reason === 'not_found' ? '그 모임을 찾지 못했어요'
+            : reason === 'already_member' ? '이미 가입한 모임이에요'
+              : reason === 'already_pending' ? '이미 신청서를 냈어요'
+                : reason === 'full' ? '자리가 다 찼어요'
+                  : reason === 'age' ? (res && res.message) || '나이 조건이 맞지 않아요'
+                    : '신청서를 조금 더 적어 주세요';
+          throw new ApiError(code, message, { details: { reason } });
+        }
+        return {
+          ok: true, joined: !!res.joined,
+          application: res.application ? slimApplication(res.application) : null,
+          group: slimGroup(res.group)
+        };
+      }
+    },
+    'group.decide': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        applicationId: { type: 'string', required: true, max: 80 },
+        decision: { type: 'string', required: true, enum: ['approve', 'reject'] },
+        note: { type: 'string', optional: true, max: 80 }
+      },
+      response: ['ok', 'decision', 'application', 'group'],
+      local: (store, p) => {
+        const res = p.decision === 'approve'
+          ? store.approveApplication(p.applicationId)
+          : store.rejectApplication(p.applicationId, p.note || '');
+        /* 멱등 — 같은 결정이 다시 오면(재시도) 이미 그 상태면 그대로 성공으로 답한다. */
+        if (res && res.reason === 'not_pending' && p.applicationId) {
+          const current = (store.state.groupApplications || []).find((a) => a.id === p.applicationId);
+          const wanted = p.decision === 'approve' ? 'approved' : 'rejected';
+          if (current && current.status === wanted) {
+            return { ok: true, decision: p.decision, application: slimApplication(current), group: slimGroup(store.getGroup(current.groupId)) };
+          }
+        }
+        if (!res || !res.ok) {
+          const reason = (res && res.reason) || 'not_found';
+          const code = reason === 'not_found' ? 'not_found'
+            : reason === 'permission' ? 'unauthorized' : 'conflict';
+          const message = reason === 'permission' ? '모임장만 할 수 있어요'
+            : reason === 'not_pending' ? '이미 처리된 신청서예요' : '그 신청서를 찾지 못했어요';
+          throw new ApiError(code, message, { details: { reason } });
+        }
+        return {
+          ok: true, decision: p.decision,
+          application: slimApplication(res.application),
+          group: slimGroup(res.group)
+        };
+      }
+    },
+    'group.joinPolicy': {
+      method: 'POST', mutate: true,
+      params: {
+        groupId: { type: 'string', required: true, max: 80 },
+        joinMode: { type: 'string', optional: true, enum: ['open', 'approval'] },
+        ageMin: { type: 'number', optional: true, min: 14, max: 99 },
+        ageMax: { type: 'number', optional: true, min: 14, max: 99 },
+        joinQuestions: { type: 'array', optional: true, maxItems: 2, itemMax: 200 }
+      },
+      response: ['ok', 'group'],
+      local: (store, p) => {
+        const res = store.updateGroupJoinPolicy(p.groupId, {
+          joinMode: p.joinMode, ageMin: p.ageMin, ageMax: p.ageMax, joinQuestions: p.joinQuestions
+        });
+        if (!res || !res.ok) {
+          const reason = (res && res.reason) || 'not_found';
+          const code = reason === 'permission' ? 'unauthorized' : reason === 'not_found' ? 'not_found' : 'validation';
+          throw new ApiError(code, '가입 정책을 바꾸지 못했어요', { details: { reason } });
+        }
+        return { ok: true, group: slimGroup(res.group || store.getGroup(p.groupId)) };
+      }
+    },
+    'group.leave': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: { groupId: { type: 'string', required: true, max: 80 } },
+      response: ['ok', 'left', 'groupId'],
+      local: (store, p) => {
+        const res = store.leaveGroup(p.groupId);
+        if (!res || res.ok === false) {
+          const reason = (res && res.reason) || 'not_found';
+          const code = reason === 'leader' ? 'conflict' : reason === 'not_found' ? 'not_found' : 'validation';
+          throw new ApiError(code, reason === 'leader' ? '모임장은 삭제만 할 수 있어요' : '모임을 나가지 못했어요', { details: { reason } });
+        }
+        return { ok: true, left: true, groupId: p.groupId };
+      }
+    },
+    /* 채팅 한 입구 — 방(1:1)이면 dm.send, 모임이면 group.chat.send 로 보낸다. */
+    'chat.send': {
+      method: 'POST', mutate: true,
+      params: {
+        roomId: { type: 'string', optional: true, max: 80 },
+        groupId: { type: 'string', optional: true, max: 80 },
+        text: { type: 'string', required: true, max: 1000 },
+        pendingId: { type: 'string', optional: true, max: 64 }
+      },
+      response: ['ok', 'kind', 'message'],
+      local: (store, p) => {
+        if (!p.roomId && !p.groupId) throw new ApiError('validation', '대화방이나 모임을 골라 주세요', { details: { field: 'roomId' } });
+        if (p.groupId && !p.roomId) {
+          const res = store.sendGroupChatMessage(p.groupId, p.text, { pendingId: p.pendingId });
+          if (!res || !res.ok) {
+            const code = res && res.reason === 'not_member' ? 'unauthorized' : 'validation';
+            throw new ApiError(code, code === 'unauthorized' ? '이 모임의 멤버만 쓸 수 있어요' : '보낼 말을 적어 주세요', { details: { groupId: p.groupId } });
+          }
+          const m = res.message;
+          return { ok: true, kind: 'group', message: { id: m.id, text: m.text, at: m.at, from: m.from, authorId: m.authorId, authorName: m.authorName } };
+        }
+        const message = store.sendChatMessage(p.roomId, p.text, { pendingId: p.pendingId });
+        if (!message) {
+          const room = store.getChatRoom ? store.getChatRoom(p.roomId) : null;
+          if (!room) throw new ApiError('not_found', '그 대화방을 찾지 못했어요', { details: { roomId: p.roomId } });
+          throw new ApiError('validation', '보낼 말을 적어 주세요', { details: { field: 'text' } });
+        }
+        return { ok: true, kind: 'dm', message: { id: message.id, text: message.text, at: message.at, from: message.from } };
+      }
+    },
+    'notif.list': {
+      method: 'GET', mutate: false,
+      params: {
+        category: { type: 'string', optional: true, max: 30 },
+        unreadOnly: { type: 'boolean', optional: true },
+        limit: { type: 'number', optional: true, min: 1, max: 100 }
+      },
+      response: ['items', 'unread', 'total'],
+      local: (store, p) => {
+        const list = store.getNotifications({ category: p.category, unreadOnly: p.unreadOnly === true }) || [];
+        const limit = Number.isFinite(p.limit) ? p.limit : 30;
+        return {
+          items: list.slice(0, limit).map((n) => ({
+            id: n.id, category: n.category || null, title: n.title || '', body: n.body || '',
+            read: !!n.read, at: n.at || n.createdAt || null
+          })),
+          unread: store.getUnreadNotificationCount ? store.getUnreadNotificationCount() : 0,
+          total: list.length
+        };
+      }
+    },
+    'notif.read': {
+      method: 'POST', mutate: true, idempotent: true,
+      params: {
+        ids: { type: 'array', optional: true, maxItems: 100, itemMax: 80 },
+        all: { type: 'boolean', optional: true }
+      },
+      response: ['ok', 'changed', 'unread'],
+      local: (store, p) => {
+        const changed = p.all === true || !(p.ids && p.ids.length)
+          ? store.markNotificationsRead()
+          : store.markNotificationsReadByIds(p.ids);
+        return {
+          ok: true, changed: Number(changed) || 0,
+          unread: store.getUnreadNotificationCount ? store.getUnreadNotificationCount() : 0
+        };
+      }
+    },
     'profile.update': {
       method: 'POST', mutate: true,
       params: {
         nickname: { type: 'string', optional: true, max: 16 },
-        bio: { type: 'string', optional: true, max: 80 },
-        age: { type: 'number', optional: true, min: 14, max: 99 }
+        handle: { type: 'string', optional: true, max: 21, pattern: '^@?[a-zA-Z0-9._]{3,20}$' },
+        bio: { type: 'string', optional: true, max: 120 },
+        age: { type: 'number', optional: true, min: 14, max: 99 },
+        hobbyIds: { type: 'array', optional: true, maxItems: 3, itemMax: 40 }
       },
       response: ['ok', 'user'],
       local: (store, p) => {
-        const res = store.updateProfile(p);
-        if (res && res.ok === false) throw new ApiError('validation', '프로필을 저장하지 못했어요', { details: res });
+        const res = store.updateProfile({
+          nickname: p.nickname, handle: p.handle, bio: p.bio, age: p.age, hobbyIds: p.hobbyIds
+        });
+        if (res && res.ok === false) {
+          const reason = res.reason || 'validation';
+          const code = reason === 'handle_taken' ? 'conflict' : 'validation';
+          const message = reason === 'handle_taken' ? '이미 쓰고 있는 아이디예요'
+            : reason === 'handle' ? '아이디는 영문 소문자·숫자 3~20자예요'
+              : reason === 'nickname' ? '닉네임은 2~12자로 정해 주세요'
+                : '프로필을 저장하지 못했어요';
+          throw new ApiError(code, message, { details: res });
+        }
         return { ok: true, user: publicUser(store) };
       }
     }
@@ -500,6 +741,29 @@
       comments: Array.isArray(post.comments) ? post.comments.length : 0,
       recommendOptIn: post.recommendOptIn === true,
       createdAt: post.createdAt || null
+    };
+  }
+
+
+  /** Sprint 34 — 모임의 공통 모양. */
+  function slimGroup(group) {
+    if (!group) return null;
+    return {
+      id: group.id, name: group.name, hobbyId: group.hobbyId || null,
+      memberCount: Number(group.memberCount) || 0, joinMode: group.joinMode || 'open',
+      azitName: group.azitName || null, regionId: group.regionId || null,
+      leaderId: group.leaderId || null, joined: true
+    };
+  }
+
+  /** Sprint 34 — 가입 신청서의 공통 모양. */
+  function slimApplication(app) {
+    if (!app) return null;
+    return {
+      id: app.id, groupId: app.groupId, applicantId: app.applicantId || null,
+      applicantName: app.applicantName || '', status: app.status || 'pending',
+      answers: (app.answers || []).map((a) => ({ question: a.question, answer: a.answer })),
+      createdAt: app.createdAt || null
     };
   }
 
@@ -572,7 +836,14 @@
         if (rule.required) throw new ApiError('validation', `${key} 값이 필요해요`, { details: { field: key } });
         return;
       }
-      if (rule.type === 'string') {
+      if (rule.type === 'array') {
+        if (!Array.isArray(value)) throw new ApiError('validation', `${key} 는 목록이어야 해요`, { details: { field: key } });
+        if (rule.maxItems && value.length > rule.maxItems) throw new ApiError('validation', `${key} 항목이 너무 많아요`, { details: { field: key, maxItems: rule.maxItems } });
+        if (rule.itemMax && value.some((v) => typeof v !== 'string' || v.length > rule.itemMax)) {
+          throw new ApiError('validation', `${key} 항목 형식이 올바르지 않아요`, { details: { field: key, itemMax: rule.itemMax } });
+        }
+        clean[key] = value.slice();
+      } else if (rule.type === 'string') {
         if (typeof value !== 'string') throw new ApiError('validation', `${key} 는 문자열이어야 해요`, { details: { field: key } });
         if (rule.max && value.length > rule.max) throw new ApiError('validation', `${key} 가 너무 길어요`, { details: { field: key, max: rule.max } });
         if (rule.enum && !rule.enum.includes(value)) throw new ApiError('validation', `${key} 값이 올바르지 않아요`, { details: { field: key } });

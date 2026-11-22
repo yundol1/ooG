@@ -15,7 +15,7 @@
    + 공개 사진 원형 + 하단 3:4 격자/피드) · 상단 헤더 불투명(블러·구분선 없음) · @아이디는 본문 맨 위 중앙
    · 회원가입 아지트 통일 · 바텀시트 바깥 클릭 닫기.
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v34-5';
+const CACHE_VERSION = 'oog-shell-v35-0';
 const SHELL_ASSETS = [
   './',
   './index.html',

@@ -25988,7 +25988,8 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 .mp-tile-text {
   padding: 10px;
   font-size: var(--fs-caption);
-  font-weight: var(--fw-body);
+  /* v35.0 — 11px 작은 글자는 굵기 600 이상(작은 글자 가독 규칙). */
+  font-weight: 600;
   line-height: 1.35;
   color: var(--text-sub);
   text-align: left;
@@ -26892,3 +26893,6 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   border-radius: 24px;
   font-size: 40px;
 }
+
+/* v35.0 — 내 프로필 '다음 일정' 칩의 날짜 줄(11px 캡션)은 600 이상. */
+.mp-next-text span { font-weight: 600; }

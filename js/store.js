@@ -8838,6 +8838,12 @@ class Store {
    */
   createGroup(data) {
     const d = data || {};
+    /* v35.0 — 화면이 만든 모임 id 를 받는다(API 경계의 재시도가 모임을 두 개 만들지 않게). */
+    const wantedId = String(d.id || d.groupId || '').trim().slice(0, 80);
+    if (wantedId) {
+      const already = this.getGroup(wantedId);
+      if (already) return { ok: true, group: already, reused: true };
+    }
     const name = String(d.name || '').trim();
     if (name.length < 2 || name.length > 30) return { ok: false, reason: 'name' };
     const chip = this.getHobbyChip(d.hobbyId);
@@ -8896,7 +8902,7 @@ class Store {
     const coverIcon = (preset && preset.icon) || chip.icon;
 
     const group = {
-      id: `grp_new_${Date.now()}`,
+      id: wantedId || `grp_new_${Date.now()}`,
       name,
       category: chip.id,
       categoryName: chip.name,
