@@ -121,6 +121,10 @@
 
 const STORAGE_KEY = 'oog_app_state_v16';
 const STORAGE_SCHEMA_VERSION = 17;
+/* v33.7 — 한 글에 붙일 수 있는 사진 수(인스타그램과 같은 10장). */
+const MAX_POST_IMAGES = 10;
+/* v33.7 — 글 사진으로 받는 앱 안 상대 경로(예시 사진 폴더 · 아이콘 폴더). */
+const RELATIVE_IMAGE_RE = /^(?:\.\/)?(?:assets|icons)\/[A-Za-z0-9_.\/-]+$/;
 /* Sprint 17 — v14 이하 저장 상태는 '내 활동'이 남아 있다. v15 는 클린 스타트(회원가입부터)라
    옛 키를 읽어도 개인 데이터를 물려받지 않고 새 상태로 시작한다(아래 loadState 참고). */
 const LEGACY_KEYS = ['oog_app_state_v15', 'oog_app_state_v14', 'oog_app_state_v13', 'oog_app_state_v12', 'oog_app_state_v11', 'oog_app_state_v10', 'oog_app_state_v9', 'oog_app_state_v8', 'oog_app_state_v7', 'oog_app_state_v6', 'oog_app_state_v5', 'oog_app_state_v4'];   // 이전 저장 상태 마이그레이션용
@@ -4229,17 +4233,21 @@ function stripAllContent(state) {
  *  · v33.3(11/22) — 예시 모임 대표 이미지 · 예시 피드 글 사진으로 **실제 사진 8장**을 쓴다.
  *    사용자가 보낸 사진을 EXIF(위치·기기) 없이 4:3 · 긴 변 960px 로 다시 저장한 것이라
  *    사진 자체에는 개인 정보가 남지 않는다(tools/prepare_example_images.py).
+ *  · v33.7(11/22) — 사용자가 이어서 보낸 사진 10장을 더해 **모두 18장**.
+ *    대표 이미지 5곳과 피드 글 6곳에 **한 장씩만** 쓴다(같은 사진이 두 곳에 나오지 않는다).
+ *    tools/prepare_example_images_v337.py
  *  · `#demo` 시드(예전 데모 계정)와는 id 접두사(sample_)로 분리해 서로 덮지 않는다.
  * ========================================================================== */
-const SAMPLE_DATA_VERSION = 3;
+const SAMPLE_DATA_VERSION = 4;
 const SAMPLE_FALLBACK_REGION = 'seoul-seongdong-gwangjin';
 /* 예시 중 **내가 가입한 모임** 두 곳 — 나머지 셋은 둘러보기용이다. */
 const SAMPLE_JOINED_GROUP_IDS = ['sample_grp_run', 'sample_grp_board'];
 
 /**
- * v33.3 — 예시 사진 8장(assets/examples, 4:3 960px · EXIF 없음).
+ * v33.3 · v33.7 — 예시 사진 18장(assets/examples, 4:3 960px · EXIF/ICC/XMP 없음).
  *  · 단일 HTML 번들(file://)에서는 build_bundle.py 가 이 경로들을 data URI 로 바꿔 넣는다.
  *  · 공개 사본(deploy/oog-site)에는 assets/ 가 그대로 복사된다.
+ *  · 한 사진은 앱 안에서 한 곳에만 쓴다(대표 이미지·피드 글이 같은 사진으로 겹치지 않게).
  */
 const EXAMPLE_PHOTOS = {
   dogsWalk: 'assets/examples/example-dogs-walk.jpg',           /* 아침 산책 · 강아지 두 마리 */
@@ -4249,16 +4257,30 @@ const EXAMPLE_PHOTOS = {
   gymMirror: 'assets/examples/example-gym-mirror.jpg',         /* 운동(거울 셀카) */
   bbqGrill: 'assets/examples/example-bbq-grill.jpg',           /* 고기 굽는 자리 */
   summitView: 'assets/examples/example-summit-view.jpg',       /* 산 정상 풍경 */
-  paradeDay: 'assets/examples/example-parade-day.jpg'          /* 거리 축제 */
+  paradeDay: 'assets/examples/example-parade-day.jpg',         /* 거리 축제 */
+  /* v33.7 — 사용자가 이어서 보낸 10장 */
+  gymLocker: 'assets/examples/example-gym-locker.jpg',         /* 운동 — 헬스장 락커룸 */
+  nightSelfie: 'assets/examples/example-night-selfie.jpg',     /* 밤 — 붉은 조명 */
+  pullUp: 'assets/examples/example-pullup.jpg',                /* 크로스핏 풀업 */
+  ridgeHike: 'assets/examples/example-ridge-hike.jpg',         /* 등산 — 계곡길 */
+  poolLap: 'assets/examples/example-pool-lap.jpg',             /* 수영 — 야외 수영장 */
+  handstand: 'assets/examples/example-handstand.jpg',          /* 물구나무 */
+  seoulPattern: 'assets/examples/example-seoul-pattern.jpg',   /* 붉은 패턴 원단 */
+  keyring: 'assets/examples/example-keyring.jpg',              /* 근육 근질이 키링 */
+  samgyeopsal: 'assets/examples/example-samgyeopsal.jpg',      /* 삼겹살 */
+  groupDinner: 'assets/examples/example-group-dinner.jpg'      /* 모임 회식 */
 };
+
+/* 예시 사진이 놓인 폴더 — 문자열을 이어 붙여 만든다(단일 HTML 번들에서 경로를 잘못 찾지 않게). */
+const EXAMPLE_PHOTO_DIR = ['assets', 'examples', ''].join('/');
 
 /** 모임 id → 예시 대표 이미지 (마이그레이션과 시드가 같은 표를 쓴다). */
 const EXAMPLE_GROUP_COVERS = {
   sample_grp_run: EXAMPLE_PHOTOS.dogsWalk,
   sample_grp_board: EXAMPLE_PHOTOS.groupCharacter,
-  sample_grp_climb: EXAMPLE_PHOTOS.gymMirror,
-  sample_grp_cafe: EXAMPLE_PHOTOS.bbqGrill,
-  sample_grp_hike: EXAMPLE_PHOTOS.summitView
+  sample_grp_climb: EXAMPLE_PHOTOS.pullUp,
+  sample_grp_cafe: EXAMPLE_PHOTOS.groupDinner,
+  sample_grp_hike: EXAMPLE_PHOTOS.ridgeHike
 };
 
 /** 가상의 예시 이웃 4명 — 이름·나이·동네 모두 지어낸 값이다. */
@@ -4473,7 +4495,7 @@ function sampleGroups(regionId, areaId) {
   ];
 }
 
-/** 예시 피드 글 — 내 모임 두 곳에만. 사진 없이 글만 쓰고, 댓글로 반응을 확인할 수 있게. */
+/** 예시 피드 글 — 내 모임 두 곳 + 둘러보기 모임 셋에 고루. 글마다 사진 1장(같은 사진 재사용 없음). */
 function sampleFeedPosts() {
   return [
     {
@@ -4506,6 +4528,79 @@ function sampleFeedPosts() {
       ],
       recommendOptIn: true,
       sample: true, createdAt: ago(26 * HOUR)
+    },
+    /* v33.7 — 사진 10장을 한 곳씩. 모임 공간 피드(모임별)와 홈 추천 피드가 서로 다른 사진으로 찬다. */
+    {
+      id: 'sample_post_run_3', groupId: 'sample_grp_run', authorId: 'sample_p_mora',
+      authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)',
+      tag: '오운완', caption: '밤 9시에 동네 한 바퀴 #야간러닝 #오운완. 가로등 불빛 때문에 사진이 다 붉게 나왔네요. 다음 주는 코스를 조금 늘려볼게요.',
+      photoUrl: EXAMPLE_PHOTOS.nightSelfie, mediaCaption: '밤 러닝',
+      likes: 5, likedByMe: false, bookmarkedByMe: false,
+      comments: [
+        { id: 'sample_c_run_3', authorId: 'sample_p_danchu', authorName: '단추', text: '밤에 뛰면 한결 시원하죠', createdAt: ago(2 * HOUR) }
+      ],
+      recommendOptIn: true,
+      sample: true, createdAt: ago(20 * HOUR)
+    },
+    {
+      id: 'sample_post_run_4', groupId: 'sample_grp_run', authorId: 'sample_p_haru',
+      authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
+      tag: '회복', caption: '오늘은 러닝 대신 수영 #회복수영. 무릎이 한결 편해졌어요. 다들 회복도 운동이에요.',
+      photoUrl: EXAMPLE_PHOTOS.poolLap, mediaCaption: '회복 수영',
+      likes: 3, likedByMe: false, bookmarkedByMe: false, comments: [],
+      recommendOptIn: true,
+      sample: true, createdAt: ago(2 * 24 * HOUR)
+    },
+    {
+      id: 'sample_post_run_5', groupId: 'sample_grp_run', authorId: 'sample_p_mora',
+      authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)',
+      tag: '장비', caption: '새로 산 레깅스 #야간러닝. 밤에 뛰어도 잘 보여요.',
+      photoUrl: EXAMPLE_PHOTOS.seoulPattern, mediaCaption: '새 레깅스',
+      likes: 4, likedByMe: false, bookmarkedByMe: false, comments: [],
+      recommendOptIn: false,
+      sample: true, createdAt: ago(3 * 24 * HOUR)
+    },
+    {
+      id: 'sample_post_board_2', groupId: 'sample_grp_board', authorId: 'sample_p_danchu',
+      authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)',
+      tag: '굿즈', caption: '게임방 앞 뽑기에서 건진 근육 근질이 #굿즈. 오늘의 승리 요정입니다.',
+      photoUrl: EXAMPLE_PHOTOS.keyring, mediaCaption: '오늘의 승리 요정',
+      likes: 7, likedByMe: false, bookmarkedByMe: false,
+      comments: [
+        { id: 'sample_c_board_2', authorId: 'sample_p_choko', authorName: '초코', text: '이건 좀 갖고 싶네요', createdAt: ago(4 * HOUR) }
+      ],
+      recommendOptIn: true,
+      sample: true, createdAt: ago(8 * HOUR)
+    },
+    {
+      id: 'sample_post_climb_1', groupId: 'sample_grp_climb', authorId: 'sample_p_haru',
+      authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
+      tag: '오운완', caption: '물구나무 30초 붙었어요 #물구나무. 와드 끝나고 코어 운동.',
+      photoUrl: EXAMPLE_PHOTOS.handstand, mediaCaption: '물구나무 30초',
+      likes: 6, likedByMe: false, bookmarkedByMe: false, comments: [],
+      recommendOptIn: true,
+      sample: true, createdAt: ago(14 * HOUR)
+    },
+    {
+      id: 'sample_post_climb_2', groupId: 'sample_grp_climb', authorId: 'sample_p_haru',
+      authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)',
+      tag: '후기', caption: '클라이밍장 락커룸에서 한 컷. 오늘은 완등 두 개. 같이 오실 분은 평일 저녁에 모여요.',
+      photoUrl: EXAMPLE_PHOTOS.gymLocker, mediaCaption: '오늘의 락커룸',
+      likes: 4, likedByMe: false, bookmarkedByMe: false, comments: [],
+      recommendOptIn: false,
+      sample: true, createdAt: ago(4 * 24 * HOUR)
+    },
+    {
+      id: 'sample_post_cafe_1', groupId: 'sample_grp_cafe', authorId: 'sample_p_choko',
+      authorName: '초코', authorAvatarText: '초', authorGradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)',
+      tag: '맛집', caption: '오늘은 카페 대신 고기 #회식. 모임 회식으로 마무리했습니다.',
+      photoUrl: EXAMPLE_PHOTOS.samgyeopsal, mediaCaption: '오늘의 고기',
+      likes: 5, likedByMe: false, bookmarkedByMe: false,
+      comments: [
+        { id: 'sample_c_cafe_1', authorId: 'sample_p_mora', authorName: '모래', text: '다음엔 저도 불러주세요', createdAt: ago(6 * HOUR) }
+      ],
+      recommendOptIn: true,
+      sample: true, createdAt: ago(30 * HOUR)
     }
   ];
 }
@@ -4574,9 +4669,12 @@ function upgradeSampleImages(state) {
     if (!g || g.sample !== true) return;
     const url = EXAMPLE_GROUP_COVERS[g.id];
     if (!url) return;
-    if (!g.photoUrl) g.photoUrl = url;
-    if (!g.coverCircle) g.coverCircle = url;
-    if (!g.coverImage || (!g.coverImage.card && !g.coverImage.circle)) {
+    /* v33.7 — 예시 사진 경로면 새 세트로 갈아 끼운다. 내가 올린 사진(data:/http)은 그대로 둔다. */
+    const isExamplePath = (u) => typeof u === 'string' && u.indexOf(EXAMPLE_PHOTO_DIR) === 0;
+    if (!g.photoUrl || isExamplePath(g.photoUrl)) g.photoUrl = url;
+    if (!g.coverCircle || isExamplePath(g.coverCircle)) g.coverCircle = url;
+    if (!g.coverImage || (!g.coverImage.card && !g.coverImage.circle)
+      || isExamplePath(g.coverImage.card) || isExamplePath(g.coverImage.circle)) {
       g.coverImage = { circle: url, card: url };
     }
   });
@@ -4597,6 +4695,22 @@ function upgradeSampleImages(state) {
     }
     if (fix.caption) p.caption = fix.caption;
   });
+  /* v33.7 — v33.3 예시 데이터에 없던 새 예시 글을 더한다(지운 글은 되살리지 않는다: 없는 id만).
+     사진이 비어 있는 예시 글은 원래 사진을 되돌린다(내가 다른 사진을 넣었으면 건드리지 않는다). */
+  if (state.sampleData && state.sampleData.seeded === true && !state.sampleData.clearedAt) {
+    const has = new Set((state.feedPosts || []).map((p) => p && p.id));
+    const templates = sampleFeedPosts();
+    const missing = templates.filter((p) => !has.has(p.id));
+    if (missing.length) state.feedPosts = (state.feedPosts || []).concat(missing);
+    const byId = new Map(templates.map((p) => [p.id, p]));
+    (state.feedPosts || []).forEach((p) => {
+      if (!p || p.sample !== true || p.photoUrl) return;
+      const t = byId.get(p.id);
+      if (!t || !t.photoUrl) return;
+      p.photoUrl = t.photoUrl;
+      p.mediaCaption = p.mediaCaption || t.mediaCaption;
+    });
+  }
   (state.explorePosts || []).forEach((p) => {
     if (!p || p.sample !== true || p.id !== 'sample_ex_3' || p.photoUrl) return;
     p.photoUrl = EXAMPLE_PHOTOS.paradeDay;
@@ -5601,6 +5715,37 @@ class Store {
    * @param {{groupId:string, tag:string|null, caption:string, photoUrl?:string, mediaCaption?:string}} data
    * @returns {object|null} 생성된 post
    */
+  /** v33.7 — 우그 자체 갤러리에서 함께 보여 줄 예시 사진 목록(앱에 들어 있는 18장). */
+  getExamplePhotos() {
+    return Object.keys(EXAMPLE_PHOTOS).map((key) => ({ id: `example_${key}`, url: EXAMPLE_PHOTOS[key], example: true }));
+  }
+
+  /**
+   * v33.7 — 글 한 건의 사진 목록. 새 글은 `images: [...]`, 옛 글은 `photoUrl` 하나.
+   *  카드·상세·캐러셀이 모두 이 한 곳을 본다.
+   */
+  getPostImages(post) {
+    if (!post) return [];
+    const list = Array.isArray(post.images) ? post.images.filter((u) => typeof u === 'string' && u) : [];
+    if (list.length) return list.slice(0, MAX_POST_IMAGES);
+    return post.photoUrl ? [post.photoUrl] : [];
+  }
+
+  /** 사진 주소 하나를 받아들일 수 있는지 — https · 기기에서 고른 Data URL · 앱 예시 사진(assets/). */
+  normalizePostImages(raw) {
+    const list = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+    const out = [];
+    list.forEach((u) => {
+      const url = String(u || '').trim();
+      /* v33.7 — 우그 갤러리의 예시 사진은 앱 안 상대 경로(예시 사진 폴더)다. 이 경로도 받는다. */
+      if (!/^https?:\/\//i.test(url) && !/^data:image\//i.test(url) && !RELATIVE_IMAGE_RE.test(url)) return;
+      if (out.includes(url)) return;
+      if (out.length >= MAX_POST_IMAGES) return;
+      out.push(url);
+    });
+    return out;
+  }
+
   createPost(data) {
     const groupId = data && data.groupId;
     const group = this.getGroup(groupId);
@@ -5613,10 +5758,11 @@ class Store {
       if (already) return already;
     }
     const caption = (data.caption || '').trim();
-    /* Sprint 17 — 사진 주소(https) 또는 **기기 앨범·카메라로 고른 사진(Data URL)** 둘 다 받는다. */
-    const rawPhoto = String(data.photoUrl || '').trim();
-    const photoUrl = /^https?:\/\//i.test(rawPhoto) || /^data:image\//i.test(rawPhoto) ? rawPhoto : null;
-    if (!caption && !photoUrl) return null;
+    /* Sprint 17 · v33.7 — **여러 장**(최대 10)까지. 첫 장이 대표(photoUrl)이고
+       옛 단일 사진 글도 그대로 읽힌다(images 없으면 photoUrl). */
+    const images = this.normalizePostImages(data.images != null ? data.images : data.photoUrl);
+    const photoUrl = images[0] || null;
+    if (!caption && !images.length) return null;
 
     const tag = data.tag && group.customTags.includes(data.tag) ? data.tag : null;
     const user = this.state.currentUser;
@@ -5633,6 +5779,7 @@ class Store {
       tag,
       caption: caption.slice(0, 500),
       /* 사진 없이 글만 쓰는 것도 허용한다 — 사진은 사용자가 올린 것만 쓴다(예시 이미지 없음). */
+      images,
       photoUrl,
       mediaCaption: (data.mediaCaption || '').trim().slice(0, 40),
       likes: 0,
@@ -5661,11 +5808,14 @@ class Store {
     if (post.authorId !== this.state.currentUser.id) return { ok: false, reason: 'permission' };
     const group = this.getGroup(post.groupId);
     const caption = patch.caption == null ? post.caption : String(patch.caption).trim();
-    const rawPhoto = patch.photoUrl == null ? post.photoUrl : String(patch.photoUrl || '').trim();
-    const photoUrl = /^https?:\/\//i.test(rawPhoto) || /^data:image\//i.test(rawPhoto) ? rawPhoto : null;
-    if (!caption && !photoUrl) return { ok: false, reason: 'empty' };
+    const images = patch.images != null
+      ? this.normalizePostImages(patch.images)
+      : (patch.photoUrl != null ? this.normalizePostImages(patch.photoUrl) : this.getPostImages(post));
+    const photoUrl = images[0] || null;
+    if (!caption && !images.length) return { ok: false, reason: 'empty' };
     post.caption = caption.slice(0, 500);
     if (patch.mediaCaption != null) post.mediaCaption = String(patch.mediaCaption).trim().slice(0, 40);
+    post.images = images;
     post.photoUrl = photoUrl;
     if (patch.tag !== undefined) {
       post.tag = patch.tag && group && group.customTags.includes(patch.tag) ? patch.tag : null;

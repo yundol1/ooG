@@ -24411,3 +24411,483 @@ button.caption-author::after {
   transform: translateY(-50%);
   border-radius: 8px;
 }
+
+/* ==========================================================================
+   v33.7 (2026-11-22, #22036) — 모임 공간: 배너 걷어내기 · 홈과 같은 인스타 피드 ·
+   모임 진입 로딩(대표 이미지 스플래시) · 피드 본문에서 작성자 이름 제거
+   ========================================================================== */
+
+/* ---------------------------------------- 1) 모임 공간 상단 — 핵심 버튼 한 줄만 */
+.group-actions-row {
+  margin: 0 0 4px;
+  border-radius: 0;
+  overflow: visible;
+}
+.group-actions-row:empty { display: none; }
+.group-actions-row .home-hero-actions {
+  padding: 4px 0 12px;
+  gap: 8px;
+}
+.group-actions-row .home-hero-btn {
+  min-height: 42px;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+}
+.group-actions-row .home-hero-btn.primary { font-weight: var(--fw-display); }
+
+/* 모임 피드 — 홈 피드와 같은 카드. 위 버튼 줄과 카드 사이를 조금만 띄운다. */
+.group-feed { padding-top: 2px; }
+.group-feed .ig-post:first-child { padding-top: 6px; }
+.group-feed .ig-media { border-radius: var(--r-card); }
+.home-feed-block .home-block-head { margin-bottom: 2px; }
+
+/* 피드 본문 — 작성자 이름 없이 글만. (윗줄 작성자 헤더와 같은 말을 두 번 하지 않는다) */
+.ig-caption { color: var(--text-strong); }
+.ig-post .ig-caption { padding-right: 2px; }
+
+/* ---------------------------------------- 2) 모임 진입 로딩(대표 이미지) */
+.group-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--bg-base);
+  opacity: 0;
+  transition: opacity 180ms var(--ease-out-soft, ease-out);
+  pointer-events: none;
+}
+.group-splash.is-in { opacity: 1; }
+.group-splash.is-out { opacity: 0; transition: opacity 220ms ease-in; }
+.group-splash-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(272px, 68vw);
+  text-align: center;
+}
+.group-splash-media {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--tone-from, var(--bg-subtle));
+  box-shadow: 0 22px 48px -26px rgba(15, 23, 42, 0.55);
+  transform: scale(0.94);
+  transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.group-splash.is-in .group-splash-media { transform: scale(1); }
+.group-splash-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.group-splash-icon {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--tone-ink, var(--green-deep));
+  background: var(--tone-from, var(--bg-subtle));
+}
+.group-splash-icon .oo-ic {
+  width: 64px;
+  height: 64px;
+  opacity: 0.9;
+}
+.group-splash-name {
+  margin-top: 6px;
+  font-size: var(--fs-section);
+  font-weight: var(--fw-title);
+  letter-spacing: var(--ls-title);
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+.group-splash-sub {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.group-splash-bar {
+  display: block;
+  width: 96px;
+  height: 3px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+}
+.group-splash-bar i {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--green-grad, var(--green));
+  animation: groupSplashBar 620ms ease-in-out both;
+}
+@keyframes groupSplashBar {
+  0% { transform: translateX(-110%); }
+  70% { transform: translateX(150%); }
+  100% { transform: translateX(260%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .group-splash { display: none; }
+  .group-splash-bar i { animation: none; }
+}
+
+/* ==========================================================================
+   v33.7 (#22071) — 인스타식 사진 캐러셀 · #해시태그 · 우그 자체 갤러리 · 사진 썸네일
+   ========================================================================== */
+
+/* ---------------------------------------- 1) 피드 카드 사진 캐러셀 */
+.ig-media.has-carousel { aspect-ratio: 4 / 3; }
+.ig-carousel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.ig-carousel-track {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;          /* 좌우는 캐러셀이 먹고, 스와이프 뒤로가기와 부딪히지 않는다 */
+  scrollbar-width: none;
+}
+.ig-carousel-track::-webkit-scrollbar { display: none; }
+.ig-carousel-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.ig-carousel-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  min-width: 34px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.62);
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  letter-spacing: 0.2px;
+  text-align: center;
+  pointer-events: none;
+}
+.ig-carousel-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  pointer-events: none;
+}
+.ig-carousel-dot {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.12);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: width 160ms ease, background 160ms ease;
+}
+.ig-carousel-dot::after { content: ''; position: absolute; inset: -11px -4px; }
+.ig-carousel-dot.is-on { width: 14px; background: #FFFFFF; }
+@media (prefers-reduced-motion: reduce) {
+  .ig-carousel-track { scroll-behavior: auto; }
+  .ig-carousel-dot { transition: none; }
+}
+
+/* 글 상세의 큰 사진도 같은 캐러셀을 쓴다. */
+.post-detail-media.has-carousel { overflow: hidden; }
+.post-detail-media .ig-media-img { width: 100%; height: 100%; object-fit: cover; }
+.post-detail-media .ig-carousel { height: 100%; }
+
+/* ---------------------------------------- 2) #해시태그 (본문 안 · 모아 보기 줄) */
+.ig-hashtag,
+.post-detail-caption .ig-hashtag {
+  position: relative;
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--green-text);
+  font: inherit;
+  font-weight: var(--fw-display);
+  cursor: pointer;
+}
+.ig-hashtag::after { content: ''; position: absolute; inset: -7px -2px; }
+.ig-hashtag:active { opacity: 0.72; }
+
+.ig-hashtag-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-card);
+  background: var(--bg-subtle);
+}
+.ig-hashtag-bar-text {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-title);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ig-hashtag-clear {
+  flex: 0 0 auto;
+  position: relative;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--bg-app);
+  color: var(--text-sub);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.ig-hashtag-clear::after { content: ''; position: absolute; inset: -6px 0; }
+
+/* ---------------------------------------- 3) 글쓰기 — 고른 사진 썸네일 · 사진 선택 버튼 */
+.composer-photos {
+  display: flex;
+  gap: 8px;
+  margin: 2px 0 8px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.composer-photos::-webkit-scrollbar { display: none; }
+.composer-thumb {
+  position: relative;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+.composer-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.composer-thumb-num {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.66);
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  line-height: 18px;
+  text-align: center;
+}
+.composer-thumb-x {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 0 0 0 10px;
+  background: rgba(17, 24, 39, 0.66);
+  color: #FFFFFF;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+.composer-photo-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 46px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-card);
+  background: var(--bg-subtle);
+  color: var(--text-sub);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.composer-photo-open:active { background: var(--bg-soft); }
+
+/* ---------------------------------------- 4) 우그 자체 갤러리 (3열 그리드 선택기) */
+.gp-sheet {
+  display: flex;
+  flex-direction: column;
+  padding-left: 0;
+  padding-right: 0;
+}
+.gp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 14px;
+}
+.gp-preview {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 38vh;
+  margin-bottom: 10px;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: var(--bg-subtle);
+}
+.gp-preview-img { width: 100%; height: 100%; object-fit: cover; }
+.gp-preview-count {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  min-width: 38px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.62);
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  text-align: center;
+}
+.gp-preview-empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 16px;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+  text-align: center;
+}
+.gp-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  align-content: start;
+  align-items: start;   /* 칸 높이는 aspect-ratio 로 — 늘어나며 줄이 겹치지 않게 */
+}
+.gp-label {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.gp-cell {
+  position: relative;
+  display: block;
+  width: 100%;
+  /* 칸은 정사각형 — 그리드 행 높이가 aspect-ratio 를 무시하고 겹치는 문제를 피해
+     padding-top 으로 높이를 만든다(사진은 그 위에 absolute). */
+  height: auto;
+  padding: 100% 0 0;
+  border: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+  cursor: pointer;
+}
+.gp-cell img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.gp-cell.is-picked img { opacity: 0.72; }
+.gp-cell.is-picked { outline: 2px solid var(--green); outline-offset: -2px; }
+.gp-cell-num {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-display);
+  line-height: 20px;
+  text-align: center;
+}
+.gp-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 4px;
+  border-top: 1px solid var(--divider);
+  background: var(--bg-app);
+}
+.gp-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--text-strong);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.gp-add .oo-ic { font-size: 15px; }
+.gp-done {
+  flex: 1 1 auto;
+  min-height: 46px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill-subtle);
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-display);
+  cursor: pointer;
+}
+.gp-done.ready,
+.gp-done:not([disabled]) { background: var(--green); color: #FFFFFF; }
+.gp-done[disabled] { cursor: default; }
+
+/* v33.7 — 글쓰기 단순화에서 새로 쓴 클래스(정적 검사에서 '정의 없는 클래스'로 잡히지 않게) */
+.ig-composer-body { gap: 14px; }
+.composer-photo-field { display: flex; flex-direction: column; gap: 6px; }
+.group-quick-actions { padding: 4px 0 12px; }
+.composer-photo-open.is-compact {
+  min-height: 40px;
+  background: var(--bg-app);
+  font-weight: var(--fw-label);
+}
+.ig-act.just-liked { color: var(--green-text); }
+
+/* v33.7 — 추천 피드 노출 체크박스: 손가락 영역을 46px로(감사에서 42px로 측정되던 2px 부족 해소) */
+.optin-check::after { inset: -11px; }

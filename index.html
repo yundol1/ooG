@@ -217,7 +217,10 @@
           <!-- 인스타그램형 24시간 스토리 바 -->
           <div class="story-bar" id="story-bar" aria-label="모임 스토리"><!-- JS --></div>
 
-          <div class="home-hero" id="home-hero"><!-- JS --></div>
+          <!-- v33.7 (#22036) — 큰 대표 배너 카드는 뺐다. 모임 이름·인원은 위 상단 바에 이미 있고,
+               여기에는 핵심 버튼 세 개(단체 채팅 · 사진 올리기 · 멤버)만 한 줄로 남긴다.
+               대표 이미지는 모임에 들어갈 때 잠깐 뜨는 진입 로딩(#group-splash)이 맡는다. -->
+          <div class="home-hero group-actions-row" id="home-hero"><!-- JS --></div>
 
           <!-- 본문 — 아래로 스크롤하며 보는 모임 피드 -->
           <section class="home-block home-feed-block" aria-labelledby="home-photos-title">
@@ -229,7 +232,8 @@
             </div>
             <div class="home-tag-chips" id="home-tag-chips" role="group" aria-label="말머리로 보기" hidden><!-- JS --></div>
             <div class="home-photo-grid" id="home-photo-grid" aria-live="polite" hidden><!-- JS --></div>
-            <div class="feed-container home-feed-list" id="feed-posts-container" aria-live="polite"><!-- JS --></div>
+            <!-- v33.7 — 홈 탭과 **같은 인스타형 카드**(.ig-post / renderGroupFeed)로 그린다. -->
+            <div class="feed-container ig-feed group-feed" id="feed-posts-container" aria-live="polite"><!-- JS --></div>
           </section>
 
           <!-- 모임 단체 채팅 — 피드 아래 바로가기 -->
@@ -675,54 +679,26 @@
           <h3 class="composer-title" id="composer-title">새 게시물</h3>
           <button class="btn-publish" id="btn-publish" disabled>게시</button>
         </div>
-        <div class="composer-body">
-          <div class="field-group">
-            <label class="field-label">모임 선택 <span class="field-hint">가입한 모임에만 올릴 수 있어요</span></label>
+        <div class="composer-body ig-composer-body">
+          <!-- 모임 — 모임 공간 안에서 열면 그 모임이 이미 정해져 있어 숨긴다(v33.7). -->
+          <div class="field-group" id="composer-group-field">
+            <label class="field-label">모임 <span class="field-hint">가입한 모임에만 올릴 수 있어요</span></label>
             <div class="composer-group-list" id="composer-group-list"><!-- JS --></div>
           </div>
 
-          <div class="field-group">
-            <label class="field-label">말머리 태그 <span class="field-hint">모임장이 만든 태그</span></label>
-            <div class="composer-tag-list" id="composer-tag-list"><!-- JS --></div>
-          </div>
-
-          <div class="field-group">
-            <label class="field-label">사진 <span class="field-hint">앨범・카메라</span></label>
-            <!-- Sprint 17 — 기기 앨범에서 고르거나 바로 찍은 사진 (1080px로 줄여 저장) -->
-            <div class="photo-upload" id="composer-photo-upload">
-              <div class="photo-upload-btns">
-                <button class="photo-upload-btn" id="btn-composer-album" type="button">앨범에서 선택</button>
-                <button class="photo-upload-btn ghost" id="btn-composer-camera" type="button">사진 찍기</button>
-                <input class="photo-file" id="composer-photo-album" type="file" accept="image/*" hidden>
-                <input class="photo-file" id="composer-photo-camera" type="file" accept="image/*" capture="environment" hidden>
-              </div>
-              <div class="photo-upload-preview" id="composer-photo-preview" hidden>
-                <img class="photo-upload-img" id="composer-photo-img" alt="올릴 사진 미리보기">
-                <div class="photo-upload-meta">
-                  <span class="photo-upload-note" id="composer-photo-note"></span>
-                  <button class="photo-upload-remove" id="btn-composer-photo-remove" type="button">삭제</button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="field-group">
-            <label class="field-label">이미지 URL <span class="field-hint">내 사진을 쓰려면 주소 입력 (선택)</span></label>
-            <input type="url" class="text-input" id="composer-photo-url" aria-label="이미지 URL" placeholder="https://... (jpg · png 주소)" inputmode="url">
-            <div class="photo-preview" id="photo-preview" hidden>
-              <img class="photo-preview-img" id="photo-preview-img" alt="" aria-hidden="true">
-              <span class="photo-preview-note" id="photo-preview-note"></span>
-            </div>
-          </div>
-
-          <div class="field-group">
-            <label class="field-label">사진 위 문구 <span class="field-hint">선택</span></label>
-            <input type="text" class="text-input" id="composer-media-caption" aria-label="사진 위 문구" maxlength="40" placeholder="예: 20.11 WOD · 22분 캡">
+          <!-- v33.7 — 인스타그램처럼 사진을 먼저 고른다. 여는 것은 **우그 자체 갤러리**(#gallery-modal)다. -->
+          <div class="field-group composer-photo-field">
+            <label class="field-label">사진 <span class="field-hint" id="composer-photo-hint">최대 10장 · 여러 장 고를 수 있어요</span></label>
+            <div class="composer-photos" id="composer-photos"><!-- JS --></div>
+            <button class="composer-photo-open" id="btn-composer-gallery" type="button">
+              <span class="oo-icon-17" aria-hidden="true" data-oog-icon="plus"></span>
+              사진 선택
+            </button>
           </div>
 
           <div class="field-group">
             <label class="field-label">내용</label>
-            <textarea id="composer-caption" class="text-area" aria-label="게시물 내용" maxlength="500" placeholder="오늘의 운동/취미 기록을 남겨보세요. 가입한 모임원에게만 보입니다."></textarea>
+            <textarea id="composer-caption" class="text-area" aria-label="게시물 내용" maxlength="500" placeholder="오늘의 운동·취미 기록을 남겨보세요. #해시태그도 쓸 수 있어요."></textarea>
             <div class="caption-counter"><span id="caption-count">0</span> / 500</div>
           </div>
 
@@ -735,6 +711,28 @@
             <input type="checkbox" class="optin-check" id="composer-recommend-check"
                    aria-label="추천 피드에 노출해도 괜찮아요">
           </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 2-B. 우그 자체 갤러리 (v33.7 · #22071) ====================
+         글쓰기에서 '사진 선택'을 누르면 OS 사진 액션시트 대신 이 화면이 열린다.
+         · 3열 그리드에 내가 담아 둔 사진(oog.gallery) + 앱 예시 사진
+         · 탭하면 1, 2, 3… 순서 배지가 붙으며 여러 장 선택(최대 10장)
+         · 위에 고른 사진 큰 미리보기, 아래 '+ 기기에서 추가'로만 기기 사진첩/카메라를 연다 -->
+    <div class="modal-overlay" id="gallery-modal" role="dialog" aria-modal="true" aria-label="우그 갤러리">
+      <!-- 클래스는 `gp-` 접두사 — 홈의 '내 모임 갤러리'(.gallery-*)와 이름이 겹치지 않게. -->
+      <div class="modal-sheet gp-sheet" tabindex="-1">
+        <div class="gp-body">
+          <div class="gp-preview" id="gallery-preview"><!-- JS --></div>
+          <div class="gp-grid" id="gallery-grid" aria-live="polite"><!-- JS --></div>
+        </div>
+        <div class="gp-foot">
+          <button class="gp-add" id="btn-gallery-device" type="button">
+            <span class="oo-icon-17" aria-hidden="true" data-oog-icon="plus"></span> 기기에서 추가
+          </button>
+          <button class="gp-done" id="btn-gallery-done" type="button" disabled>완료 0/10</button>
+          <input class="photo-file" id="gallery-device-input" type="file" accept="image/*" multiple hidden>
         </div>
       </div>
     </div>

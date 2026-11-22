@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     activeTab: 'tab-home',
     feedFilter: 'my',            // 'my' | 'popular'
     feedGroupId: null,           // null = 모든 가입 모임
+    feedHashtag: null,           // v33.7 — #해시태그로 모아 보는 중이면 그 태그
     exploreFilter: 'all',        // 'all' | 'people' | 'groups' | 취미 id
     exploreAge: 'all',           // Sprint 6~7 — 나이 필터 ('all'|'for_me'|'none'|'20s'|'2030'|'30plus')
     exploreRegion: 'all',        // Sprint 7 — 지역(생활권) 필터
@@ -315,12 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
     headerHomeBtn: $('#btn-header-home'),
     dmViewSeg: $('#dm-view-seg'),
     dmSentBanner: $('#dm-sent-banner'),
-    /* Sprint 17 — 게시물·스토리·오픈 글 사진(앨범/카메라) */
-    composerPhotoPreview: $('#composer-photo-preview'),
-    composerPhotoImg: $('#composer-photo-img'),
-    composerPhotoNote: $('#composer-photo-note'),
-    composerPhotoAlbum: $('#composer-photo-album'),
-    composerPhotoCamera: $('#composer-photo-camera'),
+    /* Sprint 17 — 스토리·오픈 글 사진(앨범/카메라). 글쓰기 사진은 v33.7부터 우그 자체 갤러리다. */
     storyPhotoPreview: $('#story-photo-preview'),
     storyPhotoImg: $('#story-photo-img'),
     storyPhotoNote: $('#story-photo-note'),
@@ -514,13 +510,11 @@ document.addEventListener('DOMContentLoaded', () => {
     joinedModal: $('#joined-modal'),
     joinedBody: $('#joined-groups-body'),
     composerGroupList: $('#composer-group-list'),
-    composerTagList: $('#composer-tag-list'),
+    composerGroupField: $('#composer-group-field'),
+    composerPhotos: $('#composer-photos'),
+    btnComposerGallery: $('#btn-composer-gallery'),
+    composerPhotoHint: $('#composer-photo-hint'),
     composerCaption: $('#composer-caption'),
-    composerPhotoUrl: $('#composer-photo-url'),
-    photoPreview: $('#photo-preview'),
-    photoPreviewImg: $('#photo-preview-img'),
-    photoPreviewNote: $('#photo-preview-note'),
-    composerMediaCaption: $('#composer-media-caption'),
     captionCount: $('#caption-count'),
     publishBtn: $('#btn-publish'),
     // misc
@@ -667,6 +661,12 @@ document.addEventListener('DOMContentLoaded', () => {
     eventGuestToggle: $('#event-guest-toggle'),
     composerTitle: $('#composer-title'),
     composerRecommendCheck: $('#composer-recommend-check'),
+    galleryModal: $('#gallery-modal'),
+    galleryPreview: $('#gallery-preview'),
+    galleryGrid: $('#gallery-grid'),
+    galleryDone: $('#btn-gallery-done'),
+    galleryDeviceBtn: $('#btn-gallery-device'),
+    galleryDeviceInput: $('#gallery-device-input'),
     chatRoomModal: $('#chat-room-modal'),
     chatMessages: $('#chat-messages'),
     chatRoomAvatar: $('#chat-room-avatar'),
@@ -816,11 +816,6 @@ document.addEventListener('DOMContentLoaded', () => {
    *   · 미리보기·삭제·바꾸기가 가능하고, 프리셋(예시 사진)은 보조 옵션으로 남긴다.
    * ---------------------------------------------------------------- */
   const PHOTO_KINDS = {
-    composer: {
-      max: 1080, refs: () => ({ preview: el.composerPhotoPreview, img: el.composerPhotoImg, note: el.composerPhotoNote }),
-      get: () => ui.composer.photoUrl,
-      set: (url) => { ui.composer.photoUrl = url; updatePublishState(); }
-    },
     story: {
       max: 1080, refs: () => ({ preview: el.storyPhotoPreview, img: el.storyPhotoImg, note: el.storyPhotoNote }),
       get: () => ui.storyPhotoUrl,
@@ -1794,7 +1789,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'explore-post-modal',   // 글 상세(모임·동네 글 공통)
     'event-detail-modal',   // 일정 상세
     'match-detail-modal',   // 이용자 프로필
-    'likers-modal'          // 좋아요 목록
+    'likers-modal',         // 좋아요 목록
+    'gallery-modal'         // v33.7 우그 자체 갤러리(사진 고르기)
   ]);
 
   /** 풀스크린 페이지의 머리말 — 왼쪽 '<' 뒤로가기 + 제목. 한 번만 만든다. */
@@ -2097,12 +2093,99 @@ document.addEventListener('DOMContentLoaded', () => {
     switchTab(tabId || 'tab-home');
     updateBadges();
     if (el.main) el.main.scrollTop = 0;
+    /* v33.7 — 모임에 들어갈 때 대표 이미지가 잠깐 뜨는 진입 로딩 화면(`#22036`). */
+    ui.feedHashtag = null;
+    showGroupSplash(store.getGroup(groupId));
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(6);
     return { ok: true, groupId };
   }
 
+  /* ------------------------------------------------------------------
+   * v33.7 — 모임 진입 로딩(대표 이미지 스플래시)
+   * ----------------------------------------------------------------
+   * 나들이 사진이 있으면 그 사진, 없으면 취미 색 + 아이콘 + 모임명을
+   * 화면 가득한 한 장으로 450~650ms 보여 주고 모임 공간으로 넘긴다.
+   *  · 모임에 **들어갈 때만** — 탭 전환·뒤로가기·다시 그리기에서는 뜨지 않는다.
+   *  · `prefers-reduced-motion: reduce` 이면 아예 띄우지 않는다(멈춤 민감 사용자).
+   *  · 자동화 브라우저(navigator.webdriver)에서는 기본으로 건너뛴다 —
+   *    테스트·감사 스크린샷이 로딩 화면에 가려지지 않게. 보고 싶으면
+   *    `window.oog.groupSplash(groupId, { force: true })` 로 부른다.
+   *  · overlay 는 `pointer-events: none` — 뜬 동안에도 바로 누를 수 있다.
+   */
+  const GROUP_SPLASH_TIMING = { hold: 430, out: 220 };
+  const GROUP_SPLASH_PARAM = 'gsplash';
+  let groupSplashTimer = null;
+
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) { return false; }
+  }
+
+  function groupSplashAllowed() {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.get(GROUP_SPLASH_PARAM) === '0') return false;
+    } catch (e) { /* file:// 등 */ }
+    if (prefersReducedMotion()) return false;
+    return true;
+  }
+
+  function clearGroupSplash() {
+    if (groupSplashTimer) { clearTimeout(groupSplashTimer); groupSplashTimer = null; }
+    const old = document.querySelector('.group-splash');
+    if (old) old.remove();
+  }
+
+  /** 모임 대표 이미지 한 장으로 진입 로딩을 띄운다. 반환: 화면 요소(안 띄우면 null). */
+  function showGroupSplash(grp, options = {}) {
+    if (!grp) return null;
+    const force = options && options.force === true;
+    if (!force && (!groupSplashAllowed() || navigator.webdriver)) return null;
+    clearGroupSplash();
+    const vis = groupCoverVisual(grp, 'circle');
+    const cover = groupCoverVisual(grp, 'card');
+    const photo = cover.photoUrl || vis.photoUrl || '';
+    const node = document.createElement('div');
+    node.className = 'group-splash';
+    node.id = 'group-splash';
+    node.setAttribute('role', 'status');
+    node.setAttribute('aria-live', 'polite');
+    node.setAttribute('aria-label', `${grp.name} 여는 중`);
+    node.innerHTML = `
+      <div class="group-splash-card tone-${escapeHtml(vis.tone)}">
+        <span class="group-splash-media${photo ? ' has-photo' : ''}">
+          ${photo
+            ? `<img class="group-splash-img" src="${escapeHtml(photo)}" alt="" decoding="async">`
+            : `<span class="group-splash-icon" aria-hidden="true">${ic(vis.icon)}</span>`}
+        </span>
+        <span class="group-splash-name">${escapeHtml(grp.name)}</span>
+        <span class="group-splash-sub">${escapeHtml(grp.categoryName || '모임')} · 멤버 ${grp.memberCount}명</span>
+        <span class="group-splash-bar" aria-hidden="true"><i></i></span>
+      </div>`;
+    document.body.appendChild(node);
+    /* 사진을 못 불러오면 색+아이콘으로 조용히 바꾼다. */
+    const img = node.querySelector('.group-splash-img');
+    if (img) {
+      img.addEventListener('error', () => {
+        const media = node.querySelector('.group-splash-media');
+        if (!media) return;
+        media.classList.remove('has-photo');
+        media.innerHTML = `<span class="group-splash-icon" aria-hidden="true">${ic(vis.icon)}</span>`;
+      });
+    }
+    requestAnimationFrame(() => node.classList.add('is-in'));
+    groupSplashTimer = setTimeout(() => {
+      node.classList.add('is-out');
+      groupSplashTimer = setTimeout(() => { node.remove(); groupSplashTimer = null; }, GROUP_SPLASH_TIMING.out);
+    }, GROUP_SPLASH_TIMING.hold);
+    return node;
+  }
+
   /** 갤러리로 돌아가기 — 모임 안 4탭이 바깥 3탭으로 돌아온다. */
   function exitGroupSpace() {
+    clearGroupSplash();
+    ui.feedHashtag = null;
     ui.groupSpaceId = null;
     syncNavMode();
     switchTab('tab-home');
@@ -2385,15 +2468,124 @@ document.addEventListener('DOMContentLoaded', () => {
     return ui.homeFeed;
   }
 
+  /* ------------------------------------------------------------------
+   * v33.7 (#22071) — 인스타그램식 사진 · #해시태그
+   * ----------------------------------------------------------------
+   *  · 글 한 건에 사진 최대 10장. 2장 이상이면 **가로 스와이프 캐러셀**
+   *    (우측 상단 `1/N` 배지 · 하단 도트). 트래스크는 `touch-action: pan-x`라
+   *    스와이프 뒤로가기 제스처와 부딪히지 않는다.
+   *  · 본문의 `#해시태그`는 누를 수 있는 칩 — 누르면 그 태그가 붙은 글만 모아 본다.
+   * ======================================================================== */
+  const HASHTAG_RE = /#[0-9A-Za-z\uAC00-\uD7A3_]{1,24}/g;
+  const HASHTAG_ONLY_RE = /^#[0-9A-Za-z\uAC00-\uD7A3_]{1,24}$/;
+
+  /** 글 한 건의 사진 목록 — store 한 곳(getPostImages)을 본다(옛 글 photoUrl 하위 호환). */
+  function postImages(post) {
+    try {
+      const list = store.getPostImages(post);
+      if (Array.isArray(list)) return list.slice(0, 10);
+    } catch (e) { /* 옛 저장 상태 호환 */ }
+    return post && post.photoUrl ? [post.photoUrl] : [];
+  }
+
+  /** 사진이 2장 이상이면 캐러셀, 1장이면 한 장, 없으면 취미 색 타일. */
+  function igMediaInnerHTML(images, tone, hobbyIcon) {
+    if (!images.length) {
+      return `<span class="ig-media-tile tone-${escapeHtml(tone)}" aria-hidden="true">${ic(hobbyIcon || 'sparkle')}</span>`;
+    }
+    if (images.length === 1) {
+      return `<img class="ig-media-img" src="${escapeHtml(images[0])}" alt="" loading="lazy" decoding="async">`;
+    }
+    return `
+      <div class="ig-carousel" data-ig-carousel="1" data-ig-index="0" role="group" aria-label="사진 ${images.length}장 · 좌우로 넘겨 보기">
+        <div class="ig-carousel-track" data-ig-track="1">
+          ${images.map((url, i) => `<figure class="ig-carousel-slide">
+            <img class="ig-media-img" src="${escapeHtml(url)}" alt="${i + 1}번째 사진" loading="lazy" decoding="async">
+          </figure>`).join('')}
+        </div>
+        <span class="ig-carousel-badge" data-ig-badge="1" aria-hidden="true">1/${images.length}</span>
+        <div class="ig-carousel-dots" role="group" aria-label="사진 위치">
+          ${images.map((url, i) => `<button class="ig-carousel-dot${i === 0 ? ' is-on' : ''}" data-ig-dot="${i}"
+            type="button" aria-label="${i + 1}번째 사진 보기" aria-current="${i === 0 ? 'true' : 'false'}"></button>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  /** 본문의 #해시태그를 누를 수 있는 칩으로 그린다(나머지는 그대로 이스케이프). */
+  function hashtagHTML(text) {
+    const raw = String(text == null ? '' : text);
+    let out = '';
+    let last = 0;
+    let m;
+    HASHTAG_RE.lastIndex = 0;
+    while ((m = HASHTAG_RE.exec(raw)) !== null) {
+      out += escapeHtml(raw.slice(last, m.index));
+      const tag = m[0].slice(1);
+      out += `<button class="ig-hashtag" type="button" data-hashtag="${escapeHtml(tag)}">#${escapeHtml(tag)}</button>`;
+      last = m.index + m[0].length;
+    }
+    out += escapeHtml(raw.slice(last));
+    return out;
+  }
+
+  /** 이 글 본문에 그 해시태그가 붙어 있나(앞뒤 글자 경계까지 본다). */
+  function captionHasHashtag(post, tag) {
+    if (!post || !tag) return false;
+    const needle = `#${tag}`;
+    const caption = String(post.caption || '');
+    let from = 0;
+    while (from < caption.length) {
+      const at = caption.indexOf(needle, from);
+      if (at < 0) return false;
+      const next = caption.charAt(at + needle.length);
+      if (!/[0-9A-Za-z\uAC00-\uD7A3_]/.test(next)) return true;
+      from = at + needle.length;
+    }
+    return false;
+  }
+
+  /** 해시태그로 모아 보기 — 지금 보던 화면(홈 피드 / 모임 피드)에 그 태그 글만 남긴다. */
+  function openHashtag(tag) {
+    const clean = String(tag || '').replace(/^#/, '').trim();
+    if (!clean) return;
+    ui.feedHashtag = clean;
+    if (isGroupMode()) {
+      const grp = store.getGroup(ui.groupSpaceId);
+      if (grp) renderGroupFeed(grp);
+    } else {
+      if (ui.activeTab !== 'tab-home') switchTab('tab-home');
+      renderHomeSuggestFeed();
+    }
+    if (el.main) el.main.scrollTop = 0;
+  }
+
+  function clearHashtag() {
+    ui.feedHashtag = null;
+    if (isGroupMode()) {
+      const grp = store.getGroup(ui.groupSpaceId);
+      if (grp) renderGroupFeed(grp);
+    } else {
+      renderHomeSuggestFeed();
+    }
+  }
+
+  /** 해시태그로 거른 목록 위에 붙는 한 줄 — 무엇으로 거르고 있는지 + 전체 보기. */
+  function hashtagBarHTML(tag, count) {
+    return `<div class="ig-hashtag-bar">
+      <span class="ig-hashtag-bar-text">#${escapeHtml(tag)} · 글 ${count}개</span>
+      <button class="ig-hashtag-clear" type="button" data-hashtag-clear="1">전체 보기</button>
+    </div>`;
+  }
+
   /** 인스타그램형 카드 한 장 — 이미지 · 좋아요 · 댓글 · 모임명·아지트(정확한 주소 없음). */
   function igPostHTML(it) {
     const p = it.post;
     const grp = it.group;
     const tone = it.tone || 'neutral';
     const author = personFor(p.authorId, p.authorName);
-    const media = p.photoUrl
-      ? `<img class="ig-media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
-      : `<span class="ig-media-tile tone-${escapeHtml(tone)}" aria-hidden="true">${ic(it.hobbyIcon || 'sparkle')}</span>`;
+    const images = postImages(p);
+    const media = igMediaInnerHTML(images, tone, it.hobbyIcon);
+    const mediaClass = images.length === 0 ? ' is-plain' : (images.length > 1 ? ' has-carousel' : '');
     const comments = (p.comments || []);
     /* 모임명은 위 헤더에 이미 있으니, 아래 줄에는 만나는 곳(아지트)만 적는다 — 정확한 주소는 쓰지 않는다. */
     const place = it.azitName || ((it.region && it.region.sigunguName) || '모임 안에서');
@@ -2417,7 +2609,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </span>
           <span class="ig-when">${escapeHtml(whenLabel)}</span>
         </header>
-        <div class="ig-media ${p.photoUrl ? '' : 'is-plain'}">${media}</div>
+        <div class="ig-media${mediaClass}">${media}</div>
         <div class="ig-actions">
           <button class="ig-act ${p.likedByMe ? 'on' : ''}" data-feed-like="${escapeHtml(p.id)}" type="button"
                   aria-pressed="${p.likedByMe ? 'true' : 'false'}"
@@ -2437,7 +2629,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="ig-act-count" data-feed-comment-count="${escapeHtml(p.id)}">${comments.length}</span>
           </button>
         </div>
-        <p class="ig-caption"><button class="ig-caption-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(p.authorName)}</button> ${escapeHtml(firstSentence(p.caption) || '사진을 올렸어요')}</p>
+        <p class="ig-caption">${hashtagHTML(firstSentence(p.caption) || '사진을 올렸어요')}</p>
         <div class="ig-comments">${igCommentsHTML(p)}</div>
         <button class="ig-add-comment" data-feed-comment-open="${escapeHtml(p.id)}" type="button">댓글 달기…</button>
       </article>`;
@@ -2558,6 +2750,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderHomeSuggestFeed() {
     if (!el.homeSuggestFeedList) return;
+    /* v33.7 — #해시태그로 모아 보는 중이면 페이지를 넘기지 않고 그 태그 글만 한 번에 보여 준다. */
+    if (ui.feedHashtag) {
+      const tag = ui.feedHashtag;
+      const found = store.getPosts('all').filter((p) => captionHasHashtag(p, tag));
+      el.homeSuggestFeed.hidden = false;
+      if (el.homeSuggestFeedSub) el.homeSuggestFeedSub.textContent = `#${tag} 해시태그가 붙은 글`;
+      el.homeSuggestFeedList.innerHTML = hashtagBarHTML(tag, found.length)
+        + (found.length
+          ? found.map((p) => igPostHTML(igItemForPost(p))).join('')
+          : '<p class="home-empty-line">이 해시태그가 붙은 글은 아직 없어요.</p>');
+      hydrateIcons(el.homeSuggestFeedList);
+      if (el.homeFeedMore) el.homeFeedMore.hidden = true;
+      if (el.btnHomeFeedMore) el.btnHomeFeedMore.hidden = true;
+      if (el.homeFeedStatus) el.homeFeedStatus.hidden = true;
+      return;
+    }
     const st = homeFeedState();
     const first = store.getRecommendedFeedPage({ offset: 0, limit: HOME_FEED_BATCH });
     st.page = 0;
@@ -2690,6 +2898,122 @@ document.addEventListener('DOMContentLoaded', () => {
       n.classList.toggle('is-zero', !(post.comments || []).length);
     });
   }
+
+  /**
+   * v33.7 — 인스타형 카드 한 목록의 클릭 배선.
+   *  홈 '피드'와 모임 공간 '우리 모임 피드'가 같은 카드를 쓰므로 같은 배선을 건다.
+   *  · 좋아요/취소(낙관적 + 실패 롤백) · 좋아요한 사람 · 댓글 시트 · 카드 → 글 상세
+   */
+  function wireIgFeed(node) {
+    if (!node) return;
+    node.addEventListener('click', (e) => {
+      /* v33.7 — 캐러셀을 좌우로 넘긴 직후의 탭은 글 상세를 열지 않는다. */
+      if (Date.now() - igSwipeAt < 500) return;
+      const hash = e.target.closest('[data-hashtag]');
+      if (hash) { e.preventDefault(); openHashtag(hash.dataset.hashtag); return; }
+      if (e.target.closest('[data-hashtag-clear]')) { e.preventDefault(); clearHashtag(); return; }
+      const like = e.target.closest('[data-feed-like]');
+      if (like) {
+        const res = likeWithBoundary(like.dataset.feedLike, 'feed');
+        if (res) {
+          like.classList.toggle('on', res.liked);
+          like.setAttribute('aria-pressed', res.liked ? 'true' : 'false');
+          like.setAttribute('aria-label', res.liked ? '좋아요 취소' : '좋아요');
+          const iconBox = like.firstElementChild;
+          if (iconBox && iconBox.tagName === 'svg') {
+            iconBox.outerHTML = res.liked ? ic('heartFilled') : ic('heart');
+          }
+          if (!res.liked) { like.classList.remove('just-liked'); }
+          refreshFeedPostCounts(like.dataset.feedLike);
+        }
+        return;
+      }
+      const likers = e.target.closest('[data-feed-likers]');
+      if (likers) { openLikers(likers.dataset.feedLikers); return; }
+      const cmt = e.target.closest('[data-feed-comment-open]');
+      if (cmt) { openFeedComments(cmt.dataset.feedCommentOpen); return; }
+      const card = e.target.closest('[data-suggest-post]');
+      if (card) openHomePost(card.dataset.suggestPost);
+    });
+  }
+
+  /* ------------------------------------------------------------------
+   * v33.7 — 사진 캐러셀 배선 (한 번만 건다 · 목록이 다시 그려져도 살아 있다)
+   * ----------------------------------------------------------------
+   *  · 사진이 2장 이상인 카드/글 상세의 가로 트랙을 스와이프하면
+   *    우측 상단 `1/N` 배지와 하단 도트가 지금 장에 맞춰 바뀐다.
+   *  · 도트를 누르면 그 장으로 부드럽게 넘긴다(모션 최소화 설정이면 즉시).
+   *  · 가로로 넘긴 손은 카드 탭(글 상세 열기)으로 처리하지 않는다.
+   * ======================================================================== */
+  let igSwipeAt = 0;
+  let igSwipeStartX = 0;
+
+  function igCarouselOf(node) {
+    return node && node.closest ? node.closest('[data-ig-carousel]') : null;
+  }
+
+  function syncIgCarousel(carousel) {
+    if (!carousel) return;
+    const track = carousel.querySelector('[data-ig-track]');
+    if (!track) return;
+    const count = track.children.length;
+    if (!count) return;
+    const width = track.clientWidth || 1;
+    const idx = Math.max(0, Math.min(count - 1, Math.round(track.scrollLeft / width)));
+    const badge = carousel.querySelector('[data-ig-badge]');
+    if (badge) badge.textContent = `${idx + 1}/${count}`;
+    carousel.querySelectorAll('[data-ig-dot]').forEach((dot, i) => {
+      dot.classList.toggle('is-on', i === idx);
+      dot.setAttribute('aria-current', i === idx ? 'true' : 'false');
+    });
+    carousel.dataset.igIndex = String(idx);
+  }
+
+  function goIgCarousel(carousel, idx) {
+    const track = carousel && carousel.querySelector('[data-ig-track]');
+    if (!track) return;
+    const width = track.clientWidth || 1;
+    try {
+      track.scrollTo({ left: idx * width, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    } catch (e) {
+      track.scrollLeft = idx * width;
+    }
+    syncIgCarousel(carousel);
+  }
+
+  document.addEventListener('scroll', (e) => {
+    const track = e.target && e.target.closest ? e.target.closest('[data-ig-track]') : null;
+    if (!track) return;
+    syncIgCarousel(igCarouselOf(track));
+  }, true);
+
+  /* 도트 클릭은 캐쳐 단계에서 먼저 처리해 카드 탭(글 상세 열기)으로 번지지 않게 한다. */
+  document.addEventListener('click', (e) => {
+    const dot = e.target.closest ? e.target.closest('[data-ig-dot]') : null;
+    if (!dot) return;
+    const carousel = igCarouselOf(dot);
+    if (!carousel) return;
+    e.preventDefault();
+    e.stopPropagation();
+    goIgCarousel(carousel, Number(dot.dataset.igDot) || 0);
+  }, true);
+
+  document.addEventListener('touchstart', (e) => {
+    const track = e.target.closest ? e.target.closest('[data-ig-track]') : null;
+    if (!track || !e.touches || !e.touches.length) return;
+    igSwipeStartX = e.touches[0].clientX;
+  }, { capture: true, passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    const track = e.target.closest ? e.target.closest('[data-ig-track]') : null;
+    if (!track) return;
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    if (Math.abs(t.clientX - igSwipeStartX) > 8) {
+      igSwipeAt = Date.now();
+      syncIgCarousel(igCarouselOf(track));
+    }
+  }, { capture: true, passive: true });
 
   /* ==========================================================================
    * H1 — 전용 화면 두 개 (내 그룹 전체 · 모임 찾기)
@@ -3018,32 +3342,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    /* H2 추천 피드 — 좋아요 토글 · 댓글 시트 · 글 상세 */
-    if (el.homeSuggestFeedList) {
-      el.homeSuggestFeedList.addEventListener('click', (e) => {
-        const like = e.target.closest('[data-feed-like]');
-        if (like) {
-          const res = likeWithBoundary(like.dataset.feedLike, 'feed');
-          if (res) {
-            like.classList.toggle('on', res.liked);
-            like.setAttribute('aria-pressed', res.liked ? 'true' : 'false');
-            like.setAttribute('aria-label', res.liked ? '좋아요 취소' : '좋아요');
-            const iconBox = like.firstElementChild;
-            if (iconBox && iconBox.tagName === 'svg') {
-              iconBox.outerHTML = res.liked ? ic('heartFilled') : ic('heart');
-            }
-            refreshFeedPostCounts(like.dataset.feedLike);
-          }
-          return;
-        }
-        const likers = e.target.closest('[data-feed-likers]');
-        if (likers) { openLikers(likers.dataset.feedLikers); return; }
-        const cmt = e.target.closest('[data-feed-comment-open]');
-        if (cmt) { openFeedComments(cmt.dataset.feedCommentOpen); return; }
-        const card = e.target.closest('[data-suggest-post]');
-        if (card) openHomePost(card.dataset.suggestPost);
-      });
-    }
+    /* H2 추천 피드 — 좋아요 토글 · 댓글 시트 · 글 상세
+       v33.7 — 모임 공간 피드도 같은 카드(igPostHTML)를 쓰므로 **같은 배선**을 두 목록에 건다. */
+    wireIgFeed(el.homeSuggestFeedList);
+    wireIgFeed(el.feedList);
     if (el.homeFeedMore) el.homeFeedMore.addEventListener('click', () => loadMoreHomeFeed());
     if (el.feedCommentForm) {
       el.feedCommentForm.addEventListener('submit', (e) => {
@@ -4391,27 +4693,17 @@ document.addEventListener('DOMContentLoaded', () => {
       </span>`;
   }
 
+  /**
+   * v33.7 — 모임 공간 상단에는 **큰 대표 배너 카드를 두지 않는다** (`#22036`).
+   *  · 모임 이름·분류·멤버 수는 바로 위 상단 바(`#group-space-name`·`#group-space-meta`)에 이미 있다.
+   *    같은 말을 큰 카드로 한 번 더 하던 자리였다.
+   *  · 여기에는 핵심 버튼 세 개(단체 채팅 · 사진 올리기 · 멤버)만 한 줄로 남긴다.
+   *  · 대표 이미지는 모임에 들어갈 때 잠깐 뜨는 진입 로딩 화면이 맡는다(showGroupSplash).
+   */
   function renderHomeHero(grp) {
     if (!el.homeHero) return;
-    const info = store.getHomeGroups().find((g) => g.id === grp.id) || {};
-    const next = info.nextEvent;
-    const chat = info.chat || { count: 0 };
-    /* R3 — 표지 색은 .tone-* 클래스(CSS --cat-* 토큰)가 정한다. 인라인 style 은 두지 않는다. */
-    const heroTone = store.getHobbyTone(grp.hobbyId || grp.category);
     el.homeHero.innerHTML = `
-      <div class="home-hero-cover tone-${escapeHtml(heroTone)}${info.photoCount ? '' : ' is-plain'}">
-        <span class="home-hero-emoji" aria-hidden="true">${coverIc(heroTone)}</span>
-        <span class="home-hero-shade" aria-hidden="true"></span>
-        <div class="home-hero-text">
-          <span class="home-hero-kicker">${ic(grp.icon)} ${escapeHtml(grp.categoryName)} · ${(function () { const a = store.getGroupAzit(grp); return a ? `아지트 ${escapeHtml(a.name)}` : escapeHtml(grp.location); })()}</span>
-          <h2 class="home-hero-name">${escapeHtml(grp.name)}</h2>
-          <p class="home-hero-meta">멤버 ${grp.memberCount}명 · 사진 ${info.photoCount || 0}장 · 대화 ${chat.count}개</p>
-          <p class="home-hero-next">${next
-            ? `<span class="home-hero-next-dot" aria-hidden="true"></span>${escapeHtml(next.title)} · ${escapeHtml(next.whenLabel)} · 참석 ${next.yes}명`
-            : '<span class="home-hero-next-dot quiet" aria-hidden="true"></span>이번 주 약속은 아직 없어요'}</p>
-        </div>
-      </div>
-      <div class="home-hero-actions">
+      <div class="home-hero-actions group-quick-actions">
         <button class="home-hero-btn primary" data-home-chat="${grp.id}" type="button">단체 채팅</button>
         <button class="home-hero-btn" data-home-write="${grp.id}" type="button">사진 올리기</button>
         <button class="home-hero-btn" data-home-members="${grp.id}" type="button">멤버</button>
@@ -4592,13 +4884,64 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    /* 피드/인기 — 인스타그램처럼 한 장씩 큰 카드로 이어지는 스크롤 피드. */
+    /* 피드/인기 — v33.7부터는 **홈 탭과 똑같은 인스타형 카드**(igPostHTML)로 그린다.
+       그 모임(group.id)의 글만, 피드는 최신순 · 인기는 반응순. */
     el.homePhotoGrid.hidden = true;
     if (el.feedList) el.feedList.hidden = false;
     ui.feedFilter = ui.homeView === 'popular' ? 'popular' : 'my';
-    ui.feedGroupId = ui.homeView === 'popular' ? null : grp.id;
+    ui.feedGroupId = grp.id;
     if (el.homePhotoCount) el.homePhotoCount.textContent = String(store.getGroupPhotoPosts(grp.id).length);
-    renderFeed();
+    renderGroupFeed(grp);
+  }
+
+  /**
+   * v33.7 — 모임 공간 피드 한 장. 홈 탭의 인스타형 카드와 **같은 함수(igPostHTML)** 를 쓰고,
+   * 이 모임에 속한 글만 넘긴다. 좋아요·댓글·좋아요한 사람·글 상세의 배선도 홈과 같다(wireIgFeed).
+   */
+  function renderGroupFeed(grp) {
+    const list = el.feedList;
+    if (!list || !grp) return;
+    const filter = ui.homeView === 'popular' ? 'popular' : 'my';
+    const tag = ui.feedHashtag || null;
+    let posts = store.getPosts(filter, grp.id);
+    if (tag) posts = posts.filter((p) => captionHasHashtag(p, tag));
+    if (!posts.length) {
+      const isPopular = filter === 'popular';
+      list.innerHTML = (tag ? hashtagBarHTML(tag, 0) : '') + `
+        <div class="empty-state feed-empty">
+          ${emptyArt(isPopular ? 'explore' : 'feed')}
+          <p class="empty-title">${tag ? `#${escapeHtml(tag)} 글이 없어요` : (isPopular ? '아직 인기 글이 없어요' : '아직 이 모임에 글이 없어요')}</p>
+          <p class="empty-desc">${tag
+            ? '다른 해시태그로 찾아보거나 전체 글을 봐요.'
+            : (isPopular
+              ? '모임원들의 반응이 쌓이면 인기 글이 여기에 모여요.'
+              : '첫 글을 올리면 모임원들이 좋아요와 댓글로 답해요.')}</p>
+          ${tag ? '' : (isPopular ? '' : '<button class="btn-secondary" data-empty-write="1" type="button">첫 글 쓰기</button>')}
+        </div>`;
+      return;
+    }
+    list.innerHTML = (tag ? hashtagBarHTML(tag, posts.length) : '')
+      + posts.map((p) => igPostHTML(igItemForPost(p))).join('');
+    hydrateIcons(list);
+  }
+
+  /** 한 글 → 홈 인스타형 카드가 쓰는 item 모양(it). 홈과 모임 공간이 같은 카드를 쓰게 한다. */
+  function igItemForPost(post) {
+    const grp = store.getGroup(post.groupId);
+    const azit = grp ? store.getGroupAzit(grp) : null;
+    return {
+      post,
+      group: grp,
+      groupName: grp ? grp.name : '모임',
+      azitName: azit ? azit.name : '',
+      azit,
+      region: grp ? store.getGroupRegion(grp) : null,
+      hobbyName: grp ? grp.categoryName : '취미',
+      hobbyIcon: grp ? ((store.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle',
+      tone: grp ? store.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
+      uid: `${post.id}#group`,
+      round: 0
+    };
   }
 
   function renderHomeChatPreview(grp) {
@@ -5591,6 +5934,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const comments = post.comments || [];
     const author = personFor(post.authorId, post.authorName);
     const likeCount = Number(post.likes) || 0;
+    const detailImages = postImages(post);
     el.postBody.innerHTML = `
       <div class="post-detail-head">
         <button class="post-detail-avatar" type="button" style="${avatarStyle(author)}"
@@ -5607,11 +5951,11 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         ${post.tag ? `<span class="detail-hobby-pill">#${escapeHtml(post.tag)}</span>` : ''}
       </div>
-      ${post.photoUrl
-        ? `<div class="post-detail-media ratio-${post.ratio || 'wide'}"><img class="media-img" src="${escapeHtml(post.photoUrl)}" alt="게시물 사진" loading="lazy" decoding="async"></div>`
+      ${detailImages.length
+        ? `<div class="post-detail-media ratio-${post.ratio || 'wide'}${detailImages.length > 1 ? ' has-carousel' : ''}">${igMediaInnerHTML(detailImages, 'neutral', 'sparkle')}</div>`
         : ''}
       ${post.mediaCaption ? `<p class="post-detail-media-caption">${escapeHtml(post.mediaCaption)}</p>` : ''}
-      <p class="post-detail-caption">${escapeHtml(post.caption)}</p>
+      <p class="post-detail-caption">${hashtagHTML(post.caption)}</p>
       <div class="post-detail-actionbar">
         <button class="post-detail-like ${post.likedByMe ? 'liked' : ''}" data-feed-post-like="${post.id}"
                 aria-pressed="${post.likedByMe}" aria-label="${post.likedByMe ? '좋아요 취소' : '좋아요'}" type="button">
@@ -5868,16 +6212,14 @@ document.addEventListener('DOMContentLoaded', () => {
   el.btnNoticeOpen && el.btnNoticeOpen.addEventListener('click', () => {
     if (ui.groupSpaceId) openNoticeSheet(ui.groupSpaceId);
   });
-  /* Sprint 17 — 게시판에서 바로 사진 올리기 · 후기 모아보기 · 지난 공지 · 공지 읽음 */
+  /* Sprint 17 · v33.7 — 게시판에서 바로 사진 올리기. 이제 앨범 대신 **우그 자체 갤러리**가 열린다. */
   el.btnBoardPhoto && el.btnBoardPhoto.addEventListener('click', () => {
     if (!isGroupMode()) return;
     openComposer(ui.groupSpaceId);
-    /* 게시판에서 '사진 올리기'를 누르면 곧바로 앨범이 열린다(사진부터 고르는 흐름). */
     setTimeout(() => {
-      const album = $('#composer-photo-album');
-      const row = $('#composer-photo-upload');
-      if (row) row.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
-      if (album) album.click();
+      const photos = $('#composer-photos');
+      if (photos) photos.scrollIntoView({ block: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+      openComposerGallery();
     }, 200);
   });
   el.btnBoardReview && el.btnBoardReview.addEventListener('click', () => {
@@ -6554,6 +6896,15 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 모임 사진 상세(피드 글) — 좋아요·댓글 */
   if (el.postBody) {
     el.postBody.addEventListener('click', (e) => {
+      /* v33.7 — 글 상세 본문의 #해시태그: 상세를 닫고 그 태그 글만 모아 본다. */
+      const hash = e.target.closest('[data-hashtag]');
+      if (hash) {
+        e.preventDefault();
+        closeModal(el.postModal);
+        openHashtag(hash.dataset.hashtag);
+        return;
+      }
+      if (e.target.closest('[data-hashtag-clear]')) { e.preventDefault(); clearHashtag(); return; }
       const likeBtn = e.target.closest('[data-feed-post-like]');
       if (likeBtn) {
         const res = likeWithBoundary(likeBtn.dataset.feedPostLike, 'feed');
@@ -8881,7 +9232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         ${post.caption ? `
-          <p class="feed-caption"><button class="caption-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(post.authorName)}</button> ${escapeHtml(post.caption)}</p>` : ''}
+          <p class="feed-caption">${escapeHtml(post.caption)}</p>` : ''}
 
         ${renderComments(post, expanded)}
 
@@ -8897,6 +9248,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderFeed() {
     if (!el.feedList) return;
     closeAllPostMenus();
+    /* v33.7 — 모임 안에서는 홈 탭과 같은 인스타형 카드로 그린다.
+       (글 작성·삭제·좋아요 롤백 등 '다시 그려라' 호출이 많아 이 함수가 갈림길 역할을 한다) */
+    const groupNow = isGroupMode() ? store.getGroup(ui.groupSpaceId) : null;
+    if (groupNow) { renderGroupFeed(groupNow); return; }
     /* 탈퇴한 모임이 필터에 남아 있으면 전체 보기로 되돌린다 */
     if (ui.feedGroupId && !store.isGroupJoined(ui.feedGroupId)) ui.feedGroupId = null;
     el.subtabs.forEach((t) => {
@@ -9229,18 +9584,22 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('글을 쓰려면 먼저 소모임에 가입해 주세요', 'warning');
       return;
     }
-    /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다(모임 선택 한 번 줄임). */
-    const viewing = ui.activeTab === 'tab-home' ? (ui.homeGroupId || store.getHomeGroupId()) : null;
+    /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다(모임 선택 한 번 줄임).
+       v33.7 — 모임 공간 안에서 열면 그 모임으로 **고정**되고 모임 선택 UI 는 숨긴다. */
+    const inGroup = isGroupMode();
+    const viewing = inGroup ? ui.groupSpaceId
+      : (ui.activeTab === 'tab-home' ? (ui.homeGroupId || store.getHomeGroupId()) : null);
     const startGroup = store.getGroup(prefillGroupId || viewing || ui.feedGroupId) || joined[0];
     /* H3 — 글을 쓸 때마다 '추천 피드 노출'은 **꺼진 상태**로 시작한다(모임 기본값을 따르지 않음).
        체크해야만 홈 추천 피드에 오른다. */
-    ui.composer = { editId: null, groupId: startGroup.id, tag: null, photoUrl: null, recommendOptIn: false };
+    ui.composer = {
+      editId: null, groupId: startGroup.id, tag: null, photoUrl: null,
+      images: [], recommendOptIn: false, lockedGroup: inGroup ? startGroup.id : null
+    };
     if (el.composerTitle) el.composerTitle.textContent = '새 게시물';
     if (el.publishBtn) el.publishBtn.textContent = '게시';
-    renderPhotoPreview('composer');
     composerResetFields();
     renderComposerGroups();
-    renderComposerTags();
     renderMediaPicker();
     renderComposerRecommend();
     updatePublishState();
@@ -9256,18 +9615,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (row) row.classList.toggle('is-checked', on);
   }
 
-  /* (DOM 초기화 헬퍼) 캡션/사진문구 비우기 */
+  /* (DOM 초기화 헬퍼) 캡션/사진 비우기 */
   function composerResetFields() {
     if (el.composerCaption) { el.composerCaption.value = ''; }
-    if (el.composerMediaCaption) { el.composerMediaCaption.value = ''; }
-    if (el.composerPhotoUrl) { el.composerPhotoUrl.value = ''; }
     if (el.captionCount) el.captionCount.textContent = '0';
+    if (ui.composer) ui.composer.images = [];
+    renderComposerPhotos();
   }
+
   function renderComposerGroups() {
-    /* 수정할 때는 모임을 바꾸지 않는다 — 그 글의 모임 한 곳만 보여 준다. */
-    const joined = ui.composer.editId
-      ? [store.getGroup(ui.composer.groupId)].filter(Boolean)
-      : store.getJoinedGroups();
+    if (!el.composerGroupList) return;
+    /* v33.7 — 모임 공간 안에서 열었거나 글을 고치는 중이면 모임이 이미 정해져 있다(선택 UI 숨김). */
+    const locked = !!(ui.composer.lockedGroup || ui.composer.editId);
+    if (el.composerGroupField) el.composerGroupField.hidden = locked;
+    if (locked) { el.composerGroupList.innerHTML = ''; return; }
+    const joined = store.getJoinedGroups();
     el.composerGroupList.innerHTML = joined.map((g) => `
       <button class="composer-group-chip ${ui.composer.groupId === g.id ? 'active' : ''}" data-pick-group="${g.id}">
         <span class="chip-thumb">${ic(g.icon)}</span>
@@ -9280,70 +9642,62 @@ document.addEventListener('DOMContentLoaded', () => {
     `).join('');
   }
 
-  function renderComposerTags() {
-    const grp = store.getGroup(ui.composer.groupId);
-    const tags = grp ? grp.customTags : [];
-    let html = `<button class="tag-pick ${!ui.composer.tag ? 'active' : ''}" data-pick-tag="">말머리 없음</button>`;
-    if (!tags.length) {
-      html += '<span class="tag-pick-empty">이 모임에는 아직 말머리가 없어요. 모임장이 만들면 여기에 나타나요.</span>';
-    }
-    html += tags.map((t) => `
-      <button class="tag-pick ${ui.composer.tag === t ? 'active' : ''}" data-pick-tag="${escapeHtml(t)}">#${escapeHtml(t)}</button>
-    `).join('');
-    el.composerTagList.innerHTML = html;
-  }
+  /** Sprint 18 · v33.7 — 말머리 선택 UI 는 없앴다(본문 #해시태그가 그 자리를 대신한다). */
+  function renderComposerTags() { /* 없음 */ }
+  function renderMediaPicker() { /* 없음 */ }
+  function updatePhotoPreview() { /* 없음 — 이미지 URL 입력창을 없앴다 */ }
 
-  /** Sprint 18 — 예시 사진 선택기는 없앴다. 사진은 앨범·카메라로 올린 것만 쓴다. */
-  function renderMediaPicker() { /* 예시 사진 없음 — 남길 것이 없다 */ }
-
-  /* 이미지 URL 미리보기 — 게시 전에 주소가 실제로 열리는지 눈으로 확인 */
-  function updatePhotoPreview() {
-    if (!el.photoPreview) return;
-    const url = (el.composerPhotoUrl.value || '').trim();
-    if (!/^https?:\/\//i.test(url)) {
-      el.photoPreview.hidden = true;
-      el.photoPreview.classList.remove('failed');
-      el.photoPreviewImg.removeAttribute('src');
-      return;
+  /** v33.7 — 고른 사진 썸네일(순서 배지 · 빼기). */
+  function renderComposerPhotos() {
+    if (!el.composerPhotos) return;
+    const images = (ui.composer && ui.composer.images) || [];
+    el.composerPhotos.innerHTML = images.length
+      ? images.map((url, i) => `
+        <span class="composer-thumb">
+          <img src="${escapeHtml(url)}" alt="${i + 1}번째 사진">
+          <span class="composer-thumb-num" aria-hidden="true">${i + 1}</span>
+          <button class="composer-thumb-x" data-composer-photo-remove="${i}" type="button"
+                  aria-label="${i + 1}번째 사진 빼기">×</button>
+        </span>`).join('')
+      : '';
+    el.composerPhotos.hidden = !images.length;
+    if (el.composerPhotoHint) {
+      el.composerPhotoHint.textContent = images.length
+        ? `${images.length}장 고름 · 최대 10장`
+        : '최대 10장 · 여러 장 고를 수 있어요';
     }
-    el.photoPreview.hidden = false;
-    el.photoPreview.classList.remove('failed');
-    el.photoPreviewImg.onerror = () => {
-      el.photoPreview.classList.add('failed');
-      el.photoPreviewNote.textContent = '이미지를 불러올 수 없어요. 주소를 확인해 주세요.';
-    };
-    el.photoPreviewImg.onload = () => {
-      el.photoPreview.classList.remove('failed');
-      el.photoPreviewNote.textContent = '미리보기 · 이 사진으로 게시됩니다';
-    };
-    el.photoPreviewNote.textContent = '이미지 불러오는 중...';
-    el.photoPreviewImg.src = url;
+    if (el.btnComposerGallery) {
+      el.btnComposerGallery.classList.toggle('is-compact', images.length > 0);
+      const label = el.btnComposerGallery.lastChild;
+      if (label && label.nodeType === 3) label.textContent = images.length ? ' 사진 더 고르기' : ' 사진 선택';
+    }
   }
 
   function updatePublishState() {
+    if (!el.publishBtn || !el.composerCaption) return;
     const caption = el.composerCaption.value.trim();
-    const hasUrl = /^https?:\/\//i.test((el.composerPhotoUrl ? el.composerPhotoUrl.value : '').trim());
-    const hasPhoto = !!ui.composer.photoUrl;
-    el.publishBtn.disabled = !(ui.composer.groupId && (caption || hasUrl || hasPhoto));
+    const hasPhoto = !!((ui.composer && ui.composer.images) || []).length;
+    el.publishBtn.disabled = !(ui.composer.groupId && (caption || hasPhoto));
     el.publishBtn.classList.toggle('ready', !el.publishBtn.disabled);
   }
 
   el.composerGroupList && el.composerGroupList.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-pick-group]');
     if (!chip) return;
+    if (ui.composer.lockedGroup) return;      // 모임 공간 안에서는 그 모임 고정
     ui.composer.groupId = chip.dataset.pickGroup;
-    ui.composer.tag = null;          // 모임이 바뀌면 말머리 선택도 초기화
+    ui.composer.tag = null;
     renderComposerGroups();
-    renderComposerTags();
     updatePublishState();
   });
 
-  el.composerTagList && el.composerTagList.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-pick-tag]');
-    if (!chip) return;
-    const value = chip.dataset.pickTag;
-    ui.composer.tag = value || null;
-    renderComposerTags();
+  el.composerPhotos && el.composerPhotos.addEventListener('click', (e) => {
+    const rm = e.target.closest('[data-composer-photo-remove]');
+    if (!rm) return;
+    const idx = Number(rm.dataset.composerPhotoRemove);
+    ui.composer.images.splice(idx, 1);
+    renderComposerPhotos();
+    updatePublishState();
   });
 
   if (el.composerRecommendCheck) {
@@ -9353,18 +9707,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* Sprint 17 — 앨범/카메라 사진 (게시물·스토리·오픈 글) */
-  wirePhotoPicker('composer', el.composerPhotoAlbum, el.composerPhotoCamera,
-    $('#btn-composer-album'), $('#btn-composer-camera'), $('#btn-composer-photo-remove'));
+  /* Sprint 17 — 앨범/카메라 사진 (스토리·오픈 글). v33.7부터 글쓰기 사진은 우그 자체 갤러리가 맡는다. */
   wirePhotoPicker('story', el.storyPhotoAlbum, el.storyPhotoCamera,
     $('#btn-story-album'), $('#btn-story-camera'), $('#btn-story-photo-remove'));
   wirePhotoPicker('explore', el.explorePhotoAlbum, el.explorePhotoCamera,
     $('#btn-explore-album'), $('#btn-explore-camera'), $('#btn-explore-photo-remove'));
-
-  el.composerPhotoUrl && el.composerPhotoUrl.addEventListener('input', () => {
-    updatePublishState();
-    updatePhotoPreview();
-  });
 
   el.composerCaption && el.composerCaption.addEventListener('input', () => {
     el.captionCount.textContent = String(el.composerCaption.value.length);
@@ -9372,11 +9719,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   el.publishBtn && el.publishBtn.addEventListener('click', () => {
+    const images = (ui.composer.images || []).slice(0, 10);
     const payload = {
-      tag: ui.composer.tag,
+      tag: null,
       caption: el.composerCaption.value,
-      mediaCaption: el.composerMediaCaption ? el.composerMediaCaption.value : '',
-      photoUrl: ui.composer.photoUrl || (el.composerPhotoUrl ? el.composerPhotoUrl.value : ''),
+      images,
+      photoUrl: images[0] || '',
       recommendOptIn: ui.composer.recommendOptIn === true
     };
     /* H3 — 올린 글도 수정 화면에서 '추천 피드 노출'을 바꿀 수 있다(저장하면 홈 추천 피드에 바로 반영/해제). */
@@ -9412,6 +9760,7 @@ document.addEventListener('DOMContentLoaded', () => {
       postId,
       groupId: post.groupId,
       caption: post.caption,
+      images: post.images || [],
       photoUrl: post.photoUrl || '',
       mediaCaption: post.mediaCaption || '',
       tag: post.tag || null,
@@ -9443,28 +9792,200 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const grp = store.getGroup(post.groupId);
     if (!grp) { showToast('모임을 찾지 못했어요', 'warning'); return; }
+    const keepImages = store.getPostImages(post).slice(0, 10);
     ui.composer = {
       editId: post.id,
       groupId: post.groupId,
       tag: post.tag || null,
       photoUrl: post.photoUrl || null,
-      recommendOptIn: post.recommendOptIn === true
+      images: [],
+      recommendOptIn: post.recommendOptIn === true,
+      lockedGroup: post.groupId
     };
-    renderPhotoPreview('composer');
     composerResetFields();
+    ui.composer.images = keepImages;
     if (el.composerCaption) el.composerCaption.value = post.caption || '';
     if (el.captionCount) el.captionCount.textContent = String((post.caption || '').length);
-    if (el.composerMediaCaption) el.composerMediaCaption.value = post.mediaCaption || '';
-    if (el.composerPhotoUrl) el.composerPhotoUrl.value = /^https?:\/\//i.test(post.photoUrl || '') ? post.photoUrl : '';
     if (el.composerTitle) el.composerTitle.textContent = '글 수정';
     if (el.publishBtn) el.publishBtn.textContent = '저장';
     renderComposerGroups();
-    renderComposerTags();
+    renderComposerPhotos();
     renderComposerRecommend();
     updatePublishState();
-    updatePhotoPreview();
     openModal(el.composerModal);
   }
+
+  /* ==========================================================================
+   * v33.7 (#22071) — 우그 자체 갤러리 (글쓰기 사진 선택기)
+   * ------------------------------------------------------------------------
+   * iOS 의 '사진 보관함 / 사진 찍기 / 파일 선택' 액션시트가 글쓰기에서 바로 뜨지 않게,
+   * '사진 선택'을 누르면 **앱 안 갤러리**(3열 그리드)가 열린다.
+   *  · 그리드 = 내가 담아 둔 사진(localStorage `oog.gallery.v1`) + 앱 예시 사진 18장
+   *  · 탭하면 1, 2, 3… 순서 배지가 붙으며 여러 장 선택(최대 10장)
+   *  · 위에 마지막으로 고른 사진 큰 미리보기
+   *  · '+ 기기에서 추가'를 눌렀을 때만 기기 사진첩/카메라가 열리고, 고른 사진은
+   *    우그 갤러리에 **영구 저장**된다(다음 글에서도 그대로 보인다).
+   * ======================================================================== */
+  const OOG_GALLERY_KEY = 'oog.gallery.v1';
+  const OOG_GALLERY_MAX = 30;
+
+  function readOogGallery() {
+    try {
+      const raw = localStorage.getItem(OOG_GALLERY_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list.filter((x) => x && typeof x.url === 'string' && x.url) : [];
+    } catch (e) { return []; }
+  }
+
+  function writeOogGallery(list) {
+    try {
+      localStorage.setItem(OOG_GALLERY_KEY, JSON.stringify(list.slice(0, OOG_GALLERY_MAX)));
+      return true;
+    } catch (e) {
+      showToast('저장 공간이 부족해 사진을 담지 못했어요', 'warning');
+      return false;
+    }
+  }
+
+  /** 그리드에 보일 사진 — 내가 담은 사진(최신 먼저) + 앱 예시 사진. */
+  function oogGalleryItems() {
+    const mine = readOogGallery().map((x) => ({ id: x.id, url: x.url, kind: 'oog' }));
+    let examples = [];
+    try { examples = (store.getExamplePhotos ? store.getExamplePhotos() : []) || []; } catch (e) { examples = []; }
+    return mine.concat(examples.map((x) => ({ id: x.id, url: x.url, kind: 'example' })));
+  }
+
+  function galleryState() {
+    if (!ui.gallery) ui.gallery = { open: false, ids: [], max: 10, onDone: null, previewId: null };
+    return ui.gallery;
+  }
+
+  /** 글쓰기에서 부른다. options = { max, selected:[url], onDone(urls) } */
+  function openOogGallery(options = {}) {
+    const st = galleryState();
+    st.open = true;
+    st.max = Math.max(1, Math.min(10, Number(options.max) || 10));
+    st.onDone = typeof options.onDone === 'function' ? options.onDone : null;
+    const items = oogGalleryItems();
+    const byUrl = new Map(items.map((it) => [it.url, it.id]));
+    st.ids = (options.selected || []).map((u) => byUrl.get(u)).filter(Boolean).slice(0, st.max);
+    st.previewId = st.ids.length ? st.ids[st.ids.length - 1] : (items[0] ? items[0].id : null);
+    renderOogGallery();
+    openModal(el.galleryModal);
+  }
+
+  function renderOogGallery() {
+    const st = galleryState();
+    const items = oogGalleryItems();
+    const byId = new Map(items.map((it) => [it.id, it]));
+    if (el.galleryPreview) {
+      const preview = byId.get(st.previewId) || byId.get(st.ids[st.ids.length - 1]) || items[0];
+      el.galleryPreview.innerHTML = preview
+        ? `<img class="gp-preview-img" src="${escapeHtml(preview.url)}" alt="고른 사진 미리보기">`
+          + `<span class="gp-preview-count">${st.ids.length}/${st.max}</span>`
+        : '<p class="gp-preview-empty">아직 사진이 없어요. 아래 \'기기에서 추가\'로 사진을 담아 보세요.</p>';
+    }
+    if (el.galleryGrid) {
+      const mineCount = items.filter((it) => it.kind === 'oog').length;
+      el.galleryGrid.innerHTML = `<p class="gp-label">내 사진 ${mineCount}장 · 예시 사진 ${items.length - mineCount}장</p>`
+        + items.map((it, i) => {
+          const order = st.ids.indexOf(it.id);
+          return `<button class="gp-cell${order >= 0 ? ' is-picked' : ''}" data-gallery-pick="${escapeHtml(it.id)}"
+            type="button" aria-pressed="${order >= 0}"
+            aria-label="${it.kind === 'oog' ? '내 사진' : '예시 사진'} ${i + 1}${order >= 0 ? ` · ${order + 1}번째로 고름` : ''}">
+            <img src="${escapeHtml(it.url)}" alt="" loading="lazy" decoding="async">
+            ${order >= 0 ? `<span class="gp-cell-num" aria-hidden="true">${order + 1}</span>` : ''}
+          </button>`;
+        }).join('');
+    }
+    if (el.galleryDone) {
+      el.galleryDone.disabled = st.ids.length === 0;
+      el.galleryDone.textContent = `완료 ${st.ids.length}/${st.max}`;
+      el.galleryDone.classList.toggle('ready', st.ids.length > 0);
+    }
+  }
+
+  function toggleGalleryPick(id) {
+    const st = galleryState();
+    const at = st.ids.indexOf(id);
+    if (at >= 0) {
+      st.ids.splice(at, 1);
+    } else {
+      if (st.ids.length >= st.max) {
+        showToast(`사진은 ${st.max}장까지 고를 수 있어요`, 'warning');
+        st.previewId = id;
+        renderOogGallery();
+        return;
+      }
+      st.ids.push(id);
+    }
+    st.previewId = id;
+    renderOogGallery();
+  }
+
+  function finishOogGallery() {
+    const st = galleryState();
+    const byId = new Map(oogGalleryItems().map((it) => [it.id, it]));
+    const urls = st.ids.map((id) => byId.get(id)).filter(Boolean).map((it) => it.url);
+    st.open = false;
+    closeModal(el.galleryModal);
+    if (st.onDone) st.onDone(urls);
+  }
+
+  /** '+ 기기에서 추가' — 이 버튼으로만 OS 사진첩/카메라가 열린다. 고른 사진은 우그 갤러리에 저장된다. */
+  function addDevicePhotosToGallery(files) {
+    const list = Array.from(files || []).filter((f) => /^image\//.test(f.type || '')).slice(0, 10);
+    if (!list.length) return;
+    const st = galleryState();
+    let done = 0;
+    list.forEach((file, i) => {
+      readImageFile(file, (url) => {
+        done += 1;
+        const stored = readOogGallery();
+        const id = `oog_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2, 4)}`;
+        stored.unshift({ id, url, at: new Date().toISOString() });
+        writeOogGallery(stored);
+        if (st.ids.length < st.max) st.ids.push(id);
+        st.previewId = id;
+        if (done === list.length) {
+          renderOogGallery();
+          if (el.galleryGrid) el.galleryGrid.scrollTop = 0;
+          showToast(`${done}장을 우그 갤러리에 담았어요`);
+        } else {
+          renderOogGallery();
+        }
+      }, 1080, 0.86);
+    });
+  }
+
+  el.galleryGrid && el.galleryGrid.addEventListener('click', (e) => {
+    const cell = e.target.closest('[data-gallery-pick]');
+    if (!cell) return;
+    toggleGalleryPick(cell.dataset.galleryPick);
+  });
+  el.galleryDone && el.galleryDone.addEventListener('click', () => finishOogGallery());
+  el.galleryDeviceBtn && el.galleryDeviceBtn.addEventListener('click', () => {
+    if (el.galleryDeviceInput) el.galleryDeviceInput.click();
+  });
+  el.galleryDeviceInput && el.galleryDeviceInput.addEventListener('change', () => {
+    addDevicePhotosToGallery(el.galleryDeviceInput.files);
+    el.galleryDeviceInput.value = '';
+  });
+
+  /** 글쓰기 '사진 선택' → 우그 갤러리(이미 고른 사진은 순서 그대로 체크되어 있다). */
+  function openComposerGallery() {
+    openOogGallery({
+      max: 10,
+      selected: (ui.composer.images || []).slice(),
+      onDone: (urls) => {
+        ui.composer.images = urls.slice(0, 10);
+        ui.composer.photoUrl = urls[0] || null;
+        renderComposerPhotos();
+        updatePublishState();
+      }
+    });
+  }
+  el.btnComposerGallery && el.btnComposerGallery.addEventListener('click', () => openComposerGallery());
 
   el.fab && el.fab.addEventListener('click', () => openComposer());
 
@@ -15396,6 +15917,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }),
     /* Sprint 16 — 바깥 3탭 · 모임 4탭 · 스토리 · 게시판 · 나이 슬라이더 · 쪽지 */
     enterGroupSpace, exitGroupSpace, isGroupMode, renderGallery,
+    /* v33.7 — 모임 진입 로딩 · 사진 캐러셀 · #해시태그 · 우그 자체 갤러리 */
+    groupSplash: (groupId, opts) => showGroupSplash(store.getGroup(groupId), opts || {}),
+    clearGroupSplash,
+    openHashtag, clearHashtag,
+    openOogGallery, openComposerGallery, finishOogGallery,
+    getOogGallery: () => ({ items: oogGalleryItems(), selected: (galleryState().ids || []).slice(), open: !!galleryState().open }),
     getGallery: () => store.getGroupGallery().map((it) => ({
       id: it.id, name: it.name, photos: it.photoCount, stories: it.storyCount, leader: it.isLeader
     })),
@@ -15674,6 +16201,24 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 19 — '우그' 클레이 로고 스플래시 · 클레이 모션 */
     splash,
     getSplashState: () => splash.getState(),
+    /* v33.7 — 모임 진입 로딩(대표 이미지). 테스트는 force 로 직접 띄워 본다. */
+    groupSplash: (groupId, options) => showGroupSplash(store.getGroup(groupId), options || {}),
+    clearGroupSplash,
+    getGroupSplashState: () => {
+      const node = document.querySelector('.group-splash');
+      if (!node) return null;
+      const card = node.querySelector('.group-splash-card');
+      const r = card ? card.getBoundingClientRect() : null;
+      return {
+        in: node.classList.contains('is-in'),
+        out: node.classList.contains('is-out'),
+        name: node.querySelector('.group-splash-name') ? node.querySelector('.group-splash-name').textContent : '',
+        hasPhoto: !!node.querySelector('.group-splash-img'),
+        photo: node.querySelector('.group-splash-img') ? node.querySelector('.group-splash-img').getAttribute('src') : '',
+        opacity: +(getComputedStyle(node).opacity),
+        box: r ? { w: +r.width.toFixed(1), h: +r.height.toFixed(1), top: +r.top.toFixed(1) } : null
+      };
+    },
     setDmView: (v) => { ui.dmView = v === 'group' ? 'group' : 'recent'; renderChatRooms(); },
     getDmViewState: () => ({ view: ui.dmView, sent: ui.dmSent }),
     /* Sprint 23 — 지역 게시판 · 통합 모임 찾기 · 스토리텔링 문구 연출 · 탭바 자동 숨김 */
