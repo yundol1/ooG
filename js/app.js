@@ -511,6 +511,8 @@ document.addEventListener('DOMContentLoaded', () => {
     joinedBody: $('#joined-groups-body'),
     composerGroupList: $('#composer-group-list'),
     composerGroupField: $('#composer-group-field'),
+    composerFreeNote: $('#composer-free-note'),
+    composerGroupHint: $('#composer-group-hint'),
     composerPhotos: $('#composer-photos'),
     btnComposerGallery: $('#btn-composer-gallery'),
     composerPhotoHint: $('#composer-photo-hint'),
@@ -1012,18 +1014,24 @@ document.addEventListener('DOMContentLoaded', () => {
    *    (?narr=1 로 강제, ?narr=0 으로 끔 · window.oog.setNarration)
    * ---------------------------------------------------------------- */
   /* Sprint 28.5 — 단계당 1.5초 이내. 타자는 연출일 뿐이고 입력란은 처음부터 열려 있다. */
+  /* v33.8 (#22158 · 11/22 12:38 사용자: "회원가입 시 문구가 너무 빨리 출력/전환") —
+     28.5에서 1.5초로 조여 둔 속도를 **읽을 수 있는 속도**로 늦췄다.
+       · 글자 34ms → 68ms (두 배), 줄바꿈 90 → 220, 쉼표 60 → 150, 마침표 100 → 260.
+       · 설명을 읽는 시간 10ms/자 → 26ms/자 (최소 0.9초 · 최대 2.0초).
+       · 제목→설명 숨 160 → 320, 스킵 힌트 0.6 → 1.2초(둘째 화면부터 0.8초).
+       → 한 단계가 약 2.8~3.4초에 걸쳐 찍히고, 그동안 입력란은 계속 열려 있다(기다림 없음). */
   const NARRATION_TIMING = {
-    char: 34,          // 한 글자
-    brHold: 90,        // 줄바꿈
-    commaHold: 60,     // 쉼표
-    periodHold: 100,   // 마침표 · 물음표
-    breath: 160,       // 제목 → 설명
-    descFade: 150,     // 설명이 떠오르는 시간
-    descRead: 10,      // 설명 한 글자를 읽는 시간
-    descMin: 240,
-    descMax: 520,
-    hintDelay: 600,    // '문구를 탭하면 바로 완성돼요'
-    hintDelayNext: 300
+    char: 68,          // 한 글자
+    brHold: 220,       // 줄바꿈
+    commaHold: 150,    // 쉼표
+    periodHold: 260,   // 마침표 · 물음표
+    breath: 320,       // 제목 → 설명
+    descFade: 300,     // 설명이 떠오르는 시간
+    descRead: 26,      // 설명 한 글자를 읽는 시간
+    descMin: 900,
+    descMax: 2000,
+    hintDelay: 1200,   // '문구를 탭하면 바로 완성돼요'
+    hintDelayNext: 800
   };
 
   /** 지금 화면이 첫 단계인지 — 스킵 힌트·기다림을 줄일지 정한다. */
@@ -1501,7 +1509,7 @@ document.addEventListener('DOMContentLoaded', () => {
     d.email = res.email;
     d.emailVerified = false;
     ui.obCode = res;
-    showToast('인증번호를 만들었어요 · 아래 모의 메일함에서 확인하세요', 'info');
+    showToast('인증번호를 만들었어요 · 아래 모의 메일함에서 확인하세요', 'info', null, { ms: 4200 });
     obGo(1);
   }
 
@@ -1517,7 +1525,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return showOnboardingError(msg);
     }
     d.emailVerified = true;
-    showToast('이메일 인증을 마쳤어요', 'success');
+    showToast('이메일 인증을 마쳤어요', 'success', null, { ms: 3200 });
     obGo(2);
   }
 
@@ -1630,7 +1638,7 @@ document.addEventListener('DOMContentLoaded', () => {
        가이드 안에서 취향을 묻고, 홈 하단 추천 모임이 그 답을 따라 고른다. */
     switchTab('tab-home');
     const u = store.currentUser;
-    showToast(`${u.nickname}님, ooG에 오신 걸 환영해요`, 'success');
+    showToast(`${u.nickname}님, ooG에 오신 걸 환영해요`, 'success', null, { ms: 4200 });
     /* Sprint 22 — 가이드는 **처음 가입한 사람에게만** 자동으로 뜬다.
        로그인·비밀번호 재설정으로 다시 들어온 사람에게 또 띄우면 방해가 된다. */
     if (!store.isDemoAccount() && store.getGuideState().needed) startGuide();
@@ -1728,7 +1736,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 앱을 다시 열면 언제나 1줄 요약으로 돌아온다 — 지난 펼침이 쌓여 화면이 길어지지 않게.
    * ------------------------------------------------------------------ */
 
-  function showToast(message, type = 'success', action = null) {
+  function showToast(message, type = 'success', action = null, opts = null) {
     if (!el.toast) return;
     el.toast.innerHTML = '<span class="toast-msg"></span>';
     el.toast.querySelector('.toast-msg').textContent = message;
@@ -1748,7 +1756,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.toast.className = `toast show ${type}`;
     clearTimeout(ui.toastTimer);
-    ui.toastTimer = setTimeout(() => { el.toast.className = 'toast'; }, action ? 4200 : 2200);
+    /* v33.8 — 읽어야 하는 안내(가입 인증·환영)는 opts.ms 로 조금 더 오래 띄운다. */
+    const holdMs = (opts && Number(opts.ms)) || (action ? 4200 : 2200);
+    ui.toastTimer = setTimeout(() => { el.toast.className = 'toast'; }, holdMs);
   }
 
   let lastFocused = null;
@@ -2232,7 +2242,69 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `멤버 ${grp.memberCount}명 · 사진 ${photos}장 · 스토리 ${story.total}`
         : `멤버 ${grp.memberCount}명 · 사진 ${photos}장`;
     }
+    applyGroupTopbarCover(grp);
   }
+
+  /* ------------------------------------------------------------------
+   * v33.8 (#22158 · IMG_4572) — 모임 상단 헤더에 대표 이미지 + 그라데이션
+   * ----------------------------------------------------------------
+   *  · 사진 커버가 있으면 그 사진을 헤더 배경으로 깐다(--gtb-cover).
+   *  · 없으면 그 취미의 분류 색 그라데이션 + 그 취미 아이콘을 사진 자리에 얹는다
+   *    ("사진 커버 또는 기본 아이콘/컬러").
+   *  · 가독성은 CSS의 어두운 스크림이 맡는다(항상 흰 글씨 — 라이트/다크 공통).
+   *  · 그라데이션·스크림은 배경층이라 글자 레이아웃은 그대로다(이름·인원 위치 불변).
+   */
+  const GROUP_TOP_COVER_TONES = ['green', 'violet', 'teal', 'amber', 'sky', 'coral', 'mint', 'neutral'];
+
+  function applyGroupTopbarCover(grp) {
+    const bar = document.querySelector('#group-space .group-topbar');
+    if (!bar || !grp) return;
+    const vis = groupCoverVisual(grp, 'card');
+    const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
+    /* 같은 모임을 다시 그릴 때 색 클래스가 쌓이지 않게 이전 것만 지운다. */
+    const prevTone = bar.getAttribute('data-cover-tone');
+    if (prevTone && prevTone !== tone) bar.classList.remove(`tone-${prevTone}`);
+    bar.classList.add('has-cover', `tone-${tone}`);
+    bar.setAttribute('data-cover-tone', tone);
+    const photo = vis.photoUrl ? String(vis.photoUrl) : '';
+    if (photo) {
+      /* CSS 변수 안의 url() 은 **스타일시트 기준**으로 풀린다(css/assets/... 로 잘못 잡힘).
+         그래서 문서 기준 절대 주소로 바꿔 넣는다(data:·http(s)는 그대로). */
+      let abs = photo;
+      if (!/^(data:|https?:)/i.test(photo)) {
+        try { abs = new URL(photo, document.baseURI).href; } catch (e) { abs = photo; }
+      }
+      bar.style.setProperty('--gtb-cover', `url("${abs.replace(/"/g, '%22')}")`);
+      bar.classList.add('has-photo');
+    } else {
+      bar.style.removeProperty('--gtb-cover');
+      bar.classList.remove('has-photo');
+    }
+    /* 사진이 없을 때만 보이는 작은 아이콘(사진 자리 오른쪽 위). */
+    let mark = bar.querySelector('.group-topbar-cover-mark');
+    if (!mark) {
+      mark = document.createElement('span');
+      mark.className = 'group-topbar-cover-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      const back = bar.querySelector('.group-back');
+      if (back && back.parentNode === bar) bar.insertBefore(mark, back.nextSibling);
+      else bar.appendChild(mark);
+    }
+    mark.innerHTML = ic(vis.icon);
+    syncCoverHeaderCompact();
+  }
+
+  /* v33.8 — 스크롤하면 모임 헤더가 사진 띠를 접고 한 줄로 줄어든다(고정 높이가 화면을 먹지 않게).
+     맨 위(28px 안쪽)에서는 사진이 보이는 큰 헤더, 내리면 이름만 남는 64px 헤더. */
+  function syncCoverHeaderCompact() {
+    const bar = document.querySelector('#group-space .group-topbar.has-cover');
+    if (!bar || !el.main) return;
+    bar.classList.toggle('is-compact', el.main.scrollTop > 28);
+  }
+
+  el.main && el.main.addEventListener('scroll', () => {
+    if (document.body.classList.contains('group-mode')) syncCoverHeaderCompact();
+  }, { passive: true });
 
   /* ==========================================================================
    * H1 (11/21) — 홈은 아래 요소만 남긴다
@@ -2472,8 +2544,8 @@ document.addEventListener('DOMContentLoaded', () => {
    * v33.7 (#22071) — 인스타그램식 사진 · #해시태그
    * ----------------------------------------------------------------
    *  · 글 한 건에 사진 최대 10장. 2장 이상이면 **가로 스와이프 캐러셀**
-   *    (우측 상단 `1/N` 배지 · 하단 도트). 트래스크는 `touch-action: pan-x`라
-   *    스와이프 뒤로가기 제스처와 부딪히지 않는다.
+   *    (우측 상단 `1/N` 배지 · 하단 도트). 트래스크는 `touch-action: pan-x pan-y`라
+   *    좌우는 캐러셀이, 위아래는 화면 스크롤이 먹는다(v33.8 — 예전 pan-x 는 세로를 막았다).
    *  · 본문의 `#해시태그`는 누를 수 있는 칩 — 누르면 그 태그가 붙은 글만 모아 본다.
    * ======================================================================== */
   const HASHTAG_RE = /#[0-9A-Za-z\uAC00-\uD7A3_]{1,24}/g;
@@ -2587,8 +2659,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const media = igMediaInnerHTML(images, tone, it.hobbyIcon);
     const mediaClass = images.length === 0 ? ' is-plain' : (images.length > 1 ? ' has-carousel' : '');
     const comments = (p.comments || []);
-    /* 모임명은 위 헤더에 이미 있으니, 아래 줄에는 만나는 곳(아지트)만 적는다 — 정확한 주소는 쓰지 않는다. */
-    const place = it.azitName || ((it.region && it.region.sigunguName) || '모임 안에서');
+    /* 모임명은 위 헤더에 이미 있으니, 아래 줄에는 만나는 곳(아지트)만 적는다 — 정확한 주소는 쓰지 않는다.
+       v33.8 — 모임 없이 올린 글(자유 피드)은 작성자의 동네를 보여 준다. */
+    const place = it.azitName || ((it.region && it.region.sigunguName) || (it.group ? '모임 안에서' : (it.regionName || '내 동네')));
     const when = new Date(p.createdAt);
     const hours = Math.max(0, Math.round((Date.now() - when.getTime()) / 36e5));
     const whenLabel = hours < 1 ? '방금' : (hours < 24 ? `${hours}시간 전` : `${Math.round(hours / 24)}일 전`);
@@ -2603,7 +2676,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="ig-head-text">
             <button class="ig-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(p.authorName)}</button>
             <span class="ig-subline">
-              <span class="ig-group">${escapeHtml(it.groupName)}</span>
+              ${it.group
+                ? `<span class="ig-group">${escapeHtml(it.groupName)}</span>`
+                : `<span class="ig-group ig-group-free">${escapeHtml(it.groupName)}</span>`}
               <span class="ig-place">${ic('map')} ${escapeHtml(place)}</span>
             </span>
           </span>
@@ -2659,8 +2734,9 @@ document.addEventListener('DOMContentLoaded', () => {
    *  흠어져 있던 '추천 그룹 · 추천 일정 · 피드'를 **하나의 피드 흐름**으로 합쳤다.
    *  · 주인공은 인스타형 피드 글(무제한 스크롤)
    *  · 글 2개마다 한 번씩 **가로로 넘기는 레일**(추천 그룹 ↔ 추천 일정 번갈아)이 끼어든다(릴스처럼).
-   *  · 레일은 `data-hscroll` + `touch-action: pan-x` — 좌우 드래그는 레일이 먹고,
-   *    스와이프 뒤로가기 제스처는 가로로 넘치는 영역에서 시작한 손을 건너뛰다(충돌 0).
+   *  · 레일은 `data-hscroll` + `touch-action: pan-x pan-y` — 좌우 드래그는 레일이,
+   *    위아래는 화면 스크롤이 먹는다(v33.8). 스와이프 뒤로가기 제스처는 가로로 넘치는
+   *    영역에서 시작한 손을 건너뛰다(충돌 0).
    * ======================================================================== */
   const FEED_RAIL_EVERY = 2;
 
@@ -4929,14 +5005,20 @@ document.addEventListener('DOMContentLoaded', () => {
   function igItemForPost(post) {
     const grp = store.getGroup(post.groupId);
     const azit = grp ? store.getGroupAzit(grp) : null;
+    const freePost = !grp;
+    const regionName = freePost
+      ? (post.regionName || store.getRegionLabel((store.currentUser || {}).regionId || '') || '')
+      : '';
     return {
       post,
       group: grp,
-      groupName: grp ? grp.name : '모임',
-      azitName: azit ? azit.name : '',
+      freePost,
+      groupName: grp ? grp.name : '자유 피드',
+      azitName: azit ? azit.name : (freePost ? (regionName || '내 동네') : ''),
+      regionName,
       azit,
       region: grp ? store.getGroupRegion(grp) : null,
-      hobbyName: grp ? grp.categoryName : '취미',
+      hobbyName: grp ? grp.categoryName : '자유 피드',
       hobbyIcon: grp ? ((store.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle',
       tone: grp ? store.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
       uid: `${post.id}#group`,
@@ -9580,21 +9662,25 @@ document.addEventListener('DOMContentLoaded', () => {
    * ======================================================================== */
   function openComposer(prefillGroupId) {
     const joined = store.getJoinedGroups();
-    if (!joined.length) {
-      showToast('글을 쓰려면 먼저 소모임에 가입해 주세요', 'warning');
-      return;
-    }
     /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다(모임 선택 한 번 줄임).
-       v33.7 — 모임 공간 안에서 열면 그 모임으로 **고정**되고 모임 선택 UI 는 숨긴다. */
+       v33.7 — 모임 공간 안에서 열면 그 모임으로 **고정**되고 모임 선택 UI 는 숨긴다.
+       v33.8 (#22181) — 가입한 모임이 없어도, 모임을 고르지 않아도 글을 쓸 수 있다(자유 피드).
+         그런 글은 홈 '피드'(추천 피드)에 무조건 올라간다. */
     const inGroup = isGroupMode();
     const viewing = inGroup ? ui.groupSpaceId
       : (ui.activeTab === 'tab-home' ? (ui.homeGroupId || store.getHomeGroupId()) : null);
-    const startGroup = store.getGroup(prefillGroupId || viewing || ui.feedGroupId) || joined[0];
+    /* 고를 수 있는 모임은 **지금 가입한 모임**뿐이다 — 탈퇴했거나 그룹이 0개면
+       그 자리는 비고, 글은 자유 피드(groupId 없음)로 올라간다. */
+    const pick = (id) => {
+      const g = id ? store.getGroup(id) : null;
+      return (g && store.isGroupJoined(g.id)) ? g : null;
+    };
+    const startGroup = pick(prefillGroupId) || pick(viewing) || pick(ui.feedGroupId) || joined[0] || null;
     /* H3 — 글을 쓸 때마다 '추천 피드 노출'은 **꺼진 상태**로 시작한다(모임 기본값을 따르지 않음).
        체크해야만 홈 추천 피드에 오른다. */
     ui.composer = {
-      editId: null, groupId: startGroup.id, tag: null, photoUrl: null,
-      images: [], recommendOptIn: false, lockedGroup: inGroup ? startGroup.id : null
+      editId: null, groupId: startGroup ? startGroup.id : null, tag: null, photoUrl: null,
+      images: [], recommendOptIn: false, lockedGroup: (inGroup && startGroup) ? startGroup.id : null
     };
     if (el.composerTitle) el.composerTitle.textContent = '새 게시물';
     if (el.publishBtn) el.publishBtn.textContent = '게시';
@@ -9606,13 +9692,28 @@ document.addEventListener('DOMContentLoaded', () => {
     openModal(el.composerModal);
   }
 
-  /** H3 — '추천 피드에 노출해도 괜찮아요' 체크박스(기본 꺼짐). */
+  /** H3 — '추천 피드에 노출해도 괜찮아요' 체크박스(기본 꺼짐).
+   *  v33.8 (#22181) — 모임 없이 올리는 '자유 피드' 글은 추천 피드에 **무조건** 노출이라
+   *  체크박스를 켜고 잠가 둔다(사유를 문구로 바뀌서 보여 준다). */
   function renderComposerRecommend() {
     if (!el.composerRecommendCheck) return;
-    const on = ui.composer.recommendOptIn === true;
+    const free = !ui.composer || ui.composer.groupId == null;
+    const on = free ? true : ui.composer.recommendOptIn === true;
     el.composerRecommendCheck.checked = on;
+    el.composerRecommendCheck.disabled = free;
     const row = el.composerRecommendCheck.closest('.optin-row');
-    if (row) row.classList.toggle('is-checked', on);
+    if (row) {
+      row.classList.toggle('is-checked', on);
+      row.classList.toggle('is-locked', free);
+      const title = row.querySelector('.feed-optin-title');
+      const desc = row.querySelector('.feed-optin-desc');
+      if (title) title.textContent = free ? '홈 피드에 바로 올라가요' : '추천 피드에 노출해도 괜찮아요';
+      if (desc) {
+        desc.textContent = free
+          ? '모임을 고르지 않고 올린 글은 홈 \'피드\'에 무조건 보여요.'
+          : '홈 \'추천 피드\'에 올라가요. 체크하지 않으면 이 모임 안에서만 보여요.';
+      }
+    }
   }
 
   /* (DOM 초기화 헬퍼) 캡션/사진 비우기 */
@@ -9628,9 +9729,20 @@ document.addEventListener('DOMContentLoaded', () => {
     /* v33.7 — 모임 공간 안에서 열었거나 글을 고치는 중이면 모임이 이미 정해져 있다(선택 UI 숨김). */
     const locked = !!(ui.composer.lockedGroup || ui.composer.editId);
     if (el.composerGroupField) el.composerGroupField.hidden = locked;
-    if (locked) { el.composerGroupList.innerHTML = ''; return; }
+    if (locked) { el.composerGroupList.innerHTML = ''; if (el.composerFreeNote) el.composerFreeNote.hidden = true; return; }
     const joined = store.getJoinedGroups();
-    el.composerGroupList.innerHTML = joined.map((g) => `
+    const free = ui.composer.groupId == null;
+    /* v33.8 (#22181) — 모임을 고르지 않아도 올릴 수 있는 첫 칸. 이 글은 홈 피드에 무조건 올라간다. */
+    const freeChip = `
+      <button class="composer-group-chip is-free ${free ? 'active' : ''}" data-pick-group="" type="button">
+        <span class="chip-thumb">${ic('globe')}</span>
+        <span class="chip-text">
+          <strong>그룹 없이 올리기</strong>
+          <span>자유 피드 · 홈에 바로 보여요</span>
+        </span>
+        <span class="chip-check">${ic('check')}</span>
+      </button>`;
+    el.composerGroupList.innerHTML = freeChip + joined.map((g) => `
       <button class="composer-group-chip ${ui.composer.groupId === g.id ? 'active' : ''}" data-pick-group="${g.id}">
         <span class="chip-thumb">${ic(g.icon)}</span>
         <span class="chip-text">
@@ -9640,6 +9752,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="chip-check">${ic('check')}</span>
       </button>
     `).join('');
+    if (el.composerFreeNote) el.composerFreeNote.hidden = !free;
   }
 
   /** Sprint 18 · v33.7 — 말머리 선택 UI 는 없앴다(본문 #해시태그가 그 자리를 대신한다). */
@@ -9677,7 +9790,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.publishBtn || !el.composerCaption) return;
     const caption = el.composerCaption.value.trim();
     const hasPhoto = !!((ui.composer && ui.composer.images) || []).length;
-    el.publishBtn.disabled = !(ui.composer.groupId && (caption || hasPhoto));
+    /* v33.8 (#22181) — 모임을 고르지 않은 글(자유 피드)도 올릴 수 있다. */
+    el.publishBtn.disabled = !(caption || hasPhoto);
     el.publishBtn.classList.toggle('ready', !el.publishBtn.disabled);
   }
 
@@ -9685,9 +9799,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const chip = e.target.closest('[data-pick-group]');
     if (!chip) return;
     if (ui.composer.lockedGroup) return;      // 모임 공간 안에서는 그 모임 고정
-    ui.composer.groupId = chip.dataset.pickGroup;
+    /* 빈 값 = 그룹 없이 올리기(자유 피드) */
+    ui.composer.groupId = chip.dataset.pickGroup || null;
     ui.composer.tag = null;
     renderComposerGroups();
+    renderComposerRecommend();
     updatePublishState();
   });
 
@@ -9751,14 +9867,16 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 33 — 글 작성도 경계(`post.create`)를 지난다. 화면이 먼저 글을 올리고(낙관적),
        실패하면 그 글을 걷어낸다(롤백). 글 id 를 화면이 만들어 재시도가 글을 두 개로 만들지 않는다. */
     const postId = `post_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`;
+    /* v33.8 (#22181) — groupId 가 없으면 '자유 피드' 글: 홈 피드에 무조건 노출된다. */
+    const freePost = !ui.composer.groupId;
     const post = store.createPost({ id: postId, groupId: ui.composer.groupId, ...payload });
     if (!post) {
-      showToast('모임과 내용을 확인해 주세요', 'warning');
+      showToast(freePost ? '내용이나 사진을 하나는 남겨 주세요' : '모임과 내용을 확인해 주세요', 'warning');
       return;
     }
     store.apiCall('post.create', {
       postId,
-      groupId: post.groupId,
+      groupId: post.groupId || null,
       caption: post.caption,
       images: post.images || [],
       photoUrl: post.photoUrl || '',
@@ -9774,10 +9892,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     closeModal(el.composerModal);
     ui.lastCreatedPostId = post.id;
-    goGroupFeed(post.groupId, 'feed');
+    if (post.groupId) {
+      goGroupFeed(post.groupId, 'feed');
+    } else {
+      /* 자유 피드 — 모임 밖 홈으로 나가서 그 글을 보여 준다(추천 피드 맨 위). */
+      if (isGroupMode()) exitGroupSpace();
+      switchTab('tab-home');
+      renderHomeSuggestFeed();
+    }
     updateBadges();
     const grp = store.getGroup(post.groupId);
-    showToast(`'${grp ? grp.name : '모임'}'에 게시했어요${post.recommendOptIn ? ' · 추천 피드에도 보여요' : ' · 이 모임 피드에만 보여요'}`);
+    showToast(post.groupId
+      ? `'${grp ? grp.name : '모임'}'에 게시했어요${post.recommendOptIn ? ' · 추천 피드에도 보여요' : ' · 이 모임 피드에만 보여요'}`
+      : '피드에 올렸어요 · 홈 피드에 바로 보여요',
+    'success', null, { ms: 3600 });
     renderHomeSuggestFeed();
     scrollTop();
   });
@@ -9791,16 +9919,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const grp = store.getGroup(post.groupId);
-    if (!grp) { showToast('모임을 찾지 못했어요', 'warning'); return; }
+    /* v33.8 — 모임 없이 올린 자유 피드 글도 고칠 수 있다. */
+    if (post.groupId && !grp) { showToast('모임을 찾지 못했어요', 'warning'); return; }
     const keepImages = store.getPostImages(post).slice(0, 10);
     ui.composer = {
       editId: post.id,
-      groupId: post.groupId,
+      groupId: post.groupId || null,
       tag: post.tag || null,
       photoUrl: post.photoUrl || null,
       images: [],
       recommendOptIn: post.recommendOptIn === true,
-      lockedGroup: post.groupId
+      lockedGroup: post.groupId || null
     };
     composerResetFields();
     ui.composer.images = keepImages;
@@ -14649,9 +14778,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const reduced = prefersReducedMotion();
     const automated = !force && typeof navigator !== 'undefined' && navigator.webdriver === true;
     const skipNow = off || automated;
-    /* Sprint 28.5 — 최대 1.5초. 앱 첫 렌더가 끝나면(ready) 0.55초만 보여주고 바로 걷힌다. */
-    const minMs = reduced ? 100 : 550;
-    const stayMs = reduced ? 140 : 1500;
+    /* Sprint 28.5 — 최대 1.5초. 앱 첫 렌더가 끝나면(ready) 0.55초만 보여주고 바로 걷힌다.
+       v33.8 (#22203 · 11/22 12:46 사용자: "oog를 실행했을때 나오는 첫 로딩화면을 좀만 더 길게") —
+       최소 노출 550ms → **1,500ms**, 하드 상한 1,500ms → **1,800ms**.
+       (손가락·키 입력이 있으면 지금처럼 바로 건넌뛰고, 동작 줄이기·자동화 테스트는 짧게/생략 유지) */
+    const minMs = reduced ? 100 : 1500;
+    const stayMs = reduced ? 140 : 1800;
     const leaveMs = reduced ? 0 : 200;
     const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const state = {

@@ -682,8 +682,10 @@
         <div class="composer-body ig-composer-body">
           <!-- 모임 — 모임 공간 안에서 열면 그 모임이 이미 정해져 있어 숨긴다(v33.7). -->
           <div class="field-group" id="composer-group-field">
-            <label class="field-label">모임 <span class="field-hint">가입한 모임에만 올릴 수 있어요</span></label>
+            <label class="field-label">모임 <span class="field-hint" id="composer-group-hint">고르지 않아도 올릴 수 있어요</span></label>
             <div class="composer-group-list" id="composer-group-list"><!-- JS --></div>
+            <!-- v33.8 (#22181) — 모임을 고르지 않았을 때만 보이는 안내 -->
+            <p class="composer-free-note" id="composer-free-note" hidden>피드에 바로 올라가요 · 홈 '피드'에 무조건 보여요</p>
           </div>
 
           <!-- v33.7 — 인스타그램처럼 사진을 먼저 고른다. 여는 것은 **우그 자체 갤러리**(#gallery-modal)다. -->

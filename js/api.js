@@ -363,7 +363,8 @@
     'post.create': {
       method: 'POST', mutate: true, idempotent: true,
       params: {
-        groupId: { type: 'string', required: true, max: 80 },
+        /* v33.8 (#22181) — groupId 없이 올리는 '자유 피드' 글을 받는다(생략 가능). */
+        groupId: { type: 'string', optional: true, max: 80 },
         caption: { type: 'string', optional: true, max: 500 },
         photoUrl: { type: 'string', optional: true, max: 8000000 },
         mediaCaption: { type: 'string', optional: true, max: 40 },
@@ -376,7 +377,7 @@
         const existing = p.postId ? store.getPost(p.postId) : null;
         const post = existing || store.createPost({
           id: p.postId || null,
-          groupId: p.groupId,
+          groupId: p.groupId || null,
           caption: p.caption || '',
           photoUrl: p.photoUrl || '',
           mediaCaption: p.mediaCaption || '',
@@ -384,6 +385,7 @@
           recommendOptIn: p.recommendOptIn === true
         });
         if (!post) {
+          if (!p.groupId) throw new ApiError('validation', '내용이나 사진을 하나는 남겨 주세요', { details: { field: 'caption' } });
           const group = store.getGroup ? store.getGroup(p.groupId) : null;
           if (!group) throw new ApiError('not_found', '그 모임을 찾지 못했어요', { details: { groupId: p.groupId } });
           if (store.isGroupJoined && !store.isGroupJoined(p.groupId)) throw new ApiError('unauthorized', '이 모임의 멤버만 글을 쓸 수 있어요', { details: { groupId: p.groupId } });

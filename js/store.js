@@ -5747,10 +5747,16 @@ class Store {
   }
 
   createPost(data) {
-    const groupId = data && data.groupId;
-    const group = this.getGroup(groupId);
-    if (!group) return null;
-    if (!this.isGroupJoined(groupId)) return null;          // 가입한 모임에만 작성
+    const groupId = (data && data.groupId) || null;
+    const group = groupId ? this.getGroup(groupId) : null;
+    /* v33.8 (#22181 · 11/22 12:43 사용자: "홈탭에서 그룹에 안들어가도 즉 그룹이 없어도 됨.
+       피드를 올릴수 있게해줄래? 이거는 추천피드에 무조건 떠야해") — 모임을 고르지 않은 글은
+       '자유 피드' 글로 저장하고 추천(홈) 피드에 **무조건** 노출한다. */
+    const freePost = !groupId;
+    if (!freePost) {
+      if (!group) return null;
+      if (!this.isGroupJoined(groupId)) return null;          // 가입한 모임에만 작성
+    }
     /* Sprint 33 — 경계(`post.create`)가 같은 postId 로 다시 부르면 그 글을 돌려준다(중복 없음). */
     const wantedId = data && data.id;
     if (wantedId) {
@@ -5764,13 +5770,17 @@ class Store {
     const photoUrl = images[0] || null;
     if (!caption && !images.length) return null;
 
-    const tag = data.tag && group.customTags.includes(data.tag) ? data.tag : null;
+    const tag = (data.tag && group && group.customTags.includes(data.tag)) ? data.tag : null;
     const user = this.state.currentUser;
+    const regionName = freePost ? this.getRegionLabel((user && user.regionId) || '') : '';
     const post = {
       /* 같은 1ms 안에 두 글을 써도 id 가 겹치지 않게 뒤에 짧은 난수를 붙인다(32.5).
          Sprint 33 — 화면이 먼저 만든 글(낙관적 업데이트)의 id 를 그대로 쓴다. */
       id: wantedId || `post_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
-      groupId,
+      groupId: freePost ? null : groupId,
+      /* 모임 없이 올린 글 — '자유 피드'. 카드 머리말과 홈 노출 판단이 이 값을 본다. */
+      freePost,
+      regionName,
       authorId: user.id,
       authorName: user.nickname,
       authorAvatarText: user.avatarText,
@@ -5789,7 +5799,9 @@ class Store {
       /* Sprint 32.5 — 홈 '추천 피드'에 보여도 된다고 고른 글만 (기본은 모임 안에만).
          H3(11/21) — **모임 기본값을 따르지 않는다.** 글을 쓸 때마다 기본은 꺼짐(false)이고,
          '추천 피드에 노출해도 괜찮아요'를 체크한 글만 홈 추천 피드에 오른다. */
-      recommendOptIn: data.recommendOptIn === true,
+      recommendOptIn: freePost ? true : data.recommendOptIn === true,
+      /* 그룹 없이 올린 글은 홈 피드에 무조건 — 화면·감사가 읽는 이름 그대로 남긴다. */
+      showInHomeFeed: freePost ? true : data.recommendOptIn === true,
       createdAt: new Date().toISOString()
     };
     this.state.feedPosts.unshift(post);
@@ -5820,7 +5832,12 @@ class Store {
     if (patch.tag !== undefined) {
       post.tag = patch.tag && group && group.customTags.includes(patch.tag) ? patch.tag : null;
     }
-    if (patch.recommendOptIn != null) post.recommendOptIn = patch.recommendOptIn === true;
+    if (patch.recommendOptIn != null) {
+      /* 자유 피드 글은 홈 노출을 끌 수 없다(무조건 노출). */
+      const on = post.freePost === true ? true : patch.recommendOptIn === true;
+      post.recommendOptIn = on;
+      post.showInHomeFeed = on;
+    }
     post.editedAt = new Date().toISOString();
     this.saveState();
     return { ok: true, post };
@@ -7086,20 +7103,27 @@ class Store {
     const o = options || {};
     const limit = o.limit == null ? 6 : Math.max(1, Number(o.limit));
     return (this.state.feedPosts || [])
-      .filter((p) => p && p.recommendOptIn === true)
+      /* v33.8 — 자유 피드(그룹 없이 올린 글)는 showInHomeFeed 로도 받아 준다(무조건 노출). */
+      .filter((p) => p && (p.recommendOptIn === true || p.showInHomeFeed === true))
       .map((p) => {
         const grp = this.getGroup(p.groupId);
         const azit = grp ? this.getGroupAzit(grp) : null;
         const hangouts = grp ? this.getGroupHangouts(grp) : [];
+        const freePost = !grp;
+        const regionName = freePost
+          ? (p.regionName || this.getRegionLabel((this.state.currentUser || {}).regionId || '') || '')
+          : '';
         return {
           post: p,
           group: grp,
-          groupName: grp ? grp.name : '모임',
-          azitName: azit ? azit.name : '',
+          freePost,
+          groupName: grp ? grp.name : '자유 피드',
+          azitName: azit ? azit.name : (freePost ? (regionName || '내 동네') : ''),
+          regionName,
           azit,
           hangouts,
           region: grp ? this.getGroupRegion(grp) : null,
-          hobbyName: grp ? grp.categoryName : '취미',
+          hobbyName: grp ? grp.categoryName : '자유 피드',
           hobbyIcon: grp ? ((this.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle',
           tone: grp ? this.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
           likeCount: p.likes || 0,

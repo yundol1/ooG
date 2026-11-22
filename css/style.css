@@ -971,7 +971,7 @@ img, svg { display: block; }
   color: var(--green-dark);
 }
 
-.feed-container { padding: 12px 14px 0; }
+.feed-container { padding: 12px 14px 0; --feed-pad-x: 14px; }
 
 /* --- 피드 카드 --- */
 .feed-card {
@@ -4269,7 +4269,7 @@ img, svg { display: block; }
    10. 반응형
    ========================================================================== */
 @media (max-width: 380px) {
-  .feed-container { padding: 10px 10px 0; }
+  .feed-container { padding: 10px 10px 0; --feed-pad-x: 10px; }
   .tab-view { padding: var(--sp-3) var(--sp-3) var(--sp-5); }
   .media-picker { grid-template-columns: repeat(3, 1fr); }
 }
@@ -9208,7 +9208,7 @@ body {
   overflow-x: auto;
   scrollbar-width: none;
   scroll-behavior: smooth;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;   /* v33.8 — 세로 스크롤을 막지 않는다(가로만 먹으면 레일 위에서 화면이 멈춘다) */
 }
 
 .home-switcher::-webkit-scrollbar { display: none; }
@@ -11270,7 +11270,7 @@ body.group-mode #bottom-nav { display: none; }
   padding: 6px var(--gutter-x) 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;   /* v33.8 — 세로 스크롤을 막지 않는다(가로만 먹으면 레일 위에서 화면이 멈춘다) */
 }
 
 .story-rail::-webkit-scrollbar { display: none; }
@@ -24285,8 +24285,8 @@ button.caption-author::after {
 /* ============================================================================
    Sprint 33 — 홈 통합 피드: 글 사이에 끼어드는 가로 레일 (추천 그룹 · 추천 일정)
    루키 님 #21895: 인스타그램처럼 피드를 내리다가 릴스처럼 가로로 넘겨 보는 레일이
-   중간중간 나온다. 좌우 드래그는 레일이 먹고(touch-action: pan-x) 스와이프 뒤로가기는
-   가로로 넘치는 영역에서 시작한 손을 건너뛴다.
+   중간중간 나온다. 좌우 드래그는 레일이 먹고(touch-action: pan-x pan-y — v33.8에서 위아래도
+   열어 두었다) 스와이프 뒤로가기는 가로로 넘치는 영역에서 시작한 손을 건너뛴다.
    ========================================================================== */
 .feed-rail {
   margin: 16px 0 12px;
@@ -24332,7 +24332,7 @@ button.caption-author::after {
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
+  touch-action: pan-x pan-y;   /* v33.8 — 세로 스크롤을 막지 않는다(가로만 먹으면 레일 위에서 화면이 멈춘다) */
   scrollbar-width: none;
   padding: 0 14px 6px;
 }
@@ -24560,7 +24560,7 @@ button.caption-author::after {
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
-  touch-action: pan-x;          /* 좌우는 캐러셀이 먹고, 스와이프 뒤로가기와 부딪히지 않는다 */
+  touch-action: pan-x pan-y;    /* v33.8 — 좌우는 캐러셀이, 위아래는 화면이 먹는다 */
   scrollbar-width: none;
 }
 .ig-carousel-track::-webkit-scrollbar { display: none; }
@@ -24891,3 +24891,152 @@ button.caption-author::after {
 
 /* v33.7 — 추천 피드 노출 체크박스: 손가락 영역을 46px로(감사에서 42px로 측정되던 2px 부족 해소) */
 .optin-check::after { inset: -11px; }
+
+/* ==========================================================================
+   v33.8 (2026-11-22, #22158 · IMG_4572 · IMG_4573) — 라이브 사용 피드백 4건
+   --------------------------------------------------------------------------
+   ① 모임 공간 상단 헤더에 대표 이미지 + 그라데이션 스크림
+   ② 가로 레일·캐러셀 위에서 세로 스크롤이 멈추지 않게 (touch-action: pan-x pan-y)
+   ③ 인스타형 피드 사진은 화면 끝에서 끝까지 (Full-bleed)
+   ④ 가입 문구가 천천히 찍히도록 (속도 값은 js/app.js NARRATION_TIMING 한 곳)
+   ========================================================================== */
+
+/* ---------------------------------------- ① 모임 상단 헤더 — 대표 이미지 + 스크림
+   사진이 있으면 그 사진, 없으면 취미 대분류 색 그라데이션(JS가 --gtb-cover 를 넣는다).
+   글자는 어떤 사진 위에서도 읽히도록 **아래로 갈수록 짙어지는 어두운 스크림** 위에
+   흰색으로 앉힌다. 사진은 위쪽 40%에서 보이고, 이름·인원이 놓이는 아래쪽은 짙다.
+   (다크·라이트 모두 같은 스크림 — 흰 글씨라 테마와 무관하게 대비가 유지된다) */
+#group-space .group-topbar.has-cover {
+  /* 사진 커버가 없으면 이 값(취미 분류 색 → 어두운 남색)이 배경이 된다.
+     사진이 있으면 JS가 --gtb-cover 를 그 사진의 절대 주소로 바꾼다. */
+  --gtb-cover: linear-gradient(135deg, var(--tone-ink, #0F766E) 0%, #0B1220 86%);
+  /* 이름·인원은 아래 줄, 위쪽은 사진이 보이는 자리(그리드 둘째 줄에 버튼·글) */
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: 8px;
+  min-height: 132px;
+  padding: 10px 12px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: #0B1017;
+  background-image:
+    linear-gradient(180deg,
+      rgba(6, 10, 15, 0.02) 0%,
+      rgba(6, 10, 15, 0.10) 30%,
+      rgba(6, 10, 15, 0.30) 43%,
+      rgba(6, 10, 15, 0.74) 51%,
+      rgba(6, 10, 15, 0.90) 57%,
+      rgba(6, 10, 15, 0.96) 64%,
+      rgba(6, 10, 15, 0.97) 100%),
+    var(--gtb-cover, linear-gradient(135deg, var(--tone-ink, #0F766E) 0%, #0B1220 86%));
+  background-size: cover, cover;
+  background-position: center, center;
+  background-repeat: no-repeat, no-repeat;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: hidden;
+  transition: min-height 160ms ease, padding 160ms ease;
+}
+#group-space .group-topbar.has-cover .group-back { grid-column: 1; grid-row: 2; }
+#group-space .group-topbar.has-cover .group-topbar-text { grid-column: 2; grid-row: 2; min-width: 0; }
+#group-space .group-topbar.has-cover .group-topbar-act { grid-column: 3; grid-row: 2; }
+/* 스크롤하면 사진 띠는 접고 한 줄 높이(64)로 — 고정된 헤더가 화면을 먹지 않게. */
+#group-space .group-topbar.has-cover.is-compact {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 8px 12px;
+  background-image:
+    linear-gradient(180deg, rgba(6, 10, 15, 0.92) 0%, rgba(6, 10, 15, 0.96) 100%),
+    var(--gtb-cover, linear-gradient(135deg, var(--tone-ink, #0F766E) 0%, #0B1220 86%));
+}
+#group-space .group-topbar.has-cover .group-topbar-name {
+  color: #FFFFFF;
+  text-shadow: none;
+}
+#group-space .group-topbar.has-cover .group-topbar-meta {
+  color: rgba(255, 255, 255, 0.90);
+}
+#group-space .group-topbar.has-cover .group-back {
+  background: rgba(10, 15, 21, 0.46);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #FFFFFF;
+}
+#group-space .group-topbar.has-cover .group-back:hover,
+#group-space .group-topbar.has-cover .group-back:active {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.46);
+  color: #FFFFFF;
+}
+#group-space .group-topbar.has-cover .group-topbar-act {
+  background: rgba(10, 15, 21, 0.46);
+  border-color: rgba(255, 255, 255, 0.30);
+  color: #FFFFFF;
+}
+#group-space .group-topbar.has-cover .group-topbar-act:hover,
+#group-space .group-topbar.has-cover .group-topbar-act:active {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(255, 255, 255, 0.44);
+  color: #FFFFFF;
+}
+/* 사진이 없을 때만 — 그 취미의 아이콘을 사진 자리(위 오른쪽)에 옅게 얹는다. */
+.group-topbar-cover-mark {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: rgba(255, 255, 255, 0.60);
+  pointer-events: none;
+}
+.group-topbar-cover-mark .oo-ic { font-size: 26px; }
+#group-space .group-topbar.has-cover.has-photo .group-topbar-cover-mark { display: none; }
+
+/* ---------------------------------------- ③ 피드 사진 Full-bleed
+   카드(.ig-post)는 탭 화면의 좌우 여백(--gutter-x) 안에 있고, 카드 자신은 좌우 여백이
+   없다. 그래서 사진만 그 여백의 반대편으로 밀어 화면 끝(0 ~ 390px)에 붙인다.
+   글자(작성자·좋아요·본문·댓글)는 그대로 여백을 지킨다. 가로 넘침은 0px. */
+.ig-post .ig-media {
+  width: calc(100% + (var(--gutter-x) * 2));
+  margin-left: calc(-1 * var(--gutter-x));
+  margin-right: calc(-1 * var(--gutter-x));
+  border-radius: 0;
+}
+/* 모임 피드(#feed-posts-container)는 .home-block(좌우 12)과 컨테이너 좌우 여백(--gutter-x)을
+   한 겹 더 지난다 — 그 두 겹(.tab-view·#group-space 여백은 서로 상쇄)을 같이 거슬러 올라간다. */
+.group-feed .ig-post .ig-media {
+  /* 좌우로 지나야 하는 여백 = group-space 여백(--gutter-x) + .home-block 12 + 피드 컨테이너 여백 */
+  --bleed-x: calc(var(--gutter-x) + 12px + var(--feed-pad-x, 14px));
+  width: calc(100% + (var(--bleed-x) * 2));
+  margin-left: calc(-1 * var(--bleed-x));
+  margin-right: calc(-1 * var(--bleed-x));
+}
+/* 글 상세(바텀시트)의 큰 사진도 같은 방식으로 시트 여백 밖까지. */
+.post-detail-sheet .post-detail-media {
+  width: calc(100% + (var(--sheet-pad-x) * 2));
+  margin-left: calc(-1 * var(--sheet-pad-x));
+  margin-right: calc(-1 * var(--sheet-pad-x));
+  border-radius: 0;
+}
+
+/* ---------------------------------------- ④ 가입 단계 전환 — 조금 더 여유 있게 */
+.ob-step { animation-duration: 0.42s; }
+
+/* ---------------------------------------- ⑤ 그룹 없이 올리는 자유 피드 (#22181)
+   글쓰기 첫 칸 '그룹 없이 올리기' · 고르지 않았을 때의 안내 · 잠긴 추천 피드 체크. */
+.composer-group-chip.is-free .chip-thumb { background: var(--green-soft); color: var(--green-text); }
+.composer-group-chip.is-free .chip-text strong { color: var(--green-text); }
+.composer-free-note {
+  margin: 2px 0 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  color: var(--green-text);
+  line-height: 1.4;
+}
+.composer-free-note[hidden] { display: none; }
+.feed-optin.is-locked { opacity: 1; pointer-events: none; }
+.feed-optin.is-locked .feed-optin-title { color: var(--green-text); }
+.ig-group.ig-group-free { color: var(--green-text); font-weight: var(--fw-label); }
