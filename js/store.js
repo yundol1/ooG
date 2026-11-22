@@ -4174,6 +4174,11 @@ function blankCurrentUser() {
     bio: '',
     joinedGroupIds: [],
     exploreProfileVisible: false,
+    /* v34.4 (#22760·#22772) — 다녀온 모임을 타인에게 보일지 · 어떤 모임을 보일지.
+       pastMeetingsPublic=false 면 숫자까지 통째로 숨기고, true 면 pastMeetingVisibility 에서
+       false 로 둔 모임만 빼고 보여 준다. */
+    pastMeetingsPublic: true,
+    pastMeetingVisibility: {},
     /* Sprint 17 — 탐색 사람 카드 꾸미기(대표 사진·한 줄 소개) */
     exploreCard: { photoUrl: null, intro: '' },
     /* Sprint 24 — 2시간 탐색 프로필 · 공개/비밀 앨범 · 비밀앨범 공개 대상 */
@@ -4238,7 +4243,7 @@ function stripAllContent(state) {
  *    tools/prepare_example_images_v337.py
  *  · `#demo` 시드(예전 데모 계정)와는 id 접두사(sample_)로 분리해 서로 덮지 않는다.
  * ========================================================================== */
-const SAMPLE_DATA_VERSION = 5;
+const SAMPLE_DATA_VERSION = 6;
 const SAMPLE_FALLBACK_REGION = 'seoul-seongdong-gwangjin';
 /* 예시 중 **내가 가입한 모임** 두 곳 — 나머지 셋은 둘러보기용이다. */
 const SAMPLE_JOINED_GROUP_IDS = ['sample_grp_run', 'sample_grp_board'];
@@ -4679,6 +4684,18 @@ function upgradeSampleData(state) {
   if (!hasHike && hasHikeGroup) {
     state.groupEvents = (state.groupEvents || []).concat(sampleGroupEvents().filter((e) => e.id === 'sample_evt_hike'));
   }
+  /* v34.4 — 예시 사람들의 '다녀온 모임' 기록(지난 일정)을 한 번 채운다. */
+  const hasPastRecords = (state.groupEvents || []).some((e) => e && e.id === 'sample_evt_run_past');
+  const sampleGroupIds = new Set((state.groups || []).filter((g) => g && g.sample === true).map((g) => g.id));
+  if (!hasPastRecords && sampleGroupIds.size) {
+    state.groupEvents = (state.groupEvents || []).concat(
+      samplePastGroupEvents().filter((e) => sampleGroupIds.has(e.groupId))
+    );
+  }
+  /* 지난 일정은 게스트 참여 대상이 아니다(추천 일정·게스트 신청에 오르지 않는다). */
+  (state.groupEvents || []).forEach((e) => {
+    if (e && /^sample_evt_.*_past$/.test(e.id)) e.guestOpen = false;
+  });
   return state;
 }
 
@@ -4822,8 +4839,57 @@ function sampleGroupNotices() {
   ];
 }
 
-function sampleGroupEvents() {
+/* v34.4 (#22762) — 예시 사람들의 '다녀온 모임' 기록.
+ * 타인 프로필에서 다녀온 모임 숫자를 눌렀을 때 빈 화면만 나오지 않도록,
+ * 예시 모임마다 지난 일정 1건과 그 자리에 참석한 예시 사람들을 둔다(모두 sample). */
+function samplePastGroupEvents() {
   return [
+    {
+      id: 'sample_evt_run_past', groupId: 'sample_grp_run', kind: 'workout', title: '지난주 토요일 5K',
+      when: ago(12 * 24 * HOUR), place: '', note: '같이 뛰고 커피 한 잔. 다음 주에도 같은 시간에 만나요.',
+      capacity: 10, createdBy: 'sample_p_mora', createdByName: '모래',
+      rsvps: [
+        { memberId: 'sample_p_mora', name: '모래', avatarText: '모', gradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)', status: 'yes' },
+        { memberId: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', status: 'yes' },
+        { memberId: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', status: 'yes' }
+      ],
+      guestOpen: false, sample: true, createdAt: ago(18 * 24 * HOUR)
+    },
+    {
+      id: 'sample_evt_board_past', groupId: 'sample_grp_board', kind: 'etc', title: '보드게임 정기전',
+      when: ago(19 * 24 * HOUR), place: '', note: '신작 두 개 돌려 보고, 다음 모임 날짜를 정했어요.',
+      capacity: 8, createdBy: 'sample_p_danchu', createdByName: '단추',
+      rsvps: [
+        { memberId: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', status: 'yes' },
+        { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)', status: 'yes' }
+      ],
+      guestOpen: false, sample: true, createdAt: ago(25 * 24 * HOUR)
+    },
+    {
+      id: 'sample_evt_climb_past', groupId: 'sample_grp_climb', kind: 'workout', title: '평일 저녁 볼더링',
+      when: ago(6 * 24 * HOUR), place: '', note: '초보 루트부터 차근차근. 끝나고 다 같이 스트레칭했어요.',
+      capacity: 10, createdBy: 'sample_p_haru', createdByName: '하루',
+      rsvps: [
+        { memberId: 'sample_p_haru', name: '하루', avatarText: '하', gradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', status: 'yes' },
+        { memberId: 'sample_p_mora', name: '모래', avatarText: '모', gradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)', status: 'yes' }
+      ],
+      guestOpen: false, sample: true, createdAt: ago(11 * 24 * HOUR)
+    },
+    {
+      id: 'sample_evt_cafe_past', groupId: 'sample_grp_cafe', kind: 'meal', title: '주말 카페 한 곳',
+      when: ago(9 * 24 * HOUR), place: '', note: '조용한 카페에서 한 시간 수다. 다음엔 원두 사러 같이 가요.',
+      capacity: 6, createdBy: 'sample_p_choko', createdByName: '초코',
+      rsvps: [
+        { memberId: 'sample_p_choko', name: '초코', avatarText: '초', gradient: 'linear-gradient(135deg, #DE8E08 0%, #F3700C 100%)', status: 'yes' },
+        { memberId: 'sample_p_danchu', name: '단추', avatarText: '단', gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', status: 'yes' }
+      ],
+      guestOpen: false, sample: true, createdAt: ago(14 * 24 * HOUR)
+    }
+  ];
+}
+
+function sampleGroupEvents() {
+  return samplePastGroupEvents().concat([
     {
       id: 'sample_evt_run', groupId: 'sample_grp_run', kind: 'workout', title: '토요일 아침 5K',
       when: atClock(3, 8, 0), place: '동네 공원 입구', note: '가볍게 5K. 끝나고 근처에서 커피 한 잔 해요.',
@@ -4856,7 +4922,7 @@ function sampleGroupEvents() {
       guestOpen: true,
       sample: true, createdAt: ago(20 * HOUR)
     }
-  ];
+  ]);
 }
 
 function sampleGroupChats() {
@@ -5369,6 +5435,10 @@ class Store {
           ? cu.album[kind].filter((p) => p && p.url).slice(0, 4) : [];
       });
       cu.secretShares = (cu.secretShares && typeof cu.secretShares === 'object') ? cu.secretShares : {};
+      /* v34.4 — 다녀온 모임 공개 범위(옛 저장 상태에는 없으므로 '전체 공개'로 시작한다). */
+      cu.pastMeetingsPublic = cu.pastMeetingsPublic !== false;
+      if (!cu.pastMeetingVisibility || typeof cu.pastMeetingVisibility !== 'object'
+        || Array.isArray(cu.pastMeetingVisibility)) cu.pastMeetingVisibility = {};
       /* Sprint 27 — 예전에 저장된 '텅 빈' 계정에도 최소 예시 데이터를 넣는다.
          (가이드가 빈 화면을 비추던 문제) 내가 만든 내용이 하나라도 있으면 건드리지 않고,
          '예시 데이터 비우기'를 누른 상태(cleared)도 다시 넣지 않는다. */
@@ -8642,6 +8712,38 @@ class Store {
     return changed;
   }
 
+  /* ------------------------------------------------------------------
+   * v34.4 (#22772) — 사용자 아이디(@id) 규칙 한 곳
+   *  · 소문자·숫자·밑줄·점 3~20자(프로필 수정과 같은 규칙을 가입에서도 쓴다).
+   * ------------------------------------------------------------------ */
+  cleanHandle(value) {
+    return String(value == null ? '' : value).trim().replace(/^@+/, '').toLowerCase();
+  }
+
+  /** 이 아이디를 쓸 수 있는가 — 형식은 화면이 먼저 보고, 여기서는 중복을 본다. */
+  isHandleAvailable(value, exceptHandle) {
+    const h = this.cleanHandle(value);
+    if (!/^[a-z0-9._]{3,20}$/.test(h)) return false;
+    const keep = this.cleanHandle(exceptHandle !== undefined ? exceptHandle : (this.currentUser || {}).handle);
+    if (h === keep) return true;
+    const same = (x) => this.cleanHandle(x) === h;
+    return !((this.state.matchProfiles || []).concat(this.state.partnerProfiles || []).some((p) => same(p.handle))
+      || ((this.state.personas && Object.values(this.state.personas)) || []).some((p) => same(p.handle)));
+  }
+
+  /** 가입 화면에 미리 채워 둘 기본 아이디 — 닉네임에서 영문을 살리고, 모자라면 oog+숫자. */
+  suggestHandle(seed) {
+    const base = this.cleanHandle(seed).replace(/[^a-z0-9._]/g, '').replace(/^[._]+/, '').slice(0, 14);
+    const stem = base.length >= 3 ? base : 'oog';
+    let candidate = base.length >= 3 ? base : `${stem}${Math.floor(Math.random() * 90000) + 10000}`;
+    let tries = 0;
+    while (!this.isHandleAvailable(candidate) && tries < 40) {
+      tries += 1;
+      candidate = `${stem}${Math.floor(Math.random() * 90000) + 10000}`.slice(0, 20);
+    }
+    return candidate;
+  }
+
   /**
    * 마이프로필 수정. v34.2 부터는 **닉네임·사용자 아이디·대표 취미(1~3)·소개** 네 가지다
    * (인스타그램 편집처럼 행 4개). 지역·활동 시간대는 넘기지 않으면 그대로 둔다.
@@ -10992,6 +11094,103 @@ class Store {
     return { upcoming, past, total: mine.length };
   }
 
+  /* ==========================================================================
+   * v34.4 (#22760 · #22772) — 다녀온 모임(지난 일정) · 공개 범위
+   * --------------------------------------------------------------------------
+   * 11/22 22:27 루키 님: "다녀온 일정은 본인한테는 다 보이지만 여기서 공개 또는 비공개로
+   * 전환해서(토글형식으로) 타 이용자에게 보이도록" · "아예 숫자도 … 안 보이게".
+   *
+   *  · 나   : 내가 참석(yes)했거나 만든 지난 일정 전부. 숫자도 전체 개수.
+   *  · 타인 : 그 사람이 참석/개설한 지난 일정에서 그 사람이 공개한 것만.
+   *           숫자까지 비공개면 숫자 대신 '비공개'를 보여 준다.
+   * ========================================================================== */
+  /** 한 사람의 다녀온 모임 — 나는 내 일정에서, 남은 일정 기록에서 파생한다. */
+  getPersonPastMeetings(personId) {
+    const meId = (this.currentUser || {}).id;
+    const id = personId || meId;
+    if (!id) return [];
+    if (id === meId) return this.getMySchedule().past;
+    const now = Date.now();
+    return (this.state.groupEvents || [])
+      .filter((e) => e && new Date(e.when).getTime() < now)
+      .filter((e) => e.createdBy === id
+        || (Array.isArray(e.rsvps) && e.rsvps.some((r) => r.memberId === id && r.status === 'yes')))
+      .map((e) => {
+        const grp = this.getGroup(e.groupId);
+        return {
+          ...e,
+          ...this.getGroupEventSummary(e.id),
+          past: true,
+          groupName: grp ? grp.name : '',
+          kindMeta: this.getGroupEventKindsLabel(e.kind)
+        };
+      })
+      .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime());
+  }
+
+  /** 내가 이 다녀온 모임을 타인에게 보여 주는가(전체 비공개면 무조건 false). */
+  isPastMeetingShared(eventId) {
+    const cu = this.currentUser || {};
+    if (cu.pastMeetingsPublic === false) return false;
+    const map = cu.pastMeetingVisibility || {};
+    return map[eventId] !== false;
+  }
+
+  /** 전체 공개/비공개 — 끄면 숫자까지 숨기고, 켜면 모임별 설정을 따른다. */
+  setPastMeetingsPublic(on) {
+    this.currentUser.pastMeetingsPublic = on === true;
+    this.saveState();
+    return { ok: true, public: this.currentUser.pastMeetingsPublic };
+  }
+
+  /** 모임 하나만 공개/비공개. */
+  setPastMeetingShared(eventId, on) {
+    if (!eventId) return { ok: false, reason: 'bad_event' };
+    const cu = this.currentUser || {};
+    if (!cu.pastMeetingVisibility || typeof cu.pastMeetingVisibility !== 'object') cu.pastMeetingVisibility = {};
+    cu.pastMeetingVisibility[eventId] = on === true;
+    this.saveState();
+    return { ok: true, eventId, shared: cu.pastMeetingVisibility[eventId] };
+  }
+
+  /**
+   * 화면이 쓰는 한 묶음 — 나와 타인을 같은 모양으로 돌려준다.
+   * @returns {{isMe:boolean, hidden:boolean, total:number, shared:number, list:Array, visible:Array}}
+   *   list    : 본인에게 보이는 전체(타인에게는 공개 목록)
+   *   visible : 지금 보는 사람이 볼 수 있는 목록
+   */
+  getPastMeetingPrivacy(personId) {
+    const meId = (this.currentUser || {}).id;
+    const id = personId || meId;
+    const all = this.getPersonPastMeetings(id);
+    if (id === meId) {
+      const hidden = (this.currentUser || {}).pastMeetingsPublic === false;
+      const sharedList = all.filter((e) => this.isPastMeetingShared(e.id));
+      return { isMe: true, hidden, total: all.length, shared: sharedList.length, list: all, visible: all, sharedList };
+    }
+    const person = this.getPersonProfile(id) || {};
+    const hidden = person.pastMeetingsPublic === false;
+    const map = (person.pastMeetingVisibility && typeof person.pastMeetingVisibility === 'object')
+      ? person.pastMeetingVisibility : {};
+    const sharedList = hidden ? [] : all.filter((e) => map[e.id] !== false);
+    return { isMe: false, hidden, total: all.length, shared: sharedList.length, list: sharedList, visible: sharedList, sharedList };
+  }
+
+  /** 한 사람의 모임 — 나는 가입한 모임, 남은 모임장이거나 멤버로 들어 있는 모임. */
+  getPersonGroups(personId) {
+    const meId = (this.currentUser || {}).id;
+    const id = personId || meId;
+    if (id === meId) return this.getJoinedGroups();
+    return (this.state.groups || []).filter((g) => g && (g.leaderId === id
+      || (Array.isArray(g.members) && g.members.some((m) => m && m.id === id))));
+  }
+
+  /** 한 사람이 올린 글 수(내 글·타인 글 모두 같은 기준). */
+  getPersonPostCount(personId) {
+    const id = personId || (this.currentUser || {}).id;
+    return (this.state.feedPosts || []).filter((p) => p && p.authorId === id).length;
+  }
+
   /** 참석/대기/불참 — 한 사람은 한 상태만.
    *  Sprint 15 — 정원이 찾는데 참석을 누르면 **자동으로 대기 명단**에 들어간다.
    *  참석자가 불참으로 빠져 자리가 나면 대기 1순위가 자동으로 참석이 된다. */
@@ -12446,12 +12645,23 @@ class Store {
 
     const user = blankCurrentUser();
     user.nickname = nickname;
-    /* v34.2 — 사용자 아이디는 영문·숫자·._ 만. 한글 닉네임만 있으면 oog12345 로 시작한다. */
-    const askedHandle = String(d.handle || '').replace(/^@+/, '').toLowerCase()
-      .replace(/[^a-z0-9._]/g, '').slice(0, 20);
-    user.handle = `@${askedHandle.length >= 3
-      ? askedHandle
-      : `oog${String(Math.floor(Math.random() * 90000) + 10000)}`}`;
+    /* v34.4 (#22772) — 가입할 때 직접 쓴 아이디를 그대로 프로필 아이디로 쓴다.
+       형식(소문자·숫자·._ 3~20자)과 중복을 한 번 더 검사하고,
+       아이디를 안 넘긴 옛 경로(간편 시작·자동 테스트)는 oog##### 로 만든다. */
+    const askedHandle = this.cleanHandle(d.handle).replace(/[^a-z0-9._]/g, '');
+    if (askedHandle) {
+      if (!/^[a-z0-9._]{3,20}$/.test(askedHandle)) return { ok: false, reason: 'handle' };
+      if (!this.isHandleAvailable(askedHandle, '')) return { ok: false, reason: 'handle_taken' };
+      user.handle = `@${askedHandle}`;
+    } else {
+      let auto = `oog${String(Math.floor(Math.random() * 90000) + 10000)}`;
+      let tries = 0;
+      while (!this.isHandleAvailable(auto, '') && tries < 30) {
+        tries += 1;
+        auto = `oog${String(Math.floor(Math.random() * 90000) + 10000)}`;
+      }
+      user.handle = `@${auto}`;
+    }
     user.avatarText = nickname.charAt(0);
     user.avatarGradient = gradient;
     user.photoUrl = photoUrl;

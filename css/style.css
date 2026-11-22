@@ -26544,3 +26544,250 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 .wz-phone .pv-detail-name { font-size: var(--fs-body); }
 .wz-phone .pv-detail-desc { font-size: var(--fs-caption); -webkit-line-clamp: 2; }
 .wz-phone .pv-detail-tag { margin-top: 2px; padding: 1px 7px; }
+
+/* ============================================================================
+   v34.4 (2026-11-22, #22760 · #22772 · #22806)
+   ① 상단 바 중앙 @아이디 (내 프로필 탭 · 모임 밖)
+   ② 인스타그램형 프로필: 왼쪽 큰 1번 사진 · 오른쪽 닉네임 + 3열 통계(게시물·다녀온 모임·내 그룹)
+      → 그 아래 공개 사진 2~4번 + 비밀앨범 원형 → 소개 → 내 피드
+   ③ 다음 일정 한 줄 칩(본인만) · 다녀온 모임 공개 범위(전체/모임별) 시트
+   ④ 타인 프로필의 숫자 3칸 + 다녀온 모임·모임 목록 시트
+   ========================================================================== */
+
+/* ① 상단 바 중앙 아이디 — 인스타그램 프로필 머리말처럼 가운데만 굵게. */
+.header-center-id {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-strong);
+  pointer-events: none;
+}
+.header-center-id[hidden] { display: none !important; }
+/* 아이디가 가운데 자리를 쓰는 동안에는 왼쪽 브랜드의 작은 영문 태그를 접는다. */
+.app-header.is-profile .brand-tag { display: none; }
+
+/* ② 프로필 상단 두 칸 — 왼쪽 큰 사진 · 오른쪽 이름/통계 */
+.mp-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.mp-id-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+.mp-id-col .myprofile-name {
+  font-size: 20px;
+  font-weight: var(--fw-display);
+  line-height: 1.2;
+}
+/* 통계는 인스타그램처럼 숫자 위 · 라벨 아래, 세 칸이 오른쪽 칸 폭을 나눠 쓴다. */
+.mp-id-col .myprofile-stats {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  gap: 2px;
+  justify-content: space-between;
+}
+.mp-id-col .myprofile-stat {
+  gap: 0;
+  padding: 0 2px;
+}
+.mp-id-col .myprofile-stat strong { font-size: var(--fs-title); }
+.mp-id-col .myprofile-stat span { white-space: nowrap; }
+.mp-id-col .myprofile-stat.is-tap { min-height: 44px; padding: 0 2px; justify-content: center; }
+
+/* 원형 사진 줄 — 공개 사진 2~4번 + 자물쇠, 오른쪽 끝에 장수 표기 */
+.mp-rings-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.mp-rings-line .mp-photos-note { margin-left: auto; }
+
+/* ③ 다음 일정 한 줄 칩 (본인에게만 · 기존 하단 통계 자리) */
+.mp-next-event { margin: 0 0 6px; }
+.mp-next-event[hidden] { display: none !important; }
+.mp-next-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px 12px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: var(--fill-subtle);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.mp-next-chip:active { transform: scale(0.99); }
+.mp-next-ic {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--green-soft);
+  color: var(--green-text);
+}
+.mp-next-ic .oo-ic { font-size: 18px; }
+.mp-next-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mp-next-text strong {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-title);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mp-next-text span {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mp-next-chev { flex: 0 0 auto; display: inline-flex; color: var(--text-muted); }
+.mp-next-chev .oo-ic { font-size: 16px; }
+
+/* ③-b 다녀온 모임 공개 범위 — 시트 안 한 덩어리 */
+.mp-share-panel {
+  margin: 0 0 8px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: var(--fill-subtle);
+}
+.mp-share-row { display: flex; align-items: center; gap: 12px; }
+.mp-share-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mp-share-text strong { font-size: var(--fs-small); font-weight: var(--fw-title); color: var(--text-strong); }
+.mp-share-text span { font-size: var(--fs-caption); color: var(--text-muted); }
+.mp-share-note { margin-top: 7px; font-size: var(--fs-caption); font-weight: var(--fw-label); color: var(--green-text); }
+.mp-share-note.is-off { color: var(--text-muted); font-weight: var(--fw-meta); }
+.mp-share-panel[hidden] { display: none !important; }
+
+/* 모임 한 줄 + 공개/비공개 토글 — 줄(상세)과 토글은 따로 눌린다 */
+.my-sched-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--divider);
+}
+.my-sched-row:first-child { border-top: 0; }
+.my-sched-row .my-sched-item { flex: 1 1 auto; min-width: 0; border-top: 0; padding: 11px 0; }
+.my-sched-share {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.my-sched-share.is-on { background: var(--green-soft); border-color: transparent; color: var(--green-text); }
+.my-sched-share[disabled] { opacity: 0.45; cursor: default; }
+
+/* 모임 목록 시트 · 안내 한 줄 */
+.mp-sheet-sub { margin: -2px 0 8px; font-size: var(--fs-caption); color: var(--text-muted); }
+.mp-group-cover {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--tone-chip, var(--fill-subtle));
+  color: var(--tone-ink, var(--text-sub));
+}
+.mp-group-cover img { width: 100%; height: 100%; object-fit: cover; }
+.mp-group-cover .oo-ic { font-size: 20px; }
+.profile-group-row .my-sched-kind { flex: 0 0 auto; }
+.mp-private-empty { padding-top: 30px; }
+
+/* ④ 타인 프로필 숫자 3칸 */
+.detail-stats {
+  display: flex;
+  gap: 6px;
+  margin: 2px 0 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+}
+.detail-stat {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font: inherit;
+  color: inherit;
+}
+.detail-stat strong { font-size: var(--fs-section); font-weight: var(--fw-display); color: var(--text-strong); }
+.detail-stat strong.is-private { font-size: var(--fs-small); font-weight: var(--fw-title); color: var(--text-muted); }
+.detail-stat span { font-size: var(--fs-caption); color: var(--text-muted); white-space: nowrap; }
+.detail-stat.is-tap { min-height: 44px; justify-content: center; cursor: pointer; transition: transform 0.12s ease; }
+.detail-stat.is-tap:active { transform: scale(0.97); }
+.detail-stat.is-tap:active strong { color: var(--green-text); }
+.detail-handle { font-size: var(--fs-caption); color: var(--text-muted); margin-top: 2px; }
+
+/* ⑤ 회원가입 — 닉네임과 함께 쓰는 사용자 아이디(@id) */
+.ob-handle-field { margin-top: 4px; }
+.ob-handle-box { position: relative; display: flex; align-items: center; }
+.ob-handle-at {
+  position: absolute;
+  left: 14px;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-title);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.ob-input.ob-handle-input { width: 100%; padding-left: 32px; }
+.ob-handle-hint { margin-top: 6px; font-size: var(--fs-caption); color: var(--text-muted); }
+.ob-handle-hint.is-ok { color: var(--green-text); font-weight: var(--fw-label); }
+.ob-handle-hint.is-warn { color: var(--red); font-weight: var(--fw-label); }
+
+/* v34.4 — 프로필 머리말에서는 검색 버튼을 접어 아이디가 화면 가운데에 놓이게 한다
+   (검색은 아래 '탐색' 탭이 그대로 맡는다). 좁은 화면에서도 아이콘과 겹치지 않는다. */
+.app-header.is-profile #btn-header-search { display: none; }
+.header-center-id { max-width: 40%; font-size: 16px; }
+
+/* v34.4 — 프로필 위에 겹쳐 여는 목록 시트는 풀스크린 페이지(프로필)보다 위에 온다. */
+#profile-groups-modal,
+#past-meetings-modal { z-index: 220; }
+
+/* v34.4 — 닉네임은 인스타그램처럼 조금 크게(#myprofile-name 의 16px 규칙을 덮는다). */
+#myprofile-name { font-size: 20px; font-weight: var(--fw-display); letter-spacing: -0.4px; }
+
+/* v34.4 — 좁은 화면(≤380)에서는 아이디를 조금 줄여 오른쪽 아이콘과 겹치지 않게 한다. */
+@media (max-width: 380px) {
+  .header-center-id { max-width: 32%; font-size: 15px; }
+}
+
+/* v34.4 — 좁은 화면에서는 사진 장수 표기가 원형 줄 아래로 내려간다(글자 세로 꺾임 방지). */
+@media (max-width: 380px) {
+  .mp-rings-line { flex-wrap: wrap; row-gap: 6px; }
+  .mp-rings-line .mp-photos-note { margin-left: 0; width: 100%; }
+}

@@ -94,6 +94,8 @@
         <span class="brand-logo">ooG</span>
         <span class="brand-tag">Our Own Group</span>
       </button>
+      <!-- v34.4 (#22772) — 내 프로필 탭(모임 밖)에서는 인스타그램처럼 상단 바 중앙에 @아이디 -->
+      <span class="header-center-id" id="header-profile-handle" hidden></span>
       <div class="header-actions">
         <button class="icon-btn" id="btn-header-search" aria-label="모임 찾기 — 이름·아지트로 검색">
           <span class="oo-icon-20" aria-hidden="true" data-oog-icon="search"></span>
@@ -607,34 +609,39 @@
              그 옆 자물쇠 원형이 5번째부터의 비밀앨범으로 이어진다.
              (예전처럼 아래에 '공개 사진 0 / 4' 칸을 따로 두지 않는다 — 위 한 줄로 통합.) -->
         <div class="myprofile-head" id="myprofile-head">
-          <div class="myprofile-id">
-            <h2 class="myprofile-name" id="myprofile-name">내 프로필</h2>
-            <p class="myprofile-handle" id="myprofile-handle"></p>
-            <p class="myprofile-bio" id="myprofile-bio" hidden></p>
-            <p class="myprofile-meta" id="myprofile-meta"></p>
-          </div>
-          <div class="mp-gallery">
+          <!-- v34.4 (#22760 · IMG_4583) — 인스타그램 프로필 배치:
+               왼쪽 큰 1번 사진 · 오른쪽 위 닉네임 + 바로 아래 3열 통계(게시물 · 다녀온 모임 · 내 그룹).
+               통계 바로 아래로 공개 사진 2~4번 + 비밀앨범 원형이 내려온다. -->
+          <div class="mp-top">
             <button class="myprofile-avatar" id="myprofile-avatar" type="button" aria-label="대표 사진 — 공개 사진 1번 크게 보기">
               <span class="avatar-letter" id="myprofile-avatar-letter">나</span>
               <img class="avatar-img" id="myprofile-avatar-img" alt="" hidden>
             </button>
-            <div class="mp-gallery-side">
-              <div class="mp-ring-row">
-                <div class="myprofile-photo-mini mp-rings" id="myprofile-photo-mini" role="group" aria-label="공개 사진 2~4번 미리보기"><!-- JS --></div>
-                <button class="myprofile-secret mp-secret-ring" id="btn-myprofile-secret" type="button" aria-label="비밀앨범 열기">
-                  <span class="myprofile-secret-ic" aria-hidden="true" data-oog-icon="lock"></span>
-                  <span class="myprofile-secret-count" id="mp-secret-count" hidden>0</span>
-                  <span class="myprofile-secret-label sr-only">비밀 사진</span>
-                </button>
-              </div>
-              <p class="mp-photos-note">공개 사진 <span class="album-count" id="album-public-count">0 / 4</span></p>
+            <div class="mp-id-col">
+              <h2 class="myprofile-name" id="myprofile-name">내 프로필</h2>
+              <section class="myprofile-stats" id="myprofile-stats" aria-label="내 활동 숫자"><!-- JS --></section>
             </div>
           </div>
+          <div class="mp-rings-line">
+            <div class="myprofile-photo-mini mp-rings" id="myprofile-photo-mini" role="group" aria-label="공개 사진 2~4번 미리보기"><!-- JS --></div>
+            <button class="myprofile-secret mp-secret-ring" id="btn-myprofile-secret" type="button" aria-label="비밀앨범 열기">
+              <span class="myprofile-secret-ic" aria-hidden="true" data-oog-icon="lock"></span>
+              <span class="myprofile-secret-count" id="mp-secret-count" hidden>0</span>
+              <span class="myprofile-secret-label sr-only">비밀 사진</span>
+            </button>
+            <p class="mp-photos-note">공개 사진 <span class="album-count" id="album-public-count">0 / 4</span></p>
+          </div>
+          <p class="myprofile-bio" id="myprofile-bio" hidden></p>
+          <p class="myprofile-meta" id="myprofile-meta"></p>
+          <!-- 아이디는 상단 바 중앙에 보인다 — 여기 값은 화면 읽기·옛 검사 호환용으로만 남긴다. -->
+          <p class="myprofile-handle sr-only" id="myprofile-handle"></p>
           <input class="photo-file" id="album-public-album" type="file" accept="image/*" hidden>
           <input class="photo-file" id="album-public-camera" type="file" accept="image/*" capture="environment" hidden>
         </div>
 
-        <section class="myprofile-stats" id="myprofile-stats"><!-- JS --></section>
+        <!-- v34.4 (#22806) — 본인에게만 보이는 '다음 일정' 한 줄 칩(가장 가까운 예정 일정 1건).
+             기존 하단 4칸 통계가 있던 자리 — 통계는 인스타형 상단으로 올라갔다. -->
+        <div class="mp-next-event" id="mp-next-event" hidden><!-- JS --></div>
 
         <!-- v34.2 — 내 프로필 하단 = 내가 올린 피드 (격자 3열 ↔ 인스타형 피드) -->
         <section class="myprofile-feed" aria-labelledby="mp-feed-title">
@@ -955,24 +962,68 @@
          11/22 21:55 루키 님(#22641): "하단 받은 좋아요 말고 예정일정? 그리고 다녀온 일정?"
          · 내 프로필 통계의 '예정 일정' · '다녀온 일정'을 누르면 이 시트가 그 갈래로 열린다.
          · 목록은 내가 참석하겠다고 답한(또는 내가 만든) 일정만 — 날짜가 지나면 '다녀온'으로 옮긴다. -->
-    <div class="modal-overlay" id="my-schedule-modal" role="dialog" aria-modal="true" aria-label="내 일정">
+    <div class="modal-overlay" id="my-schedule-modal" role="dialog" aria-modal="true" aria-label="다녀온 모임">
       <div class="modal-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>
         <div class="composer-header">
           <button class="text-btn ghost" id="btn-my-schedule-close">닫기</button>
-          <h3 class="composer-title">내 일정</h3>
+          <h3 class="composer-title" id="my-schedule-title">다녀온 모임</h3>
           <span class="my-secret-head-space" aria-hidden="true"></span>
         </div>
         <div class="composer-body my-schedule-body">
-          <div class="my-schedule-seg" id="my-schedule-seg" role="group" aria-label="일정 갈래">
-            <button class="my-schedule-seg-btn is-on" data-my-schedule-tab="upcoming" type="button" aria-pressed="true">
-              예정 <span class="my-schedule-seg-count" id="my-schedule-count-upcoming">0</span>
+          <div class="my-schedule-seg" id="my-schedule-seg" role="group" aria-label="모임 갈래">
+            <button class="my-schedule-seg-btn is-on" data-my-schedule-tab="past" type="button" aria-pressed="true">
+              다녀온 모임 <span class="my-schedule-seg-count" id="my-schedule-count-past">0</span>
             </button>
-            <button class="my-schedule-seg-btn" data-my-schedule-tab="past" type="button" aria-pressed="false">
-              다녀온 <span class="my-schedule-seg-count" id="my-schedule-count-past">0</span>
+            <button class="my-schedule-seg-btn" data-my-schedule-tab="upcoming" type="button" aria-pressed="false">
+              예정 모임 <span class="my-schedule-seg-count" id="my-schedule-count-upcoming">0</span>
             </button>
           </div>
+          <!-- v34.4 (#22760) — 다녀온 모임 공개 범위: 전체(숫자 포함) + 모임별 -->
+          <div class="mp-share-panel" id="my-schedule-share">
+            <div class="mp-share-row">
+              <div class="mp-share-text">
+                <strong>내 다녀온 모임 타인에게 보이기</strong>
+                <span>끄면 숫자와 목록을 모두 숨겨요</span>
+              </div>
+              <button class="switch-toggle on" id="my-schedule-share-toggle" type="button" role="switch"
+                      aria-checked="true" aria-label="내 다녀온 모임 타인에게 보이기"><span class="switch-knob"></span></button>
+            </div>
+            <p class="mp-share-note" id="my-schedule-share-note">타인에게 0개 공개 중</p>
+          </div>
           <div class="my-schedule-list" id="my-schedule-list" aria-live="polite"><!-- JS --></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 6-b. 내 그룹 / 타인 그룹 목록 (v34.4) ==================== -->
+    <div class="modal-overlay" id="profile-groups-modal" role="dialog" aria-modal="true" aria-label="모임 목록">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-profile-groups-close">닫기</button>
+          <h3 class="composer-title" id="profile-groups-title">내 그룹</h3>
+          <span class="my-secret-head-space" aria-hidden="true"></span>
+        </div>
+        <div class="composer-body">
+          <p class="mp-sheet-sub" id="profile-groups-sub"></p>
+          <div class="my-schedule-list" id="profile-groups-list" aria-live="polite"><!-- JS --></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 6-c. 타인의 다녀온 모임 (v34.4) ==================== -->
+    <div class="modal-overlay" id="past-meetings-modal" role="dialog" aria-modal="true" aria-label="다녀온 모임">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-past-meetings-close">닫기</button>
+          <h3 class="composer-title" id="past-meetings-title">다녀온 모임</h3>
+          <span class="my-secret-head-space" aria-hidden="true"></span>
+        </div>
+        <div class="composer-body">
+          <p class="mp-sheet-sub" id="past-meetings-sub"></p>
+          <div class="my-schedule-list" id="past-meetings-list" aria-live="polite"><!-- JS --></div>
         </div>
       </div>
     </div>

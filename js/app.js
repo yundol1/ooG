@@ -304,6 +304,21 @@ document.addEventListener('DOMContentLoaded', () => {
     myProfileSecret: $('#btn-myprofile-secret'),
     myProfilePhotoMini: $('#myprofile-photo-mini'),
     mySecretCount: $('#mp-secret-count'),
+    /* v34.4 — 상단 바 중앙 @아이디 · 다녀온 모임 공개 범위 · 모임/다녀온 모임 시트 */
+    appHeader: document.querySelector('.app-header'),
+    headerProfileHandle: $('#header-profile-handle'),
+    myScheduleTitle: $('#my-schedule-title'),
+    myScheduleShare: $('#my-schedule-share'),
+    myScheduleShareToggle: $('#my-schedule-share-toggle'),
+    myScheduleShareNote: $('#my-schedule-share-note'),
+    profileGroupsModal: $('#profile-groups-modal'),
+    profileGroupsTitle: $('#profile-groups-title'),
+    profileGroupsSub: $('#profile-groups-sub'),
+    profileGroupsList: $('#profile-groups-list'),
+    pastMeetingsModal: $('#past-meetings-modal'),
+    pastMeetingsTitle: $('#past-meetings-title'),
+    pastMeetingsSub: $('#past-meetings-sub'),
+    pastMeetingsList: $('#past-meetings-list'),
     /* v34.3 — 내 일정 시트(예정 · 다녀온) */
     myScheduleModal: $('#my-schedule-modal'),
     myScheduleSeg: $('#my-schedule-seg'),
@@ -324,6 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
     albumSecretAlbum: $('#album-secret-album'),
     albumSecretCamera: $('#album-secret-camera'),
     myProfileStats: $('#myprofile-stats'),
+    mpNextEvent: $('#mp-next-event'),
     /* Sprint 24 — 화면 설정(다크모드) */
     menuDarkMode: $('#menu-dark-mode'),
     menuDarkModeState: $('#menu-dark-mode-state'),
@@ -913,7 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       email: '', code: '', emailVerified: false,
       loginId: '', password: '', passwordConfirm: '', quickStart: false,
-      nickname: '', photoUrl: null,
+      nickname: '', handle: store.suggestHandle(), photoUrl: null,
       avatarGradient: (store.getOnboardingState().avatarGradients || [SIGNUP_FALLBACK_GRADIENT])[0],
       age: '', regionId: '', hobbies: []
     };
@@ -924,6 +940,8 @@ document.addEventListener('DOMContentLoaded', () => {
       nickname_short: '닉네임을 2자 이상 입력해 주세요',
       nickname_long: '닉네임은 12자까지 쓸 수 있어요',
       login_id_short: '아이디를 3자 이상 입력해 주세요',
+      handle: '아이디는 영문 소문자·숫자·밑줄·점으로 3~20자예요',
+      handle_taken: '이미 쓰고 있는 아이디예요 — 다른 아이디를 입력해 주세요',
       password_short: '비밀번호를 4자 이상 입력해 주세요',
       password_long: '비밀번호가 너무 길어요',
       password_mismatch: '비밀번호가 서로 달라요',
@@ -1380,6 +1398,19 @@ document.addEventListener('DOMContentLoaded', () => {
                    value="${escapeHtml(d.nickname)}" placeholder="예: 러닝준">
           </div>
         </div>
+        <!-- v34.4 (#22772) — 닉네임과 함께 사용자 아이디(@id)도 직접 정한다.
+             기본 제안값이 미리 들어 있고, 그대로 쓰거나 고쳐 쓸 수 있다. -->
+        <div class="ob-field ob-handle-field">
+          <label class="ob-label" for="ob-handle">사용자 아이디 <span class="ob-hint">영문·숫자·._ 3~20자</span></label>
+          <div class="ob-handle-box">
+            <span class="ob-handle-at" aria-hidden="true">@</span>
+            <input class="ob-input ob-input-lg ob-handle-input" id="ob-handle" type="text" maxlength="20"
+                   autocomplete="off" autocapitalize="none" spellcheck="false"
+                   value="${escapeHtml(d.handle || '')}" placeholder="예: runningjun"
+                   aria-describedby="ob-handle-hint">
+          </div>
+          <p class="ob-handle-hint" id="ob-handle-hint">프로필·피드·댓글에 보이는 나만의 아이디예요.</p>
+        </div>
         ${errHTML}
         <div class="ob-actions">
           <button class="ob-btn primary" id="ob-next" type="button">다음</button>
@@ -1516,6 +1547,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (obField('ob-password')) d.password = val('ob-password');
     if (obField('ob-password-confirm')) d.passwordConfirm = val('ob-password-confirm');
     if (obField('ob-nickname')) d.nickname = val('ob-nickname');
+    if (obField('ob-handle')) d.handle = val('ob-handle');
     if (obField('ob-age')) d.age = val('ob-age');
     if (obField('ob-region')) d.regionId = val('ob-region');
     return d;
@@ -1575,6 +1607,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (name.length < 2) return showOnboardingError('닉네임을 2자 이상 입력해 주세요');
       if (name.length > 12) return showOnboardingError('닉네임은 12자까지 쓸 수 있어요');
       d.nickname = name;
+      /* v34.4 (#22772) — 아이디도 가입에서 확정한다(형식·중복). */
+      const handle = cleanHandleInput(d.handle);
+      if (!handle) return showOnboardingError('사용자 아이디를 입력해 주세요');
+      if (!/^[a-z0-9._]{3,20}$/.test(handle)) {
+        return showOnboardingError('아이디는 영문 소문자·숫자·밑줄·점으로 3~20자예요');
+      }
+      if (!store.isHandleAvailable(handle, '')) {
+        return showOnboardingError('이미 쓰고 있는 아이디예요 — 다른 아이디를 입력해 주세요');
+      }
+      d.handle = handle;
       return obGo(4);
     }
     if (stepId === 'photo') return obGo(5);
@@ -1616,7 +1658,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const res = store.signUp({
       email: d.email, password: d.password, passwordConfirm: d.passwordConfirm || d.password,
       quickStart: d.quickStart === true,
-      nickname: d.nickname, photoUrl: d.photoUrl, avatarGradient: d.avatarGradient,
+      nickname: d.nickname, handle: d.handle, photoUrl: d.photoUrl, avatarGradient: d.avatarGradient,
       age: String(d.age || '').trim() === '' ? null : Number(d.age),
       location: region ? `${region.name.split('·')[0]} ${region.short}` : '',
       hobbies: d.hobbies
@@ -1939,6 +1981,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   function scrollTop() { if (el.main) el.main.scrollTop = 0; }
 
+  /**
+   * v34.4 (#22772) — 내 프로필 탭(모임 밖)에서는 상단 바 **중앙**에 인스타그램처럼 @아이디.
+   * 다른 탭이나 모임 안에서는 감춘다(모임 안은 모임 이름을 쓰는 기존 머리말 그대로).
+   */
+  function syncHeaderProfileId() {
+    const onProfile = ui.activeTab === 'tab-myprofile' && !isGroupMode();
+    const me = store.currentUser || {};
+    const handle = store.isSignedIn() ? displayHandleOf(me) : '';
+    if (el.headerProfileHandle) {
+      el.headerProfileHandle.textContent = handle ? `@${handle}` : '';
+      el.headerProfileHandle.hidden = !(onProfile && handle);
+    }
+    if (el.appHeader) el.appHeader.classList.toggle('is-profile', onProfile);
+  }
+
   /* ==========================================================================
    * 1. 탭 라우팅
    * ======================================================================== */
@@ -1968,6 +2025,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.tabViews.forEach((v) => v.classList.toggle('active', v.id === tabId));
     syncGroupTopTabs();
     moveNavIndicator();
+    syncHeaderProfileId();
 
     /* 탭별 부가 렌더링 (필요할 때만)
        Sprint 16 — 홈은 '갤러리 ↔ 모임 피드' 두 화면을 한 탭 안에서 오간다. */
@@ -6723,6 +6781,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const av = obField('ob-name-avatar');
         if (av) av.textContent = String(node.value || '').charAt(0) || '?';
       }
+      if (node.id === 'ob-handle') {
+        /* v34.4 — 소문자·숫자·밑줄·점만 남기고, 쓸 수 있는지 그 자리에서 알려 준다. */
+        const cleaned = cleanHandleInput(node.value);
+        if (cleaned !== node.value) node.value = cleaned;
+        /* 고치는 순간 지난 오류 문구는 내린다(초록 안내만 남긴다). */
+        const errBox = obField('ob-error');
+        if (errBox) { errBox.hidden = true; errBox.textContent = ''; }
+        const hint = obField('ob-handle-hint');
+        if (hint) {
+          let text = '프로필·피드·댓글에 보이는 나만의 아이디예요.';
+          let tone = '';
+          if (cleaned.length && cleaned.length < 3) {
+            text = '아이디는 3자 이상이어야 해요.';
+            tone = 'is-warn';
+          } else if (cleaned.length >= 3 && !store.isHandleAvailable(cleaned, '')) {
+            text = '이미 쓰고 있는 아이디예요.';
+            tone = 'is-warn';
+          } else if (cleaned.length >= 3) {
+            text = `@${cleaned} — 쓸 수 있는 아이디예요.`;
+            tone = 'is-ok';
+          }
+          hint.textContent = text;
+          hint.className = `ob-handle-hint ${tone}`.trim();
+        }
+      }
       if (node.id === 'ob-age') {
         const btn = obField('ob-next');
         if (btn) btn.textContent = String(node.value || '').trim() ? '다음' : '건너뛰기';
@@ -8564,6 +8647,24 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>`).join('')}
       </div>` : '';
 
+    /* v34.4 (#22760) — 타인 프로필도 인스타그램처럼 숫자 3칸. 다녀온 모임·모임은 눌러서 목록.
+       다녀온 모임을 비공개로 둔 사람은 숫자 대신 '비공개'(눌러도 안내만). */
+    const pastInfo = store.getPastMeetingPrivacy(p.id);
+    const personGroups = store.getPersonGroups(p.id);
+    const personPosts = store.getPersonPostCount(p.id);
+    const personStats = `
+      <div class="detail-stats" role="group" aria-label="${escapeHtml(p.nickname)}님의 활동 숫자">
+        <span class="detail-stat"><strong>${personPosts}</strong><span>게시물</span></span>
+        <button class="detail-stat is-tap" type="button" data-person-past="${escapeHtml(p.id)}"
+                aria-label="다녀온 모임 ${pastInfo.hidden ? '비공개 — 눌러서 확인' : `${pastInfo.shared}개 보기`}">
+          <strong${pastInfo.hidden ? ' class="is-private"' : ''}>${pastInfo.hidden ? '비공개' : pastInfo.shared}</strong><span>다녀온 모임</span>
+        </button>
+        <button class="detail-stat is-tap" type="button" data-person-groups="${escapeHtml(p.id)}"
+                aria-label="모임 ${personGroups.length}개 보기">
+          <strong>${personGroups.length}</strong><span>모임</span>
+        </button>
+      </div>`;
+
     el.personDetailBody.innerHTML = `
       <div class="detail-photo" ${p.photoUrl ? '' : `style="background:${p.avatarGradient || 'linear-gradient(135deg,#10B981,#047857)'}"`}>
         ${p.photoUrl
@@ -8580,8 +8681,10 @@ document.addEventListener('DOMContentLoaded', () => {
           ${p.verified ? `<span class="detail-verified">${ic('check')} 취미 인증</span>` : ''}
         </div>
         <p class="detail-style">${escapeHtml(p.hobbyStyle || p.hobbyLabel || '')}</p>
+        ${p.handle ? `<p class="detail-handle">@${escapeHtml(String(p.handle).replace(/^@+/, ''))}</p>` : ''}
         ${metaBadges ? `<div class="detail-badges">${metaBadges}</div>` : ''}
       </div>
+      ${personStats}
       <p class="detail-bio">${escapeHtml(p.bio || '')}</p>
       ${commonChipsHTML(p)}
       ${specBlock}
@@ -8707,6 +8810,12 @@ document.addEventListener('DOMContentLoaded', () => {
     /* v34.3 — 공개 사진 원형을 누르면 그 사진이 올라온 글을 연다. */
     const photo = e.target.closest('[data-person-photo]');
     if (photo) { openHomePost(photo.dataset.personPhoto); return; }
+    /* v34.4 (#22760) — 타인 프로필의 '다녀온 모임'·'모임' 숫자도 눌러서 확인 */
+    /* v34.4 — 프로필 위에 시트를 겹쳐 연다(닫으면 프로필로 돌아온다). */
+    const pastBtn = e.target.closest('[data-person-past]');
+    if (pastBtn) { openPersonPastMeetings(pastBtn.dataset.personPast); return; }
+    const groupsBtn = e.target.closest('[data-person-groups]');
+    if (groupsBtn) { openProfileGroupsSheet(groupsBtn.dataset.personGroups); return; }
     const btn = e.target.closest('[data-person-action]');
     if (!btn) return;
     const action = btn.dataset.personAction;
@@ -11521,10 +11630,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const u = store.currentUser || {};
     const nick = el.editNickname && el.editNickname.value.trim() ? el.editNickname.value.trim() : '';
     if (el.myProfileName && nick) el.myProfileName.textContent = nick;
+    const handle = displayHandleOf({ handle: el.editHandle ? el.editHandle.value : u.handle, nickname: u.nickname, id: u.id });
     if (el.myProfileHandle) {
-      const handle = displayHandleOf({ handle: el.editHandle ? el.editHandle.value : u.handle, nickname: u.nickname, id: u.id });
       el.myProfileHandle.textContent = handle ? `@${handle}` : '';
       el.myProfileHandle.hidden = !handle;
+    }
+    /* v34.4 — 상단 바 중앙 아이디도 저장 전에 바로 바뀐다. */
+    if (el.headerProfileHandle && !el.headerProfileHandle.hidden) {
+      el.headerProfileHandle.textContent = handle ? `@${handle}` : '';
     }
     if (el.myProfileBio) {
       const bio = el.editBio ? el.editBio.value.trim() : (u.bio || '');
@@ -15630,6 +15743,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function renderMyProfileTab() {
     const me = store.currentUser || {};
+    syncHeaderProfileId();
     if (el.myProfileName) el.myProfileName.textContent = me.nickname || '내 프로필';
     if (el.myProfileHandle) {
       const handle = store.isSignedIn() ? displayHandleOf(me) : '';
@@ -15667,20 +15781,52 @@ document.addEventListener('DOMContentLoaded', () => {
         : '1:1 대화방에서 공개한 상대만 볼 수 있어요';
     }
     if (el.myProfileStats) {
-      const stats = store.getMyFeedStats();
+      /* v34.4 (#22760 · IMG_4583) — 인스타그램처럼 세 칸: 게시물 · 다녀온 모임 · 내 그룹.
+         · 게시물은 보기 전용(아래에 내 피드가 이미 보인다).
+         · 다녀온 모임은 본인 전체 개수 — 누르면 목록과 공개/비공개 설정.
+         · 내 그룹도 눌러서 모임 목록을 본다. */
+      const posts = store.getPersonPostCount();
+      const past = store.getPastMeetingPrivacy();
       const groups = store.getJoinedGroups().length;
-      const sched = store.getMySchedule();
-      /* v34.3 (#22641) — '받은 좋아요' 자리에 '예정 일정'·'다녀온 일정'.
-         두 칸은 눌러서 그 목록(시트)을 볼 수 있다. 네 칸이 한 줄에 들어간다. */
       el.myProfileStats.innerHTML = `
-        <span class="myprofile-stat"><strong>${stats.total}</strong><span>내 글</span></span>
-        <button class="myprofile-stat is-tap" data-my-schedule="upcoming" type="button"
-                aria-label="예정 일정 ${sched.upcoming.length}개 보기"><strong>${sched.upcoming.length}</strong><span>예정 일정</span></button>
+        <span class="myprofile-stat" data-my-stat="posts"><strong>${posts}</strong><span>게시물</span></span>
         <button class="myprofile-stat is-tap" data-my-schedule="past" type="button"
-                aria-label="다녀온 일정 ${sched.past.length}개 보기"><strong>${sched.past.length}</strong><span>다녀온 일정</span></button>
-        <span class="myprofile-stat"><strong>${groups}</strong><span>내 모임</span></span>`;
+                aria-label="다녀온 모임 ${past.total}개 보기"><strong>${past.total}</strong><span>다녀온 모임</span></button>
+        <button class="myprofile-stat is-tap" data-my-groups="1" type="button"
+                aria-label="내 그룹 ${groups}개 보기"><strong>${groups}</strong><span>내 그룹</span></button>`;
     }
+    renderMyNextEvent();
     renderMyProfileFeed();
+  }
+
+  /**
+   * v34.4 (#22806) — 내 프로필 한 줄 칩: 가장 가까운 예정 일정 1건(본인에게만).
+   *  · 누르면 그 일정 상세로, 예정 일정이 없으면 내 예정 모임 목록으로 간다.
+   *  · UI 이모지는 쓰지 않는다(달력 아이콘 2px 선).
+   */
+  function renderMyNextEvent() {
+    if (!el.mpNextEvent) return;
+    if (!store.isSignedIn()) { el.mpNextEvent.hidden = true; el.mpNextEvent.innerHTML = ''; return; }
+    const next = store.getMySchedule().upcoming[0] || null;
+    el.mpNextEvent.hidden = false;
+    if (!next) {
+      el.mpNextEvent.innerHTML = `<button class="mp-next-chip is-empty" type="button" data-mp-next="none">
+        <span class="mp-next-ic" aria-hidden="true">${ic('calendar')}</span>
+        <span class="mp-next-text"><strong>예정된 모임 일정 없음</strong><span>일정 찾기</span></span>
+        <span class="mp-next-chev" aria-hidden="true">${ic('chevronRight')}</span>
+      </button>`;
+      return;
+    }
+    const d = new Date(next.when);
+    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+    const clock = Number.isNaN(d.getTime()) ? ''
+      : `${d.getMonth() + 1}/${d.getDate()} (${weekdays[d.getDay()]}) ${d.getHours() < 12 ? '오전' : '오후'} ${d.getHours() % 12 === 0 ? 12 : d.getHours() % 12}:${String(d.getMinutes()).padStart(2, '0')}`;
+    el.mpNextEvent.innerHTML = `<button class="mp-next-chip" type="button" data-mp-next="${escapeHtml(next.id)}"
+        aria-label="다음 일정 ${escapeHtml(next.title)} 상세 열기">
+      <span class="mp-next-ic" aria-hidden="true">${ic('calendar')}</span>
+      <span class="mp-next-text"><strong>${escapeHtml(next.title)}</strong><span>${escapeHtml([clock, next.groupName].filter(Boolean).join(' · '))}</span></span>
+      <span class="mp-next-chev" aria-hidden="true">${ic('chevronRight')}</span>
+    </button>`;
   }
 
   /**
@@ -15729,12 +15875,17 @@ document.addEventListener('DOMContentLoaded', () => {
    * 일정은 모임 안에만 있던 것이라, 내 프로필에서는 '내가 참석하겠다고 답한 일정'만 모아
    * 예정(앞으로) / 다녀온(지나간) 두 갈래로 보여 준다. 줄을 누르면 그 일정 상세가 열린다. */
   function openMyScheduleSheet(tab) {
-    ui.myScheduleTab = tab === 'past' ? 'past' : 'upcoming';
+    ui.myScheduleTab = tab === 'upcoming' ? 'upcoming' : 'past';
     renderMyScheduleSheet();
     openModal(el.myScheduleModal);
   }
 
-  function myScheduleRowHTML(ev) {
+  /**
+   * v34.4 (#22760) — 다녀온 모임 한 줄. 지난 모임에는 오른쪽에 공개/비공개 토글을 둔다.
+   *  · 줄을 누르면 그 모임(일정) 상세가 열린다 — 토글은 줄과 따로 눌린다.
+   */
+  function myScheduleRowHTML(ev, opts) {
+    const o = opts || {};
     const d = new Date(ev.when);
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
     const day = Number.isNaN(d.getTime()) ? '' : String(d.getDate());
@@ -15746,28 +15897,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeLabel = Number.isNaN(d.getTime()) ? ''
       : `${hh < 12 ? '오전' : '오후'} ${hh % 12 === 0 ? 12 : hh % 12}:${mm}`;
     const meta = [timeLabel, ev.groupName].filter(Boolean).join(' · ');
+    const shared = !ev.past || store.isPastMeetingShared(ev.id);
+    const shareBtn = (ev.past && !o.noShare) ? `
+      <button class="my-sched-share${shared ? ' is-on' : ''}" type="button" role="switch"
+              data-past-share="${escapeHtml(ev.id)}" aria-checked="${shared}"
+              aria-label="${escapeHtml(ev.title)} — 타인에게 ${shared ? '공개' : '비공개'}"
+              ${o.shareDisabled ? 'disabled' : ''}>${shared ? '공개' : '비공개'}</button>` : '';
     return `
-      <button class="my-sched-item${ev.past ? ' is-past' : ''}" data-my-schedule-event="${escapeHtml(ev.id)}" type="button"
-              aria-label="${escapeHtml(ev.title)} 일정 상세 열기">
-        <span class="my-sched-date" aria-hidden="true">
-          <strong>${escapeHtml(day)}</strong><span>${escapeHtml(month)}</span>
-        </span>
-        <span class="my-sched-main">
-          <span class="my-sched-title">${escapeHtml(ev.title)}</span>
-          <span class="my-sched-meta">${escapeHtml(meta)}</span>
-          ${ev.place ? `<span class="my-sched-sub">${escapeHtml(ev.place)} · 참석 ${ev.yes}${ev.capacity ? `/${ev.capacity}` : ''}</span>`
-            : `<span class="my-sched-sub">참석 ${ev.yes}${ev.capacity ? `/${ev.capacity}` : ''}</span>`}
-        </span>
-        <span class="my-sched-kind tone-${escapeHtml(kind.tone || 'etc')}">${escapeHtml(kind.label || '일정')}</span>
-        <span class="my-sched-chev" aria-hidden="true">${ic('chevronRight')}</span>
-      </button>`;
+      <div class="my-sched-row${ev.past ? ' is-past' : ''}">
+        <button class="my-sched-item${ev.past ? ' is-past' : ''}" data-my-schedule-event="${escapeHtml(ev.id)}" type="button"
+                aria-label="${escapeHtml(ev.title)} 모임 상세 열기">
+          <span class="my-sched-date" aria-hidden="true">
+            <strong>${escapeHtml(day)}</strong><span>${escapeHtml(month)}</span>
+          </span>
+          <span class="my-sched-main">
+            <span class="my-sched-title">${escapeHtml(ev.title)}</span>
+            <span class="my-sched-meta">${escapeHtml(meta)}</span>
+            ${ev.place ? `<span class="my-sched-sub">${escapeHtml(ev.place)} · 참석 ${ev.yes}${ev.capacity ? `/${ev.capacity}` : ''}</span>`
+              : `<span class="my-sched-sub">참석 ${ev.yes}${ev.capacity ? `/${ev.capacity}` : ''}</span>`}
+          </span>
+          <span class="my-sched-kind tone-${escapeHtml(kind.tone || 'etc')}">${escapeHtml(kind.label || '일정')}</span>
+          <span class="my-sched-chev" aria-hidden="true">${ic('chevronRight')}</span>
+        </button>
+        ${shareBtn}
+      </div>`;
   }
 
   function renderMyScheduleSheet() {
     const sched = store.getMySchedule();
-    const tab = ui.myScheduleTab === 'past' ? 'past' : 'upcoming';
+    const privacy = store.getPastMeetingPrivacy();
+    const tab = ui.myScheduleTab === 'upcoming' ? 'upcoming' : 'past';
     if (el.myScheduleCountUpcoming) el.myScheduleCountUpcoming.textContent = String(sched.upcoming.length);
     if (el.myScheduleCountPast) el.myScheduleCountPast.textContent = String(sched.past.length);
+    if (el.myScheduleTitle) el.myScheduleTitle.textContent = tab === 'past' ? '다녀온 모임' : '예정 모임';
     if (el.myScheduleSeg) {
       el.myScheduleSeg.querySelectorAll('[data-my-schedule-tab]').forEach((b) => {
         const on = b.dataset.myScheduleTab === tab;
@@ -15775,22 +15937,113 @@ document.addEventListener('DOMContentLoaded', () => {
         b.setAttribute('aria-pressed', String(on));
       });
     }
+    /* 공개 범위는 '다녀온 모임' 갈래에서만 — 전체 스위치 + 타인에게 몇 개 공개 중인지. */
+    if (el.myScheduleShare) el.myScheduleShare.hidden = tab !== 'past';
+    if (el.myScheduleShareToggle) {
+      el.myScheduleShareToggle.classList.toggle('on', !privacy.hidden);
+      el.myScheduleShareToggle.setAttribute('aria-checked', String(!privacy.hidden));
+    }
+    if (el.myScheduleShareNote) {
+      el.myScheduleShareNote.textContent = privacy.hidden
+        ? '타인에게 비공개 — 숫자도 보이지 않아요'
+        : `타인에게 ${privacy.shared}개 공개 중`;
+      el.myScheduleShareNote.classList.toggle('is-off', privacy.hidden);
+    }
     if (!el.myScheduleList) return;
     const list = tab === 'past' ? sched.past : sched.upcoming;
     el.myScheduleList.dataset.tab = tab;
     if (!list.length) {
       el.myScheduleList.innerHTML = tab === 'past'
         ? `<div class="my-sched-empty">
-             <p class="my-sched-empty-title">아직 다녀온 일정이 없어요</p>
-             <p class="my-sched-empty-desc">참석한 일정이 날짜를 지나면 여기 쌓여요.</p>
+             <p class="my-sched-empty-title">아직 다녀온 모임이 없어요</p>
+             <p class="my-sched-empty-desc">참석한 모임 일정이 날짜를 지나면 여기 쌓여요.</p>
            </div>`
         : `<div class="my-sched-empty">
-             <p class="my-sched-empty-title">아직 예정된 일정이 없어요</p>
+             <p class="my-sched-empty-title">아직 예정된 모임이 없어요</p>
              <p class="my-sched-empty-desc">모임 일정에서 '참석'을 누르면 여기에 모여요.</p>
            </div>`;
       return;
     }
-    el.myScheduleList.innerHTML = list.map(myScheduleRowHTML).join('');
+    el.myScheduleList.innerHTML = list
+      .map((ev) => myScheduleRowHTML(ev, { shareDisabled: privacy.hidden }))
+      .join('');
+  }
+
+  /**
+   * v34.4 (#22760) — 모임 목록 시트. 내 그룹과 타인의 그룹을 같은 시트로 보여 준다.
+   *  · 내 모임: 누르면 그 모임으로 들어가고, 타인 모임: 누르면 모임 상세(가입 화면)가 열린다.
+   */
+  function openProfileGroupsSheet(personId) {
+    const meId = (store.currentUser || {}).id;
+    const isMe = !personId || personId === meId;
+    const person = isMe ? (store.currentUser || {}) : (store.getPersonProfile(personId) || {});
+    const groups = store.getPersonGroups(isMe ? meId : personId);
+    const name = person.nickname || '이용자';
+    if (el.profileGroupsTitle) el.profileGroupsTitle.textContent = isMe ? '내 그룹' : `${name}님의 그룹`;
+    if (el.profileGroupsSub) {
+      el.profileGroupsSub.textContent = groups.length
+        ? `${isMe ? '내가' : `${name}님이`} 들어 있는 모임 ${groups.length}개`
+        : (isMe ? '아직 들어 있는 모임이 없어요.' : '아직 들어 있는 모임이 없어요.');
+    }
+    if (el.profileGroupsList) {
+      el.profileGroupsList.innerHTML = groups.length
+        ? groups.map((g) => profileGroupRowHTML(g)).join('')
+        : `<div class="my-sched-empty">
+             <p class="my-sched-empty-title">아직 들어 있는 모임이 없어요</p>
+             <p class="my-sched-empty-desc">관심 있는 취미의 모임을 찾아 들어가 보세요.</p>
+           </div>`;
+    }
+    openModal(el.profileGroupsModal);
+  }
+
+  function profileGroupRowHTML(g) {
+    const chip = (store.getHobbyChip(g.hobbyId || g.category)) || null;
+    const roster = store.getGroupRoster(g.id);
+    const count = (roster && roster.total) || g.memberCount || 0;
+    return `
+      <button class="my-sched-item profile-group-row" data-profile-group="${escapeHtml(g.id)}" type="button"
+              aria-label="${escapeHtml(g.name)} 모임 열기">
+        <span class="mp-group-cover tone-${escapeHtml(chip ? chip.tone : 'neutral')}" aria-hidden="true">
+          ${g.photoUrl ? `<img src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy">` : ic(chip ? chip.icon : 'sparkle')}
+        </span>
+        <span class="my-sched-main">
+          <span class="my-sched-title">${escapeHtml(g.name)}</span>
+          <span class="my-sched-meta">${escapeHtml([g.categoryName || '', g.azitName || g.location || ''].filter(Boolean).join(' · '))}</span>
+        </span>
+        <span class="my-sched-kind">멤버 ${count}</span>
+        <span class="my-sched-chev" aria-hidden="true">${ic('chevronRight')}</span>
+      </button>`;
+  }
+
+  /**
+   * v34.4 — 타인이 나에게 보여 주는 다녀온 모임. 비공개면 숫자 대신 안내만.
+   */
+  function openPersonPastMeetings(personId) {
+    const person = store.getPersonProfile(personId) || {};
+    const data = store.getPastMeetingPrivacy(personId);
+    const name = person.nickname || '이용자';
+    if (el.pastMeetingsTitle) el.pastMeetingsTitle.textContent = `${name}님의 다녀온 모임`;
+    if (el.pastMeetingsSub) {
+      el.pastMeetingsSub.textContent = data.hidden
+        ? '이 이용자는 다녀온 모임을 비공개로 두었어요.'
+        : `공개한 모임 ${data.shared}개`;
+    }
+    if (el.pastMeetingsList) {
+      if (data.hidden) {
+        el.pastMeetingsList.innerHTML = `<div class="my-sched-empty mp-private-empty">
+          <p class="my-sched-empty-title">다녀온 모임을 비공개로 두었어요</p>
+          <p class="my-sched-empty-desc">숫자와 목록 모두 공개하지 않은 이용자예요.</p>
+        </div>`;
+      } else if (!data.visible.length) {
+        el.pastMeetingsList.innerHTML = `<div class="my-sched-empty">
+          <p class="my-sched-empty-title">아직 공개한 다녀온 모임이 없어요</p>
+          <p class="my-sched-empty-desc">참석한 모임이 날짜를 지나면 여기에 쌓여요.</p>
+        </div>`;
+      } else {
+        el.pastMeetingsList.innerHTML = data.visible.map((ev) => myScheduleRowHTML(ev, { noShare: true })).join('');
+      }
+    }
+    openModal(el.pastMeetingsModal);
   }
 
   /** 내 피드 — 격자(3열) / 인스타형 카드 전환. 홈 피드와 같은 카드(igPostHTML)를 쓴다. */
@@ -16359,22 +16612,51 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const add = e.target.closest('[data-album-add]');
     if (add) { openAlbumPicker(add.dataset.albumAdd === 'secret' ? 'secret' : 'public', false); }
+    /* v34.4 (#22806) — 다음 일정 칩: 일정 상세 / 예정 일정이 없으면 예정 목록 */
+    const nextEv = e.target.closest('[data-mp-next]');
+    if (nextEv) {
+      const id = nextEv.dataset.mpNext;
+      if (!id || id === 'none') openMyScheduleSheet('upcoming');
+      else openEventDetail(id);
+      return;
+    }
   });
   /* v34.3 — 공개 사진은 위 한 줄(1 + 3 원형)에서만 더한다. 예전 '사진 추가' 버튼은 걷어냈다. */
   $('#btn-album-secret-add') && $('#btn-album-secret-add').addEventListener('click', () => openAlbumPicker('secret', false));
 
-  /* v34.3 — 내 프로필 통계의 '예정 일정' · '다녀온 일정' → 그 목록 시트 */
+  /* v34.4 (#22760) — 통계의 '다녀온 모임'(목록·공개 설정) · '내 그룹'(모임 목록) */
   el.myProfileStats && el.myProfileStats.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-my-schedule]');
-    if (btn) openMyScheduleSheet(btn.dataset.mySchedule);
+    if (btn) { openMyScheduleSheet(btn.dataset.mySchedule); return; }
+    if (e.target.closest('[data-my-groups]')) openProfileGroupsSheet();
   });
   el.myScheduleSeg && el.myScheduleSeg.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-my-schedule-tab]');
     if (!btn) return;
-    ui.myScheduleTab = btn.dataset.myScheduleTab === 'past' ? 'past' : 'upcoming';
+    ui.myScheduleTab = btn.dataset.myScheduleTab === 'upcoming' ? 'upcoming' : 'past';
     renderMyScheduleSheet();
   });
+  /* 전체 공개/비공개 — 숫자까지 숨기는 스위치 */
+  el.myScheduleShareToggle && el.myScheduleShareToggle.addEventListener('click', () => {
+    const next = (store.currentUser || {}).pastMeetingsPublic === false;
+    store.setPastMeetingsPublic(next);
+    renderMyScheduleSheet();
+    renderMyProfileTab();
+    showToast(next ? '다녀온 모임을 타인에게 보여 줄게요' : '다녀온 모임을 타인에게 숨겼어요 · 숫자도 보이지 않아요', 'info');
+  });
   el.myScheduleList && el.myScheduleList.addEventListener('click', (e) => {
+    const share = e.target.closest('[data-past-share]');
+    if (share) {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = share.dataset.pastShare;
+      const next = share.getAttribute('aria-checked') !== 'true';
+      store.setPastMeetingShared(id, next);
+      renderMyScheduleSheet();
+      renderMyProfileTab();
+      showToast(next ? '이 모임을 타인에게 공개했어요' : '이 모임을 비공개로 돌렸어요', 'info');
+      return;
+    }
     const row = e.target.closest('[data-my-schedule-event]');
     if (!row) return;
     const id = row.dataset.myScheduleEvent;
@@ -16382,6 +16664,24 @@ document.addEventListener('DOMContentLoaded', () => {
     openEventDetail(id);
   });
   $('#btn-my-schedule-close') && $('#btn-my-schedule-close').addEventListener('click', () => closeModal(el.myScheduleModal));
+
+  /* v34.4 — 모임 목록 시트(내 그룹 · 타인 모임) / 타인 다녀온 모임 시트 */
+  el.profileGroupsList && el.profileGroupsList.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-profile-group]');
+    if (!row) return;
+    closeModal(el.profileGroupsModal);
+    /* 타인 프로필 위에서 열었으면 그 페이지를 닫고 모임 상세로 넘어간다(겹침 방지). */
+    if (el.personDetailModal && el.personDetailModal.classList.contains('active')) closeModal(el.personDetailModal);
+    openGroupDetail(row.dataset.profileGroup);
+  });
+  el.pastMeetingsList && el.pastMeetingsList.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-my-schedule-event]');
+    if (!row) return;
+    closeModal(el.pastMeetingsModal);
+    openEventDetail(row.dataset.myScheduleEvent);
+  });
+  $('#btn-profile-groups-close') && $('#btn-profile-groups-close').addEventListener('click', () => closeModal(el.profileGroupsModal));
+  $('#btn-past-meetings-close') && $('#btn-past-meetings-close').addEventListener('click', () => closeModal(el.pastMeetingsModal));
 
   /* v34.2 — 설정은 우측 상단 삼선바(삼선바)로, 프로필 카드 우측은 자물쇠 비밀 사진. */
   el.myProfileMenu && el.myProfileMenu.addEventListener('click', () => openDrawer('profile'));
