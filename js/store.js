@@ -10979,7 +10979,12 @@ class Store {
       .filter((e) => this.isGroupJoined(e.groupId)
         || (Array.isArray(e.rsvps) && e.rsvps.some((r) => r.memberId === me.id && r.guest === true)))
       .map(row)
-      .filter((e) => e.myRsvp === 'yes' || e.myGuestStatus === 'approved' || e.createdBy === me.id);
+      .filter((e) => {
+        /* 내가 만든 일정이라도 '불참'으로 돌리면 빠진다(대기(maybe)는 확정이 아니므로 참석이 아니다). */
+        if (e.myRsvp === 'no') return false;
+        return e.myRsvp === 'yes' || e.myGuestStatus === 'approved'
+          || (e.createdBy === me.id && e.myRsvp !== 'maybe');
+      });
     const upcoming = mine.filter((e) => !e.past)
       .sort((a, b) => new Date(a.when).getTime() - new Date(b.when).getTime());
     const past = mine.filter((e) => e.past)
