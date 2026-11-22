@@ -25041,3 +25041,90 @@ button.caption-author::after {
 .feed-optin.is-locked { opacity: 1; pointer-events: none; }
 .feed-optin.is-locked .feed-optin-title { color: var(--green-text); }
 .ig-group.ig-group-free { color: var(--green-text); font-weight: var(--fw-label); }
+
+/* ==========================================================================
+   v33.9 (#22267 · #22279) — 인스타그램형 피드 다듬기
+   --------------------------------------------------------------------------
+   ① 좋아요한 사람: 액션 줄 바로 아래 작은 아바타 최대 3개(겹침)
+      + '〇〇님 외 N명이 좋아합니다' — 누르면 좋아요한 사람 목록이 열린다.
+   ② 작성 시간('5일 전')을 카드 맨 아래로 — 작고 연한 회색.
+   ③ 댓글 미리보기·댓글 시트의 아바타·이름·본문 높낮이를 한 줄로 맞춘다.
+   ========================================================================== */
+
+/* ① 좋아요한 사람 줄 ------------------------------------------------------ */
+.ig-likers {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  max-width: 100%;
+  min-height: 32px;
+  margin-top: -4px;            /* 액션 줄과 4px 만 벌린다(.ig-post gap 8px) */
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-meta);
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+.ig-likers[hidden] { display: none; }
+.ig-likers-faces { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.ig-liker-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid var(--bg-app);    /* 겹친 아바타 사이를 카드 바탕색으로 띄운다 */
+  overflow: hidden;
+  background: var(--bg-subtle);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: var(--fw-label);
+  line-height: 1;
+}
+.ig-liker-face + .ig-liker-face { margin-left: -6px; }
+.ig-liker-face .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.ig-likers-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ② 작성 시간 — 카드 맨 아래, 작고 연하게 -------------------------------- */
+.ig-foot-time {
+  display: block;
+  margin-top: -2px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* ③ 댓글 높낮이 정렬 — 이름·본문 첫 줄의 baseline 을 맞춘다 ------------- */
+.ig-comment-line {
+  align-items: baseline;
+  gap: 6px;
+}
+.ig-comment-avatar {
+  align-self: flex-start;
+  margin-top: -2px;            /* 20px 아바타를 18px 첫 줄에 가운데로 */
+}
+button.ig-comment-name {
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+.ig-comment-line .ig-comment-text { line-height: 1.4; }
+
+/* 댓글 시트 — 이름과 본문의 글자 크기·줄 높이를 같은 리듬으로 */
+.feed-comment-main { gap: 0; }
+button.feed-comment-author {
+  font-size: var(--fs-small);
+  line-height: 1.4;
+}
+.feed-comments .feed-comment-text, .feed-comment-text { line-height: 1.4; }

@@ -1944,9 +1944,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (tabId === 'tab-myprofile') { renderMyProfileTab(); }
 
-    /* 글쓰기 FAB은 그 모임 피드·게시판에서만 노출 (바깥 갤러리에는 없다) */
-    el.fab.classList.toggle('visible',
-      tabId === 'tab-board' || (tabId === 'tab-home' && isGroupMode()));
+    /* v33.9 (#22238) — 글쓰기 FAB은 홈·게시판에서 늘 노출한다.
+       모임에 가입하지 않은 이용자도 홈에서 바로 자유 피드를 쓸 수 있어야 한다. */
+    el.fab.classList.toggle('visible', tabId === 'tab-board' || tabId === 'tab-home');
 
     /* 같은 탭 재선택이면 맨 위로, 탭 전환이면 기억한 위치로 (Sprint 9 — 복원 정확도 2차) */
     const saved = prevTab === tabId ? 0 : (ui.scrollByTab[tabId] || 0);
@@ -2666,6 +2666,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const hours = Math.max(0, Math.round((Date.now() - when.getTime()) / 36e5));
     const whenLabel = hours < 1 ? '방금' : (hours < 24 ? `${hours}시간 전` : `${Math.round(hours / 24)}일 전`);
     const likeCount = Number(p.likes) || 0;
+    /* v33.9 (#22267) — 좋아요한 사람 줄(아바타 3개 + '〇〇님 외 N명이 좋아합니다').
+       목록은 글 id 로 정해지므로 다시 그려도 같은 얼굴이 나온다. */
+    const likersInfo = likeCount ? store.getPostLikeInfo(p.id) : { count: 0, people: [] };
+    const likerCount = likersInfo.count || likeCount;
     return `
       <article class="ig-post" data-home-feed-post="${escapeHtml(it.uid)}" data-suggest-post="${escapeHtml(p.id)}"
                data-post-id="${escapeHtml(p.id)}" data-post-round="${it.round || 0}">
@@ -2682,7 +2686,6 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="ig-place">${ic('map')} ${escapeHtml(place)}</span>
             </span>
           </span>
-          <span class="ig-when">${escapeHtml(whenLabel)}</span>
         </header>
         <div class="ig-media${mediaClass}">${media}</div>
         <div class="ig-actions">
@@ -2704,10 +2707,43 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="ig-act-count" data-feed-comment-count="${escapeHtml(p.id)}">${comments.length}</span>
           </button>
         </div>
+        ${igLikersHTML(p.id, likerCount, likersInfo.people)}
         <p class="ig-caption">${hashtagHTML(firstSentence(p.caption) || '사진을 올렸어요')}</p>
         <div class="ig-comments">${igCommentsHTML(p)}</div>
         <button class="ig-add-comment" data-feed-comment-open="${escapeHtml(p.id)}" type="button">댓글 달기…</button>
+        <time class="ig-foot-time" datetime="${escapeHtml(when.toISOString())}">${escapeHtml(whenLabel)}</time>
       </article>`;
+  }
+
+  /**
+   * v33.9 (#22267) — 좋아요한 사람 줄.
+   *  · 액션 줄(하트·댓글) 바로 아래, 인스타그램처럼 작은 원형 아바타 최대 3개를 겹쳐 보여 준다.
+   *  · 문구: 1명이면 '〇〇님이 좋아합니다', 2명 이상이면 '〇〇님 외 N명이 좋아합니다'.
+   *  · 줄을 누르면 기존 좋아요한 사람 목록(#likers-modal)이 열린다.
+   */
+  function igLikersText(count, people) {
+    const n = Math.max(0, Number(count) || 0);
+    if (!n) return '';
+    const first = (people && people[0] && people[0].nickname) || '';
+    if (!first) return `${n}명이 좋아합니다`;
+    return n <= 1 ? `${first}님이 좋아합니다` : `${first}님 외 ${n - 1}명이 좋아합니다`;
+  }
+
+  function igLikersInnerHTML(count, people) {
+    const n = Math.max(0, Number(count) || 0);
+    const list = n ? (people || []).slice(0, 3) : [];
+    const faces = list.map((person) =>
+      `<span class="ig-liker-face" style="${avatarStyle(person)}">${avatarInnerHTML(person)}</span>`).join('');
+    return (faces ? `<span class="ig-likers-faces" aria-hidden="true">${faces}</span>` : '')
+      + `<span class="ig-likers-text">${escapeHtml(igLikersText(n, people))}</span>`;
+  }
+
+  /** 좋아요가 0이어도 자리를 만들어 두고 hidden 으로 숨긴다(좋아요 때 다시 그리기 쉽게). */
+  function igLikersHTML(postId, count, people) {
+    const n = Math.max(0, Number(count) || 0);
+    const id = escapeHtml(postId);
+    return `<button class="ig-likers" type="button" data-feed-likers="${id}" data-likers-row="${id}"
+              ${n ? '' : 'hidden'} aria-label="좋아요한 사람 ${n}명 보기">${igLikersInnerHTML(n, people)}</button>`;
   }
 
   /** 추천 피드 카드의 댓글 미리보기 — 사람 아바타 + 닉네임 + 문장(둘 다 프로필로 이어진다). */
@@ -2940,7 +2976,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const comments = post.comments || [];
     if (el.feedCommentSub) {
       const grp = store.getGroup(post.groupId);
-      el.feedCommentSub.textContent = `${grp ? grp.name : '모임'} · 댓글 ${comments.length}개`;
+      /* v33.9 — 모임 없이 올린 자유 피드 글은 '모임'이 아니라 '자유 피드'로 적는다. */
+      el.feedCommentSub.textContent = `${grp ? grp.name : (post.groupId ? '모임' : '자유 피드')} · 댓글 ${comments.length}개`;
     }
     el.feedCommentList.innerHTML = comments.length
       ? comments.map((c) => {
@@ -2972,6 +3009,14 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll(`[data-feed-comment-count="${postId}"]`).forEach((n) => {
       n.textContent = String((post.comments || []).length);      // eslint-disable-line no-param-reassign
       n.classList.toggle('is-zero', !(post.comments || []).length);
+    });
+    /* v33.9 (#22267) — 좋아요한 사람 줄(아바타·문구)도 그 자리에서 갱신한다. */
+    const info = store.getPostLikeInfo(postId);
+    const count = info.count || 0;
+    document.querySelectorAll(`[data-likers-row="${postId}"]`).forEach((row) => {
+      row.hidden = count === 0;                                  // eslint-disable-line no-param-reassign
+      row.innerHTML = igLikersInnerHTML(count, info.people || []); // eslint-disable-line no-param-reassign
+      row.setAttribute('aria-label', `좋아요한 사람 ${count}명 보기`);
     });
   }
 
@@ -15936,8 +15981,8 @@ document.addEventListener('DOMContentLoaded', () => {
   registerServiceWorker();
   /* Sprint 28.5 — 첫 화면이 다 그려졌다. 스플래시는 여기서 바로 걷는다(최대 1.5초). */
   splash.ready && splash.ready();
-  /* Sprint 16 — 첫 화면은 바깥 갤러리라 FAB 은 모임 안에서만 켠다 */
-  el.fab.classList.toggle('visible', isGroupMode());
+  /* v33.9 (#22238) — 첫 화면(홈)에서도 FAB 을 켠다. 모임 밖이면 자유 피드로 올린다. */
+  el.fab.classList.toggle('visible', ui.activeTab === 'tab-board' || ui.activeTab === 'tab-home');
 
   /* Sprint 8 — 첫 렌더 계측(성능 회귀 확인용): 경과·DOM 노드 수 */
   const bootMs = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - bootStart) * 10) / 10;
