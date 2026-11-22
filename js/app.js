@@ -91,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toastTimer: null,
     /* Sprint 3.5 — 카드 하트 · 상호 LIKE 팝업 */
     personSheetId: null,         // 지금 열린 프로필 상세 시트의 대상
+    myScheduleTab: 'upcoming',   // v34.3 — 내 일정 시트가 보고 있는 갈래(예정/다녀온)
     likersPostId: null,          // v33.4 — 좋아요한 사람 시트가 보고 있는 글
     matchPopupRoomId: null,      // 방금 열린 대화방 (축하 팝업의 '대화방 열기' 대상)
     matchPopupProfileId: null,
@@ -302,6 +303,13 @@ document.addEventListener('DOMContentLoaded', () => {
     myProfileMenu: $('#btn-myprofile-menu'),
     myProfileSecret: $('#btn-myprofile-secret'),
     myProfilePhotoMini: $('#myprofile-photo-mini'),
+    mySecretCount: $('#mp-secret-count'),
+    /* v34.3 — 내 일정 시트(예정 · 다녀온) */
+    myScheduleModal: $('#my-schedule-modal'),
+    myScheduleSeg: $('#my-schedule-seg'),
+    myScheduleList: $('#my-schedule-list'),
+    myScheduleCountUpcoming: $('#my-schedule-count-upcoming'),
+    myScheduleCountPast: $('#my-schedule-count-past'),
     myFeedGrid: $('#mp-feed-grid'),
     myFeedList: $('#mp-feed-list'),
     myFeedSeg: $('#mp-feed-seg'),
@@ -8466,6 +8474,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ------------------------------------------------- 취미친구 프로필 상세 시트 */
   /**
+   * v34.3 — 다른 사람의 공개 사진(프로필 사진 1 + 그 사람이 올린 글 사진들).
+   *  내 프로필의 1+3 규칙을 타인 화면에도 그대로 옮기되, 타인에게는 비밀앨범도 '+' 칸도 없다.
+   *  사진을 누르면 그 사진이 올라온 글을 연다(타인 앨범을 따로 들여다보는 화면은 두지 않는다).
+   * @returns {Array<{url:string, postId:string|null}>}
+   */
+  function personPhotoList(p) {
+    const out = [];
+    const seen = new Set();
+    const add = (url, postId) => {
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      out.push({ url, postId: postId || null });
+    };
+    add(p.photoUrl, null);
+    (store.state.feedPosts || [])
+      .filter((post) => post.authorId === p.id)
+      .slice()
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .forEach((post) => {
+        (post.images || []).forEach((u) => add(u, post.id));
+        add(post.photoUrl, post.id);
+      });
+    return out;
+  }
+
+  /** 타인 프로필 — 큰 사진(1번) 오른쪽에 놓을 작은 원형 3개. 없으면 그리지 않는다. */
+  function personPhotoRingsHTML(p) {
+    const photos = personPhotoList(p);
+    const rest = photos.slice(1, 4);
+    if (!rest.length) return '';
+    return `
+      <div class="detail-photo-rings" role="group" aria-label="${escapeHtml(p.nickname)}님의 공개 사진">
+        ${rest.map((ph, i) => `
+          <button class="detail-ring${ph.postId ? '' : ' is-plain'}" type="button"
+                  ${ph.postId ? `data-person-photo="${escapeHtml(ph.postId)}"` : 'disabled'}
+                  aria-label="공개 사진 ${i + 2} — ${ph.postId ? '그 사진의 글 열기' : '큰 사진'}">
+            <img class="detail-ring-img" src="${escapeHtml(ph.url)}" alt="" loading="lazy" decoding="async">
+          </button>`).join('')}
+        ${photos.length > 4 ? `<span class="detail-ring-more">외 ${photos.length - 4}장</span>` : ''}
+      </div>`;
+  }
+
+  /**
    * 사람 프로필 시트 — id 문자열이나 이미 찾은 profile 객체를 받는다.
    * v33.4: 피드·좋아요·댓글에서 누른 사람도 이 시트 하나로 열린다.
    *        매칭 카드 사람이 아니면(모임 사람·이름만 아는 사람) '관심 보내기'는 숨기고
@@ -8520,6 +8571,7 @@ document.addEventListener('DOMContentLoaded', () => {
           : `<span class="detail-photo-initial" aria-hidden="true">${escapeHtml(p.avatarText || String(p.nickname).charAt(0))}</span>`}
         <span class="person-badge detail-photo-badge">${escapeHtml(p.badge || '')}</span>
       </div>
+      ${personPhotoRingsHTML(p)}
       <div class="detail-head">
         <div class="detail-name-row">
           <h2 class="detail-name">${escapeHtml(p.nickname)}</h2>
@@ -8652,6 +8704,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   el.personDetailBody && el.personDetailBody.addEventListener('click', (e) => {
+    /* v34.3 — 공개 사진 원형을 누르면 그 사진이 올라온 글을 연다. */
+    const photo = e.target.closest('[data-person-photo]');
+    if (photo) { openHomePost(photo.dataset.personPhoto); return; }
     const btn = e.target.closest('[data-person-action]');
     if (!btn) return;
     const action = btn.dataset.personAction;
@@ -15614,37 +15669,128 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.myProfileStats) {
       const stats = store.getMyFeedStats();
       const groups = store.getJoinedGroups().length;
+      const sched = store.getMySchedule();
+      /* v34.3 (#22641) — '받은 좋아요' 자리에 '예정 일정'·'다녀온 일정'.
+         두 칸은 눌러서 그 목록(시트)을 볼 수 있다. 네 칸이 한 줄에 들어간다. */
       el.myProfileStats.innerHTML = `
         <span class="myprofile-stat"><strong>${stats.total}</strong><span>내 글</span></span>
-        <span class="myprofile-stat"><strong>${stats.likes}</strong><span>받은 좋아요</span></span>
+        <button class="myprofile-stat is-tap" data-my-schedule="upcoming" type="button"
+                aria-label="예정 일정 ${sched.upcoming.length}개 보기"><strong>${sched.upcoming.length}</strong><span>예정 일정</span></button>
+        <button class="myprofile-stat is-tap" data-my-schedule="past" type="button"
+                aria-label="다녀온 일정 ${sched.past.length}개 보기"><strong>${sched.past.length}</strong><span>다녀온 일정</span></button>
         <span class="myprofile-stat"><strong>${groups}</strong><span>내 모임</span></span>`;
     }
     renderMyProfileFeed();
   }
 
-  /** 공개 사진 2~4번 — 대표 사진(1번) 아래 작은 미리보기. 빈 칸은 '+' 로 사진을 더한다. */
+  /**
+   * 공개 사진 2~4번 — 1번 큰 사진 오른쪽의 작은 원형 3칸 (v34.3 · IMG_4581).
+   *  · 사진이 없는 칸은 '+' 원형을 그대로 두고 누르면 앨범이 열린다.
+   *  · 지우기·순서·대표 바꾸기는 그 사진을 눌러 크게 본 화면에서 한다(원형에는 × 를 얹지 않는다).
+   *  · 5번째부터는 비밀앨범 — 바로 옆 자물쇠 원형이 장수를 '+N' 으로 달고 그 시트를 연다.
+   */
   function renderMyPhotoMini() {
-    if (!el.myProfilePhotoMini) return;
-    const photos = store.getMyAlbum('public');
-    const mini = photos.slice(1, ALBUM_MAX);
-    const slots = mini.map((p, i) => {
-      const index = i + 1;
-      return `<figure class="album-slot mp-mini is-filled" data-album-photo="${escapeHtml(p.id)}" data-album-kind="public">
-        <img class="album-img" src="${escapeHtml(p.url)}" alt="공개 사진 ${index + 1}" loading="lazy" decoding="async">
-        <button class="album-open" data-album-open="${escapeHtml(p.id)}" data-album-kind="public" data-album-index="${index}" type="button"
-                aria-label="공개 사진 ${index + 1} 크게 보기"></button>
-        <button class="album-remove" data-album-remove="${escapeHtml(p.id)}" data-album-kind="public" type="button"
-                aria-label="공개 사진 ${index + 1} 지우기">&times;</button>
-      </figure>`;
-    });
-    for (let i = mini.length; i < ALBUM_MAX - 1; i += 1) {
-      slots.push(`<button class="album-slot mp-mini is-empty" data-album-add="public" type="button"
-        aria-label="공개 사진 ${i + 2}칸 — 사진 추가">
-        <span class="album-plus" aria-hidden="true">+</span>
-      </button>`);
+    if (el.myProfilePhotoMini) {
+      const photos = store.getMyAlbum('public');
+      const mini = photos.slice(1, ALBUM_MAX);
+      const slots = mini.map((p, i) => {
+        const index = i + 1;
+        return `<figure class="album-slot mp-mini mp-ring is-filled" data-album-photo="${escapeHtml(p.id)}" data-album-kind="public">
+          <img class="album-img" src="${escapeHtml(p.url)}" alt="공개 사진 ${index + 1}" loading="lazy" decoding="async">
+          <button class="album-open" data-album-open="${escapeHtml(p.id)}" data-album-kind="public" data-album-index="${index}" type="button"
+                  aria-label="공개 사진 ${index + 1} 크게 보기"></button>
+        </figure>`;
+      });
+      for (let i = mini.length; i < ALBUM_MAX - 1; i += 1) {
+        slots.push(`<button class="mp-ring is-empty" data-album-add="public" type="button"
+          aria-label="공개 사진 ${i + 2}번 칸 — 사진 추가">
+          <span class="mp-ring-plus" aria-hidden="true">${ic('plus')}</span>
+        </button>`);
+      }
+      el.myProfilePhotoMini.innerHTML = slots.join('');
+      el.myProfilePhotoMini.classList.toggle('is-full', photos.length >= ALBUM_MAX);
     }
-    el.myProfilePhotoMini.innerHTML = slots.join('');
-    el.myProfilePhotoMini.classList.toggle('is-full', photos.length >= ALBUM_MAX);
+    if (el.mySecretCount) {
+      const n = store.getMyAlbum('secret').length;
+      el.mySecretCount.textContent = n ? `+${n}` : '';
+      el.mySecretCount.hidden = n === 0;
+    }
+    if (el.myProfileSecret) {
+      const n = store.getMyAlbum('secret').length;
+      el.myProfileSecret.classList.toggle('has-secret', n > 0);
+      el.myProfileSecret.setAttribute('aria-label', n
+        ? `비밀앨범 열기 — ${n}장`
+        : '비밀앨범 열기 — 5번째 사진부터 여기에 담겨요');
+    }
+  }
+
+  /* ---------------------------------------------------------------- 내 일정 (v34.3)
+   * 11/22 21:55 루키 님(#22641): "하단 받은 좋아요 말고 예정일정? 그리고 다녀온 일정?"
+   * 일정은 모임 안에만 있던 것이라, 내 프로필에서는 '내가 참석하겠다고 답한 일정'만 모아
+   * 예정(앞으로) / 다녀온(지나간) 두 갈래로 보여 준다. 줄을 누르면 그 일정 상세가 열린다. */
+  function openMyScheduleSheet(tab) {
+    ui.myScheduleTab = tab === 'past' ? 'past' : 'upcoming';
+    renderMyScheduleSheet();
+    openModal(el.myScheduleModal);
+  }
+
+  function myScheduleRowHTML(ev) {
+    const d = new Date(ev.when);
+    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+    const day = Number.isNaN(d.getTime()) ? '' : String(d.getDate());
+    const month = Number.isNaN(d.getTime()) ? '' : `${d.getMonth() + 1}월 (${weekdays[d.getDay()]})`;
+    const kind = ev.kindMeta || {};
+    /* 날짜는 왼쪽 달력 칸이 이미 보여 주므로, 본문에는 시각과 모임 이름만 적는다. */
+    const hh = d.getHours();
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const timeLabel = Number.isNaN(d.getTime()) ? ''
+      : `${hh < 12 ? '오전' : '오후'} ${hh % 12 === 0 ? 12 : hh % 12}:${mm}`;
+    const meta = [timeLabel, ev.groupName].filter(Boolean).join(' · ');
+    return `
+      <button class="my-sched-item${ev.past ? ' is-past' : ''}" data-my-schedule-event="${escapeHtml(ev.id)}" type="button"
+              aria-label="${escapeHtml(ev.title)} 일정 상세 열기">
+        <span class="my-sched-date" aria-hidden="true">
+          <strong>${escapeHtml(day)}</strong><span>${escapeHtml(month)}</span>
+        </span>
+        <span class="my-sched-main">
+          <span class="my-sched-title">${escapeHtml(ev.title)}</span>
+          <span class="my-sched-meta">${escapeHtml(meta)}</span>
+          ${ev.place ? `<span class="my-sched-sub">${escapeHtml(ev.place)} · 참석 ${ev.yes}${ev.capacity ? `/${ev.capacity}` : ''}</span>`
+            : `<span class="my-sched-sub">참석 ${ev.yes}${ev.capacity ? `/${ev.capacity}` : ''}</span>`}
+        </span>
+        <span class="my-sched-kind tone-${escapeHtml(kind.tone || 'etc')}">${escapeHtml(kind.label || '일정')}</span>
+        <span class="my-sched-chev" aria-hidden="true">${ic('chevronRight')}</span>
+      </button>`;
+  }
+
+  function renderMyScheduleSheet() {
+    const sched = store.getMySchedule();
+    const tab = ui.myScheduleTab === 'past' ? 'past' : 'upcoming';
+    if (el.myScheduleCountUpcoming) el.myScheduleCountUpcoming.textContent = String(sched.upcoming.length);
+    if (el.myScheduleCountPast) el.myScheduleCountPast.textContent = String(sched.past.length);
+    if (el.myScheduleSeg) {
+      el.myScheduleSeg.querySelectorAll('[data-my-schedule-tab]').forEach((b) => {
+        const on = b.dataset.myScheduleTab === tab;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    }
+    if (!el.myScheduleList) return;
+    const list = tab === 'past' ? sched.past : sched.upcoming;
+    el.myScheduleList.dataset.tab = tab;
+    if (!list.length) {
+      el.myScheduleList.innerHTML = tab === 'past'
+        ? `<div class="my-sched-empty">
+             <p class="my-sched-empty-title">아직 다녀온 일정이 없어요</p>
+             <p class="my-sched-empty-desc">참석한 일정이 날짜를 지나면 여기 쌓여요.</p>
+           </div>`
+        : `<div class="my-sched-empty">
+             <p class="my-sched-empty-title">아직 예정된 일정이 없어요</p>
+             <p class="my-sched-empty-desc">모임 일정에서 '참석'을 누르면 여기에 모여요.</p>
+           </div>`;
+      return;
+    }
+    el.myScheduleList.innerHTML = list.map(myScheduleRowHTML).join('');
   }
 
   /** 내 피드 — 격자(3열) / 인스타형 카드 전환. 홈 피드와 같은 카드(igPostHTML)를 쓴다. */
@@ -16214,8 +16360,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const add = e.target.closest('[data-album-add]');
     if (add) { openAlbumPicker(add.dataset.albumAdd === 'secret' ? 'secret' : 'public', false); }
   });
-  $('#btn-album-public-add') && $('#btn-album-public-add').addEventListener('click', () => openAlbumPicker('public', false));
+  /* v34.3 — 공개 사진은 위 한 줄(1 + 3 원형)에서만 더한다. 예전 '사진 추가' 버튼은 걷어냈다. */
   $('#btn-album-secret-add') && $('#btn-album-secret-add').addEventListener('click', () => openAlbumPicker('secret', false));
+
+  /* v34.3 — 내 프로필 통계의 '예정 일정' · '다녀온 일정' → 그 목록 시트 */
+  el.myProfileStats && el.myProfileStats.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-my-schedule]');
+    if (btn) openMyScheduleSheet(btn.dataset.mySchedule);
+  });
+  el.myScheduleSeg && el.myScheduleSeg.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-my-schedule-tab]');
+    if (!btn) return;
+    ui.myScheduleTab = btn.dataset.myScheduleTab === 'past' ? 'past' : 'upcoming';
+    renderMyScheduleSheet();
+  });
+  el.myScheduleList && el.myScheduleList.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-my-schedule-event]');
+    if (!row) return;
+    const id = row.dataset.myScheduleEvent;
+    closeModal(el.myScheduleModal);
+    openEventDetail(id);
+  });
+  $('#btn-my-schedule-close') && $('#btn-my-schedule-close').addEventListener('click', () => closeModal(el.myScheduleModal));
 
   /* v34.2 — 설정은 우측 상단 삼선바(삼선바)로, 프로필 카드 우측은 자물쇠 비밀 사진. */
   el.myProfileMenu && el.myProfileMenu.addEventListener('click', () => openDrawer('profile'));
@@ -16716,6 +16882,9 @@ document.addEventListener('DOMContentLoaded', () => {
     openPublishSheet, submitPublishSheet, renderExploreProfileToggle,
     getExplorePublishState: () => store.getMyExplorePublishState(),
     renderMyProfileTab, setDarkMode: (on) => applyThemePreference(on), getDarkMode: () => store.isDarkMode(),
+    /* v34.3 — 내 일정(예정 · 다녀온) 시트 */
+    openMySchedule: (tab) => openMyScheduleSheet(tab),
+    renderMySchedule: () => renderMyScheduleSheet(),
     openSecretAlbum: (partnerId) => openSecretAlbum(partnerId), setSecretAlbumShared: (on) => toggleSecretAlbumShare(on === undefined ? undefined : on),
     /* Sprint 25 — 앨범 확대 보기(라이트박스) */
     openAlbumViewer: (kind, index, from) => openAlbumViewer(kind, index, from),

@@ -10955,6 +10955,38 @@ class Store {
 
   getNextGroupEvent(groupId) { return this.getUpcomingGroupEvents(groupId, 1)[0] || null; }
 
+  /**
+   * v34.3 (#22641) — 내 일정: 내가 '참석'으로 답한(또는 내가 만든) 일정을 예정/다녀온으로 나눈다.
+   *  · 모임에 들어 있거나 게스트 참석이 확정된 일정만 본다(남의 모임 일정은 세지 않는다).
+   *  · 날짜가 지난 일정은 지우지 않고 '다녀온 일정'으로 옮긴다.
+   * @returns {{upcoming:Array, past:Array, total:number}}
+   */
+  getMySchedule() {
+    const me = this.currentUser || {};
+    const now = Date.now();
+    const row = (e) => {
+      const summary = this.getGroupEventSummary(e.id);
+      const grp = this.getGroup(e.groupId);
+      return {
+        ...e,
+        ...summary,
+        past: new Date(e.when).getTime() < now,
+        kindMeta: this.getGroupEventKindsLabel(e.kind),
+        groupName: grp ? grp.name : ''
+      };
+    };
+    const mine = (this.state.groupEvents || [])
+      .filter((e) => this.isGroupJoined(e.groupId)
+        || (Array.isArray(e.rsvps) && e.rsvps.some((r) => r.memberId === me.id && r.guest === true)))
+      .map(row)
+      .filter((e) => e.myRsvp === 'yes' || e.myGuestStatus === 'approved' || e.createdBy === me.id);
+    const upcoming = mine.filter((e) => !e.past)
+      .sort((a, b) => new Date(a.when).getTime() - new Date(b.when).getTime());
+    const past = mine.filter((e) => e.past)
+      .sort((a, b) => new Date(b.when).getTime() - new Date(a.when).getTime());
+    return { upcoming, past, total: mine.length };
+  }
+
   /** 참석/대기/불참 — 한 사람은 한 상태만.
    *  Sprint 15 — 정원이 찾는데 참석을 누르면 **자동으로 대기 명단**에 들어간다.
    *  참석자가 불참으로 빠져 자리가 나면 대기 1순위가 자동으로 참석이 된다. */

@@ -2192,6 +2192,35 @@ img, svg { display: block; }
 
 .detail-head { padding-right: 30px; }
 
+/* v34.3 — 타인 프로필도 공개 사진 1 + 작은 원형 3개(내 프로필과 같은 규칙).
+   타인에게는 비밀앨범도 '+' 칸도 없다 — 원형은 그 사람이 올린 사진으로 이어진다. */
+.detail-photo-rings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 12px;
+}
+.detail-ring {
+  position: relative;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--fill-subtle);
+  cursor: pointer;
+}
+.detail-ring:active { transform: scale(0.96); }
+.detail-ring[disabled] { cursor: default; }
+.detail-ring-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.detail-ring-more {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+
 .detail-name-row {
   display: flex;
   align-items: baseline;
@@ -25556,7 +25585,7 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
    ========================================================================== */
 
 /* ---------------------------------------------------------------------------
-   ① 내 프로필 — 인스타그램형
+   ① 내 프로필 — 인스타그램형 (v34.3: 사진은 1 + 3 한 줄)
    --------------------------------------------------------------------------- */
 /* 헤더 안의 삼선바는 내 프로필 탭에서만 보인다(hidden 속성이 display 를 이긴다). */
 .myprofile-menu-btn[hidden] { display: none !important; }
@@ -25564,44 +25593,24 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 
 #tab-myprofile { padding-top: 6px; }
 
+/* v34.3 (#22641 · IMG_4581) — 이름·아이디·소개가 위, 그 아래 사진 줄:
+   왼쪽 큰 1번 대표 사진 · 오른쪽에 2·3·4번 작은 원형 + 자물쇠(5번째부터 비밀앨범). */
 .myprofile-head {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 14px 6px 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px 2px 2px;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.myprofile-avatar {
-  flex: 0 0 88px;
-  width: 88px;
-  height: 88px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  background: var(--green-grad, var(--green));
-  color: #FFFFFF;
-  font-size: 32px;
-  font-weight: 700;
-  box-shadow: 0 0 0 3px var(--bg-base), 0 6px 18px rgba(6, 78, 59, 0.16);
-  cursor: pointer;
-}
-.myprofile-avatar:active { transform: scale(0.97); }
-.myprofile-avatar .avatar-letter { font-size: 32px; font-weight: 700; color: #FFFFFF; }
-.myprofile-avatar .avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-
 .myprofile-id {
-  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding-top: 4px;
 }
 .myprofile-name {
   font-size: 18px;
@@ -25637,50 +25646,127 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   color: var(--text-muted);
 }
 
-/* 카드 우측 — 예전 '설정' 자리의 비밀 사진 버튼 */
-.myprofile-secret {
-  flex: 0 0 auto;
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 34px;
-  padding: 0 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--bg-subtle);
-  color: var(--text-sub);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  white-space: nowrap;
+/* 사진 줄 — 왼쪽 큰 사진 · 오른쪽 원형 3개 + 자물쇠 */
+.mp-gallery {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  /* 원형 크기를 화면 폭에 맞춰 조금 줄인다(칸이 44px 보다 작아지지 않게 38px 하한). */
+  --mp-ring: clamp(38px, 11.3vw, 44px);
 }
-.myprofile-secret:active { transform: scale(0.96); }
-.myprofile-secret-ic { display: inline-flex; color: var(--green-text); }
-.myprofile-secret-ic .oo-ic { font-size: 14px; }
+.mp-gallery-side {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  padding-top: 3px;
+}
 
-/* 공개 사진 2~4번 — 대표 사진 아래 작은 미리보기 */
-.myprofile-photos { margin-top: 12px; }
-.myprofile-photos-head {
+/* 공개 사진 1번 — 큰 사진은 모서리만 둥근 사각(원형 아바타와 구분) */
+.myprofile-avatar {
+  flex: 0 0 clamp(96px, 36vw, 140px);
+  width: clamp(96px, 36vw, 140px);
+  height: clamp(96px, 36vw, 140px);
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: var(--green-grad, var(--green));
+  color: #FFFFFF;
+  box-shadow: none;
+  cursor: zoom-in;
+}
+.myprofile-avatar:active { transform: scale(0.985); }
+.myprofile-avatar .avatar-letter { font-size: 40px; font-weight: 700; color: #FFFFFF; }
+.myprofile-avatar .avatar-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* 공개 사진 2·3·4번 — 작은 원형 3칸(빈 칸은 +) */
+.mp-ring-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 2px 8px;
+  gap: 7px;
 }
-.myprofile-photos-title {
+.myprofile-photo-mini.mp-rings {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.mp-ring {
+  position: relative;
+  flex: 0 0 var(--mp-ring, 44px);
+  width: var(--mp-ring, 44px);
+  height: var(--mp-ring, 44px);
+  min-width: var(--mp-ring, 44px);
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--fill-subtle);
+  color: var(--text-muted);
+}
+.mp-ring.is-filled { cursor: zoom-in; background: var(--fill-subtle); }
+.mp-ring.is-filled.mp-mini { border-radius: 50%; }
+.mp-ring.is-empty:active { background: var(--bg-subtle); }
+.mp-ring.is-empty .mp-ring-plus { display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); }
+.mp-ring .mp-ring-plus .oo-ic { font-size: 17px; }
+.mp-ring .album-open { border-radius: 50%; }
+.mp-ring .album-img { border-radius: 50%; }
+
+/* 5번째부터 — 자물쇠 원형이 비밀앨범을 연다(장수는 +N) */
+.myprofile-secret.mp-secret-ring {
+  position: relative;
+  flex: 0 0 var(--mp-ring, 44px);
+  width: var(--mp-ring, 44px);
+  height: var(--mp-ring, 44px);
+  min-width: var(--mp-ring, 44px);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill-subtle);
+  color: var(--text-muted);
+  overflow: visible;
+}
+.myprofile-secret.mp-secret-ring.has-secret { color: var(--green-text); }
+.myprofile-secret.mp-secret-ring:active { transform: scale(0.96); }
+.mp-secret-ring .myprofile-secret-ic { display: inline-flex; color: inherit; }
+.mp-secret-ring .myprofile-secret-ic .oo-ic { font-size: 18px; }
+.myprofile-secret-count {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--green-solid);
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  line-height: 20px;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+.myprofile-secret-count[hidden] { display: none; }
+
+/* 공개 사진 4/4 — 원형 줄 아래 작은 표기(예전 아래 박스의 장수 표기를 이 자리로 옮겼다) */
+.mp-photos-note {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: var(--fs-small);
-  font-weight: var(--fw-label);
-  color: var(--text-strong);
+  gap: 5px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
 }
-.myprofile-photo-mini {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.myprofile-photo-mini .mp-mini { border-radius: 14px; }
-.myprofile-photo-mini.is-full .mp-mini { cursor: zoom-in; }
+.mp-photos-note .album-count { padding: 1px 6px; font-size: var(--fs-caption); }
 
 /* 활동 요약 — 인스타그램처럼 배경 없이 숫자와 라벨만 */
 .myprofile-stats {
@@ -25704,6 +25790,122 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 }
 .myprofile-stat strong { font-size: var(--fs-section); font-weight: var(--fw-display); color: var(--text-strong); }
 .myprofile-stat span { font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-muted); }
+
+/* v34.3 — '예정 일정' · '다녀온 일정' 칸은 눌러서 목록을 연다(다른 칸과 같은 모양, 눌림만 있다) */
+.myprofile-stat.is-tap {
+  min-height: 44px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+.myprofile-stat.is-tap:active { transform: scale(0.97); }
+.myprofile-stat.is-tap:active strong { color: var(--green-text); }
+
+/* ---------------------------------------------------------------------------
+   v34.3 — 내 일정 시트(예정 · 다녀온)
+   --------------------------------------------------------------------------- */
+.my-schedule-body { padding-top: 2px; }
+.my-schedule-seg {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0 12px;
+}
+.my-schedule-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--fill-subtle);
+  color: var(--text-sub);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+}
+.my-schedule-seg-btn.is-on { background: var(--green-soft); color: var(--green-text); }
+.my-schedule-seg-count {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.my-schedule-seg-btn.is-on .my-schedule-seg-count { color: var(--green-text); }
+
+.my-schedule-list { display: flex; flex-direction: column; gap: 2px; }
+.my-sched-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 64px;
+  padding: 11px 2px;
+  border: 0;
+  border-top: 1px solid var(--divider);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.my-sched-item:first-child { border-top: 0; }
+.my-sched-item:active { background: var(--fill-subtle); }
+.my-sched-date {
+  flex: 0 0 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 4px 0 5px;
+  border-radius: 12px;
+  background: var(--fill-subtle);
+}
+.my-sched-date strong { font-size: var(--fs-section); font-weight: var(--fw-display); color: var(--text-strong); line-height: 1.1; }
+.my-sched-date span { font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-muted); }
+.my-sched-item.is-past .my-sched-date { background: transparent; }
+.my-sched-item.is-past .my-sched-date strong { color: var(--text-muted); }
+.my-sched-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.my-sched-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-title);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.my-sched-meta,
+.my-sched-sub {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.my-sched-kind {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--fill-subtle);
+  color: var(--text-sub);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+}
+.my-sched-chev { flex: 0 0 auto; display: inline-flex; color: var(--text-muted); }
+.my-sched-chev .oo-ic { font-size: 15px; }
+.my-sched-empty { padding: 34px 8px 30px; text-align: center; }
+.my-sched-empty-title { font-size: var(--fs-body); font-weight: var(--fw-title); color: var(--text-strong); }
+.my-sched-empty-desc {
+  margin-top: 5px;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-body);
+  line-height: 1.45;
+  color: var(--text-sub);
+  word-break: keep-all;
+}
 
 /* 내 피드 — 격자(3열) ↔ 인스타형 피드 */
 .myprofile-feed { margin-top: 16px; }
@@ -25748,20 +25950,24 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   box-shadow: var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.12));
 }
 
+/* v34.3 (#22696) — 내 피드 격자는 인스타그램 프로필처럼 **화면 폭을 꽉 채우는 3열 세로 직사각형(3:4)**.
+   좌우 탭 여백만큼 빠져나가(음수 여백) 모서리·빈틈 없이 붙고, 칸 사이는 2px, 모서리는 각진다. */
 .mp-feed-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 3px;
+  gap: 2px;
   margin-top: 10px;
+  margin-left: calc(-1 * var(--gutter-x, 14px));
+  margin-right: calc(-1 * var(--gutter-x, 14px));
 }
 .mp-feed-grid[hidden],
 .mp-feed-list[hidden] { display: none; }
 .mp-feed-tile {
   position: relative;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 3 / 4;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: 0;
   overflow: hidden;
   background: var(--fill-subtle);
   cursor: pointer;
@@ -25776,7 +25982,7 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 }
 .mp-feed-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .mp-tile-text {
-  padding: 8px;
+  padding: 10px;
   font-size: var(--fs-caption);
   font-weight: var(--fw-body);
   line-height: 1.35;
@@ -25785,7 +25991,7 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   word-break: keep-all;
   overflow-wrap: anywhere;
   display: -webkit-box;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 7;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -25822,7 +26028,7 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 
 .mp-feed-empty {
   grid-column: 1 / -1;
-  padding: 22px 10px 10px;
+  padding: 22px var(--gutter-x, 14px) 10px;
   text-align: center;
 }
 .mp-feed-empty-title { font-size: var(--fs-small); font-weight: var(--fw-label); color: var(--text-strong); }
@@ -26265,7 +26471,7 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 /* 다크 테마 — 폰 목업과 흰 테두리 그림자만 살짝 눌러 준다 */
 :root[data-theme="dark"] .wz-phone { background: var(--bg-subtle); }
 :root[data-theme="dark"] .wz-phone-screen { background: var(--bg-base); }
-:root[data-theme="dark"] .myprofile-avatar { box-shadow: 0 0 0 3px var(--bg-base), 0 6px 18px rgba(0, 0, 0, 0.4); }
+:root[data-theme="dark"] .myprofile-avatar { box-shadow: none; }
 :root[data-theme="dark"] .wz-final-card { box-shadow: none; border: 1px solid var(--divider); }
 :root[data-theme="dark"] .myprofile-secret { background: var(--bg-subtle); }
 
@@ -26279,7 +26485,8 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 
 /* v34.2 — 남은 두 클래스 */
 .pe-sheet .composer-header { padding-bottom: 4px; }
-.myprofile-secret-label { display: inline-flex; }
+/* v34.3 — 자물쇠 원형의 '비밀 사진' 글자는 소리로만 읽힌다(보이는 이름은 자물쇠와 +N) */
+.myprofile-secret-label { position: absolute; }
 
 /* v34.2 — 원형 미리보기는 어떤 규칙과 겹쳐도 정사각형 원으로 보인다. */
 .cover-pick-preview.cover-circle {
