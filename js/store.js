@@ -8643,7 +8643,8 @@ class Store {
   }
 
   /**
-   * 마이프로필 수정. 닉네임·한 줄 소개·대표 취미(1~3)·활동 지역·활동 시간대.
+   * 마이프로필 수정. v34.2 부터는 **닉네임·사용자 아이디·대표 취미(1~3)·소개** 네 가지다
+   * (인스타그램 편집처럼 행 4개). 지역·활동 시간대는 넘기지 않으면 그대로 둔다.
    * @returns {{ok:boolean, reason?:string, user?:object}}
    */
   updateProfile(data) {
@@ -8657,16 +8658,45 @@ class Store {
     requested.forEach((id) => {
       if (this.getHobbyChip(id) && !unique.includes(id)) unique.push(id);
     });
-    if (!unique.length) return { ok: false, reason: 'hobby' };
+    /* v34.2 — 취미는 고른 만큼만. 이미 취미가 있는 사람이 전부 해제하면 한 개는 남긴다
+       (예전 규칙), 취미가 없던 사람은 비워도 저장할 수 있다(가입 직후 프로필부터 채우는 길). */
+    if (!unique.length && (user.hobbyIds || []).length) return { ok: false, reason: 'hobby' };
     if (unique.length > 3) return { ok: false, reason: 'too_many_hobbies' };
 
-    const location = String(d.location == null ? user.location : d.location).trim().slice(0, 30);
-    if (!location) return { ok: false, reason: 'location' };
+    /* v34.2 — 사용자 아이디(@id). 비우면 기존 아이디를 지키고, 형식은 소문자·숫자·._ 3~20자. */
+    let handle = user.handle || '';
+    if (d.handle !== undefined) {
+      const given = String(d.handle == null ? '' : d.handle).trim().replace(/^@+/, '').toLowerCase();
+      if (!given) {
+        handle = user.handle || '';
+      } else if (!/^[a-z0-9._]{3,20}$/.test(given)) {
+        return { ok: false, reason: 'handle' };
+      } else {
+        const taken = (this.state.matchProfiles || []).concat(this.state.partnerProfiles || [])
+          .some((p) => String(p.handle || '').replace(/^@+/, '').toLowerCase() === given)
+          || String(user.handle || '').replace(/^@+/, '').toLowerCase() === given
+          || ((this.state.personas && Object.values(this.state.personas)) || [])
+            .some((p) => String(p.handle || '').replace(/^@+/, '').toLowerCase() === given);
+        if (taken && String(user.handle || '').replace(/^@+/, '').toLowerCase() !== given) {
+          return { ok: false, reason: 'handle_taken' };
+        }
+        handle = `@${given}`;
+      }
+    }
+
+    /* 지역은 이 시트에서 묻지 않는다 — 넘어오면 검사하고, 없으면 지금 값을 지킨다. */
+    let location = user.location || '';
+    if (d.location !== undefined) {
+      const given = String(d.location == null ? '' : d.location).trim().slice(0, 30);
+      if (!given) return { ok: false, reason: 'location' };
+      location = given;
+    }
 
     const activityOption = (this.state.activityOptions || [])
       .find((o) => o.label === d.activity) || { label: user.activity || '평일 저녁', icon: user.activityIcon || '' };
 
     user.nickname = nickname;
+    user.handle = handle;
     user.avatarText = nickname.charAt(0);
     user.hobbyIds = unique;
     user.hobbies = unique.map((id) => this.getHobbyChip(id).name);
@@ -12379,7 +12409,12 @@ class Store {
 
     const user = blankCurrentUser();
     user.nickname = nickname;
-    user.handle = `@${(d.handle || nickname.replace(/\s+/g, '')).slice(0, 12).toLowerCase() || 'me'}`;
+    /* v34.2 — 사용자 아이디는 영문·숫자·._ 만. 한글 닉네임만 있으면 oog12345 로 시작한다. */
+    const askedHandle = String(d.handle || '').replace(/^@+/, '').toLowerCase()
+      .replace(/[^a-z0-9._]/g, '').slice(0, 20);
+    user.handle = `@${askedHandle.length >= 3
+      ? askedHandle
+      : `oog${String(Math.floor(Math.random() * 90000) + 10000)}`}`;
     user.avatarText = nickname.charAt(0);
     user.avatarGradient = gradient;
     user.photoUrl = photoUrl;

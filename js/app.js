@@ -140,6 +140,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 14 — 홈 = 내 모임 허브 · 단체 채팅 · 일정(RSVP) · 전체 멤버 */
     homeGroupId: null,           // 홈에서 보고 있는 모임(저장된 homePrefs 를 따른다)
     homeView: 'feed',            // 'feed'(인스타형 스크롤 피드) | 'grid'(사진 격자) | 'popular'(인기)
+    myFeedView: 'grid',          // v34.2 — 내 프로필 하단 '내 피드': 'grid'(3열) | 'feed'(인스타형)
+    regionEdit: false,           // v34.2 — 아지트 단계에서 권역(시·군·구) 목록을 펼쳐 둔 상태
     homeTag: null,               // 사진 격자 말머리 필터(null = 전체)
     openGroupChatId: null,       // 열려 있는 모임 단체 채팅
     groupChatTimer: null,        // 멤버 답장(시연) 예약
@@ -294,7 +296,17 @@ document.addEventListener('DOMContentLoaded', () => {
     myProfileAvatarImg: $('#myprofile-avatar-img'),
     myProfileName: $('#myprofile-name'),
     myProfileMeta: $('#myprofile-meta'),
-    albumPublicGrid: $('#album-public-grid'),
+    /* v34.2 — 인스타형 내 프로필: 아이디·소개·삼선바 설정·공개 사진 미니·내 피드(격자/피드) */
+    myProfileHandle: $('#myprofile-handle'),
+    myProfileBio: $('#myprofile-bio'),
+    myProfileMenu: $('#btn-myprofile-menu'),
+    myProfileSecret: $('#btn-myprofile-secret'),
+    myProfilePhotoMini: $('#myprofile-photo-mini'),
+    myFeedGrid: $('#mp-feed-grid'),
+    myFeedList: $('#mp-feed-list'),
+    myFeedSeg: $('#mp-feed-seg'),
+    myFeedCount: $('#mp-feed-count'),
+    mySecretModal: $('#my-secret-modal'),
     albumSecretGrid: $('#album-secret-grid'),
     albumPublicCount: $('#album-public-count'),
     albumSecretCount: $('#album-secret-count'),
@@ -585,11 +597,9 @@ document.addEventListener('DOMContentLoaded', () => {
     regionSheetCurrent: $('#region-sheet-current'),
     filterBearChip: $('#filter-bear-chip'),
     groupTopTabs: $('#group-top-tabs'),
-    myProfilePhotoLine: $('#myprofile-photo-line'),
     dmRequestSection: $('#dm-request-section'),
     dmRequestList: $('#dm-request-list'),
     dmRequestCount: $('#chat-request-count'),
-    albumTabs: $('#album-tabs'),
     exploreRegionSub: $('#explore-region-sub'),
     exploreComposeRegion: $('#explore-compose-region'),
     exploreComposeStyles: $('#explore-compose-styles'),
@@ -598,10 +608,12 @@ document.addEventListener('DOMContentLoaded', () => {
     explorePublish: $('#btn-explore-publish'),
     profileEditModal: $('#profile-edit-modal'),
     editNickname: $('#edit-nickname'),
+    editHandle: $('#edit-handle'),
     editBio: $('#edit-bio'),
     editHobbies: $('#edit-hobbies'),
-    editLocation: $('#edit-location'),
-    editActivity: $('#edit-activity'),
+    editHobbyOpen: $('#btn-edit-hobby-open'),
+    editHobbyValue: $('#edit-hobby-value'),
+    editHobbyPicker: $('#edit-hobby-picker'),
     groupCreateModal: $('#group-create-modal'),
     createGroupName: $('#create-group-name'),
     createGroupHobbies: $('#create-group-hobbies'),
@@ -615,8 +627,6 @@ document.addEventListener('DOMContentLoaded', () => {
     createGroupStepDesc: $('#create-group-step-desc'),
     createGroupPrev: $('#btn-create-group-prev'),
     createGroupFootHint: $('#create-group-foot-hint'),
-    createGroupCoverPreview: $('#create-group-cover-preview'),
-    createGroupCoverPresets: $('#create-group-cover-presets'),
     createGroupCoverAlbum: $('#create-group-cover-album'),
     createGroupCoverCamera: $('#create-group-cover-camera'),
     createGroupCoverRemove: $('#btn-create-group-cover-remove'),
@@ -631,12 +641,12 @@ document.addEventListener('DOMContentLoaded', () => {
     createGroupCrop: $('#create-group-crop'),
     createGroupCropStage: $('#create-group-crop-stage'),
     createGroupCropImg: $('#create-group-crop-img'),
-    createGroupCropZoom: $('#create-group-crop-zoom'),
+    createGroupCropBox: $('#create-group-crop-box'),
     createGroupRegionSido: $('#create-group-region-sido'),
     createGroupRegionSigungu: $('#create-group-region-sigungu'),
     createGroupRegionPicked: $('#create-group-region-picked'),
     createGroupHangoutLead: $('#create-group-hangout-lead'),
-    createGroupSummary: $('#create-group-summary'),
+    createGroupFinal: $('#create-group-final'),
     createGroupResume: $('#create-group-resume'),
     /* v33.5 — 1단계 실시간 미리보기 · 2단계 자동 추천 */
     createGroupPreview: $('#create-group-preview'),
@@ -1970,6 +1980,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /* v33.9 (#22238) — 글쓰기 FAB은 홈·게시판에서 늘 노출한다.
        모임에 가입하지 않은 이용자도 홈에서 바로 자유 피드를 쓸 수 있어야 한다. */
     el.fab.classList.toggle('visible', tabId === 'tab-board' || tabId === 'tab-home');
+    /* v34.2 — 설정(삼선바)은 내 프로필 탭 우측 상단에만 있다. */
+    if (el.myProfileMenu) el.myProfileMenu.hidden = tabId !== 'tab-myprofile';
 
     /* 같은 탭 재선택이면 맨 위로, 탭 전환이면 기억한 위치로 (Sprint 9 — 복원 정확도 2차) */
     const saved = prevTab === tabId ? 0 : (ui.scrollByTab[tabId] || 0);
@@ -2819,7 +2831,11 @@ document.addEventListener('DOMContentLoaded', () => {
               ${n ? '' : 'hidden'} aria-label="좋아요한 사람 ${n}명 보기">${igLikersInnerHTML(n, people)}</button>`;
   }
 
-  /** 추천 피드 카드의 댓글 미리보기 — 사람 아바타 + 닉네임 + 문장(둘 다 프로필로 이어진다). */
+  /**
+   * 피드 카드의 댓글 미리보기 — v34.2 (#22512).
+   *  · 카드 안에서는 **아이디(@ 뗀 형태) + 댓글 본문**만. 아바타·닉네임은 보이지 않는다.
+   *  · '댓글 N개 모두 보기'로 연 댓글 시트에서만 원형 아바타 + 닉네임이 나온다.
+   */
   function igCommentsHTML(post) {
     const comments = (post && post.comments) || [];
     if (!comments.length) return '';
@@ -2829,9 +2845,8 @@ document.addEventListener('DOMContentLoaded', () => {
       + comments.slice(-2).map((c) => {
         const person = personFor(c.authorId, c.authorName);
         return `<p class="ig-comment-line">
-            <button class="ig-comment-avatar" type="button" ${profileAttrs(person.id, person.nickname)}
-                    style="${avatarStyle(person)}" aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${avatarInnerHTML(person)}</button>
-            <button class="ig-comment-name" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName || '멤버')}</button>
+            <button class="ig-comment-handle" type="button" ${profileAttrs(person.id, person.nickname)}
+                    aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${escapeHtml(displayHandle(person))}</button>
             <span class="ig-comment-text">${escapeHtml(c.text || '')}</span></p>`;
       }).join('');
   }
@@ -8589,6 +8604,25 @@ document.addEventListener('DOMContentLoaded', () => {
     return store.resolvePersonProfile({ id, name }, { register: false });
   }
 
+  /**
+   * v34.2 (#22512) — 피드 카드 댓글 미리보기에 쓰는 **사용자 아이디**(@ 없이).
+   *  · 프로필에 handle 이 있으면 그것(@aassd → aassd).
+   *  · 없으면 id 에서 사람 몫만 떼어 쓴다(match_junho → junho).
+   *  · 마지막에는 닉네임을 줄여 쓴다(공백 제거) — 빈 칸으로 두지 않는다.
+   */
+  function displayHandle(person) {
+    const raw = String((person && person.handle) || '').trim().replace(/^@+/, '');
+    if (raw) return raw;
+    const id = String((person && person.id) || '').replace(/^@+/, '');
+    if (id && !id.includes(':')) {
+      /* 마지막 조각을 쓴다 — match_junho → junho · sample_p_danchu → danchu · user_kettle → kettle */
+      const parts = id.split('_');
+      const tail = String(parts[parts.length - 1] || '').replace(/[^a-zA-Z0-9.]/g, '');
+      if (tail.length >= 2) return tail.toLowerCase();
+    }
+    return String((person && person.nickname) || 'member').replace(/\s+/g, '').toLowerCase();
+  }
+
   /* ------------------------------------------------------ 좋아요한 사람 시트 */
   function openLikers(postId) {
     if (!el.likersModal) return;
@@ -11187,27 +11221,45 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** 공통 부품의 '직접 쓰기' — 어느 화면에서 눌렀든 그 대분류… 는 기본 '일상·기타'에 담는다. */
+  /**
+   * 목록에 없는 취미를 그 자리에서 더한다.
+   * v34.2 (#22537) — 고친 버그: 모임 만들기 2단계에서 '추가'를 누르면
+   *  · 예전에는 없는 함수(renderGroupDraft)를 불러 오류가 나, 칩이 목록에 붙지도 않고
+   *    자동 선택도 되지 않았다(추가 버튼을 다시 누르거나 다른 칩을 골라야 했다).
+   *  · 지금은 **그 즉시** 목록에 칩이 생기고 곧바로 선택·적용된다(대분류도 그 취미의 분류로).
+   *  · 이미 있는 취미면 그 칩을 그냥 골라 준다(같은 이름을 두 번 만들지 않는다).
+   */
   function addHobbyInline(scope) {
     const input = document.querySelector(`[data-hobby-custom-input="${scope}"]`);
     const picked = scope === 'group' ? store.getHobbyChip(ui.groupDraft.hobbyId) : null;
     const res = store.addCustomHobby(input ? input.value : '', picked ? picked.categoryId : 'daily');
-    if (!res.ok) {
-      showToast(res.reason === 'duplicate' ? '이미 있는 취미예요' : '취미 이름을 1~12자로 적어주세요', 'warning');
+    const hobby = res.hobby;
+    if (!hobby || (!res.ok && res.reason !== 'duplicate')) {
+      showToast(res.reason === 'too_many' ? '취미는 20개까지 더할 수 있어요' : '취미 이름을 1~12자로 적어주세요', 'warning');
       return;
     }
     if (input) input.value = '';
     if (scope === 'edit') {
-      if (ui.edit.hobbyIds.length >= 3) ui.edit.hobbyIds = ui.edit.hobbyIds.slice(0, 2);
-      ui.edit.hobbyIds = ui.edit.hobbyIds.concat(res.hobby.id);
+      if (!ui.edit.hobbyIds.includes(hobby.id)) {
+        if (ui.edit.hobbyIds.length >= 3) ui.edit.hobbyIds = ui.edit.hobbyIds.slice(0, 2);
+        ui.edit.hobbyIds = ui.edit.hobbyIds.concat(hobby.id);
+      }
       renderEditHobbies();
+      renderEditHobbyValue();
     } else if (scope === 'group') {
-      ui.groupDraft.hobbyId = res.hobby.id;
-      renderGroupDraft();
+      const d = ui.groupDraft;
+      if (d) {
+        d.hobbyId = hobby.id;
+        d.categoryId = hobby.categoryId;
+        d.manualHobby = true;
+        d.autoHobby = null;
+        renderGroupWizard();
+      }
     } else if (scope === 'compose') {
-      ui.exploreCompose.hobbyId = res.hobby.id;
+      ui.exploreCompose.hobbyId = hobby.id;
       renderExploreCompose();
     }
-    showToast(`'${res.hobby.name}' 취미를 더했어요`, 'success');
+    showToast(res.ok ? `'${hobby.name}' 취미를 더했어요` : `이미 있는 '${hobby.name}' 취미를 골랐어요`, 'success');
   }
 
   document.addEventListener('click', (e) => {
@@ -11337,22 +11389,93 @@ document.addEventListener('DOMContentLoaded', () => {
          </div>`;
   }
 
-  function renderEditActivity() {
-    if (!el.editActivity) return;
-    el.editActivity.innerHTML = store.state.activityOptions.map((o) => `
-      <button class="tag-pick ${ui.edit.activity === o.label ? 'active' : ''}"
-              data-edit-activity="${escapeHtml(o.label)}" type="button">${ic(o.icon)} ${escapeHtml(o.label)}</button>`).join('');
+  /**
+   * v34.2 (#22500 · IMG_4577) — 프로필 수정은 인스타그램 편집처럼 4행만:
+   *  닉네임 · 사용자 아이디(@) · 취미 · 소개. 지역·활동 시간대·사진은 이 시트에서 묻지 않는다.
+   */
+  function renderEditHobbyValue() {
+    if (!el.editHobbyValue) return;
+    const names = (ui.edit.hobbyIds || []).map((id) => (store.getHobbyChip(id) || {}).name).filter(Boolean);
+    el.editHobbyValue.textContent = names.length ? names.join(' · ') : '고르기';
+    el.editHobbyValue.classList.toggle('is-empty', !names.length);
+  }
+
+  function setEditHobbyPicker(open) {
+    const on = !!open;
+    if (el.editHobbyPicker) el.editHobbyPicker.hidden = !on;
+    if (el.editHobbyOpen) el.editHobbyOpen.setAttribute('aria-expanded', String(on));
+    if (on) renderEditHobbies();
+  }
+
+  /** 아이디(@) — 소문자·숫자·밑줄·점만. 저장은 store.updateProfile 이 한 번 더 검사한다. */
+  function cleanHandleInput(value) {
+    return String(value == null ? '' : value)
+      .replace(/^@+/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9._]/g, '')
+      .slice(0, 20);
+  }
+
+  /**
+   * 아이디가 아직 없거나 한글 닉네임에서 온 값이면(@테스터) 보여 줄 기본 아이디를 만든다.
+   * 닉네임이 같으면 늘 같은 값이 나오도록 간단한 해시를 쓴다 — 사용자는 그대로 고쳐 쓸 수 있다.
+   */
+  function fallbackHandle(u) {
+    let h = 0;
+    const s = String((u && (u.nickname || u.id)) || 'oog');
+    for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) % 100000;
+    return `oog${String(h).padStart(5, '0')}`;
+  }
+
+  /** 화면에 보여 줄 @id — 쓸 수 있는 값이 아니면 기본 아이디로 대신한다. */
+  function displayHandleOf(u) {
+    const clean = cleanHandleInput(u && u.handle);
+    return clean.length >= 3 ? clean : fallbackHandle(u);
   }
 
   function openProfileEdit() {
     const u = store.currentUser;
-    ui.edit = { hobbyIds: (u.hobbyIds || []).slice(0, 3), activity: u.activity || '평일 저녁' };
-    if (el.editNickname) el.editNickname.value = u.nickname;
+    ui.edit = { hobbyIds: (u.hobbyIds || []).slice(0, 3) };
+    if (el.editNickname) el.editNickname.value = u.nickname || '';
+    if (el.editHandle) el.editHandle.value = displayHandleOf(u);
     if (el.editBio) el.editBio.value = u.bio || '';
-    if (el.editLocation) el.editLocation.value = u.location || '';
     renderEditHobbies();
-    renderEditActivity();
+    renderEditHobbyValue();
+    setEditHobbyPicker(false);
     openModal(el.profileEditModal);
+  }
+
+  if (el.editHobbyOpen) {
+    el.editHobbyOpen.addEventListener('click', () => {
+      setEditHobbyPicker(el.editHobbyPicker ? el.editHobbyPicker.hidden : false);
+    });
+  }
+  if (el.editHandle) {
+    el.editHandle.addEventListener('input', () => {
+      const cleaned = cleanHandleInput(el.editHandle.value);
+      if (cleaned !== el.editHandle.value) el.editHandle.value = cleaned;
+      /* 소개·아이디는 입력하는 대로 내 프로필 상단에 바로 비친다(시트 뒤 화면). */
+      paintProfileIdentityLive();
+    });
+  }
+  if (el.editNickname) el.editNickname.addEventListener('input', paintProfileIdentityLive);
+  if (el.editBio) el.editBio.addEventListener('input', paintProfileIdentityLive);
+
+  /** 시트에서 적는 닉네임·아이디·소개를 내 프로필 상단에 즉시 반영한다. */
+  function paintProfileIdentityLive() {
+    const u = store.currentUser || {};
+    const nick = el.editNickname && el.editNickname.value.trim() ? el.editNickname.value.trim() : '';
+    if (el.myProfileName && nick) el.myProfileName.textContent = nick;
+    if (el.myProfileHandle) {
+      const handle = displayHandleOf({ handle: el.editHandle ? el.editHandle.value : u.handle, nickname: u.nickname, id: u.id });
+      el.myProfileHandle.textContent = handle ? `@${handle}` : '';
+      el.myProfileHandle.hidden = !handle;
+    }
+    if (el.myProfileBio) {
+      const bio = el.editBio ? el.editBio.value.trim() : (u.bio || '');
+      el.myProfileBio.textContent = bio;
+      el.myProfileBio.hidden = !bio;
+    }
   }
 
   el.editHobbies && el.editHobbies.addEventListener('click', (e) => {
@@ -11368,36 +11491,32 @@ document.addEventListener('DOMContentLoaded', () => {
       ui.edit.hobbyIds = ui.edit.hobbyIds.concat(id);
     }
     renderEditHobbies();
-  });
-
-  el.editActivity && el.editActivity.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-edit-activity]');
-    if (!chip) return;
-    ui.edit.activity = chip.dataset.editActivity;
-    renderEditActivity();
+    renderEditHobbyValue();
   });
 
   const btnSaveProfile = $('#btn-save-profile');
   btnSaveProfile && btnSaveProfile.addEventListener('click', () => {
     const result = store.updateProfile({
       nickname: el.editNickname ? el.editNickname.value : '',
+      handle: el.editHandle ? el.editHandle.value : undefined,
       bio: el.editBio ? el.editBio.value : '',
-      hobbyIds: ui.edit.hobbyIds,
-      location: el.editLocation ? el.editLocation.value : '',
-      activity: ui.edit.activity
+      hobbyIds: ui.edit.hobbyIds
     });
     if (!result.ok) {
       const messages = {
         nickname: '닉네임은 2~12자로 정해주세요',
+        handle: '아이디는 영문 소문자·숫자로 3~20자예요',
+        handle_taken: '이미 쓰고 있는 아이디예요',
         hobby: '대표 취미를 하나 이상 골라주세요',
-        too_many_hobbies: '대표 취미는 3개까지예요',
-        location: '활동 지역을 적어주세요'
+        too_many_hobbies: '대표 취미는 3개까지예요'
       };
       showToast(messages[result.reason] || '저장하지 못했어요', 'warning');
+      if (result.reason === 'handle' && el.editHandle) el.editHandle.focus();
       return;
     }
     closeModal(el.profileEditModal);
     renderProfileHeader();
+    renderMyProfileTab();
     renderFeed();
     renderExplore({ preserve: true });
     updateBadges();
@@ -11544,6 +11663,8 @@ document.addEventListener('DOMContentLoaded', () => {
     else { renderGroupDetail(res.group); renderExplore({ preserve: true }); }
   }
 
+  /* v34.2 (#22537) — 4단계(지역)와 5단계(아지트)를 '아지트' 하나로 합쳤다.
+     1 이름 → 2 취미 → 3 대표 이미지 → 4 아지트 → 5 최종 확인. */
   const CREATE_STEPS = [
     {
       id: 1, label: '이름', title: '모임 이름을 정해 주세요',
@@ -11555,19 +11676,15 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     {
       id: 3, label: '대표 이미지', title: '대표 이미지를 골라 주세요',
-      desc: '사진은 한 번만 자르면 원형(1:1)과 카드(4:3)로 함께 만들어져요.'
+      desc: '사진을 고르면 바로 자를 수 있어요. 고르지 않아도 그냥 넘어갈 수 있어요.'
     },
     {
-      id: 4, label: '활동 지역', title: '어디서 활동하나요?',
-      desc: '시·도에서 시·군·구 순서로 골라 주세요. 상세 주소는 받지 않아요.'
+      id: 4, label: '아지트', title: '어디서 만날까요?',
+      desc: '권역을 골라 가까운 아지트를 보고, 1~3곳을 골라 주세요. 정확한 주소는 받지 않아요.'
     },
     {
-      id: 5, label: '아지트', title: '만나는 곳을 1~3곳 골라 주세요',
-      desc: '지하철역·대학교·랜드마크 중에서 골라요. 정확한 주소 대신 이름만 저장해요.'
-    },
-    {
-      id: 6, label: '공개 설정', title: '공개 설정을 확인해 주세요',
-      desc: '가입 방식을 정하고, 만든 내용을 한 번에 확인해요.'
+      id: 5, label: '최종 확인', title: '이대로 만들까요?',
+      desc: '만들어질 모임이에요. 카드와 모임 화면을 한 번 보고 아래 버튼을 누르면 끝나요.'
     }
   ];
 
@@ -11586,8 +11703,8 @@ document.addEventListener('DOMContentLoaded', () => {
       /* v33.5 — 이름·소개에서 찾은 추천. autoHobby = 앱이 골라 둔 취미,
          manualHobby = 이용자가 직접 고름(추천이 덮지 않는다). */
       suggest: null, autoHobby: null, manualHobby: false,
-      /* circle·card 는 크롭 한 번으로 만든 두 장. presetId 는 기본 커버 8종. */
-      cover: { src: null, circle: null, card: null, presetId: null, zoom: 1, panX: 0, panY: 0, natW: 0, natH: 0 },
+      /* v34.2 — circle 이 곧 대표 이미지(원형). box 는 크롭 박스 위치·크기(스테이지 px). */
+      cover: { src: null, circle: null, card: null, presetId: null, box: null, zoom: 1, panX: 0, panY: 0, natW: 0, natH: 0 },
       sidoId: my ? my.sidoId : 'seoul',
       sigunguId: my ? my.sigunguId : null,
       hangoutIds: [],
@@ -11657,126 +11774,187 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ------------------------------------------------ 단계별 그리기 */
 
-  /** 대표 이미지 미리보기 — 1:1 원형용과 4:3 카드용을 따로 보여 준다. */
+  /**
+   * v34.2 (#22537 · IMG_4579) — 대표 이미지는 **원형 미리보기 1개**만.
+   *  · 예시 커버 8종 선택 UI 는 없앴다. 사진을 고르지 않고 넘어가면
+   *    모임명 첫 글자로 만든 원형 아이콘이 그대로 대표 이미지가 된다.
+   */
+  function coverInitialInnerHTML() {
+    const d = ui.groupDraft;
+    const chip = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
+    const tone = chip ? chip.tone : 'neutral';
+    const name = currentDraftName();
+    const initial = name ? name.charAt(0) : '';
+    return initial
+      ? `<span class="cover-initial tone-${escapeHtml(tone)}" aria-hidden="true">${escapeHtml(initial)}</span>`
+      : `<span class="cover-initial tone-${escapeHtml(tone)}" aria-hidden="true">${ic(chip ? chip.icon : 'sparkle')}</span>`;
+  }
+
   function renderCreateCover() {
     const d = ui.groupDraft;
     const c = d.cover || {};
-    const preset = c.presetId ? store.getCoverIconPreset(c.presetId) : null;
-    const tile = preset
-      ? `<span class="cover-pick-tile tone-${escapeHtml(preset.tone)}" aria-hidden="true">${ic(preset.icon)}</span>`
-      : `<span class="cover-pick-empty" aria-hidden="true">${ic('image')}</span>`;
     if (el.createGroupCoverCircle) {
       el.createGroupCoverCircle.innerHTML = c.circle
         ? `<img class="cover-pick-img is-circle" src="${escapeHtml(c.circle)}" alt="원형 대표 이미지 미리보기">`
-        : tile;
+        : coverInitialInnerHTML();
+      el.createGroupCoverCircle.classList.toggle('has-photo', !!c.circle);
     }
-    if (el.createGroupCoverPreview) {
-      el.createGroupCoverPreview.innerHTML = c.card
-        ? `<img class="cover-pick-img" src="${escapeHtml(c.card)}" alt="카드 대표 이미지 미리보기">`
-        : (preset ? tile : `<span class="cover-pick-empty" aria-hidden="true">${ic('image')}</span>
-             <span class="cover-pick-hint">사진이나 기본 커버를 골라 주세요</span>`);
-    }
-    if (el.createGroupCoverRemove) {
-      el.createGroupCoverRemove.hidden = !(c.circle || c.card || c.presetId);
-    }
-    if (el.createGroupCoverPresets) {
-      el.createGroupCoverPresets.innerHTML = store.getCoverIconPresets().map((p) => `
-        <button class="cover-preset tone-${escapeHtml(p.tone)} ${c.presetId === p.id ? 'active' : ''}"
-                data-create-cover-preset="${p.id}" type="button" aria-pressed="${c.presetId === p.id}"
-                aria-label="${escapeHtml(p.label)} 기본 커버">
-          <span class="cover-preset-ic" aria-hidden="true">${ic(p.icon)}</span>
-          <span class="cover-preset-label">${escapeHtml(p.label)}</span>
-        </button>`).join('');
-    }
+    if (el.createGroupCoverRemove) el.createGroupCoverRemove.hidden = !(c.circle || c.src);
   }
 
-  /* 크롭 — 고른 사진 위에서 정사각형 창을 끌어 옮기고 확대로 맞춘다. */
+  /* ------------------------------------------------ 크롭 (v34.2 · 사각 박스 드래그)
+   *  · 확대 슬라이더를 없애고, 사진 위의 **사각 크롭 박스**를 손가락·마우스로 조절한다.
+   *  · 모서리(4개)를 끌면 박스가 커지고 작아진다(정사각형 유지). 안쪽을 끌면 통째로 옮긴다.
+   *  · 박스 안에는 원형 가이드가 있어, 원형 대표 이미지에 무엇이 들어갈지 그대로 보인다.
+   * ======================================================================== */
+  const CROP_BOX_MIN = 56;
+
   function cropStageSize() {
     const stage = el.createGroupCropStage;
     const w = stage && stage.clientWidth ? stage.clientWidth : 320;
     return Math.max(120, Math.round(w));
   }
 
-  function cropGeometry() {
+  /** 사진이 스테이지 안에서 실제로 그려지는 사각형 — 남는 여백은 레터박스. */
+  function cropImageRect() {
     const c = ui.groupDraft.cover;
     const S = cropStageSize();
     const natW = c.natW || 1;
     const natH = c.natH || 1;
-    const base = S / Math.min(natW, natH);
-    const scale = base * (c.zoom || 1);
+    const scale = Math.min(S / natW, S / natH);
     const dw = natW * scale;
     const dh = natH * scale;
-    const maxX = Math.max(0, (dw - S) / 2);
-    const maxY = Math.max(0, (dh - S) / 2);
-    const panX = Math.max(-maxX, Math.min(maxX, c.panX || 0));
-    const panY = Math.max(-maxY, Math.min(maxY, c.panY || 0));
-    const left = (S - dw) / 2 + panX;
-    const top = (S - dh) / 2 + panY;
-    return { S, scale, dw, dh, left, top, panX, panY, maxX, maxY };
+    return { S, scale, dw, dh, left: (S - dw) / 2, top: (S - dh) / 2 };
+  }
+
+  function defaultCropBox() {
+    const r = cropImageRect();
+    const size = Math.max(CROP_BOX_MIN, Math.min(r.dw, r.dh));
+    return { x: r.left + (r.dw - size) / 2, y: r.top + (r.dh - size) / 2, size };
+  }
+
+  function clampCropBox(box) {
+    const r = cropImageRect();
+    const maxSize = Math.min(r.dw, r.dh);
+    const size = Math.min(Math.max(CROP_BOX_MIN, box.size), maxSize);
+    const x = Math.min(Math.max(r.left, box.x), r.left + r.dw - size);
+    const y = Math.min(Math.max(r.top, box.y), r.top + r.dh - size);
+    return { x, y, size };
   }
 
   function layoutCreateCrop() {
     const img = el.createGroupCropImg;
     const c = ui.groupDraft.cover;
     if (!img || !c.src) return;
-    const g = cropGeometry();
-    c.panX = g.panX;
-    c.panY = g.panY;
-    img.style.width = `${g.dw}px`;
-    img.style.height = `${g.dh}px`;
-    img.style.left = `${g.left}px`;
-    img.style.top = `${g.top}px`;
-    if (el.createGroupCropZoom && Number(el.createGroupCropZoom.value) !== Math.round((c.zoom || 1) * 100)) {
-      el.createGroupCropZoom.value = String(Math.round((c.zoom || 1) * 100));
+    const r = cropImageRect();
+    img.style.width = `${r.dw}px`;
+    img.style.height = `${r.dh}px`;
+    img.style.left = `${r.left}px`;
+    img.style.top = `${r.top}px`;
+    if (el.createGroupCropBox) {
+      if (!c.box) c.box = defaultCropBox();
+      c.box = clampCropBox(c.box);
+      el.createGroupCropBox.style.left = `${c.box.x}px`;
+      el.createGroupCropBox.style.top = `${c.box.y}px`;
+      el.createGroupCropBox.style.width = `${c.box.size}px`;
+      el.createGroupCropBox.style.height = `${c.box.size}px`;
+      el.createGroupCropBox.dataset.cropSize = String(Math.round(c.box.size));
     }
   }
 
+  /** 사진을 고르자마자 — 크롭 조절 창이 바로 뜬다. */
   function openCreateCrop(src) {
     const c = ui.groupDraft.cover;
     c.src = src;
     c.circle = null;
     c.card = null;
     c.presetId = null;
-    c.zoom = 1;
-    c.panX = 0;
-    c.panY = 0;
+    c.box = null;
     if (el.createGroupCrop) el.createGroupCrop.hidden = false;
+    if (el.createGroupCoverCircle) {
+      el.createGroupCoverCircle.classList.add('is-cropping');
+    }
     if (el.createGroupCropImg) {
       el.createGroupCropImg.onload = () => {
         c.natW = el.createGroupCropImg.naturalWidth || 1;
         c.natH = el.createGroupCropImg.naturalHeight || 1;
+        c.box = defaultCropBox();
         layoutCreateCrop();
       };
       el.createGroupCropImg.src = src;
       if (el.createGroupCropImg.complete && el.createGroupCropImg.naturalWidth) {
         c.natW = el.createGroupCropImg.naturalWidth;
         c.natH = el.createGroupCropImg.naturalHeight;
+        c.box = defaultCropBox();
         layoutCreateCrop();
       }
     }
-    if (el.createGroupCropZoom) el.createGroupCropZoom.value = '100';
+    renderCreateCover();
     queueCreateDraftSave();
+    if (el.createGroupCrop) el.createGroupCrop.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
   function closeCreateCrop() {
     if (el.createGroupCrop) el.createGroupCrop.hidden = true;
     if (el.createGroupCropImg) el.createGroupCropImg.removeAttribute('src');
+    if (el.createGroupCoverCircle) el.createGroupCoverCircle.classList.remove('is-cropping');
+  }
+
+  /** 박스 하나를 드래그 — mode 'move' | 'nw' | 'ne' | 'sw' | 'se'. */
+  function dragCropBox(start, dx, dy) {
+    const c = ui.groupDraft.cover;
+    if (!c.box) return;
+    const b = start.box;
+    if (start.mode === 'move') {
+      c.box = clampCropBox({ x: b.x + dx, y: b.y + dy, size: b.size });
+    } else {
+      /* 모서리를 끌면 반대편 모서리는 고정 — 정사각형을 지키며 크기만 바뀐다. */
+      const right = b.x + b.size;
+      const bottom = b.y + b.size;
+      let size;
+      let x = b.x;
+      let y = b.y;
+      if (start.mode === 'se') {
+        size = Math.max(b.size + Math.max(dx, dy), CROP_BOX_MIN);
+        size = Math.min(size, Math.min(right - cropImageRect().left, bottom - cropImageRect().top));
+        x = right - size;
+        y = bottom - size;
+      } else if (start.mode === 'nw') {
+        size = Math.max(b.size + Math.max(-dx, -dy), CROP_BOX_MIN);
+        size = Math.min(size, Math.min(right - cropImageRect().left, bottom - cropImageRect().top));
+        x = right - size;
+        y = bottom - size;
+      } else if (start.mode === 'ne') {
+        size = Math.max(b.size + Math.max(dx, -dy), CROP_BOX_MIN);
+        size = Math.min(size, Math.min(bottom - cropImageRect().top, cropImageRect().S - b.x));
+        x = b.x;
+        y = bottom - size;
+      } else { /* sw */
+        size = Math.max(b.size + Math.max(-dx, dy), CROP_BOX_MIN);
+        size = Math.min(size, Math.min(right - cropImageRect().left, cropImageRect().S - b.y));
+        x = right - size;
+        y = b.y;
+      }
+      c.box = clampCropBox({ x, y, size });
+    }
+    layoutCreateCrop();
   }
 
   /**
-   * 크롭 확정 — 같은 선택 영역에서 1:1(원형용)과 4:3(카드용)을 함께 만든다.
-   *  · Canvas 로 다시 그려 JPEG 로 저장하므로 EXIF(촬영 위치·기기)는 남지 않는다.
+   * 크롭 확정 — 박스 안의 사각형을 720×720 JPEG 로 다시 그린다(EXIF 위치 정보 제거).
+   * 카드용 이미지도 같은 사진에서 만들어 두어 목록 카드에서도 사진이 보인다.
    */
   function applyCreateCrop() {
     const c = ui.groupDraft.cover;
     const img = el.createGroupCropImg;
     if (!c.src || !img || !img.naturalWidth) return null;
-    const g = cropGeometry();
+    const r = cropImageRect();
+    const b = c.box ? clampCropBox(c.box) : defaultCropBox();
     const natW = img.naturalWidth;
     const natH = img.naturalHeight;
-    const sx = Math.max(0, Math.min(natW - g.S / g.scale, (0 - g.left) / g.scale));
-    const sy = Math.max(0, Math.min(natH - g.S / g.scale, (0 - g.top) / g.scale));
-    const square = g.S / g.scale;
+    const square = b.size / r.scale;
+    const sx = Math.max(0, Math.min(natW - square, (b.x - r.left) / r.scale));
+    const sy = Math.max(0, Math.min(natH - square, (b.y - r.top) / r.scale));
     const draw = (rx, ry, rw, rh, outW, outH) => {
       const canvas = document.createElement('canvas');
       canvas.width = outW;
@@ -11787,23 +11965,15 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.drawImage(img, rx, ry, rw, rh, 0, 0, outW, outH);
       return canvas.toDataURL('image/jpeg', 0.84);
     };
-    c.circle = draw(sx, sy, square, square, 720, 720);
-    /* 카드용 4:3 — 같은 가운데에서 넓게 자른다(사진 밖으로 나가지 않게 자름). */
-    const centerX = sx + square / 2;
-    const centerY = sy + square / 2;
-    let w4 = Math.min(square * 4 / 3, natW);
-    let h4 = w4 * 3 / 4;
-    if (h4 > natH) { h4 = natH; w4 = h4 * 4 / 3; }
-    const x4 = Math.max(0, Math.min(natW - w4, centerX - w4 / 2));
-    const y4 = Math.max(0, Math.min(natH - h4, centerY - h4 / 2));
-    c.card = draw(x4, y4, w4, h4, 720, 540);
+    const out = draw(sx, sy, square, square, 720, 720);
+    c.circle = out;
+    c.card = out;
     c.src = null;
-    c.natW = 720;
-    c.natH = 540;
+    c.box = null;
     closeCreateCrop();
     renderGroupWizard();
     queueCreateDraftSave();
-    showToast('대표 사진을 원형·카드용으로 함께 만들었어요 · 위치 정보는 지웠어요');
+    showToast('대표 사진을 원형으로 만들었어요 · 위치 정보는 지웠어요');
     return { circle: c.circle, card: c.card };
   }
 
@@ -11994,7 +12164,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 활동 지역 — 시·도 칩 → 시·군·구 그리드. */
+  /**
+   * 아지트 4단계의 권역 — 시·도 칩 → 시·군·구 그리드.
+   * v34.2 — 시·군·구를 고르면 그 목록(24줄)을 접어 아래 아지트 목록이 바로 보이게 한다.
+   * '권역 바꾸기'를 누르면 다시 펼쳐진다.
+   */
   function renderCreateRegion() {
     const d = ui.groupDraft;
     if (el.createGroupRegionSido) {
@@ -12002,15 +12176,20 @@ document.addEventListener('DOMContentLoaded', () => {
         <button class="region-chip ${d.sidoId === s.id ? 'active' : ''}" data-create-sido="${s.id}"
                 type="button" aria-pressed="${d.sidoId === s.id}">${escapeHtml(s.short)}</button>`).join('');
     }
+    const collapsed = !!d.sigunguId && !ui.regionEdit;
     if (el.createGroupRegionSigungu) {
       const rows = d.sidoId ? store.getRegionSigungu(d.sidoId) : [];
+      el.createGroupRegionSigungu.hidden = collapsed;
       el.createGroupRegionSigungu.innerHTML = rows.map((g) => `
         <button class="region-gu ${d.sigunguId === g.sigunguId ? 'active' : ''}" data-create-sigungu="${g.sigunguId}"
                 type="button" aria-pressed="${d.sigunguId === g.sigunguId}">${escapeHtml(g.name)}</button>`).join('');
     }
     if (el.createGroupRegionPicked) {
       const area = d.sigunguId ? store.findSigungu(d.sigunguId) : null;
-      el.createGroupRegionPicked.textContent = area ? `고른 지역 · ${area.label}` : '아직 고르지 않았어요';
+      el.createGroupRegionPicked.innerHTML = area
+        ? `<span class="wizard-picked-text">고른 지역 · ${escapeHtml(area.label)}</span>
+           <button class="region-change" id="btn-create-region-edit" data-create-region-edit="1" type="button">권역 바꾸기</button>`
+        : '아직 고르지 않았어요';
     }
   }
 
@@ -12074,28 +12253,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** 6단계 확인 — 만든 내용을 한 번에. */
-  function renderCreateSummary() {
-    if (!el.createGroupSummary) return;
+  /**
+   * v34.2 (#22537) — 마지막 5단계는 표가 아니라 **실제 모임 카드 + 모임 상단 헤더 미리보기**다.
+   * 방금 적은 이름·한 줄 소개·원형 대표 이미지·취미·아지트가 그대로 들어간다.
+   */
+  function renderCreateFinal() {
+    if (!el.createGroupFinal) return;
     const d = ui.groupDraft;
     const chip = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
     const area = d.sigunguId ? store.findSigungu(d.sigunguId) : null;
     const hangouts = d.hangoutIds.map((id) => store.findAzit(id)).filter(Boolean);
-    const preset = d.cover.presetId ? store.getCoverIconPreset(d.cover.presetId) : null;
-    const coverLabel = d.cover.circle || d.cover.card
-      ? '사진 · 원형·카드용'
-      : (preset ? `기본 커버 · ${preset.label}` : '아직 없음');
-    const name = el.createGroupName ? el.createGroupName.value.trim() : d.name;
-    const rows = [
-      ['모임명', name || '아직 없음'],
-      ['취미', chip ? chip.name : '아직 없음'],
-      ['대표 이미지', coverLabel],
-      ['활동 지역', area ? area.label : '아직 없음'],
-      ['아지트', hangouts.length ? hangouts.map((h) => h.name).join(' · ') : '아직 없음'],
-      ['가입 방식', d.privacyType === 'approval_private' ? '승인제' : '바로 가입'],
-      ['나이 제한', ageSliderLabel(d.ageMin, d.ageMax)]
-    ];
-    el.createGroupSummary.innerHTML = rows.map(([k, v]) => `
-      <div class="wizard-summary-row"><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('');
+    const name = currentDraftName() || '모임 이름';
+    const desc = currentDraftDesc();
+    /* v34.2 — 카드에는 취미 이름을 그대로(대분류보다 정확하게). */
+    const tag = chip ? chip.name : '취미';
+    const azitName = hangouts.length ? hangouts[0].name : (area ? area.name : '아지트');
+    const azitLine = hangouts.length > 1 ? `${azitName} 외 ${hangouts.length - 1}곳` : azitName;
+    const tone = chip ? chip.tone : 'neutral';
+    const cover = d.cover.circle
+      ? `<img class="wz-final-cover-img" src="${escapeHtml(d.cover.circle)}" alt="">`
+      : `<span class="wz-final-cover-initial tone-${escapeHtml(tone)}" aria-hidden="true">${escapeHtml(name.charAt(0))}</span>`;
+    el.createGroupFinal.innerHTML = `
+      <div class="wz-final-card">
+        <span class="wz-final-card-cover${d.cover.circle ? ' has-photo' : ''}">${cover}</span>
+        <span class="wz-final-card-body">
+          <span class="wz-final-chip">${escapeHtml(tag)}</span>
+          <strong class="wz-final-name">${escapeHtml(name)}</strong>
+          <span class="wz-final-desc">${escapeHtml(desc || '한 줄 소개를 적으면 여기에 보여요')}</span>
+          <span class="wz-final-meta">${ic('pin')} ${escapeHtml(azitLine)} · 멤버 1명</span>
+        </span>
+      </div>
+      <div class="wz-final-header">
+        <span class="wz-final-header-label">모임 화면 상단</span>
+        <div class="wz-final-header-bar">
+          <span class="wz-final-header-cover${d.cover.circle ? ' has-photo' : ''}">${cover}</span>
+          <span class="wz-final-header-text">
+            <strong class="wz-final-header-name">${escapeHtml(name)}</strong>
+            <span class="wz-final-header-meta">${escapeHtml(tag)} · ${escapeHtml(azitLine)} · 멤버 1명</span>
+          </span>
+        </div>
+        <p class="wz-final-header-desc">${escapeHtml(desc || '한 줄 소개를 적으면 여기에 보여요')}</p>
+      </div>`;
+    hydrateIcons(el.createGroupFinal);
   }
 
   /** 지금 단계를 넘어갈 수 있는지. */
@@ -12106,9 +12305,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return name.length >= 2 && name.length <= 30;
     }
     if (step === 2) return !!d.hobbyId;
-    if (step === 3) return !!(d.cover.circle || d.cover.card || d.cover.presetId);
-    if (step === 4) return !!(d.sidoId && d.sigunguId);
-    if (step === 5) return d.hangoutIds.length >= 1 && d.hangoutIds.length <= 3;
+    /* v34.2 — 대표 이미지는 선택이다. 고르지 않으면 모임명 첫 글자로 원형 아이콘을 만든다. */
+    if (step === 3) return true;
+    /* v34.2 — 지역·아지트가 하나가 됐다: 권역을 고르고 아지트를 1~3곳. */
+    if (step === 4) return !!(d.sidoId && d.sigunguId) && d.hangoutIds.length >= 1 && d.hangoutIds.length <= 3;
     return true;
   }
 
@@ -12116,9 +12316,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const d = ui.groupDraft;
     if (d.step === 1) return createStepReady(1) ? '' : '모임명을 2자 이상 적어 주세요';
     if (d.step === 2) return createStepReady(2) ? '' : '취미를 하나 골라 주세요';
-    if (d.step === 3) return createStepReady(3) ? '' : '사진을 올리거나 기본 커버를 골라 주세요';
-    if (d.step === 4) return createStepReady(4) ? '' : '시·도와 시·군·구를 골라 주세요';
-    if (d.step === 5) return d.hangoutIds.length ? '아지트는 3곳까지 고를 수 있어요' : '아지트를 1곳 이상 골라 주세요';
+    if (d.step === 3) return d.cover.circle ? '' : '사진 없이 넘어가면 모임명 첫 글자로 원형 아이콘을 만들어요';
+    if (d.step === 4) {
+      if (!(d.sidoId && d.sigunguId)) return '시·도와 시·군·구를 골라 주세요';
+      if (!d.hangoutIds.length) return '아지트를 1곳 이상 골라 주세요';
+      return '아지트는 3곳까지 고를 수 있어요';
+    }
     return '만들면 모임장이 되고, 모임 안에서 바로 시작해요';
   }
 
@@ -12150,8 +12353,16 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCreateCover();
     renderCreateRegion();
     renderCreateHangouts();
-    renderCreateSummary();
+    renderCreateFinal();
     renderCreatePreview();
+    /* 크롭 창은 3단계에서만 — 다른 단계로 가면 접고, 3단계로 돌아오면 다시 맞춰 그린다. */
+    if (el.createGroupCrop) {
+      if (d.step !== 3) el.createGroupCrop.hidden = true;
+      else if (d.cover.src && el.createGroupCropImg && el.createGroupCropImg.complete && el.createGroupCropImg.naturalWidth) {
+        el.createGroupCrop.hidden = false;
+        layoutCreateCrop();
+      }
+    }
 
     if (el.createGroupPrivacy) {
       const options = [
@@ -12208,6 +12419,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /** 위자드를 처음 상태로 — 새로 시작. */
   function resetCreateWizard(options = {}) {
     clearCreateDraft();
+    ui.regionEdit = false;
     ui.groupDraft = freshGroupDraft();
     if (el.createGroupName) el.createGroupName.value = '';
     if (el.createGroupDesc) el.createGroupDesc.value = '';
@@ -12221,6 +12433,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function openGroupCreate() {
     const saved = readCreateDraft();
+    ui.regionEdit = false;
     ui.groupDraft = freshGroupDraft();
     let resumed = false;
     if (saved) {
@@ -12321,6 +12534,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const first = store.getRegionSigungu(d.sidoId)[0];
     d.sigunguId = first ? first.sigunguId : null;
     d.hangoutIds = [];
+    ui.regionEdit = false;
     renderGroupWizard();
     queueCreateDraftSave();
   });
@@ -12331,8 +12545,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const d = ui.groupDraft;
     if (d.sigunguId !== btn.dataset.createSigungu) d.hangoutIds = [];
     d.sigunguId = btn.dataset.createSigungu;
+    ui.regionEdit = false;
     renderGroupWizard();
     queueCreateDraftSave();
+  });
+
+  /* v34.2 — 접힌 권역을 다시 펼친다. */
+  el.createGroupRegionPicked && el.createGroupRegionPicked.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-create-region-edit]')) return;
+    ui.regionEdit = true;
+    renderCreateRegion();
   });
 
   el.createGroupAzitList && el.createGroupAzitList.addEventListener('click', (e) => {
@@ -12477,11 +12699,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.createGroupDesc) d.desc = el.createGroupDesc.value;
   }
 
+  /**
+   * v34.2 (#22537) — 입력하는 자리에 해당하는 미리보기 조각만 은은하게 반짝인다.
+   * (모임명을 적으면 이름 두 곳, 한 줄 소개를 적으면 소개 두 곳)
+   */
+  function flashPreview(nodes) {
+    nodes.forEach((node) => {
+      if (!node) return;
+      node.classList.remove('is-flash');
+      void node.offsetWidth;   // 애니메이션을 다시 시작하려고 한 번 강제로 되감는다
+      node.classList.add('is-flash');
+      clearTimeout(node.flashTimer);
+      node.flashTimer = setTimeout(() => node.classList.remove('is-flash'), 720);
+    });
+  }
+
   /** 1단계에서 글자를 적을 때 — 무거운 재렌더 대신 미리보기·버튼 상태만 새로 고친다. */
-  function refreshCreateStep1() {
+  function refreshCreateStep1(field) {
     const d = ui.groupDraft;
     if (!d) return;
     renderCreatePreview();
+    renderCreateCover();
+    if (field === 'name') flashPreview([el.createPreviewCardName, el.createPreviewName]);
+    if (field === 'desc') flashPreview([el.createPreviewCardDesc, el.createPreviewDesc]);
     const btn = $('#btn-create-group-submit');
     if (btn) {
       const ready = createStepReady(d.step);
@@ -12493,39 +12733,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.createGroupName && el.createGroupName.addEventListener('input', () => {
     syncDraftText();
-    if (ui.groupDraft.step === 1) refreshCreateStep1();
+    if (ui.groupDraft.step === 1) refreshCreateStep1('name');
     queueCreateDraftSave();
   });
   el.createGroupDesc && el.createGroupDesc.addEventListener('input', () => {
     syncDraftText();
-    if (ui.groupDraft.step === 1) refreshCreateStep1();
+    if (ui.groupDraft.step === 1) refreshCreateStep1('desc');
     queueCreateDraftSave();
   });
   if (el.createGroupQuestion) el.createGroupQuestion.addEventListener('input', () => { ui.groupDraft.question = el.createGroupQuestion.value; queueCreateDraftSave(); });
 
-  /* 대표 이미지 — 기본 프리셋 · 앨범 · 카메라 · 지우기 · 크롭 */
-  el.createGroupCoverPresets && el.createGroupCoverPresets.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-create-cover-preset]');
-    if (!btn) return;
-    const id = btn.dataset.createCoverPreset;
-    const preset = store.getCoverIconPreset(id);
-    if (!preset) return;
-    const c = ui.groupDraft.cover;
-    const on = c.presetId === id;
-    c.presetId = on ? null : id;
-    if (!on) {
-      c.circle = null;
-      c.card = null;
-      c.src = null;
-      closeCreateCrop();
-    }
-    renderCreateCover();
-    renderCreateSummary();
-    const btnSubmit = $('#btn-create-group-submit');
-    if (btnSubmit) { const ready = createStepReady(ui.groupDraft.step); btnSubmit.disabled = !ready; }
-    if (el.createGroupFootHint) el.createGroupFootHint.textContent = createFootHint();
-    queueCreateDraftSave();
-  });
+  /* 대표 이미지 — v34.2: 앨범·카메라 · 지우기 · 크롭(사각 박스 드래그) */
   el.createGroupCoverAlbum && el.createGroupCoverAlbum.addEventListener('change', (e) => {
     pickCreateCover(e.target.files && e.target.files[0]);
     e.target.value = '';
@@ -12535,45 +12753,55 @@ document.addEventListener('DOMContentLoaded', () => {
     e.target.value = '';
   });
   el.createGroupCoverRemove && el.createGroupCoverRemove.addEventListener('click', () => {
-    ui.groupDraft.cover = { src: null, circle: null, card: null, presetId: null, zoom: 1, panX: 0, panY: 0, natW: 0, natH: 0 };
+    ui.groupDraft.cover = { src: null, circle: null, card: null, presetId: null, box: null, natW: 0, natH: 0 };
     closeCreateCrop();
     renderCreateCover();
     renderGroupWizard();
     queueCreateDraftSave();
   });
 
-  if (el.createGroupCropZoom) {
-    el.createGroupCropZoom.addEventListener('input', () => {
-      const c = ui.groupDraft.cover;
-      c.zoom = Math.max(1, Number(el.createGroupCropZoom.value) / 100);
-      layoutCreateCrop();
-    });
-  }
-  const cropStage = el.createGroupCropStage;
-  if (cropStage) {
+  /* 크롭 박스 드래그 — 모서리는 크기, 안쪽은 위치. 마우스·터치 모두 pointer 이벤트 하나로. */
+  const cropBox = el.createGroupCropBox;
+  if (cropBox && el.createGroupCropStage) {
     let drag = null;
-    cropStage.addEventListener('pointerdown', (e) => {
+    const begin = (e) => {
       const c = ui.groupDraft.cover;
-      if (!c.src) return;
-      drag = { x: e.clientX, y: e.clientY, panX: c.panX || 0, panY: c.panY || 0 };
-      try { cropStage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      if (!c.src || !c.box) return null;
+      const handle = e.target.closest('[data-crop-handle]');
+      drag = {
+        id: e.pointerId,
+        x: e.clientX,
+        y: e.clientY,
+        mode: handle ? handle.dataset.cropHandle : 'move',
+        box: { x: c.box.x, y: c.box.y, size: c.box.size }
+      };
+      try { el.createGroupCropStage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      cropBox.classList.add('is-dragging');
+      return drag;
+    };
+    cropBox.addEventListener('pointerdown', (e) => {
+      if (begin(e)) e.preventDefault();
     });
-    cropStage.addEventListener('pointermove', (e) => {
-      if (!drag) return;
-      const c = ui.groupDraft.cover;
-      c.panX = drag.panX + (e.clientX - drag.x);
-      c.panY = drag.panY + (e.clientY - drag.y);
-      layoutCreateCrop();
+    el.createGroupCropStage.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      dragCropBox(drag, e.clientX - drag.x, e.clientY - drag.y);
     });
-    const endDrag = () => { drag = null; };
-    cropStage.addEventListener('pointerup', endDrag);
-    cropStage.addEventListener('pointercancel', endDrag);
+    const end = (e) => {
+      if (!drag || (e && e.pointerId !== drag.id)) return;
+      drag = null;
+      cropBox.classList.remove('is-dragging');
+      queueCreateDraftSave();
+    };
+    el.createGroupCropStage.addEventListener('pointerup', end);
+    el.createGroupCropStage.addEventListener('pointercancel', end);
   }
   const btnCropCancel = $('#btn-create-group-crop-cancel');
   if (btnCropCancel) btnCropCancel.addEventListener('click', () => {
     const c = ui.groupDraft.cover;
     c.src = null;
+    c.box = null;
     closeCreateCrop();
+    renderCreateCover();
   });
   const btnCropApply = $('#btn-create-group-crop-apply');
   if (btnCropApply) btnCropApply.addEventListener('click', () => applyCreateCrop());
@@ -12594,6 +12822,11 @@ document.addEventListener('DOMContentLoaded', () => {
       renderGroupWizard();
       showToast(createFootHint(), 'warning');
       return;
+    }
+    /* v34.2 — 사진을 골라 자르던 중에 '다음'을 눌러도 고른 사진을 버리지 않는다. */
+    if (d.step === 3 && d.cover.src && !d.cover.circle) {
+      const made = applyCreateCrop();
+      if (!made) { showToast('사진을 자르지 못했어요 · 다시 골라 주세요', 'warning'); return; }
     }
     if (d.step < CREATE_STEPS.length) {
       goCreateStep(d.step + 1);
@@ -12855,8 +13088,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = store.notificationSettings;
     const show = supportsNotifications() && s.permission !== 'granted' && !s.promptDismissed;
     el.pushPermissionBanner.hidden = !show;
-    /* H1 — 사진 안내는 홈이 아니라 내 프로필 탭 맨 위 한 줄이다. */
-    renderMyProfilePhotoLine();
   }
 
   /**
@@ -15337,13 +15568,30 @@ document.addEventListener('DOMContentLoaded', () => {
     node.innerHTML = slots.join('');
   }
 
+  /**
+   * v34.2 (#22500 · IMG_4578) — 내 프로필을 인스타그램 프로필처럼 다시 지었다.
+   *  · 큰 대표 사진 = 공개 사진 1번 · 나머지 2~4번은 바로 아래 작은 미리보기
+   *  · 우측 상단 삼선바 로 설정(사이드바) · 프로필 카드 우측은 자물쇠 비밀 사진
+   *  · 하단은 내가 올린 피드 — 격자(3열) ↔ 인스타형 피드 전환
+   */
   function renderMyProfileTab() {
-    renderMyProfilePhotoLine();
     const me = store.currentUser || {};
     if (el.myProfileName) el.myProfileName.textContent = me.nickname || '내 프로필';
+    if (el.myProfileHandle) {
+      const handle = store.isSignedIn() ? displayHandleOf(me) : '';
+      el.myProfileHandle.textContent = handle ? `@${handle}` : '';
+      el.myProfileHandle.hidden = !handle;
+    }
+    /* 소개는 프로필 이름·아이디 바로 아래에 그대로 보인다(입력 중에도 시트 뒤에서 바로 바뀐다). */
+    if (el.myProfileBio) {
+      const bio = String(me.bio || '').trim();
+      el.myProfileBio.textContent = bio;
+      el.myProfileBio.hidden = !bio;
+    }
     if (el.myProfileMeta) {
-      const bits = [me.age ? `${me.age}세` : '', me.location || '', me.handle || ''].filter(Boolean);
+      const bits = [me.age ? `${me.age}세` : '', me.location || ''].filter(Boolean);
       el.myProfileMeta.textContent = bits.join(' · ');
+      el.myProfileMeta.hidden = !bits.length;
     }
     if (el.myProfileAvatarLetter) el.myProfileAvatarLetter.textContent = me.avatarText || (me.nickname || '나').charAt(0);
     if (el.myProfileAvatarImg) {
@@ -15353,7 +15601,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (photo) el.myProfileAvatarLetter.hidden = true;
       else el.myProfileAvatarLetter.hidden = false;
     }
-    renderAlbumGrid(el.albumPublicGrid, 'public');
+    renderMyPhotoMini();
     renderAlbumGrid(el.albumSecretGrid, 'secret');
     const summary = store.getAlbumSummary();
     if (el.albumPublicCount) el.albumPublicCount.textContent = `${summary.public.count} / ${ALBUM_MAX}`;
@@ -15365,14 +15613,98 @@ document.addEventListener('DOMContentLoaded', () => {
         : '1:1 대화방에서 공개한 상대만 볼 수 있어요';
     }
     if (el.myProfileStats) {
-      const stats = store.getProfileStats ? store.getProfileStats() : null;
-      const posts = stats ? stats.posts : store.getMyFeedPosts().length;
-      const likes = stats ? stats.likes : 0;
+      const stats = store.getMyFeedStats();
       const groups = store.getJoinedGroups().length;
       el.myProfileStats.innerHTML = `
-        <span class="myprofile-stat"><strong>${posts}</strong><span>내 글</span></span>
-        <span class="myprofile-stat"><strong>${likes}</strong><span>받은 좋아요</span></span>
+        <span class="myprofile-stat"><strong>${stats.total}</strong><span>내 글</span></span>
+        <span class="myprofile-stat"><strong>${stats.likes}</strong><span>받은 좋아요</span></span>
         <span class="myprofile-stat"><strong>${groups}</strong><span>내 모임</span></span>`;
+    }
+    renderMyProfileFeed();
+  }
+
+  /** 공개 사진 2~4번 — 대표 사진(1번) 아래 작은 미리보기. 빈 칸은 '+' 로 사진을 더한다. */
+  function renderMyPhotoMini() {
+    if (!el.myProfilePhotoMini) return;
+    const photos = store.getMyAlbum('public');
+    const mini = photos.slice(1, ALBUM_MAX);
+    const slots = mini.map((p, i) => {
+      const index = i + 1;
+      return `<figure class="album-slot mp-mini is-filled" data-album-photo="${escapeHtml(p.id)}" data-album-kind="public">
+        <img class="album-img" src="${escapeHtml(p.url)}" alt="공개 사진 ${index + 1}" loading="lazy" decoding="async">
+        <button class="album-open" data-album-open="${escapeHtml(p.id)}" data-album-kind="public" data-album-index="${index}" type="button"
+                aria-label="공개 사진 ${index + 1} 크게 보기"></button>
+        <button class="album-remove" data-album-remove="${escapeHtml(p.id)}" data-album-kind="public" type="button"
+                aria-label="공개 사진 ${index + 1} 지우기">&times;</button>
+      </figure>`;
+    });
+    for (let i = mini.length; i < ALBUM_MAX - 1; i += 1) {
+      slots.push(`<button class="album-slot mp-mini is-empty" data-album-add="public" type="button"
+        aria-label="공개 사진 ${i + 2}칸 — 사진 추가">
+        <span class="album-plus" aria-hidden="true">+</span>
+      </button>`);
+    }
+    el.myProfilePhotoMini.innerHTML = slots.join('');
+    el.myProfilePhotoMini.classList.toggle('is-full', photos.length >= ALBUM_MAX);
+  }
+
+  /** 내 피드 — 격자(3열) / 인스타형 카드 전환. 홈 피드와 같은 카드(igPostHTML)를 쓴다. */
+  function myFeedItemOf(post) {
+    const grp = post.groupId ? store.getGroup(post.groupId) : null;
+    const chip = (grp && store.getHobbyChip(grp.hobbyId || grp.category)) || null;
+    return {
+      post,
+      group: grp,
+      groupName: grp ? grp.name : '자유 피드',
+      uid: `myfeed-${post.id}`,
+      tone: chip ? chip.tone : 'neutral',
+      hobbyIcon: chip ? chip.icon : 'sparkle',
+      azitName: grp ? (grp.azitName || '') : '',
+      regionName: '',
+      round: 0
+    };
+  }
+
+  function renderMyProfileFeed() {
+    const posts = store.getMyFeedPosts();
+    if (el.myFeedCount) el.myFeedCount.textContent = String(posts.length);
+    const view = ui.myFeedView === 'feed' ? 'feed' : 'grid';
+    if (el.myFeedSeg) {
+      el.myFeedSeg.querySelectorAll('[data-mp-view]').forEach((b) => {
+        const on = b.dataset.mpView === view;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-pressed', String(on));
+      });
+    }
+    if (el.myFeedGrid) el.myFeedGrid.hidden = view !== 'grid';
+    if (el.myFeedList) el.myFeedList.hidden = view !== 'feed';
+
+    if (el.myFeedGrid) {
+      el.myFeedGrid.innerHTML = posts.length
+        ? posts.map((p) => {
+          const images = postImages(p);
+          const thumb = images.length
+            ? `<img class="media-img" src="${escapeHtml(images[0])}" alt="내 사진" loading="lazy" decoding="async">`
+            : `<span class="mp-tile-text">${escapeHtml(String(p.caption || '').trim().slice(0, 60) || '글')}</span>`;
+          return `<button class="mp-feed-tile" data-mp-post="${escapeHtml(p.id)}" type="button"
+                  aria-label="내가 올린 글 열기">
+            <span class="mp-feed-thumb">${thumb}${images.length > 1
+              ? `<span class="mp-tile-badge" aria-hidden="true">${ic('image')} ${images.length}</span>` : ''}</span>
+            <span class="mp-feed-tile-meta"><span aria-hidden="true">${ic('heart', { filled: true })}</span> ${fmtCount(p.likes || 0)}</span>
+          </button>`;
+        }).join('')
+        : `<div class="mp-feed-empty">
+             <p class="mp-feed-empty-title">아직 올린 피드가 없어요</p>
+             <p class="mp-feed-empty-desc">사진 한 장이면 내 프로필이 채워져요. 홈에서 첫 사진을 올려보세요.</p>
+           </div>`;
+    }
+    if (el.myFeedList) {
+      el.myFeedList.innerHTML = posts.length
+        ? posts.map((p) => igPostHTML(myFeedItemOf(p))).join('')
+        : `<div class="mp-feed-empty">
+             <p class="mp-feed-empty-title">아직 올린 피드가 없어요</p>
+             <p class="mp-feed-empty-desc">홈에서 첫 사진을 올리면 여기에 인스타그램처럼 쌓여요.</p>
+           </div>`;
     }
   }
 
@@ -15885,7 +16217,50 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('#btn-album-public-add') && $('#btn-album-public-add').addEventListener('click', () => openAlbumPicker('public', false));
   $('#btn-album-secret-add') && $('#btn-album-secret-add').addEventListener('click', () => openAlbumPicker('secret', false));
-  $('#btn-myprofile-settings') && $('#btn-myprofile-settings').addEventListener('click', () => openDrawer('profile'));
+
+  /* v34.2 — 설정은 우측 상단 삼선바(삼선바)로, 프로필 카드 우측은 자물쇠 비밀 사진. */
+  el.myProfileMenu && el.myProfileMenu.addEventListener('click', () => openDrawer('profile'));
+  el.myProfileSecret && el.myProfileSecret.addEventListener('click', () => {
+    renderMyProfileTab();
+    openModal(el.mySecretModal);
+  });
+  $('#btn-my-secret-close') && $('#btn-my-secret-close').addEventListener('click', () => closeModal(el.mySecretModal));
+  el.mySecretModal && el.mySecretModal.addEventListener('click', (e) => {
+    const open = e.target.closest('[data-album-open]');
+    if (open) {
+      openAlbumViewer('secret', Number(open.dataset.albumIndex || 0), 'profile');
+      return;
+    }
+    const rm = e.target.closest('[data-album-remove]');
+    if (rm) {
+      store.removeMyAlbumPhoto('secret', rm.dataset.albumRemove);
+      renderMyProfileTab();
+      showToast('사진을 지웠어요', 'info');
+    }
+  });
+
+  /* 대표 사진(1번)을 누르면 크게 본다 — 사진이 있을 때만. */
+  el.myProfileAvatar && el.myProfileAvatar.addEventListener('click', () => {
+    if (!store.getMyAlbum('public').length) { openAlbumPicker('public', false); return; }
+    openAlbumViewer('public', 0, 'profile');
+  });
+
+  /* 내 피드 — 격자 ↔ 피드 전환 · 격자 타일은 글 상세로 */
+  if (el.myFeedSeg) {
+    el.myFeedSeg.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-mp-view]');
+      if (!btn) return;
+      ui.myFeedView = btn.dataset.mpView === 'feed' ? 'feed' : 'grid';
+      renderMyProfileFeed();
+    });
+  }
+  if (el.myFeedGrid) {
+    el.myFeedGrid.addEventListener('click', (e) => {
+      const tile = e.target.closest('[data-mp-post]');
+      if (tile) openHomePost(tile.dataset.mpPost);
+    });
+  }
+  wireIgFeed(el.myFeedList);
 
   /* ---------------------------------------------- 1:1 대화방 비밀앨범 */
   function syncChatAlbumBtn() {
@@ -16007,18 +16382,6 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 내 프로필: 공개 사진 / 비밀앨범 탭
    *  · 탐색: 2시간 프로필 남은 시간
    * ======================================================================== */
-  /** H1 — '프로필 사진 추가' 안내는 내 프로필 탭 맨 위 한 줄이다(홈 카드는 삭제). */
-  function renderMyProfilePhotoLine() {
-    if (!el.myProfilePhotoLine) return;
-    const u = store.currentUser || {};
-    const need = !u.photoUrl && store.isSignedIn();
-    el.myProfilePhotoLine.hidden = !need;
-  }
-
-  el.myProfilePhotoLine && el.myProfilePhotoLine.addEventListener('click', () => {
-    openProfileEdit();
-  });
-
   /** 목록을 그리다 문제가 생겼을 때 — 한 줄 안내 + 다시 시도 버튼. */
   function renderListError(host, retry) {
     if (!host) return;
@@ -16081,26 +16444,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderDmRequests();
       showToast('요청을 거절했어요', 'info');
     }
-  });
-
-  /** 내 프로필 — 공개 사진 / 비밀앨범 탭 */
-  function setAlbumTab(kind) {
-    if (!el.albumTabs) return;
-    const k = kind === 'secret' ? 'secret' : 'public';
-    el.albumTabs.querySelectorAll('.album-tab').forEach((b) => {
-      const on = b.dataset.albumTab === k;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-selected', String(on));
-    });
-    const pub = document.querySelector('#tab-myprofile .album-block:not(.is-secret)');
-    const sec = document.querySelector('#tab-myprofile .album-block.is-secret');
-    if (pub) pub.hidden = k !== 'public';
-    if (sec) sec.hidden = k !== 'secret';
-  }
-
-  el.albumTabs && el.albumTabs.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-album-tab]');
-    if (b) setAlbumTab(b.dataset.albumTab);
   });
 
   /** 2시간 프로필 — 남은 시간을 탐색 상단에 띄운다. */
@@ -16195,7 +16538,6 @@ document.addEventListener('DOMContentLoaded', () => {
   renderExplore();
   store.seedDmRequests && store.seedDmRequests();
   renderDmRequests();
-  renderMyProfilePhotoLine();
   renderProfileHeader();
   paintMyAvatars();
   /* Sprint 17 — 가입 전이면 회원가입 화면만 보인다(입구). */

@@ -102,6 +102,12 @@
           <span class="oo-icon-20" aria-hidden="true" data-oog-icon="bell"></span>
           <span class="notif-dot" id="notif-dot"></span>
         </button>
+        <!-- v34.2 (#22500 · IMG_4578) — 설정은 내 프로필 탭 우측 상단 삼선바(줄 세 개)로 옮겼다.
+             내 프로필 탭에서만 보이고, 누르면 설정·다크모드·알림·계정이 있는 사이드바가 열린다. -->
+        <button class="icon-btn myprofile-menu-btn" id="btn-myprofile-menu" type="button" hidden
+                aria-label="설정 메뉴 열기(다크모드·알림·계정)" aria-controls="profile-drawer" aria-expanded="false">
+          <span class="oo-icon-20" aria-hidden="true" data-oog-icon="menuLines"></span>
+        </button>
       </div>
     </header>
 
@@ -593,60 +599,57 @@
            11/17 00:30 루키 님: "바깥 탭에 내 프로필 탭 추가 + 공개 이미지 4장 / 비밀앨범 4장".
            · 공개 앨범은 누구나 보고, 비밀앨범은 1:1 대화방에서 공개한 상대만 본다. -->
       <section class="tab-view" id="tab-myprofile">
-        <!-- H1 — 홈에 있던 '프로필 사진 추가' 안내 카드를 이 화면 맨 위 한 줄로 옮겼다. -->
-        <button class="myprofile-photo-line" id="myprofile-photo-line" type="button" hidden>
-          <span class="myprofile-photo-line-face" aria-hidden="true" data-oog-icon="person"></span>
-          <span class="myprofile-photo-line-text">사진을 올리면 이웃이 알아봐요</span>
-          <span class="myprofile-photo-line-cta" aria-hidden="true">프로필 사진 추가</span>
-        </button>
+        <!-- v34.2 (#22500 · IMG_4578) — 인스타그램 프로필처럼:
+             · 1번 공개 사진이 큰 대표 사진(아바타), 나머지 2~4번은 아래에 작게
+             · 우측 '설정' 버튼 자리에는 자물쇠 비밀 사진(비밀앨범) 버튼 — 설정은 우측 상단 삼선바 -->
         <div class="myprofile-head" id="myprofile-head">
-          <div class="myprofile-avatar" id="myprofile-avatar">
+          <button class="myprofile-avatar" id="myprofile-avatar" type="button" aria-label="대표 사진">
             <span class="avatar-letter" id="myprofile-avatar-letter">나</span>
             <img class="avatar-img" id="myprofile-avatar-img" alt="" hidden>
-          </div>
+          </button>
           <div class="myprofile-id">
             <h2 class="myprofile-name" id="myprofile-name">내 프로필</h2>
+            <p class="myprofile-handle" id="myprofile-handle"></p>
+            <p class="myprofile-bio" id="myprofile-bio" hidden></p>
             <p class="myprofile-meta" id="myprofile-meta"></p>
           </div>
-          <button class="myprofile-settings" id="btn-myprofile-settings" type="button">설정</button>
-        </div>
-
-        <!-- Sprint 28.5 — 공개 사진 / 비밀앨범을 탭으로 나눈다 -->
-        <div class="album-tabs" id="album-tabs" role="tablist" aria-label="내 사진">
-          <button class="album-tab active" data-album-tab="public" role="tab" aria-selected="true" type="button">공개 사진</button>
-          <button class="album-tab" data-album-tab="secret" role="tab" aria-selected="false" type="button">
-            <span class="album-tab-lock" aria-hidden="true" data-oog-icon="lock"></span> 비밀앨범
+          <button class="myprofile-secret" id="btn-myprofile-secret" type="button" aria-label="비밀 사진 열기">
+            <span class="myprofile-secret-ic" aria-hidden="true" data-oog-icon="lock"></span>
+            <span class="myprofile-secret-label">비밀 사진</span>
           </button>
         </div>
 
-        <div class="album-panes" id="album-panes">
-        <section class="album-block" aria-labelledby="album-public-title">
-          <div class="album-head">
-            <h3 class="album-title" id="album-public-title">공개 사진 <span class="album-count" id="album-public-count">0 / 4</span></h3>
+        <!-- 공개 사진 — 1번은 위 큰 대표 사진, 2~4번은 여기 작게 -->
+        <section class="myprofile-photos" aria-labelledby="mp-photos-title">
+          <div class="myprofile-photos-head">
+            <h3 class="myprofile-photos-title" id="mp-photos-title">공개 사진 <span class="album-count" id="album-public-count">0 / 4</span></h3>
             <button class="album-add" id="btn-album-public-add" type="button">사진 추가</button>
           </div>
-          <div class="album-grid" id="album-public-grid"><!-- JS --></div>
+          <div class="myprofile-photo-mini" id="myprofile-photo-mini" role="group" aria-label="공개 사진 미리보기"><!-- JS --></div>
           <input class="photo-file" id="album-public-album" type="file" accept="image/*" hidden>
           <input class="photo-file" id="album-public-camera" type="file" accept="image/*" capture="environment" hidden>
         </section>
 
-        <section class="album-block is-secret" aria-labelledby="album-secret-title" hidden>
-          <div class="album-head">
-            <h3 class="album-title" id="album-secret-title">
-              <span class="album-lock" aria-hidden="true" data-oog-icon="lock"></span>
-              비밀앨범 <span class="album-count" id="album-secret-count">0 / 4</span>
-            </h3>
-            <button class="album-add" id="btn-album-secret-add" type="button">사진 추가</button>
-          </div>
-          <div class="album-grid is-secret" id="album-secret-grid"><!-- JS --></div>
-          <p class="album-share-note" id="album-share-note"></p>
-          <input class="photo-file" id="album-secret-album" type="file" accept="image/*" hidden>
-          <input class="photo-file" id="album-secret-camera" type="file" accept="image/*" capture="environment" hidden>
-        </section>
-
-        </div>
-
         <section class="myprofile-stats" id="myprofile-stats"><!-- JS --></section>
+
+        <!-- v34.2 — 내 프로필 하단 = 내가 올린 피드 (격자 3열 ↔ 인스타형 피드) -->
+        <section class="myprofile-feed" aria-labelledby="mp-feed-title">
+          <div class="myprofile-feed-head">
+            <h3 class="myprofile-feed-title" id="mp-feed-title">내 피드 <span class="section-count" id="mp-feed-count">0</span></h3>
+            <div class="mp-feed-seg" id="mp-feed-seg" role="group" aria-label="내 피드 보기 방식">
+              <button class="mp-feed-view-btn active" data-mp-view="grid" type="button"
+                      aria-pressed="true" aria-label="격자로 보기">
+                <span class="oo-icon-17" aria-hidden="true" data-oog-icon="grid"></span>
+              </button>
+              <button class="mp-feed-view-btn" data-mp-view="feed" type="button"
+                      aria-pressed="false" aria-label="피드로 보기">
+                <span class="oo-icon-17" aria-hidden="true" data-oog-icon="note"></span>
+              </button>
+            </div>
+          </div>
+          <div class="mp-feed-grid" id="mp-feed-grid" aria-live="polite"><!-- JS --></div>
+          <div class="mp-feed-list ig-feed" id="mp-feed-list" aria-live="polite" hidden><!-- JS --></div>
+        </section>
       </section>
     </main>
 
@@ -864,36 +867,82 @@
       </div>
     </div>
 
-    <!-- ==================== 모달 7. 프로필 수정 ==================== -->
+    <!-- ==================== 모달 7. 프로필 수정 (v34.2 · IMG_4577 인스타 편집 스타일) ====================
+         11/22 20:54 루키 님(#22500): "프로필 수정 항목이 너무 많다. 인스타 편집처럼 4개만."
+         → 닉네임 · 사용자 아이디 · 취미 · 소개. 라벨-값 행 리스트만 남기고, 입력한 소개는
+           내 프로필 상단에 바로 보인다. -->
     <div class="modal-overlay" id="profile-edit-modal" role="dialog" aria-modal="true" aria-label="프로필 수정">
-      <div class="modal-sheet" tabindex="-1">
+      <div class="modal-sheet pe-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>
         <div class="composer-header">
           <button class="text-btn ghost" id="btn-edit-cancel">취소</button>
           <h3 class="composer-title">프로필 수정</h3>
           <button class="btn-publish ready" id="btn-save-profile">저장</button>
         </div>
-        <div class="composer-body">
-          <div class="field-group">
-            <label class="field-label" for="edit-nickname">닉네임 <span class="field-hint">2~12자</span></label>
-            <input type="text" class="text-input" id="edit-nickname" maxlength="12" autocomplete="off">
+        <div class="pe-rows" id="profile-edit-rows">
+          <div class="pe-row" data-pe-row="nickname">
+            <label class="pe-label" for="edit-nickname">닉네임</label>
+            <span class="pe-value">
+              <input class="pe-input" id="edit-nickname" type="text" maxlength="12" autocomplete="off"
+                     placeholder="2~12자">
+            </span>
           </div>
-          <div class="field-group">
-            <label class="field-label" for="edit-bio">한 줄 소개</label>
-            <input type="text" class="text-input" id="edit-bio" maxlength="120" autocomplete="off" placeholder="어떤 취미를 어떻게 즐기는지 적어보세요">
+          <div class="pe-row" data-pe-row="handle">
+            <label class="pe-label" for="edit-handle">사용자 아이디</label>
+            <span class="pe-value pe-value-handle">
+              <span class="pe-at" aria-hidden="true">@</span>
+              <input class="pe-input pe-input-handle" id="edit-handle" type="text" maxlength="20"
+                     autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="아이디">
+            </span>
           </div>
-          <div class="field-group">
-            <label class="field-label">대표 취미 <span class="field-hint">1~3개</span></label>
+          <div class="pe-row is-pick" data-pe-row="hobby">
+            <span class="pe-label" id="pe-hobby-label">취미</span>
+            <button class="pe-pick" id="btn-edit-hobby-open" type="button" aria-expanded="false"
+                    aria-labelledby="pe-hobby-label" aria-controls="edit-hobby-picker">
+              <span class="pe-hobby-value" id="edit-hobby-value">고르기</span>
+              <span class="pe-chev" aria-hidden="true" data-oog-icon="chevronDown"></span>
+            </button>
+          </div>
+          <div class="pe-picker" id="edit-hobby-picker" hidden>
+            <p class="pe-picker-hint">대표 취미를 1~3개 골라 주세요</p>
             <div class="composer-tag-list" id="edit-hobbies"><!-- JS --></div>
           </div>
-          <div class="field-group">
-            <label class="field-label" for="edit-location">활동 지역</label>
-            <input type="text" class="text-input" id="edit-location" maxlength="30" autocomplete="off" placeholder="예: 서울 성동구 성수동">
+          <div class="pe-row is-area" data-pe-row="bio">
+            <label class="pe-label" for="edit-bio">소개</label>
+            <span class="pe-value">
+              <textarea class="pe-input pe-textarea" id="edit-bio" rows="3" maxlength="120"
+                        placeholder="소개를 적어보세요"></textarea>
+            </span>
           </div>
-          <div class="field-group">
-            <label class="field-label">주로 활동하는 시간대</label>
-            <div class="composer-tag-list" id="edit-activity"><!-- JS --></div>
-          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 모달 7-B. 비밀 사진 (v34.2) ====================
+         우측 '설정' 버튼 자리에 들어온 자물쇠 비밀 사진 버튼이 연다.
+         공개 사진/비밀앨범 탭을 걷어낸 대신, 비밀앨범은 이 시트에서만 확인한다. -->
+    <div class="modal-overlay" id="my-secret-modal" role="dialog" aria-modal="true" aria-label="비밀 사진">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="composer-header">
+          <button class="text-btn ghost" id="btn-my-secret-close">닫기</button>
+          <h3 class="composer-title">비밀 사진</h3>
+          <span class="my-secret-head-space" aria-hidden="true"></span>
+        </div>
+        <div class="composer-body my-secret-body">
+          <section class="album-block is-secret" aria-labelledby="album-secret-title">
+            <div class="album-head">
+              <h3 class="album-title" id="album-secret-title">
+                <span class="album-lock" aria-hidden="true" data-oog-icon="lock"></span>
+                비밀앨범 <span class="album-count" id="album-secret-count">0 / 4</span>
+              </h3>
+              <button class="album-add" id="btn-album-secret-add" type="button">사진 추가</button>
+            </div>
+            <div class="album-grid is-secret" id="album-secret-grid"><!-- JS --></div>
+            <p class="album-share-note" id="album-share-note"></p>
+            <input class="photo-file" id="album-secret-album" type="file" accept="image/*" hidden>
+            <input class="photo-file" id="album-secret-camera" type="file" accept="image/*" capture="environment" hidden>
+          </section>
         </div>
       </div>
     </div>
@@ -912,12 +961,13 @@
         </div>
 
         <div class="wizard-progress">
+          <!-- v34.2 (#22537) — 4단계(지역)와 5단계(아지트)를 '아지트' 하나로 합쳐 5단계가 됐다. -->
           <div class="wizard-track" id="create-group-progress" role="progressbar"
-               aria-valuemin="1" aria-valuemax="6" aria-valuenow="1" aria-label="만들기 단계">
+               aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" aria-label="만들기 단계">
             <span class="wizard-seg"></span><span class="wizard-seg"></span><span class="wizard-seg"></span>
-            <span class="wizard-seg"></span><span class="wizard-seg"></span><span class="wizard-seg"></span>
+            <span class="wizard-seg"></span><span class="wizard-seg"></span>
           </div>
-          <p class="wizard-step" id="create-group-step-label">1 / 6 · 이름</p>
+          <p class="wizard-step" id="create-group-step-label">1 / 5 · 이름</p>
           <h4 class="wizard-step-title" id="create-group-step-title">모임 이름을 정해 주세요</h4>
           <p class="wizard-step-desc" id="create-group-step-desc">이름과 한 줄 소개면 충분해요. 나머지는 다음 단계에서 하나씩 물을게요.</p>
         </div>
@@ -943,27 +993,35 @@
             <!-- v33.5 — 11/22 01:02 루키 님: "이름이나 한 줄 소개를 적게 되면 ... 쓰는 그대로
                  미리보기 화면에 노출되었으면 좋겠어". 탐색·홈의 모임 카드와 모임 첫 화면
                  (가입 화면 상단) 두 곳을 나란히 두고, 입력하는 대로 글자만 바꾼다. -->
-            <div class="wizard-preview" id="create-group-preview" role="group"
-                 aria-label="모임 카드와 모임 화면 미리보기">
-              <div class="wizard-preview-head">
-                <h5 class="wizard-preview-title">미리보기</h5>
-                <span class="wizard-preview-note">적는 그대로 보여요</span>
-              </div>
-              <div class="wizard-preview-grid">
-                <div class="pv-card">
-                  <span class="pv-label">모임 카드</span>
-                  <span class="pv-card-cover tone-neutral" id="create-preview-cover" aria-hidden="true">
-                    <span class="pv-card-tile" id="create-preview-tile"></span>
-                  </span>
-                  <span class="pv-card-name is-empty" id="create-preview-card-name">모임 이름이 여기에 보여요</span>
-                  <span class="pv-card-desc is-empty" id="create-preview-card-desc">한 줄 소개가 여기에 보여요</span>
-                </div>
-                <div class="pv-detail">
-                  <span class="pv-label">모임 화면</span>
-                  <span class="pv-detail-tag" id="create-preview-tag">취미</span>
-                  <span class="pv-detail-name is-empty" id="create-preview-name">모임 이름이 여기에 보여요</span>
-                  <span class="pv-detail-meta" id="create-preview-meta">아지트 · 멤버 1명</span>
-                  <span class="pv-detail-desc is-empty" id="create-preview-desc">한 줄 소개가 여기에 보여요</span>
+            <!-- v34.2 (#22537 · IMG_4579) — 미리보기 박스가 입력창과 헷갈리지 않도록
+                 작은 폰 목업 프레임 + '미리보기' 배지 + 누를 수 없음(pointer-events: none).
+                 이름·한 줄 소개를 적으면 해당 위치만 은은하게 반짝이며 그대로 바뀐다. -->
+            <div class="wz-phone" role="presentation">
+              <span class="wz-phone-speaker" aria-hidden="true"></span>
+              <div class="wz-phone-screen">
+                <div class="wizard-preview" id="create-group-preview" role="group"
+                     aria-label="모임 카드와 모임 화면 미리보기 · 누를 수 없는 미리보기">
+                  <div class="wizard-preview-head">
+                    <span class="wz-preview-badge">미리보기</span>
+                    <span class="wizard-preview-note">적는 그대로 보여요</span>
+                  </div>
+                  <div class="wizard-preview-grid">
+                    <div class="pv-card">
+                      <span class="pv-label">모임 카드</span>
+                      <span class="pv-card-cover tone-neutral" id="create-preview-cover" aria-hidden="true">
+                        <span class="pv-card-tile" id="create-preview-tile"></span>
+                      </span>
+                      <span class="pv-card-name is-empty" id="create-preview-card-name">모임 이름이 여기에 보여요</span>
+                      <span class="pv-card-desc is-empty" id="create-preview-card-desc">한 줄 소개가 여기에 보여요</span>
+                    </div>
+                    <div class="pv-detail">
+                      <span class="pv-label">모임 화면</span>
+                      <span class="pv-detail-tag" id="create-preview-tag">취미</span>
+                      <span class="pv-detail-name is-empty" id="create-preview-name">모임 이름이 여기에 보여요</span>
+                      <span class="pv-detail-meta" id="create-preview-meta">아지트 · 멤버 1명</span>
+                      <span class="pv-detail-desc is-empty" id="create-preview-desc">한 줄 소개가 여기에 보여요</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -989,20 +1047,15 @@
             <p class="wizard-picked" id="create-group-hobby-picked" aria-live="polite"></p>
           </section>
 
-          <!-- 3. 대표 이미지 — 한 번 크롭해 1:1 원형용 + 4:3 카드용을 함께 만든다 -->
+          <!-- 3. 대표 이미지 — v34.2: 예시 커버 8종은 없앴다. 원형 미리보기 1개 + 사진을 고르면
+               바로 크롭 조절 창(사각 크롭 박스의 모서리를 끌어 크기, 안쪽을 끌어 위치). -->
           <section class="wizard-panel" data-create-step="3" hidden>
-            <div class="cover-pick">
-              <div class="cover-pick-previews">
-                <div class="cover-preview-item">
-                  <div class="cover-pick-preview is-circle" id="create-group-cover-circle" aria-live="polite"><!-- JS --></div>
-                  <span class="cover-preview-label">원형용 1:1</span>
-                </div>
-                <div class="cover-preview-item">
-                  <div class="cover-pick-preview is-card" id="create-group-cover-preview" aria-live="polite"><!-- JS --></div>
-                  <span class="cover-preview-label">카드용 4:3</span>
-                </div>
+            <div class="cover-single">
+              <div class="cover-circle-wrap">
+                <div class="cover-pick-preview is-circle cover-circle" id="create-group-cover-circle" aria-live="polite"><!-- JS --></div>
+                <span class="cover-circle-label">대표 이미지</span>
               </div>
-              <div class="cover-pick-actions">
+              <div class="cover-single-actions">
                 <label class="cover-pick-btn" for="create-group-cover-album">
                   <span class="oo-icon-17" aria-hidden="true" data-oog-icon="image"></span>앨범에서
                 </label>
@@ -1013,40 +1066,42 @@
                 <input type="file" id="create-group-cover-camera" accept="image/*" capture="environment" hidden>
                 <button class="cover-pick-btn ghost" id="btn-create-group-cover-remove" type="button" hidden>지우기</button>
               </div>
-              <p class="cover-pick-note">사진은 한 번만 잘라 원형(1:1)과 카드(4:3)로 함께 만들어요. 위치 정보(EXIF)는 지우고 다시 저장해요.</p>
+              <p class="cover-pick-note">사진을 고르면 바로 자를 수 있어요. 고르지 않고 넘어가면 모임명 첫 글자로 원형 아이콘을 만들어요. 위치 정보(EXIF)는 지우고 다시 저장해요.</p>
             </div>
 
-            <!-- 크롭 — 고른 사진을 끌어 옮기고 확대로 맞춘다 -->
+            <!-- 크롭 — 확대 슬라이더 대신 사각 크롭 박스를 손가락·마우스로 조절한다(원형 가이드 포함). -->
             <div class="cover-crop" id="create-group-crop" hidden>
+              <div class="cover-crop-head">
+                <strong class="cover-crop-title">자를 영역을 정해 주세요</strong>
+                <span class="cover-crop-hint">모서리를 끌어 크기 · 안쪽을 끌어 위치</span>
+              </div>
               <div class="cover-crop-stage" id="create-group-crop-stage">
                 <img id="create-group-crop-img" alt="대표 사진 자르기" draggable="false">
-                <span class="cover-crop-frame" aria-hidden="true"></span>
-              </div>
-              <div class="cover-crop-controls">
-                <label class="cover-crop-zoom-label" for="create-group-crop-zoom">확대</label>
-                <input type="range" id="create-group-crop-zoom" min="100" max="300" step="5" value="100" aria-label="사진 확대">
-                <div class="cover-crop-actions btn-pair">
-                  <button class="btn-secondary" id="btn-create-group-crop-cancel" type="button">취소</button>
-                  <button class="btn-primary" id="btn-create-group-crop-apply" type="button">이 영역으로</button>
+                <div class="cover-crop-box" id="create-group-crop-box" role="application" aria-label="자를 영역 — 모서리를 끌어 크기, 안쪽을 끌어 위치">
+                  <span class="cover-crop-ring" aria-hidden="true"></span>
+                  <span class="cover-crop-handle" data-crop-handle="nw" aria-hidden="true"></span>
+                  <span class="cover-crop-handle" data-crop-handle="ne" aria-hidden="true"></span>
+                  <span class="cover-crop-handle" data-crop-handle="sw" aria-hidden="true"></span>
+                  <span class="cover-crop-handle" data-crop-handle="se" aria-hidden="true"></span>
                 </div>
               </div>
+              <div class="cover-crop-actions btn-pair">
+                <button class="btn-secondary" id="btn-create-group-crop-cancel" type="button">취소</button>
+                <button class="btn-primary" id="btn-create-group-crop-apply" type="button">이 영역으로</button>
+              </div>
             </div>
-
-            <p class="wizard-panel-lead">사진이 없으면 기본 커버 8종 중 하나로 정해요.</p>
-            <div class="cover-preset-grid" id="create-group-cover-presets" role="group" aria-label="기본 대표 이미지"><!-- JS --></div>
           </section>
 
-          <!-- 4. 활동 지역 — 시·도 → 시·군·구 (목록에서만, 직접 입력 없음) -->
+          <!-- 4. 아지트 — v34.2: 4단계(활동 지역)와 5단계(아지트)를 하나로 합쳤다.
+               권역(시·도 → 시·군·구)을 고르면 그 근처 아지트가 먼저 보이고, 아지트를 1~3곳 고른다. -->
           <section class="wizard-panel" data-create-step="4" hidden>
+            <p class="wizard-panel-lead">어디서 만날지 권역을 먼저 고르면 가까운 아지트부터 보여드려요.</p>
             <div class="region-pick">
               <div class="region-pick-row" id="create-group-region-sido" role="group" aria-label="시·도"><!-- JS --></div>
               <div class="region-pick-grid" id="create-group-region-sigungu" role="group" aria-label="시·군·구"><!-- JS --></div>
             </div>
             <p class="wizard-picked" id="create-group-region-picked" aria-live="polite"></p>
-          </section>
 
-          <!-- 5. 아지트 — 역·대학교·랜드마크 1~3곳 (직접 입력 없음) -->
-          <section class="wizard-panel" data-create-step="5" hidden>
             <div class="azit-search">
               <span class="azit-search-icon" aria-hidden="true" data-oog-icon="search"></span>
               <span class="input-shrink">
@@ -1059,12 +1114,16 @@
             <div class="azit-list" id="create-group-azit-list" aria-live="polite"><!-- JS --></div>
           </section>
 
-          <!-- 6. 공개 설정과 확인 -->
-          <section class="wizard-panel" data-create-step="6" hidden>
-            <div class="field-group">
-              <label class="field-label">가입 방식 <span class="field-hint">나중에 바꿀 수 있어요</span></label>
-              <div class="composer-tag-list" id="create-group-privacy"><!-- JS --></div>
-            </div>
+          <!-- 5. 최종 확인 — v34.2: 딱딱한 표 대신 실제 모임 카드 + 모임 상단 헤더 미리보기 -->
+          <section class="wizard-panel" data-create-step="5" hidden>
+            <div class="wz-final" id="create-group-final" aria-live="polite"><!-- JS --></div>
+
+            <div class="wz-final-settings">
+              <h5 class="wz-final-settings-title">가입 설정 <span class="field-hint">나중에 바꿀 수 있어요</span></h5>
+              <div class="field-group">
+                <label class="field-label">가입 방식</label>
+                <div class="composer-tag-list" id="create-group-privacy"><!-- JS --></div>
+              </div>
 
             <div class="wizard-ops">
               <!-- H4 — 나이 제한은 4개 칩이 아니라 **19~99세 듀얼 레인지 슬라이더**로 고른다.
@@ -1096,10 +1155,6 @@
                 <p class="policy-hint">비워두면 기본 질문을 씁니다. 질문은 모임 설정에서 더 바꿀 수 있어요.</p>
               </div>
             </div>
-
-            <div class="wizard-summary-wrap">
-              <h5 class="wizard-summary-title">이렇게 만들어요</h5>
-              <dl class="wizard-summary" id="create-group-summary" aria-live="polite"><!-- JS --></dl>
             </div>
           </section>
         </div>

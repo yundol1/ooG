@@ -158,6 +158,8 @@ window.OOGIcons = (function () {
 
     /* 내정보 · 설정 */
     menu: '<circle cx="12" cy="5.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18.6" r="1.5" fill="currentColor" stroke="none"/>',
+    /* v34.2 — 삼선바(햄버거). 내 프로필 우측 상단 설정 버튼이 쓴다. */
+    menuLines: '<path d="M4 6.4h16M4 12h16M4 17.6h16"/>',
     timeline: '<path d="M6.2 3.8v16.4"/><circle cx="6.2" cy="8.2" r="2.2"/><circle cx="6.2" cy="16" r="2.2"/><path d="M11 8.2h9M11 16h6.4"/>',
     grid: '<rect x="4" y="4" width="6.6" height="6.6" rx="2"/><rect x="13.4" y="4" width="6.6" height="6.6" rx="2"/><rect x="4" y="13.4" width="6.6" height="6.6" rx="2"/><rect x="13.4" y="13.4" width="6.6" height="6.6" rx="2"/>',
     chevronLeft: '<path d="M14.4 5.4 7.8 12l6.6 6.6"/>',
