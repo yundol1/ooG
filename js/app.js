@@ -11632,12 +11632,11 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>`;
   }
 
-  /** 위자드 초안에 반영(요약·임시저장도 같이). */
+  /** 위자드 초안에 반영(문구·임시저장도 같이). v34.2 — 요약표가 카드 미리보기로 바뀌어 나이 값은 화면 문구가 직접 보여 준다. */
   function applyAgeToDraft(range) {
     if (!ui.groupDraft || !range) return;
     ui.groupDraft.ageMin = range.min;
     ui.groupDraft.ageMax = range.max;
-    renderCreateSummary();
     queueCreateDraftSave();
   }
 
