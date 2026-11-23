@@ -10857,7 +10857,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </dl>
         </section>
 
-        ${grp.rules ? `<div class="sheet-rule-card guest-rule gintro-rule">
+        ${grp.rules ? `<div class="sheet-rule-card gintro-rule">
           <div class="rule-title"><span>모임 규칙</span></div>
           <p class="rule-desc">${escapeHtml(grp.rules)}</p>
         </div>` : ''}

@@ -22395,46 +22395,12 @@ body.subscreen-open { overflow: hidden; }
    · 상자를 더하지 않는다: 이미지 12px · 칩 999px · 가입 안내 행은 1px 구분선
    · 닫기 ×(top 16 + 32) 아래에서 이미지가 시작하도록 위 여백 26px
    ========================================================================== */
-.guest-cover {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  max-height: 168px;
-  margin: 26px 0 14px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--bg-subtle);
-}
-
-.guest-cover-photo {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.guest-cover-tile {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, var(--tone-from, var(--bg-soft)) 0%, var(--bg-subtle) 100%);
-  color: var(--tone-ink, var(--text-muted));
-}
-.guest-cover-tile .oo-ic { width: 56px; height: 56px; }
-
-.guest-head { margin: 0 0 8px; }
-.guest-head .sheet-title { margin: 6px 0 8px; }
-.guest-head .sheet-meta { margin-bottom: 8px; }
-
 .guest-tag-row {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin: 2px 0 4px;
 }
-
-.guest-join { margin: 12px 0 4px; gap: 4px; }
 
 .guest-join-rows { display: flex; flex-direction: column; margin: 0; }
 .guest-join-row {
@@ -22460,14 +22426,6 @@ body.subscreen-open { overflow: hidden; }
   text-align: right;
 }
 
-.guest-rule { margin: 12px 0 0; }
-
-.guest-actions {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  margin-top: 14px;
-}
 
 /* 다크 — 상태 알약은 어두운 바탕에 맞춘다(흰 칩 금지) */
 :root[data-theme="dark"] .ops-state.off { background: #33240F; color: #FCD9A8; }
