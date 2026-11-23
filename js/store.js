@@ -5492,6 +5492,20 @@ class Store {
         startedAt: gd.startedAt || null,
         finishedAt: gd.finishedAt || null
       };
+      /* v37.3 (#23949 · IMG_4596) — 가이드 도중의 답도 저장소에 남긴다(앱을 다시 열어도 0/3 으로 돌아가지 않게).
+         상태를 다시 읽을 때 guide 를 새로 만드므로, 여기서 빠뜨리면 보관한 답이 사라진다. */
+      if (gd.draft && typeof gd.draft === 'object') {
+        const draftIds = (list) => (Array.isArray(list) ? list : [])
+          .filter((id) => typeof id === 'string').slice(0, 3);
+        merged.guide.draft = {
+          step: Number.isFinite(gd.draft.step) ? gd.draft.step : 0,
+          category: typeof gd.draft.category === 'string' ? gd.draft.category : 'sports',
+          hobbyIds: draftIds(gd.draft.hobbyIds),
+          goalIds: draftIds(gd.draft.goalIds),
+          goalTouched: !!gd.draft.goalTouched,
+          at: gd.draft.at || null
+        };
+      }
       const tp = parsed.tastePrefs && typeof parsed.tastePrefs === 'object' ? parsed.tastePrefs : {};
       const tasteIds = (list) => (Array.isArray(list) ? list : []).filter((id) => typeof id === 'string').slice(0, 8);
       merged.tastePrefs = {
@@ -8814,6 +8828,60 @@ class Store {
     this.state.guide = Object.assign({}, this.state.guide, { status: 'running', step: next });
     this.saveState();
     return { ok: true, guide: this.getGuideState(), prevStep: g.step };
+  }
+
+  /**
+   * v37.3 (#23949 · IMG_4596) — 가이드 도중에 고른 답을 **저장소에 잠시 보관**한다.
+   *  · 전에는 고른 취미가 메모리(ui.guide)에만 있어, 화면을 다시 그리거나 앱을 다시 열면
+   *    처음 상태(0/3)로 돌아갔다 — '직접 쓰기로 추가하면 초기화된다'는 지적의 원인.
+   *  · 가이드가 running 인 동안만 쓰고, 끝내면(clearGuideDraft) 지운다.
+   * @returns {{step:number, category:string, hobbyIds:string[], goalIds:string[], goalTouched:boolean, at:string|null}|null}
+   */
+  getGuideDraft() {
+    const d = this.state.guide && this.state.guide.draft;
+    if (!d) return null;
+    const ids = (list) => (Array.isArray(list) ? list : [])
+      .filter((id) => !!this.getHobbyChip(id))
+      .filter((id, i, arr) => arr.indexOf(id) === i)
+      .slice(0, 3);
+    return {
+      step: Number.isFinite(d.step) ? d.step : 0,
+      category: d.category || 'sports',
+      hobbyIds: ids(d.hobbyIds),
+      goalIds: ids(d.goalIds),
+      goalTouched: !!d.goalTouched,
+      at: d.at || null
+    };
+  }
+
+  /** 가이드 도중의 답을 보관한다(최대 3개씩). */
+  saveGuideDraft(draft) {
+    const d = draft || {};
+    const ids = (list) => (Array.isArray(list) ? list : [])
+      .filter((id) => !!this.getHobbyChip(id))
+      .filter((id, i, arr) => arr.indexOf(id) === i)
+      .slice(0, 3);
+    this.state.guide = Object.assign({}, this.state.guide, {
+      draft: {
+        step: Number.isFinite(d.step) ? d.step : 0,
+        category: d.category || 'sports',
+        hobbyIds: ids(d.hobbyIds),
+        goalIds: ids(d.goalIds),
+        goalTouched: !!d.goalTouched,
+        at: new Date().toISOString()
+      }
+    });
+    this.saveState();
+    return this.getGuideDraft();
+  }
+
+  /** 가이드가 끝났으면 보관해 둔 답은 지운다. */
+  clearGuideDraft() {
+    if (this.state.guide && this.state.guide.draft) {
+      delete this.state.guide.draft;
+      this.saveState();
+    }
+    return true;
   }
 
   /** 가이드를 끝냈다('done') 또는 건너뗐다('skipped'). 다시는 자동으로 뜨지 않는다. */

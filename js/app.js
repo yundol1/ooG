@@ -1529,10 +1529,8 @@ document.addEventListener('DOMContentLoaded', () => {
                  value="${escapeHtml(ageVal)}" placeholder="예: 26">
         </div>
         <div class="ob-field">
-          <label class="ob-label" for="ob-azit">활동 아지트 <span class="ob-hint">선택</span></label>
-          <select class="ob-input ob-input-lg" id="ob-azit" aria-describedby="ob-azit-note">
-            ${azitSelectHTML(d.azitId || '')}
-          </select>
+          <span class="ob-label" id="ob-azit-label">활동 아지트 <span class="ob-hint">선택</span></span>
+          ${azitPickerHTML(d.azitId || '')}
         </div>
         ${errHTML}
         <p class="ob-note" id="ob-azit-note">${azit
@@ -1609,10 +1607,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="ob-desc">아지트를 알려주면 가까운 모임을 먼저 보여드려요. 나중에 언제든 바꿀 수 있어요.</p>
         </div>
         <div class="ob-field">
-          <label class="ob-label" for="ob-azit">활동 아지트</label>
-          <select class="ob-input ob-input-lg" id="ob-azit">
-            ${azitSelectHTML(d.azitId || '')}
-          </select>
+          <span class="ob-label" id="ob-azit-label">활동 아지트</span>
+          ${azitPickerHTML(d.azitId || '')}
         </div>
         ${errHTML}
         <p class="ob-note">다음 화면에서 취미를 여쭤볼게요 — 무엇을 좋아하는지 몰라도 괜찮아요.</p>
@@ -4408,34 +4404,59 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!ui.guide) {
       ui.guide = {
         open: false, step: 0, mode: 'onboarding',
-        hobbyIds: [], goalIds: [], category: 'sports'
+        hobbyIds: [], goalIds: [], goalTouched: false, category: 'sports'
       };
     }
     return ui.guide;
   }
 
-  /** 가이드를 연다. step 을 주면 그 단계부터(취미 다시 고르기 = 'taste-category'). */
+  /** 가이드를 연다. step 을 주면 그 단계부터(취미 다시 고르기 = 'taste-category').
+   *  v37.3 (#23949 · IMG_4596) — **도중에 고른 답을 이어받는다.**
+   *   · 처음 시작과 '단계를 지정해 다시 열기(내정보 › 가이드 다시 보기)'는 저장된 취향에서,
+   *   · 앱을 다시 열어 이어 보는 경우(status 'running' + 보관된 답)는 그 답에서 출발한다.
+   *     (전에는 늘 저장된 취향에서 시작해, 앱이 한 번 다시 뜨면 고른 취미가 0/3 으로 돌아갔다.) */
   function startGuide(options = {}) {
     const g = guideState();
     const taste = store.getTaste();
+    const explicitStep = !!options.step;
+    const draft = explicitStep ? null : store.getGuideDraft();
     g.open = true;
     g.mode = options.mode || 'onboarding';
-    g.hobbyIds = taste.hobbyIds.slice(0, 3);
-    g.goalIds = taste.goalIds.slice(0, 3);
-    g.category = (store.getHobbyChip((g.hobbyIds[0] || g.goalIds[0])) || {}).categoryId || 'sports';
+    g.hobbyIds = (draft ? draft.hobbyIds : taste.hobbyIds).slice(0, 3);
+    g.goalIds = (draft ? draft.goalIds : taste.goalIds).slice(0, 3);
+    g.goalTouched = draft ? !!draft.goalTouched : false;
+    g.category = (draft && draft.category)
+      || (store.getHobbyChip((g.hobbyIds[0] || g.goalIds[0])) || {}).categoryId || 'sports';
     const wanted = options.step === 'taste' ? 'taste-category' : options.step;
     const found = wanted ? GUIDE_STEPS.findIndex((s) => s.id === wanted) : -1;
-    const stepIndex = found >= 0 ? found : Math.max(0, store.getGuideState().step || 0);
+    const stepIndex = found >= 0 ? found
+      : Math.max(0, (draft ? draft.step : store.getGuideState().step) || 0);
     g.step = stepIndex;
+    /* 단계가 바뀌었으니 연출도 처음부터 — 같은 단계 키라 연출을 건너뛰지 않게 한다. */
+    ui.guideNarrKey = null;
     store.startGuide(options.step === 'welcome' || stepIndex === 0);
+    saveGuideDraftNow();
     renderGuide();
+  }
+
+  /** 지금 고른 답을 저장소에 보관한다(앱을 다시 열어도 남게). */
+  function saveGuideDraftNow() {
+    const g = guideState();
+    if (!g.open) return;
+    store.saveGuideDraft({
+      step: g.step, category: g.category,
+      hobbyIds: g.hobbyIds, goalIds: g.goalIds, goalTouched: !!g.goalTouched
+    });
   }
 
   /** 가이드를 닫는다 — 마지막 단계면 'done', 건너뛰기면 'skipped'. */
   function closeGuide(status) {
     const g = guideState();
     if (status !== 'hidden') store.finishGuide(status === 'skipped' ? 'skipped' : 'done');
+    /* v37.3 — 끝났으면 보관해 둔 도중 답도 지운다(다음에 다시 볼 때 새로 시작). */
+    store.clearGuideDraft();
     g.open = false;
+    ui.guideNarrKey = null;
     if (el.spotlight) {
       el.spotlight.hidden = true;
       el.spotlight.classList.remove('is-open');
@@ -4550,8 +4571,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const descNode = el.spotlightDesc;
     const bubble = el.spotlightBubble;
     const key = `guide:${step ? step.id : ''}`;
-    /* 같은 단계를 다시 그린 것(취미 하나를 골랐을 때) — 진행 중인 연출은 건드리지 않는다. */
-    if (ui.guideNarrKey === key && st.active) return;
+    /* 같은 단계를 다시 그린 것 — 연출을 처음부터 다시 돌리지 않는다(글자가 되감기던 문제).
+       v37.3: 연출이 끝난 뒤의 재렌더에서도 그대로 둔다(전에는 칩을 누를 때마다 다시 타이핑했다). */
+    if (ui.guideNarrKey === key) {
+      if (body && step && step.body) body.hidden = false;
+      bubble.classList.remove('is-narrating');
+      bubble.classList.add('narr-done', 'narr-desc-in');
+      return;
+    }
     clearNarrationTimers();
     bubble.classList.remove('is-narrating', 'narr-done', 'narr-desc-in');
     if (titleNode && titleNode.dataset.narrTitle) {
@@ -4717,38 +4744,85 @@ document.addEventListener('DOMContentLoaded', () => {
       <p class="guide-hint">나중에 다른 분야도 얼마든지 골라 더할 수 있어요.</p>`;
   }
 
-  /** 2·3단계 — 고른 분야의 세부 취미(최대 3개) + 직접 쓰기. */
+  /** 2·3단계 — 고른 분야의 세부 취미(최대 3개) + 직접 쓰기.
+   *  v37.3 (#23949 · IMG_4596·IMG_4597) — 카드 안을 **한 구조**로 정리했다.
+   *   · 분야는 알약 칩이 아니라 **밑줄 탭 한 줄**(칩 줄과 헷갈리지 않게).
+   *   · 질문 제목은 말풍선이 이미 하므로 카드 안에서 **되풀이하지 않는다**(겹쳐 보이던 문제).
+   *   · 취미 칩 한 덩어리 + 고른 취미 요약 한 줄 + 직접 쓰기 — 같은 높이의 덩어리 두 개를 없앴다.
+   */
   function guidePickHTML(kind) {
     const g = guideState();
     const cats = store.getHobbyCategories();
     const cat = cats.find((c) => c.id === g.category) || cats[0];
-    const selected = kind === 'goal' ? g.goalIds : g.hobbyIds;
-    const chips = cat.hobbies.map((h) => {
-      const on = selected.includes(h.id);
-      const full = !on && selected.length >= 3;
-      return `<button class="guide-chip ${on ? 'on' : ''}" data-guide-pick="${kind}" data-guide-hobby="${h.id}"
-                type="button" aria-pressed="${on}" ${full ? 'aria-disabled="true"' : ''}>
-                ${ic(h.icon)}<span>${escapeHtml(h.name)}</span>
-              </button>`;
-    }).join('');
-    const title = kind === 'goal' ? '우그에서 어떤 걸 해보고 싶나요?' : '당신의 취미는 무엇인가요?';
     return `
-      <div class="guide-cats" role="group" aria-label="취미 대분류">
-        ${cats.map((c) => `<button class="guide-cat ${c.id === cat.id ? 'on' : ''}" data-guide-cat="${c.id}"
-            type="button" aria-pressed="${c.id === cat.id}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`).join('')}
-      </div>
-      <div class="guide-q">
-        <p class="guide-q-title">${title} <span class="guide-q-count">${selected.length}/3</span></p>
-        <div class="guide-chips" role="group" aria-label="${kind === 'goal' ? '해보고 싶은 취미' : '내 취미'}">${chips}</div>
-      </div>
-      <div class="guide-custom">
-        <input class="guide-custom-input" id="guide-custom-input" type="text" maxlength="12"
-               placeholder="목록에 없으면 직접 쓰기 (예: 파쿠르)" autocomplete="off">
-        <button class="guide-custom-add" id="btn-guide-custom-add" type="button">추가</button>
+      <div class="guide-pick" data-guide-pick-kind="${kind}">
+        <div class="guide-tabs" role="tablist" aria-label="취미 분야">
+          ${cats.map((c) => `<button class="guide-tab ${c.id === cat.id ? 'on' : ''}" data-guide-cat="${c.id}"
+              type="button" role="tab" aria-selected="${c.id === cat.id ? 'true' : 'false'}">${escapeHtml(c.name)}</button>`).join('')}
+        </div>
+        <p class="guide-picked" id="guide-picked" aria-live="polite">${guidePickedHTML(kind)}</p>
+        <div class="guide-chips" id="guide-chips" role="group"
+             aria-label="${kind === 'goal' ? '해보고 싶은 취미' : '내 취미'}">${guideChipsHTML(kind, cat)}</div>
+        <div class="guide-custom">
+          <input class="guide-custom-input" id="guide-custom-input" type="text" maxlength="12"
+                 placeholder="목록에 없으면 직접 쓰기" autocomplete="off" enterkeyhint="done"
+                 aria-label="목록에 없는 취미 직접 쓰기">
+          <button class="guide-custom-add" id="btn-guide-custom-add" type="button">추가</button>
+        </div>
       </div>`;
   }
 
-  /** 취미 하나를 취향 답변에서 켜고 끈다(한 질문당 최대 3개). */
+  /** 지금 분야의 취미 칩들 — 켜진 것/3개가 찼을 때는 흐리게. */
+  function guideChipsHTML(kind, catArg) {
+    const g = guideState();
+    const cats = store.getHobbyCategories();
+    const cat = catArg || cats.find((c) => c.id === g.category) || cats[0];
+    const selected = kind === 'goal' ? g.goalIds : g.hobbyIds;
+    return (cat.hobbies || []).map((h) => {
+      const on = selected.includes(h.id);
+      const full = !on && selected.length >= 3;
+      return `<button class="guide-chip ${on ? 'on' : ''}" data-guide-pick="${kind}" data-guide-hobby="${h.id}"
+                type="button" aria-pressed="${on ? 'true' : 'false'}" ${full ? 'aria-disabled="true"' : ''}>
+                ${ic(h.icon)}<span>${escapeHtml(h.name)}</span>
+              </button>`;
+    }).join('');
+  }
+
+  /** 고른 취미를 한 줄로 — 비어 있어도 자리를 지켜 높이가 흔들리지 않는다. */
+  function guidePickedHTML(kind) {
+    const g = guideState();
+    const ids = kind === 'goal' ? g.goalIds : g.hobbyIds;
+    const names = ids.map((id) => (store.getHobbyChip(id) || {}).name).filter(Boolean);
+    const label = kind === 'goal' ? '해볼 취미' : '고른 취미';
+    const count = `<span class="guide-picked-count">${ids.length}/3</span>`;
+    if (!names.length) {
+      return `<span class="guide-picked-empty">아직 고르지 않았어요 · 3개까지</span>${count}`;
+    }
+    return `<span class="guide-picked-label">${label}</span><span class="guide-picked-names">${escapeHtml(names.join(' · '))}</span>${count}`;
+  }
+
+  /**
+   * v37.3 — 칩을 누르거나 직접 추가할 때 **카드 전체를 다시 그리지 않는다**.
+   *  · 탭·칩·요약 줄만 그 자리에서 바꿔, 직접 쓰기 입력값과 커서가 그대로 남는다
+   *    (전에는 renderGuide() 가 말풍선 본문을 통째로 갈아 입력이 사라지고 연출이 다시 돌았다).
+   */
+  function refreshGuidePicks(kind) {
+    const g = guideState();
+    const cats = store.getHobbyCategories();
+    const cat = cats.find((c) => c.id === g.category) || cats[0];
+    const box = document.getElementById('guide-chips');
+    if (box) box.innerHTML = guideChipsHTML(kind, cat);
+    const picked = document.getElementById('guide-picked');
+    if (picked) picked.innerHTML = guidePickedHTML(kind);
+    document.querySelectorAll('.spotlight-body .guide-tab').forEach((t) => {
+      const on = t.dataset.guideCat === cat.id;
+      t.classList.toggle('on', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+  }
+
+  /** 취미 하나를 취향 답변에서 켜고 끈다(한 질문당 최대 3개).
+   *  v37.3 — 카드는 다시 그리지 않고 칩·요약만 바꾼다(직접 쓰기 입력값·커서 유지). */
   function toggleGuidePick(kind, hobbyId) {
     const g = guideState();
     const key = kind === 'goal' ? 'goalIds' : 'hobbyIds';
@@ -4759,29 +4833,82 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('한 질문에는 3개까지 고를 수 있어요', 'info');
       return;
     }
-    renderGuide();
+    if (kind === 'goal') g.goalTouched = true;
+    saveGuideDraftNow();
+    refreshGuidePicks(kind);
   }
 
-  /** 목록에 없는 취미를 직접 써서 취향에 더한다. */
+  /**
+   * 목록에 없는 취미를 직접 써서 취향에 더한다.
+   *  v37.3 (#23949 · IMG_4596) — **기존에 고른 것을 건드리지 않는다.**
+   *   · 이미 있는 이름이면 그 칩을 그대로 골라 준다(중복은 만들지 않는다).
+   *   · 빈 값·3개 초과만 막고, 그때는 적은 글자를 지우지 않는다(다시 고칠 수 있게).
+   *   · 실패해도 고른 취미·다른 단계 입력이 그대로 남는다.
+   */
   function addGuideCustomHobby(kind) {
-    const input = document.querySelector('.guide-custom-input');
+    const input = document.getElementById('guide-custom-input');
     const value = input ? input.value : '';
-    const res = store.addCustomHobby(value, guideState().category);
-    if (!res.ok) {
-      showToast(res.reason === 'duplicate' ? '이미 있는 취미예요' : '취미 이름을 1자 이상 적어주세요', 'warning');
+    const g = guideState();
+    const key = kind === 'goal' ? 'goalIds' : 'hobbyIds';
+    const list = g[key];
+    const label = String(value || '').trim();
+    if (!label) {
+      showToast('취미 이름을 1자 이상 적어주세요', 'warning');
       return;
     }
-    const key = kind === 'goal' ? 'goalIds' : 'hobbyIds';
-    const g = guideState();
-    if (g[key].length >= 3) g[key] = g[key].slice(0, 2);
-    g[key] = g[key].concat(res.hobby.id);
-    showToast(`'${res.hobby.name}' 취미를 더했어요`, 'success');
-    renderGuide();
+    /* 이미 있는 이름은 새로 만들지 않는다 — 그 칩을 고르거나, 이미 골랐으면 그대로 둔다. */
+    const existing = store.getHobbyChips().find((h) => String(h.name).toLowerCase() === label.slice(0, 12).toLowerCase());
+    if (existing) {
+      if (list.includes(existing.id)) {
+        showToast(`'${existing.name}' 은 이미 골랐어요`, 'info');
+        return;
+      }
+      if (list.length >= 3) {
+        showToast('한 질문에는 3개까지 고를 수 있어요 · 하나를 빼고 다시 시도해 주세요', 'info');
+        return;
+      }
+      g.category = existing.categoryId || g.category;
+      g[key] = list.concat(existing.id);
+      if (kind === 'goal') g.goalTouched = true;
+      if (input) input.value = '';
+      showToast(`이미 있는 '${existing.name}' 취미를 골랐어요 · ${g[key].length}/3`, 'info');
+      saveGuideDraftNow();
+      refreshGuidePicks(kind);
+      return;
+    }
+    if (list.length >= 3) {
+      showToast('한 질문에는 3개까지 고를 수 있어요 · 하나를 빼고 다시 시도해 주세요', 'info');
+      return;
+    }
+    const res = store.addCustomHobby(label, g.category);
+    const hobby = res.hobby;
+    if (!hobby) {
+      showToast(res.reason === 'too_many' ? '취미는 20개까지 더할 수 있어요' : '취미 이름을 1~12자로 적어주세요', 'warning');
+      return;
+    }
+    /* 새 취미가 다른 분야에 들어갔으면 그 분야로 옮겨 칩이 보이게 한다. */
+    if (hobby.categoryId) g.category = hobby.categoryId;
+    g[key] = list.concat(hobby.id);
+    if (kind === 'goal') g.goalTouched = true;
+    if (input) input.value = '';
+    showToast(`'${hobby.name}' 취미를 더했어요 · ${g[key].length}/3`, 'success');
+    saveGuideDraftNow();
+    refreshGuidePicks(kind);
+    /* 입력창은 계속 열어 둔다 — 하나 더 적을 수 있게(포커스 유지). */
+    if (input && document.activeElement !== input) {
+      try { input.focus({ preventScroll: true }); } catch (e) { /* 구형 브라우저 */ }
+    }
   }
 
   function guideNext() {
     const g = guideState();
     const step = GUIDE_STEPS[g.step];
+    /* v37.3 — 취미 → '해보고 싶은 것'으로 넘어갈 때는 **방금 고른 취미를 그대로 가져간다.**
+       (전에는 같은 칩 목록이 0/3 으로 비어 보여 '고른 것이 초기화됐다'고 느껴졌다 — IMG_4597.)
+       사용자가 '해볼 취미'를 직접 고친 뒤에는(goalTouched) 덮어쓰지 않는다. */
+    if (step && step.id === 'taste-hobby' && !g.goalTouched) {
+      g.goalIds = g.hobbyIds.slice(0, 3);
+    }
     if (step && step.id === 'taste-goal') saveGuideTaste();
     if (g.step >= GUIDE_STEPS.length - 1) {
       closeGuide('done');
@@ -4790,6 +4917,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     g.step += 1;
+    saveGuideDraftNow();
     renderGuide();
   }
 
@@ -4797,6 +4925,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const g = guideState();
     if (g.step <= 0) return;
     g.step -= 1;
+    saveGuideDraftNow();
     renderGuide();
   }
 
@@ -4821,10 +4950,14 @@ document.addEventListener('DOMContentLoaded', () => {
         /* 분야를 고르면 그 분야의 세부 취미 질문으로 넘어간다(한 질문씩). */
         if ((GUIDE_STEPS[g.step] || {}).id === 'taste-category') {
           g.step += 1;
+          saveGuideDraftNow();
           renderGuide();
           return;
         }
-        renderGuide();
+        /* v37.3 — 취미 질문 안에서 분야 탭만 바꿀 때는 카드를 다시 그리지 않는다
+           (입력값·커서·연출 그대로, 칩과 요약만 그 분야로). */
+        saveGuideDraftNow();
+        refreshGuidePicks(guideCurrentPickKind());
         return;
       }
       const pick = e.target.closest('[data-guide-pick]');
@@ -7310,7 +7443,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v37.2';
+  const APP_VERSION = 'v37.3';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -8664,6 +8797,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (id === 'ob-login-submit') { submitOnboardingLogin(); return; }
       if (id === 'ob-photo-album') { const node = obField('ob-photo-input'); if (node) node.click(); return; }
       if (id === 'ob-photo-camera-btn') { const node = obField('ob-photo-camera'); if (node) node.click(); return; }
+      /* v37.3 — 아지트 검색 고르기(회원가입 4/4) */
+      if (id === 'ob-azit-field') { obAzitToggle(); return; }
+      const obAzitRow = target.closest('[data-ob-azit-row]');
+      if (obAzitRow) { obAzitChoose(obAzitRow.dataset.obAzitRow || ''); return; }
+      if (id === 'ob-azit-clear') {
+        const s = obField('ob-azit-search');
+        if (s) { s.value = ''; try { s.focus({ preventScroll: true }); } catch (e) { /* noop */ } }
+        target.classList.add('hide');
+        const list = obField('ob-azit-list');
+        if (list) list.innerHTML = obAzitRowsHTML('');
+        return;
+      }
       const swatch = target.closest('[data-ob-gradient]');
       if (swatch) {
         collectOnboardingInputs();
@@ -8703,6 +8848,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     el.onboardingBody.addEventListener('input', (e) => {
       const node = e.target;
+      /* v37.3 — 아지트 검색어를 칠 때마다 결과 목록을 바로 좁힌다. */
+      if (node.id === 'ob-azit-search') {
+        const list = obField('ob-azit-list');
+        if (list) list.innerHTML = obAzitRowsHTML(node.value);
+        const clear = obField('ob-azit-clear');
+        if (clear) clear.classList.toggle('hide', !String(node.value || '').trim());
+        return;
+      }
       if (node.id === 'ob-code') {
         node.value = String(node.value || '').replace(/\D/g, '').slice(0, 6);
       }
@@ -13331,6 +13484,130 @@ document.addEventListener('DOMContentLoaded', () => {
     return '<option value="">아지트 선택 안 함</option>' + [...groups.values()].map((g) =>
       `<optgroup label="${escapeHtml(g.label)}">${g.rows.map((h) =>
         `<option value="${escapeHtml(h.id)}" ${selected === h.id ? 'selected' : ''}>${escapeHtml(h.name)}</option>`).join('')}</optgroup>`).join('');
+  }
+
+  /**
+   * v37.3 (#23949 · IMG_4594) — 회원가입 4/4 **활동 아지트를 검색해서 고른다**.
+   *  · 전에는 네이티브 <select> 에 역·대학교·랜드마크 400여 곳이 그대로 늘어서, '성수'을 찾으려면
+   *    긴 목록을 눈으로 훑어야 했다(11/24 00:06 사용자: "활동아지트를 검색하게 해줘 찾기가 힘들어").
+   *  · 한 줄짜리 필드를 누르면 **검색창 + 결과 목록**이 그 자리에서 열린다(지도 없이, 시트 없이).
+   *  · '성수' '강남' '홍대'처럼 이름·별칭·권역 이름으로 바로 걸러진다 — store.getHangouts(query).
+   *  · 목록 맨 위에는 **'아지트 선택 안 함'** 이 늘 있다(선택은 그대로 자유).
+   *  · 고르면 필드·안내 문구가 그 자리에서 바뀌고 hidden input(#ob-azit)에 id가 들어간다.
+   */
+  function azitPickerHTML(selectedId) {
+    const sel = selectedId ? store.findAzit(selectedId) : null;
+    const name = sel ? sel.name : '아지트 선택 안 함';
+    const sub = sel
+      ? `${[sel.sigunguName, sel.kindLabel].filter(Boolean).join(' · ')} · 눌러서 바꾸기`
+      : '검색해서 찾아보세요 (예: 성수 · 강남 · 홍대)';
+    return `
+      <div class="ob-azit" id="ob-azit-wrap">
+        <button class="ob-azit-field${sel ? ' has-value' : ''}" id="ob-azit-field" type="button"
+                aria-expanded="false" aria-controls="ob-azit-panel" aria-labelledby="ob-azit-label ob-azit-name">
+          <span class="ob-azit-field-ic" aria-hidden="true">${ic('pin')}</span>
+          <span class="ob-azit-field-text">
+            <span class="ob-azit-field-name" id="ob-azit-name">${escapeHtml(name)}</span>
+            <span class="ob-azit-field-sub" id="ob-azit-sub">${escapeHtml(sub)}</span>
+          </span>
+          <span class="ob-azit-field-chev" aria-hidden="true">${ic('chevronDown')}</span>
+        </button>
+        <div class="ob-azit-panel" id="ob-azit-panel" hidden>
+          <div class="azit-search">
+            <span class="azit-search-icon" aria-hidden="true">${ic('search')}</span>
+            <span class="input-shrink">
+              <input type="search" id="ob-azit-search" placeholder="아지트 이름으로 찾기 (예: 성수 · 강남 · 홍대)"
+                     aria-label="아지트 검색" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
+            </span>
+            <button class="azit-search-clear hide" id="ob-azit-clear" type="button" aria-label="검색어 지우기">&times;</button>
+          </div>
+          <div class="azit-list" id="ob-azit-list" role="listbox" aria-label="아지트 목록">
+            ${obAzitRowsHTML('')}
+          </div>
+        </div>
+        <input type="hidden" id="ob-azit" value="${sel ? escapeHtml(sel.id) : ''}">
+      </div>`;
+  }
+
+  /** 아지트 검색 결과 줄 — '아지트 선택 안 함' → 이름/권역/종류 → 내 동네 표시 → 체크. */
+  function obAzitRowsHTML(query) {
+    const q = String(query || '').trim();
+    const selected = ((ui.onboardingDraft || {}).azitId) || '';
+    const none = `
+      <button class="azit-row ob-azit-row-none ${!selected ? 'active' : ''}" data-ob-azit-row="" type="button"
+              role="option" aria-selected="${!selected ? 'true' : 'false'}">
+        <span class="azit-row-ic" aria-hidden="true">${ic('dot')}</span>
+        <span class="azit-row-text">
+          <span class="azit-row-name">아지트 선택 안 함</span>
+          <span class="azit-row-meta">나중에 언제든 고를 수 있어요</span>
+        </span>
+        <span class="azit-row-check" aria-hidden="true">${!selected ? ic('check') : ''}</span>
+      </button>`;
+    const rows = store.getHangouts({ query: q, limit: 60 });
+    if (!rows.length) {
+      return none + `<p class="azit-empty">'${escapeHtml(q)}'에 맞는 아지트가 없어요. 역·학교 이름으로 다시 찾아보세요.</p>`;
+    }
+    return none + rows.map((h) => `
+      <button class="azit-row ${selected === h.id ? 'active' : ''}" data-ob-azit-row="${escapeHtml(h.id)}" type="button"
+              role="option" aria-selected="${selected === h.id ? 'true' : 'false'}">
+        <span class="azit-row-ic" aria-hidden="true">${ic(h.icon)}</span>
+        <span class="azit-row-text">
+          <span class="azit-row-name">${escapeHtml(h.name)}</span>
+          <span class="azit-row-meta">${escapeHtml([h.sigunguName || h.areaName, h.kindLabel].filter(Boolean).join(' · '))}</span>
+        </span>
+        ${h.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
+        <span class="azit-row-check" aria-hidden="true">${selected === h.id ? ic('check') : ''}</span>
+      </button>`).join('');
+  }
+
+  /** 검색 패널을 열고 닫는다(열 때는 검색창에 바로 커서). */
+  function obAzitToggle(force) {
+    const panel = obField('ob-azit-panel');
+    const field = obField('ob-azit-field');
+    const wrap = obField('ob-azit-wrap');
+    if (!panel || !field) return;
+    const open = force == null ? panel.hidden : !!force;
+    if (open) {
+      const list = obField('ob-azit-list');
+      const search = obField('ob-azit-search');
+      if (list) list.innerHTML = obAzitRowsHTML(search ? search.value : '');
+      panel.hidden = false;
+      field.setAttribute('aria-expanded', 'true');
+      if (wrap) wrap.classList.add('is-open');
+      setTimeout(() => { const s = obField('ob-azit-search'); if (s) { try { s.focus({ preventScroll: true }); } catch (e) { /* noop */ } } }, 30);
+    } else {
+      panel.hidden = true;
+      field.setAttribute('aria-expanded', 'false');
+      if (wrap) wrap.classList.remove('is-open');
+      const search = obField('ob-azit-search');
+      if (search) search.value = '';
+    }
+  }
+
+  /** 아지트를 고른다 — 필드·안내 문구·hidden input 을 그 자리에서 바꾼다(화면 재렌더 없음). */
+  function obAzitChoose(id) {
+    const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+    d.azitId = id || '';
+    const azit = d.azitId ? store.findAzit(d.azitId) : null;
+    const hidden = obField('ob-azit');
+    if (hidden) hidden.value = d.azitId;
+    const nameNode = obField('ob-azit-name');
+    if (nameNode) nameNode.textContent = azit ? azit.name : '아지트 선택 안 함';
+    const subNode = obField('ob-azit-sub');
+    if (subNode) {
+      subNode.textContent = azit
+        ? `${[azit.sigunguName, azit.kindLabel].filter(Boolean).join(' · ')} · 눌러서 바꾸기`
+        : '검색해서 찾아보세요 (예: 성수 · 강남 · 홍대)';
+    }
+    const field = obField('ob-azit-field');
+    if (field) field.classList.toggle('has-value', !!azit);
+    const note = obField('ob-azit-note');
+    if (note) {
+      note.textContent = azit
+        ? `${azit.name} 근처 모임을 먼저 보여드릴게요.`
+        : '아지트를 고르면 가까운 모임과 이웃을 먼저 보여드려요.';
+    }
+    obAzitToggle(false);
   }
 
   function regionSelectHTML(selectedId) {

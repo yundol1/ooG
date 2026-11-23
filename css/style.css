@@ -14296,6 +14296,137 @@ body.spotlight-open { overflow: hidden; }
 }
 
 /* ==========================================================================
+ * v37.3 (#23949 · IMG_4596·IMG_4597) — 가이드 취미 고르기: 한 구조로
+ * --------------------------------------------------------------------------
+ *  · 분야는 알약 칩이 아니라 **밑줄 탭 한 줄** — 아래 취미 칩과 같은 모양이던 두 덩어리를 없앤다.
+ *  · 카드 안에 질문을 다시 쓰지 않는다(말풍선 제목과 겹치던 줄).
+ *  · 고른 취미는 한 줄 요약(이름 · n/3)으로 늘 보이게.
+ * ========================================================================== */
+.guide-pick { display: flex; flex-direction: column; }
+.guide-tabs {
+  display: flex;
+  gap: 16px;
+  padding: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--divider);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.guide-tabs::-webkit-scrollbar { display: none; }
+.guide-tab {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 1px 9px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  white-space: nowrap;
+  box-shadow: inset 0 -2px 0 transparent;
+  transition: color 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+.guide-tab.on { color: var(--green-dark); box-shadow: inset 0 -2px 0 var(--green); }
+.guide-tab:active { opacity: 0.66; }
+.guide-picked {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  margin: 9px 0 8px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.guide-picked-label { flex: 0 0 auto; color: var(--text-sub); font-weight: var(--fw-label); }
+.guide-picked-names {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--green-dark);
+  font-weight: var(--fw-label);
+}
+.guide-picked-empty { flex: 1 1 auto; min-width: 0; color: var(--text-muted); }
+.guide-picked-count {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--text-sub);
+  font-weight: var(--fw-label);
+  font-variant-numeric: tabular-nums;
+}
+.guide-custom { margin-top: 12px; }
+
+/* ==========================================================================
+ * v37.3 (#23949 · IMG_4594) — 회원가입 4/4 활동 아지트: 검색해서 고르기
+ * ========================================================================== */
+.ob-azit { margin-top: 6px; }
+.ob-azit-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: var(--r-control);
+  background: var(--bg-subtle);
+  box-shadow: var(--clay-inset);
+  color: var(--text-strong);
+  text-align: left;
+  cursor: pointer;
+}
+.ob-azit-field.has-value {
+  background: var(--green-tint);
+  box-shadow: inset 0 0 0 1.5px var(--green-soft-border);
+}
+.ob-azit-field-ic {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+.ob-azit-field-ic .oo-ic { font-size: 16px; }
+.ob-azit-field-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ob-azit-field-name {
+  font-size: var(--fs-input);
+  font-weight: var(--fw-label);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ob-azit-field-sub {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ob-azit-field-chev { flex: 0 0 auto; color: var(--text-muted); transition: transform 0.18s ease; }
+.ob-azit-field-chev .oo-ic { font-size: 18px; }
+.ob-azit.is-open .ob-azit-field-chev { transform: rotate(180deg); }
+.ob-azit-panel {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: var(--r-card);
+  background: var(--bg-subtle);
+}
+.ob-azit .azit-search { margin: 0 0 6px; }
+/* 브라우저 기본 검색 지우기(×)는 숨긴다 — 우리 지우기 버튼 하나만 남긴다. */
+.azit-search input[type="search"]::-webkit-search-cancel-button,
+.azit-search input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+.ob-azit .azit-list { max-height: 202px; background: var(--bg-base); }
+.ob-azit-row-none .azit-row-ic { color: var(--text-muted); }
+
+/* ==========================================================================
  * Sprint 22 — 스토리텔링 가입 · 이메일 인증 · 홈 모임 둘러보기 · 탐색 상단 정리
  * --------------------------------------------------------------------------
  *  11/16 사용자 지시
