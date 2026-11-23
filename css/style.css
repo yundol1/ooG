@@ -26964,7 +26964,7 @@ body.group-mode .push-permission-banner { display: none !important; }
 }
 .guest-screen-note > svg,
 .guest-screen-note > .oo-icon-14 { flex: 0 0 auto; margin-top: 2px; }
-.guest-screen-note-text { flex: 1 1 auto; min-width: 0; }
+.guest-screen-note-text { flex: 1 1 auto; min-width: 0; text-align: left; word-spacing: normal; }
 .guest-screen-note b { font-weight: var(--fw-label); color: var(--text-sub); }
 .guest-event-card {
   display: flex;
