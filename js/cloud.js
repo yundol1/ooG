@@ -23,7 +23,7 @@
   const CONF = {
     url: 'https://nnzrunhjxwcspsfgsmgf.supabase.co',
     key: 'sb_publishable_fy0CjiojNNWeTVAzrflP8w_098c3T2J',
-    version: 'v37.0'
+    version: 'v37.2'
   };
 
   const LS_SESSION = 'oog_cloud_session_v1';

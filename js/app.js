@@ -1118,8 +1118,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 제목을 한 글자씩 찍는다 — 쉼표·마침표·줄바꿈에서 잠깐 멈춘다.
    *  반환값 finish(true) 는 남은 글자를 채우되 다음 단계는 부르지 않는다(스킵). */
-  function typeNarrationTitle(node, onDone) {
-    if (!node) { if (onDone) onDone(); return { finish: () => {}, chars: 0 }; }
+  function typeNarrationTitle(node, onDone, opts) {
+    const o = opts || {};
+    if (!node) { if (onDone) onDone(); return { finish: () => {}, chars: 0, start: () => {} }; }
     const raw = node.innerHTML;
     const tokens = raw.match(/<br\s*\/?>|&[a-zA-Z#0-9]+;|[\s\S]/g) || [];
     node.innerHTML = tokens.map((t, i) => (/^<br/i.test(t)
@@ -1129,6 +1130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let i = 0;
     let timer = null;
     let typed = false;
+    let started = false;
     const finish = (silent) => {
       if (timer) { clearTimeout(timer); timer = null; }
       chars.forEach((c) => c.classList.add('on'));
@@ -1153,13 +1155,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }, wait);
       ui.narrationTimers = (ui.narrationTimers || []).concat(timer);
     };
-    tick();
-    return { finish, chars: chars.length };
+    /* v37.2 — 시작을 미룰 수 있다(스플래시가 걷힌 뒤 첫 글자부터 보여 주려고).
+       감싸 두기만 하면 글자는 opacity 0 이라, 기다리는 동안 완성된 제목이 비치지 않는다. */
+    const start = () => {
+      if (started || typed) return;
+      started = true;
+      tick();
+    };
+    if (!o.paused) start();
+    return { finish, chars: chars.length, start };
   }
 
   /**
    * 내레이션 한 번 — 제목 타이핑 → 한 숨 → 설명 등장 → 읽을 만큼 기다림 → 답 등장.
-   *  cfg { titleNode, descNode, hintNode, onStart, onDescIn, onReveal, hold }
+   *  cfg { titleNode, descNode, hintNode, onStart, onDescIn, onReveal, hold, startGate }
+   *  · startGate(start) — 있으면 첫 글자를 찍기 전에 준비만 해 두고, start() 를 부를 때 시작한다.
+   *    (v37.2: 스플래시가 걷힌 뒤에 첫 글자부터 보여 주려고 — 뒤에서 몰래 찍히지 않게)
    *  반환값: 즉시 끝내는 함수(탭 스킵).
    */
   function playNarration(cfg) {
@@ -1191,7 +1202,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cfg.onDescIn) cfg.onDescIn();
         after(cfg.hold != null ? cfg.hold : descHold + NARRATION_TIMING.descFade, reveal);
       });
-    });
+    }, { paused: true });
+    /* 제목 글자는 이미 감싸 두었다(보이지 않음). 이제 시작만 기다린다. */
+    if (cfg.startGate) cfg.startGate(() => typing.start());
+    else typing.start();
     if (cfg.hintNode) {
       after(cfg.hintDelay != null ? cfg.hintDelay : NARRATION_TIMING.hintDelay, () => {
         if (st.done) return;
@@ -1199,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
     ui.narrationFinishTyping = () => typing.finish(true);
-    ui.narrationReveal = () => { typing.finish(true); reveal(); };
+    ui.narrationReveal = () => { typing.start(); typing.finish(true); reveal(); };
     return ui.narrationReveal;
   }
 
@@ -1218,7 +1232,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return answer;
   }
 
-  /** 온보딩 단계 하나에 내레이션을 건다 — 답(입력란·버튼)은 문구를 다 읽은 뒤 나타난다. */
+  /** v37.2 — 스플래시가 아직 화면을 덮고 있는지(첫 화면 내레이션은 그 뒤에 시작한다). */
+  function splashGone() {
+    try {
+      const s = splash && splash.getState ? splash.getState() : null;
+      return !s || s.visible === false;
+    } catch (e) { return true; }
+  }
+
+  /** 온보딩 단계 하나에 내레이션을 건다 — 답(입력란·버튼)은 문구를 다 읽은 뒤에 **한 번만** 나타난다. */
   function applyOnboardingNarration(stepId) {
     const step = el.onboardingBody && el.onboardingBody.querySelector('.ob-step');
     if (!step) return;
@@ -1238,21 +1260,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleNode = hero.querySelector('.ob-title');
     const descNode = hero.querySelector('.ob-desc');
 
+    /* v37.2 (#23942) — 답 카드는 **문구가 다 찍힌 뒤에 한 번만** 부드럽게 나타난다.
+       (전에는 카드가 처음부터 보이고, 문구가 끝나는 순간 .is-arriving 이 한 번 더 걸려
+        보이던 카드가 깜빡였다 — 11/23 IMG_4593 지적) */
     const reveal = () => {
       step.classList.remove('is-narrating');
       step.classList.add('narr-done');
+      if (!answer.hidden && answer.classList.contains('is-shown')) return;
       answer.hidden = false;
+      answer.classList.add('is-shown');
       answer.classList.add('is-arriving');
       setTimeout(() => answer.classList.remove('is-arriving'), 560);
     };
 
-    /* Sprint 28.5 — 입력란은 문구가 다 찍히기를 기다리지 않는다. 답은 처음부터 열려 있고,
-       타자는 위쪽 문구에서만 연출이다. 이미 본 단계는 연출 자체를 건너뛴다. */
+    /* 이미 본 단계·자동화·동작 줄이기: 연출 없이 문구 전체와 카드를 바로 보여 준다. */
     ui.narrSeen = ui.narrSeen || {};
     const seenKey = `${ui.onboardingMode}:${stepId}`;
     if (ui.narrSeen[seenKey] || !narrationEnabled()) {
-      step.classList.add('narr-done');
+      step.classList.add('narr-done', 'narr-desc-in');
       answer.hidden = false;
+      answer.classList.add('is-shown');
       clearNarrationTimers();
       return;
     }
@@ -1260,16 +1287,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     step.classList.add('is-narrating');
     step.classList.remove('narr-done', 'narr-desc-in');
-    answer.hidden = false;
+    /* 문구가 찍히는 동안 답 카드는 **보이지 않는다**(보였다가 다시 떠오르는 깜빡임 없음). */
+    answer.hidden = true;
+    answer.classList.remove('is-shown', 'is-arriving');
     const stepIndex = Math.min(ui.onboardingStep, obFlow().length - 1);
     playNarration({
       titleNode,
       descNode,
       hintNode: null,
       hintDelay: narrationHintDelay(stepIndex === 0),
-      onStart: () => { answer.hidden = false; },
       onDescIn: () => step.classList.add('narr-desc-in'),
-      onReveal: reveal
+      onReveal: reveal,
+      /* 첫 화면은 스플래시가 걷힌 뒤 첫 글자부터 보여 준다(뒤에서 몰래 찍히지 않게). */
+      startGate: (start) => {
+        if (splashGone()) start();
+        else splash.whenHidden(start);
+      }
     });
 
     /* 화면 아무 곳이나 탭 → 문구 즉시 완성(입력란을 누를 때는 그대로 입력) */
@@ -1359,10 +1392,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
     } else if (loginMode) {
       onboardingProgressVisible(false);
+      /* v37.2 (#23942) — 옛 '이어서' 버튼은 없어졌다(자동 로그인). 세션이 없으면 **로그인 또는 회원가입**뿐이다. */
       body = `
         <div class="ob-hero">
           <h1 class="ob-title">다시 만나요</h1>
-          <p class="ob-desc">${escapeHtml(ob.email ? `${ob.email} 계정으로 이어서 시작해요.` : '이메일과 비밀번호로 로그인해 주세요.')}</p>
+          <p class="ob-desc">${ob.email
+            ? `${escapeHtml(ob.email)} 계정이에요. 비밀번호를 넣고 로그인해 주세요.`
+            : '이메일과 비밀번호로 로그인해 주세요.'}</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-email">이메일</label>
@@ -1374,7 +1410,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         ${errHTML}
         <div class="ob-actions">
-          <button class="ob-btn primary" id="ob-login-submit" type="button">${d.busy ? '로그인 중…' : '이어서 시작'}</button>
+          <button class="ob-btn primary" id="ob-login-submit" type="button">${d.busy ? '로그인 중…' : '로그인'}</button>
           <div class="ob-link-row">
             <button class="ob-btn ghost" id="ob-find-id" type="button">아이디 찾기</button>
             <button class="ob-btn ghost" id="ob-forgot" type="button">비밀번호 찾기</button>
@@ -1586,6 +1622,14 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
     }
 
+    /* v37.2 (#23942) — **같은 화면을 다시 그리는 호출은 아무것도 하지 않는다.**
+       부팅 때 init 과 세션 확인이 겹쳐 두 번 그리면, 찍히던 타이핑이 끊기고
+       카드가 한 번 더 나타나는 깜빡임이 생겼다(11/23 IMG_4593).
+       같은 모드·단계·내용·오류 상태라면 화면에 바뀔 것이 없다. */
+    const renderSig = `${ui.onboardingMode}|${stepId}|${ui.obError || ''}|${body}`;
+    if (el.onboardingBody.dataset.obSig === renderSig) return;
+    el.onboardingBody.dataset.obSig = renderSig;
+
     el.onboardingBody.className = `onboarding-body ob-step-${ui.obDir}`;
     el.onboardingBody.dataset.obMode = ui.onboardingMode;
     el.onboardingBody.innerHTML = `<div class="ob-step" data-ob-step="${stepId}" data-ob-mode="${ui.onboardingMode}">${body}</div>`;
@@ -1599,6 +1643,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!loginMode && ui.obNarrKey !== narrKey) {
       ui.obNarrKey = narrKey;
       applyOnboardingNarration(stepId);
+    } else if (!loginMode) {
+      /* v37.2 — 이미 그렸던 단계의 재렌더(오류·사진 미리보기)는 연출을 다시 하지 않는다.
+         문구는 이미 다 찍혀 있고 카드도 보이는 상태 그대로 둔다. */
+      const step = el.onboardingBody.querySelector('.ob-step');
+      const answer = step && step.querySelector('.ob-answer');
+      if (step) step.classList.add('narr-done', 'narr-desc-in');
+      if (answer) { answer.hidden = false; answer.classList.add('is-shown'); }
     }
   }
 
@@ -2022,6 +2073,26 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.classList.toggle('onboarding-mode', !signedIn);
     if (el.onboarding) el.onboarding.hidden = signedIn;
     if (!signedIn) {
+      /* v37.2 (#23942) — 이 기기에 **서버 세션**이 남아 있는데 아직 확인 전이라면,
+         로그인 화면을 먼저 띄우지 않는다(띄웠다가 홈으로 튀는 깜빡임).
+         잠시 '계정 확인 중' 화면만 두고, 세션이 유효하면 곧바로 홈으로 들어간다. */
+      if (ui.sessionChecked === 'pending') { renderSessionGate(); return; }
+      if (!ui.sessionChecked) {
+        try {
+          const cloud = window.OOGCloud;
+          if (cloud && cloud.hasSession && cloud.hasSession()) {
+            ui.sessionChecked = 'pending';
+            renderSessionGate();
+            /* 서버가 오래 응답하지 않아도 입구에 갇히지 않게 — 6초 뒤에는 로그인/가입 화면. */
+            setTimeout(() => {
+              if (ui.sessionChecked !== 'pending') return;
+              ui.sessionChecked = true;
+              applySignInGate();
+            }, 6000);
+            return;
+          }
+        } catch (e) { /* 서버 모듈이 없으면 그냥 입구를 그린다 */ }
+      }
       const ob = store.getOnboardingState();
       const pending = (store.state.onboarding || {}).pendingEmail;
       /* 메일 링크로 들어온 화면(새 비밀번호·인증 안내·아이디 찾기)만 그대로 둔다.
@@ -2037,6 +2108,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ui.onboardingMode !== 'login' && !ui.onboardingDraft) ui.onboardingDraft = newOnboardingDraft();
       renderOnboarding();
     }
+  }
+
+  /** v37.2 — 서버 세션을 확인하는 짧은 동안의 화면(로고 + 한 줄).
+   *  스플래시가 보통 이 시간을 덮으므로, 게임 느리면 이 화면이 잠깐 보인다. */
+  function renderSessionGate() {
+    if (!el.onboardingBody) return;
+    onboardingProgressVisible(false);
+    el.onboardingBody.dataset.obSig = 'session-gate';
+    el.onboardingBody.dataset.obMode = 'gate';
+    el.onboardingBody.innerHTML = `
+      <div class="ob-step ob-gate" data-ob-step="gate" data-ob-mode="gate">
+        <div class="ob-hero">
+          <h1 class="ob-title">잠시만요</h1>
+          <p class="ob-desc">계정을 확인하고 있어요.</p>
+        </div>
+      </div>`;
   }
 
   /** 확인 시트 — 로그아웃/초기화처럼 되돌리기 어려운 동작 앞에서 한 번 물어본다. */
@@ -7223,7 +7310,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v37.0';
+  const APP_VERSION = 'v37.2';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -17166,8 +17253,11 @@ document.addEventListener('DOMContentLoaded', () => {
         node.setAttribute('aria-hidden', 'true');
       }
       record();
+      /* v37.2 — 걷힌 뒤에 시작할 일(첫 화면 내레이션). */
+      hiddenListeners.splice(0).forEach((fn) => { try { fn(); } catch (e) { /* noop */ } });
     }
     const listeners = [];
+    const hiddenListeners = [];
     function detach() {
       listeners.forEach(([type, fn, opts]) => window.removeEventListener(type, fn, opts));
       listeners.length = 0;
@@ -17207,6 +17297,12 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       skip: (reason) => finish(reason || 'api'),
       ready,
+      /* v37.2 — 스플래시가 걷힌 뒤에 할 일(첫 화면 내레이션 시작)을 건다. */
+      whenHidden: (fn) => {
+        if (typeof fn !== 'function') return;
+        if (!state.visible) { try { fn(); } catch (e) { /* noop */ } return; }
+        hiddenListeners.push(fn);
+      },
       getState: () => Object.assign({}, state, { hold, leaving: !!(node && node.classList.contains('is-leaving')) })
     };
   })();
@@ -18762,7 +18858,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * ------------------------------------------------------------------ */
   function cloudBoot() {
     const cloud = window.OOGCloud;
-    if (!cloud) return;
+    if (!cloud) { ui.sessionChecked = true; return; }
     window.oogRefresh = (() => {
       let t = null;
       return () => { if (t) return; t = setTimeout(() => { t = null; try { oogRefreshAll(); } catch (e) { /* noop */ } }, 400); };
@@ -18770,11 +18866,15 @@ document.addEventListener('DOMContentLoaded', () => {
     cloud.onAuth((event) => {
       if (event === 'signed_out') return;
     });
+    const hadSession = (() => { try { return !!cloud.hasSession(); } catch (e) { return false; } })();
+    /* v37.2 (#23942) — 세션이 **유효하면 확인 버튼 없이 자동 로그인**, 아니면 로그인·회원가입만.
+       끝난 뒤에는 ui.sessionChecked 를 채우고 입구를 다시 그린다(입구 깜빡임 없음). */
+    const settleGate = () => { ui.sessionChecked = true; applySignInGate(); };
     cloud.handleUrlCallback().then((cb) => {
       if (cb && cb.type === 'error') {
         showToast('링크가 만료됐어요 — 다시 요청해 주세요', 'warning', null, { ms: 4200 });
         ui.onboardingMode = 'signup';
-        applySignInGate();
+        settleGate();
         return undefined;
       }
       if (cb && cb.type === 'recovery') {
@@ -18782,18 +18882,30 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.onboardingStep = 1;
         ui.obError = '';
         ui.onboardingDraft = newOnboardingDraft();
-        applySignInGate();
+        settleGate();
         showToast('새 비밀번호를 정해 주세요', 'info', null, { ms: 3600 });
         return undefined;
       }
       return cloud.getUser().then((u) => {
-        if (!u.ok || !u.user) return undefined;
+        if (!u.ok || !u.user) {
+          /* v37.2 — 세션이 만료됐거나 끊겼다. 오프라인이 아닌데 세션이 빈 것이면
+             이 기기의 옛 세션·로그인 표식을 닫고 로그인/회원가입 화면로 돌린다.
+             (서버가 확인해 주지 못한 세션으로 앱에 머물게 하지 않는다) */
+          if (hadSession && u.reason !== 'network') {
+            /* 서버가 "이 세션은 아니다"라고 한 것 — 만료된 세션 키는 이 기기에서 지운다.
+               다만 **이 기기에 이미 로그인된 계정**은 건드리지 않는다(오프라인처럼 그대로 쓴다).
+               v37.2 — 여기서 store.signOut() 까지 하면 멀쩡한 로컬 계정까지 로그인 화면으로 떨어졌다. */
+            try { cloud.stopRealtime(); cloud.signOut(); cloud.resetSyncMemory(); } catch (e) { /* noop */ }
+          }
+          settleGate();
+          return undefined;
+        }
         if (!u.user.email_confirmed_at) {
           /* 인증 전 계정 — 인증 메일 안내 화면으로 되돌린다(앱 진입 차단). */
           const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
           d.email = u.user.email || d.email;
           ui.onboardingMode = 'verify';
-          applySignInGate();
+          settleGate();
           renderOnboarding();
           return undefined;
         }
@@ -18802,15 +18914,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (prevEmail && prevEmail !== (u.user.email || '').toLowerCase()) store.clearContentForNewAccount();
         store.applyCloudSession({ userId: u.user.id, email: u.user.email });
         store.markSignedIn();
-        applySignInGate();
+        settleGate();
         oogRefreshAll();
         return cloud.bootstrap().then((r) => {
           if (r && r.ok) { oogRefreshAll(); }
           else if (r && r.reason === 'network') showToast('오프라인 상태예요 · 이 기기의 내용으로 시작해요', 'warning', null, { ms: 3400 });
           return undefined;
         }).catch(() => undefined);
-      }).catch(() => undefined);
-    }).catch(() => undefined);
+      }).catch(() => { settleGate(); });
+    }).catch(() => { settleGate(); });
   }
   cloudBoot();
   /* Sprint 21 — 아직 가이드를 보지 않은 계정은 앱을 열 때 이어서 보여준다(도중에 닫아도 다음에 이어서). */

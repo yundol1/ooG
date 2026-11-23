@@ -125,6 +125,43 @@
 
 const STORAGE_KEY = 'oog_app_state_v16';
 const STORAGE_SCHEMA_VERSION = 17;
+/* ==========================================================================
+ * v37.2 (#23942) — 구버전 로컬 잔여 데이터 **1회 일괄 청소**
+ * --------------------------------------------------------------------------
+ *  윤루키 님: "모든 계정·로컬 잔여 데이터 완전 초기화 — 구버전 localStorage 에 남아
+ *  있던 로컬 계정/세션/캐시가 새로 들어온 이용자에게 뜨지 않도록. 단, 현재 유효한
+ *  Supabase Auth 세션은 유지."
+ *  · `oog` 로 시작하는 저장 키(옛 로컬 계정·프로필·모임·글·사진·초안·큐·동기화 기억)를 모두 지운다.
+ *  · 서버 세션 키(`oog_cloud_session_v1`)만 남긴다 — 유효성은 부팅 때 서버(getUser)가 확인하고,
+ *    빈 세션이면 cloud 가 스스로 닫는다.
+ *  · 한 번만 돌고, 표식(`oog_local_reset`)을 남겨 다시 지우지 않는다.
+ * ========================================================================== */
+const LOCAL_RESET_MARK = 'oog_local_reset';
+const LOCAL_RESET_VERSION = 'v37.2';
+const KEEP_LOCAL_KEYS = ['oog_cloud_session_v1'];
+function oogPurgeLegacyLocalData() {
+  try {
+    if (typeof localStorage === 'undefined' || !localStorage) return false;
+    if (localStorage.getItem(LOCAL_RESET_MARK) === LOCAL_RESET_VERSION) return false;
+    const saved = {};
+    KEEP_LOCAL_KEYS.forEach((k) => { const v = localStorage.getItem(k); if (v != null) saved[k] = v; });
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i += 1) keys.push(localStorage.key(i));
+    keys.forEach((k) => {
+      if (k == null) return;
+      if (k === LOCAL_RESET_MARK) return;
+      if (KEEP_LOCAL_KEYS.indexOf(k) >= 0) return;
+      /* oog 앱이 쓰는 키만 지운다(다른 사이트·기기 설정은 건드리지 않는다). */
+      if (/^oog/i.test(k)) localStorage.removeItem(k);
+    });
+    Object.keys(saved).forEach((k) => localStorage.setItem(k, saved[k]));
+    localStorage.setItem(LOCAL_RESET_MARK, LOCAL_RESET_VERSION);
+    return true;
+  } catch (e) {
+    return false;   /* 저장소가 막혔어도 앱은 그대로 뜬다 */
+  }
+}
+oogPurgeLegacyLocalData();
 /* v36.0 — 한 모임의 운영진은 모임장 포함 최대 3명까지 임명한다. */
 const GROUP_STAFF_MAX = 3;
 

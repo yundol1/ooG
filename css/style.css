@@ -27125,3 +27125,18 @@ body.group-mode .push-permission-banner { display: none !important; }
 }
 .ob-pw-rule span.is-ok { color: var(--green-text); background: var(--green-soft); border-color: var(--green-soft-border); }
 .ob-pw-rule span.is-warn { color: var(--cat-5); background: var(--cat-5-soft); border-color: var(--amber); }
+
+/* ============================================================================
+ * v37.2 (#23942) — 회원가입 문구 → 입력란 카드 + 세션 확인 화면
+ * ----------------------------------------------------------------------------
+ *  · 답 카드는 **문구가 다 찍힌 뒤에 한 번만** 나타난다(그동안 숨김 → 도착 애니메이션 한 번).
+ *  · 서버 세션을 확인하는 짧은 동안(스플래시 뒤) 보이는 '잠시만요' 화면.
+ * ========================================================================== */
+.ob-answer[hidden] { display: none; }
+.ob-step.is-narrating .ob-answer { opacity: 0; pointer-events: none; }
+.ob-answer.is-shown { opacity: 1; pointer-events: auto; }
+
+.ob-step.ob-gate { justify-content: center; min-height: 46vh; gap: 0; animation: none; }
+.ob-step.ob-gate .ob-hero { margin-top: 0; }
+.ob-step.ob-gate .ob-title { font-size: 24px; }
+.ob-step.ob-gate .ob-desc { color: var(--text-muted); font-size: var(--fs-sub); }
