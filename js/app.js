@@ -4930,9 +4930,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </article>`;
     };
     if (!rows.length) {
-      el.boardNoticeList.innerHTML = `<p class="board-empty">${groups.pinned
-        ? '고정 공지 외에 다른 공지는 아직 없어요.'
-        : '아직 공지가 없어요. 모임장과 부방장이 공지를 남길 수 있어요.'}</p>`;
+      /* v35.2 — 고정 공지 하나뿐이면 위 공지 바와 같은 내용을 빈 칸으로 또 쓰지 않는다. */
+      el.boardNoticeList.innerHTML = groups.pinned ? ''
+        : '<p class="board-empty">아직 공지가 없어요. 모임장과 부방장이 공지를 남길 수 있어요.</p>';
     } else {
       el.boardNoticeList.innerHTML = rows.map(rowHTML).join('');
     }
