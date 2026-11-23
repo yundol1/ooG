@@ -3176,7 +3176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="feed-comment-avatar" type="button" style="${avatarStyle(person)}"
                     ${profileAttrs(person.id, person.nickname)} aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${avatarInnerHTML(person)}</button>
             <div class="feed-comment-main">
-              <button class="feed-comment-author" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName || '멤버')}</button>
+              <button class="feed-comment-author" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName || '멤버')}</button>${authorRoleBadge(post.groupId, c.authorId)}
               <span class="feed-comment-text">${escapeHtml(c.text || '')}</span>
             </div>
           </div>`;
@@ -7429,7 +7429,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${profileAttrs(person.id, person.nickname)} aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${avatarInnerHTML(person)}</button>
                 <div class="post-comment-body">
                   <div class="post-comment-top">
-                    <button class="post-comment-name" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName)}</button>
+                    <button class="post-comment-name" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName)}</button>${authorRoleBadge(post.groupId, c.authorId)}
                     ${c.createdAt ? `<span class="post-comment-time" data-created="${c.createdAt}">${timeAgo(c.createdAt)}</span>` : ''}
                   </div>
                   <p class="post-comment-text">${escapeHtml(c.text)}</p>

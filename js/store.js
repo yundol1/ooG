@@ -6183,7 +6183,7 @@ class Store {
   /** 모임장 전용 — 말머리 태그 추가. 중복/형식 검증 후 저장. */
   addGroupCustomTag(groupId, tagName) {
     const group = this.getGroup(groupId);
-    if (!group || !this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!group || !this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
 
     const clean = String(tagName || '').replace(/^#+/, '').replace(/\s+/g, '').trim();
     if (!clean) return { ok: false, reason: 'empty' };
@@ -6201,7 +6201,7 @@ class Store {
   /** 모임장 전용 — 말머리 태그 삭제. 이미 글에 달린 태그는 글에 그대로 남는다(기록 보존). */
   deleteGroupCustomTag(groupId, tagName) {
     const group = this.getGroup(groupId);
-    if (!group || !this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!group || !this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
     const before = group.customTags.length;
     group.customTags = group.customTags.filter((t) => t !== tagName);
     if (group.customTags.length === before) return { ok: false, reason: 'not_found' };
@@ -7209,7 +7209,7 @@ class Store {
    * @param {string[]} ids 아지트 id 목록(1~3)
    */
   updateGroupHangouts(groupId, ids) {
-    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
     const g = this.getGroup(groupId);
     if (!g) return { ok: false, reason: 'not_found' };
     const list = [];
@@ -10337,7 +10337,7 @@ class Store {
   /** 내가 모임장인 모든 모임의 대기 신청서. */
   getLeaderPendingApplications() {
     return (this.state.groupApplications || []).filter(
-      (a) => a.status === 'pending' && this.isGroupLeader(a.groupId)
+      (a) => a.status === 'pending' && this.can(a.groupId, 'approve_applications')
     ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
@@ -10447,7 +10447,7 @@ class Store {
   approveApplication(applicationId) {
     const app = (this.state.groupApplications || []).find((a) => a.id === applicationId);
     if (!app) return { ok: false, reason: 'not_found' };
-    if (!this.isGroupLeader(app.groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(app.groupId, 'approve_applications')) return { ok: false, reason: 'permission' };
     if (app.status !== 'pending') return { ok: false, reason: 'not_pending' };
     const group = this.getGroup(app.groupId);
     if (!group) return { ok: false, reason: 'not_found' };
@@ -10484,7 +10484,7 @@ class Store {
   rejectApplication(applicationId, note) {
     const app = (this.state.groupApplications || []).find((a) => a.id === applicationId);
     if (!app) return { ok: false, reason: 'not_found' };
-    if (!this.isGroupLeader(app.groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(app.groupId, 'approve_applications')) return { ok: false, reason: 'permission' };
     if (app.status !== 'pending') return { ok: false, reason: 'not_pending' };
     app.status = 'rejected';
     app.decidedAt = new Date().toISOString();
@@ -10944,7 +10944,7 @@ class Store {
   updateGroupJoinPolicy(groupId, patch) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
-    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'edit_join_policy')) return { ok: false, reason: 'permission' };
     const d = patch || {};
 
     const nextMode = d.joinMode === 'approval' || d.joinMode === 'open'
@@ -12414,7 +12414,7 @@ class Store {
 
   /** 모임 내 1:1 대화 허용 여부 — 모임장만 바꿀 수 있다. */
   updateGroupDmPolicy(groupId, enabled) {
-    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
     const g = this.getGroup(groupId);
     if (!g) return { ok: false, reason: 'not_found' };
     g.dmEnabled = !!enabled;
@@ -12458,7 +12458,7 @@ class Store {
 
   /** 모임장만 — 게시판(공지·일정)의 멤버 작성 허용을 켜고 끈다. */
   updateGroupBoardPolicy(groupId, enabled) {
-    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
     const g = this.getGroup(groupId);
     if (!g) return { ok: false, reason: 'not_found' };
     g.memberBoardWrite = !!enabled;
@@ -12801,7 +12801,7 @@ class Store {
   setDeputyModeratePermission(groupId, on) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
-    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'manage_staff')) return { ok: false, reason: 'permission' };
     group.deputyCanModerate = !!on;
     this.saveState();
     return { ok: true, groupId, deputyCanModerate: group.deputyCanModerate, permissions: this.getDeputyPermissions(groupId) };
@@ -13863,7 +13863,7 @@ class Store {
 
   /** 모임장이 표지 사진을 직접 고른다(1~2장 · 모임에 올라온 사진만). */
   setGroupCoverPhotos(groupId, photoUrls) {
-    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
     const allowed = new Set(this.getGroupPhotoPosts(groupId).filter((p) => p.photoUrl).map((p) => p.photoUrl));
@@ -13879,7 +13879,7 @@ class Store {
 
   /** 표지를 기본(최근 글 사진)으로 되돌린다. */
   clearGroupCover(groupId) {
-    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
     delete group.coverPhotos;
