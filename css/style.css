@@ -27002,3 +27002,119 @@ body.group-mode .push-permission-banner { display: none !important; }
   line-height: 1.5;
   color: var(--text-muted);
 }
+
+/* ============================================================================
+   v36.2 (#23528 · IMG_4590 · 2026-11-23) — ① 가입 전 모임 소개 화면 ② 역할 배지 폭
+   ----------------------------------------------------------------------------
+   ① 미가입 모임을 누르면 '모임' 탭과 같은 구조(원형 대표 이미지 · 모임명 · 취미·아지트·멤버 수 ·
+      한 줄 소개 · 활동 요약 · 아지트 · 멤버 · 가입 안내 · 규칙)로 소개하고, 맨 아래에
+      가입 버튼 한 줄을 **화면 하단에 붙여** 둔다(sticky). 가입 전이라 4탭·단체 채팅·⋯ 설정은 없다.
+   ② 루키 님 지적: 피드 카드·댓글에서 '모임장'·'운영진' 배지가 이름 아래로 **길게 늘어져** 있었다.
+      원인은 배지의 부모(.ig-head-text · .feed-comment-main)가 세로 flex 라서
+      기본 align-items:stretch 로 배지가 가로를 다 채운 것. 이름과 배지를 한 줄(.role-line)로
+      묶고 배지는 내용 폭만 쓰게(flex:0 0 auto · width:auto) 고정한다.
+   ========================================================================== */
+
+/* ---------------------------------------- ② 역할 배지 — 글자 길이에 딱 맞게 */
+.role-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+.role-line > * { flex: 0 0 auto; }
+.role-line .ig-author,
+.role-line .feed-comment-author { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: max-content;
+  height: 16px;
+  margin-left: 0;
+  padding: 0 5px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: var(--fw-strong);
+  letter-spacing: -0.2px;
+  line-height: 1;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------- ① 풀스크린 머리말 — 모임명 + 멤버·사진 수 */
+.gd-head {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+}
+.gd-head-name {
+  font-size: var(--fs-section);
+  font-weight: var(--fw-display);
+  letter-spacing: -0.2px;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gd-head-sub {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------- ① 모임 소개 화면 */
+.gintro { padding-bottom: 8px; }
+.gintro-hero { padding-top: 10px; gap: 5px; }
+.gintro-hero .ginfo-desc { margin: 2px 0 0; text-align: center; }
+.gintro-hero .guest-tag-row { justify-content: center; margin: 8px 0 0; }
+.gintro-member { cursor: default; }
+.gintro-member .ginfo-member-avatar.locked {
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  font-size: 18px;
+}
+.gintro-member .ginfo-member-avatar.locked .oo-ic { width: 20px; height: 20px; }
+.gintro-member .ginfo-member-name.locked { color: var(--text-muted); letter-spacing: 1px; }
+.gintro-note {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  line-height: 1.45;
+  color: var(--text-muted);
+  text-align: center;
+}
+.gintro-join {
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-3, 16px);
+  background: var(--bg-base);
+  gap: 8px;
+}
+.gintro-join .ginfo-card-title { margin: 0; }
+.gintro-rule { margin: 0; }
+
+/* 화면 하단에 붙는 가입 버튼 줄 — 본문이 길어도 버튼은 늘 보인다. */
+.gintro-cta {
+  position: sticky;
+  bottom: calc(-32px - env(safe-area-inset-bottom));
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px -14px calc(-32px - env(safe-area-inset-bottom));
+  padding: 12px 14px calc(42px + env(safe-area-inset-bottom));
+  background: var(--bg-app);
+  border-top: 1px solid var(--divider);
+}
+.gintro-cta .btn-primary-action { width: 100%; flex: 0 0 auto; }
+.gintro-cta .join-cta-hint { margin: 0; }

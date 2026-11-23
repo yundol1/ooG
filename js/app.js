@@ -2872,7 +2872,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   ${profileAttrs(author.id, author.nickname)}
                   aria-label="${escapeHtml(p.authorName)} 프로필 열기">${avatarInnerHTML(author)}</button>
           <span class="ig-head-text">
-            <button class="ig-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(p.authorName)}</button>${authorRoleBadge(p.groupId, p.authorId)}
+            <span class="role-line"><button class="ig-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(p.authorName)}</button>${authorRoleBadge(p.groupId, p.authorId)}</span>
             <span class="ig-subline">
               ${it.group
                 ? `<span class="ig-group">${escapeHtml(it.groupName)}</span>`
@@ -3186,7 +3186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="feed-comment-avatar" type="button" style="${avatarStyle(person)}"
                     ${profileAttrs(person.id, person.nickname)} aria-label="${escapeHtml(c.authorName || '멤버')} 프로필 열기">${avatarInnerHTML(person)}</button>
             <div class="feed-comment-main">
-              <button class="feed-comment-author" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName || '멤버')}</button>${authorRoleBadge(post.groupId, c.authorId)}
+              <span class="role-line"><button class="feed-comment-author" type="button" ${profileAttrs(person.id, person.nickname)}>${escapeHtml(c.authorName || '멤버')}</button>${authorRoleBadge(post.groupId, c.authorId)}</span>
               <span class="feed-comment-text">${escapeHtml(c.text || '')}</span>
             </div>
           </div>`;
@@ -6928,7 +6928,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v36.1';
+  const APP_VERSION = 'v36.2';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -10621,6 +10621,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!grp) return;
     renderGroupDetail(grp);
     openModal(el.groupModal);
+    /* v36.2 — 풀스크린 페이지 머리말은 openModal 이 만든 뒤에 채운다. */
+    syncGroupDetailHead(grp);
   }
 
   /** Sprint 13 — 모임 상세의 '일정' 구획 (정기 모임 + 함께 하는 날) */
@@ -10745,71 +10747,153 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 
-  /* H5(11/21 밤) — 비멤버(가입 전) 모임 상세.
-     네이버 카페·당근 모임의 가입 화면처럼 **가입을 정하는 데 필요한 것만** 남긴다:
-       ① 대표 이미지 ② 모임명·아지트·멤버 수 ③ 한 줄 소개 ④ 취미 태그
-       ⑤ 가입 안내(가입 방식 · 나이 조건 · 활동 아지트 · 가입 질문 수) ⑥ 가입 버튼
-     모임 운영(공지 권한·운영진·1:1 허용)·말머리 관리·멤버 목록·피드 미리보기처럼
-     모임 안 사람에게나 쓸모 있는 것은 그리지 않는다. */
+  /* v36.2 (#23528 · IMG_4590) — 가입 전 모임 소개 화면.
+     탐색·홈·검색에서 아직 가입하지 않은 모임을 누르면, 가입한 모임의 '모임' 탭(#tab-groupinfo)과
+     **같은 구조**로 소개한다:
+       원형 대표 이미지 → 모임명 → 취미 · 아지트 · 멤버 수 → 한 줄 소개 →
+       활동 요약 · 아지트 · 멤버 · 가입 안내 · 모임 규칙 → 맨 아래 가입 버튼
+     가입 전이므로 하단 4탭(모임/피드/게시판/채팅방)·단체 채팅·⋯ 모임 설정 진입은 두지 않는다.
+     그 자리에 가입하기 / 가입 신청하기 / 승인 대기 중(취소)만 둔다 — 가입하고 들어가야 생긴다.
+
+     멤버 프리뷰는 모임의 공개 설정을 따른다: 모임장 이름은 신청서에서도 보이는 공개 정보라
+     그대로 두고, 나머지 멤버는 이름·사진을 잠금 타일로 가린다(사진은 모임 안에서만 공유한다는
+     원칙 그대로 — 가입 전에는 '몇 명'만 알 수 있다). */
   function renderGuestGroupDetail(grp) {
-    const vis = groupCoverVisual(grp);
-    const azit = store.getGroupAzit(grp);
+    const vis = groupCoverVisual(grp, 'circle');
+    const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
+    const azits = store.getGroupHangouts(grp);
+    const azitLabel = azits.length ? azits[0].name : (grp.location || '온라인');
     const mode = store.getGroupJoinMode(grp);
     const range = store.getGroupAgeRange(grp);
     const questions = store.getGroupJoinQuestions(grp.id);
-    const place = azit ? azit.name : (grp.location || '온라인');
+    const joinState = store.getJoinState(grp.id);
+    const joined = store.isGroupJoined(grp.id);
+    const posts = store.getGroupPhotoPosts(grp.id);
+    const photos = posts.filter((p) => p.photoUrl).length;
+    const upcoming = store.getUpcomingGroupEvents(grp.id, 99);
+    const notices = store.getGroupNotices(grp.id).length;
+    const total = grp.memberCount || 0;
     const rows = [
       { label: '가입 방식', value: mode === 'approval' ? '승인제' : '바로 가입' },
       { label: '나이 조건', value: ageSliderLabel(range.min, range.max) }
     ];
     if (mode === 'approval') rows.push({ label: '가입 질문', value: `${questions.length}개` });
     const tags = (Array.isArray(grp.tags) ? grp.tags : []).slice(0, 4);
+    const hint = joinState === 'none' && mode === 'approval'
+      && store.isAgeEligible(grp.id).ok && !store.isGroupFull(grp.id)
+      ? '<p class="join-cta-hint">모임장이 소개서를 보고 수락하면 멤버가 돼요.</p>'
+      : (mode === 'open' && joinState === 'none' && store.isAgeEligible(grp.id).ok && !store.isGroupFull(grp.id)
+        ? '<p class="join-cta-hint">바로 가입하고 모임에 들어갈 수 있어요.</p>' : '');
 
     return `
-      <div class="guest-cover tone-${escapeHtml(vis.tone || 'neutral')}">
-        ${vis.photoUrl
-          ? `<img class="guest-cover-photo" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
-          : `<span class="guest-cover-tile" aria-hidden="true">${ic(vis.icon)}</span>`}
-      </div>
+      <div class="ginfo gintro" data-group-intro="${grp.id}">
+        <section class="ginfo-hero gintro-hero" aria-label="${escapeHtml(grp.name)} 모임 소개">
+          <span class="ginfo-avatar tone-${escapeHtml(tone)}">
+            ${vis.photoUrl
+              ? `<img class="ginfo-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" decoding="async">`
+              : `<span class="ginfo-avatar-initial">${escapeHtml((grp.name || '?').charAt(0))}</span>`}
+          </span>
+          <h2 class="ginfo-name">${escapeHtml(grp.name)}</h2>
+          <p class="ginfo-meta">${escapeHtml(grp.categoryName || '모임')} · 아지트 ${escapeHtml(azitLabel)} · 멤버 ${total}명</p>
+          <p class="ginfo-desc sheet-desc">${escapeHtml(grp.description || '')}</p>
+          ${tags.length ? `<div class="guest-tag-row">
+            ${tags.map((t) => `<span class="group-tag-pill">${escapeHtml(t)}</span>`).join('')}
+          </div>` : ''}
+        </section>
 
-      <div class="sheet-group-header guest-head">
-        <span class="group-category-tag"><span>${escapeHtml(grp.categoryName || '')}</span></span>
-        <h2 class="sheet-title">${escapeHtml(grp.name)}</h2>
-        <div class="sheet-meta">
-          <span>아지트 ${escapeHtml(place)}</span>
-          <span>멤버 ${grp.memberCount}명</span>
+        <section class="ginfo-card" aria-labelledby="gintro-activity-title">
+          <h3 class="ginfo-card-title" id="gintro-activity-title">활동 요약</h3>
+          <div class="ginfo-stats">
+            <span class="ginfo-stat"><b>${posts.length}</b>글</span>
+            <span class="ginfo-stat"><b>${photos}</b>사진</span>
+            <span class="ginfo-stat"><b>${upcoming.length}</b>다가오는 일정</span>
+            <span class="ginfo-stat"><b>${notices}</b>공지</span>
+          </div>
+        </section>
+
+        <section class="ginfo-card" aria-labelledby="gintro-azit-title">
+          <h3 class="ginfo-card-title" id="gintro-azit-title">아지트</h3>
+          <ul class="ginfo-azit-list">
+            ${azits.length ? azits.map((a) => `
+              <li class="ginfo-azit-row">
+                <span class="ginfo-azit-icon" aria-hidden="true">${ic(a.icon || 'pin')}</span>
+                <span class="ginfo-azit-name">${escapeHtml(a.name)}</span>
+                <span class="ginfo-azit-area">${escapeHtml(a.areaName || '')}</span>
+              </li>`).join('')
+              : `<li class="ginfo-azit-row"><span class="ginfo-azit-icon" aria-hidden="true">${ic('pin')}</span>
+                   <span class="ginfo-azit-name">${escapeHtml(grp.location || '온라인')}</span></li>`}
+          </ul>
+        </section>
+
+        <section class="ginfo-card" aria-labelledby="gintro-members-title">
+          <div class="ginfo-card-head">
+            <h3 class="ginfo-card-title" id="gintro-members-title">멤버 <span class="section-count">${total}</span></h3>
+          </div>
+          <div class="ginfo-members">
+            <span class="ginfo-member gintro-member">
+              <span class="ginfo-member-avatar" style="background:${store.currentUser.id === grp.leaderId ? store.currentUser.avatarGradient : 'linear-gradient(135deg,#E8EDEA,#D3DDD7)'}">${escapeHtml((grp.leaderName || '모').charAt(0))}</span>
+              <span class="ginfo-member-name">${escapeHtml(grp.leaderName || '모임장')}</span>
+              <span class="ginfo-role leader">모임장</span>
+            </span>
+            ${Array.from({ length: Math.max(0, Math.min(3, total - 1)) }).map(() => `
+              <span class="ginfo-member gintro-member is-locked" aria-label="가입 후 공개">
+                <span class="ginfo-member-avatar locked" aria-hidden="true">${ic('person')}</span>
+                <span class="ginfo-member-name locked">···</span>
+              </span>`).join('')}
+          </div>
+          <p class="gintro-note">${joined
+            ? '모임에 들어가면 멤버를 모두 볼 수 있어요.'
+            : (total > 1 ? '멤버 이름·사진은 가입 후에 볼 수 있어요.' : '아직 모임장 혼자예요.')}</p>
+        </section>
+
+        <section class="join-policy-card gintro-join" data-join-policy="${grp.id}" aria-labelledby="gintro-join-title">
+          <h3 class="ginfo-card-title" id="gintro-join-title">가입 안내</h3>
+          <dl class="guest-join-rows">
+            ${rows.map((r) => `
+              <div class="guest-join-row">
+                <dt class="guest-join-label">${escapeHtml(r.label)}</dt>
+                <dd class="guest-join-value">${escapeHtml(r.value)}</dd>
+              </div>`).join('')}
+          </dl>
+        </section>
+
+        ${grp.rules ? `<div class="sheet-rule-card guest-rule gintro-rule">
+          <div class="rule-title"><span>모임 규칙</span></div>
+          <p class="rule-desc">${escapeHtml(grp.rules)}</p>
+        </div>` : ''}
+
+        <div class="gintro-cta" data-gintro-cta="${grp.id}">
+          ${joined
+            ? `<button class="btn-primary-action" data-intro-enter="${grp.id}" type="button">모임 들어가기</button>`
+            : renderJoinCta(grp)}
+          ${joined ? '<p class="join-cta-hint">가입했어요 · 들어가면 피드·게시판·채팅방이 열려요.</p>' : hint}
         </div>
-        <p class="sheet-desc">${escapeHtml(grp.description)}</p>
-      </div>
+      </div>`;
+  }
 
-      ${tags.length ? `<div class="guest-tag-row">
-        ${tags.map((t) => `<span class="group-tag-pill">${escapeHtml(t)}</span>`).join('')}
-      </div>` : ''}
-
-      <section class="join-policy-card guest-join" data-join-policy="${grp.id}">
-        <h4 class="join-policy-title">가입 안내</h4>
-        <dl class="guest-join-rows">
-          ${rows.map((r) => `
-            <div class="guest-join-row">
-              <dt class="guest-join-label">${escapeHtml(r.label)}</dt>
-              <dd class="guest-join-value">${escapeHtml(r.value)}</dd>
-            </div>`).join('')}
-        </dl>
-      </section>
-
-      ${grp.rules ? `<div class="sheet-rule-card guest-rule">
-        <div class="rule-title"><span>모임 규칙</span></div>
-        <p class="rule-desc">${escapeHtml(grp.rules)}</p>
-      </div>` : ''}
-
-      <div class="sheet-actions guest-actions">
-        ${renderJoinCta(grp)}
-      </div>
-      ${store.getJoinState(grp.id) === 'none' && mode === 'approval'
-        && store.isAgeEligible(grp.id).ok && !store.isGroupFull(grp.id)
-        ? '<p class="join-cta-hint">모임장이 소개서를 보고 수락하면 멤버가 돼요.</p>'
-        : ''}
-    `;
+  /* v36.2 — 모임 상세(풀스크린 페이지)의 머리말.
+     가입 전에는 IMG_4590 처럼 **모임명 + 멤버 N명 · 사진 M장**, 가입 후에는 '모임 상세'. */
+  function syncGroupDetailHead(grp, mode) {
+    const sheet = el.groupModal && el.groupModal.querySelector('.modal-sheet');
+    const head = sheet && sheet.querySelector('.page-head');
+    if (!head) return;
+    if (!head.dataset.gdHead) {
+      head.innerHTML = '<button class="page-back" type="button" aria-label="뒤로 가기">'
+        + `<span aria-hidden="true">${ic('chevronLeft')}</span></button>`
+        + '<span class="gd-head"></span>';
+      head.dataset.gdHead = '1';
+      head.querySelector('.page-back').addEventListener('click', () => closeModal(el.groupModal));
+    }
+    const box = head.querySelector('.gd-head');
+    if (!box || !grp) return;
+    const intro = mode ? mode === 'intro' : !store.isGroupJoined(grp.id);
+    if (!intro) {
+      box.innerHTML = '<span class="gd-head-name">모임 상세</span>';
+    } else {
+      const photos = store.getGroupPhotoPosts(grp.id).filter((p) => p.photoUrl).length;
+      box.innerHTML = `<span class="gd-head-name">${escapeHtml(grp.name)}</span>`
+        + `<span class="gd-head-sub">멤버 ${grp.memberCount}명 · 사진 ${photos}장</span>`;
+    }
   }
 
   function renderGroupDetail(grp) {
@@ -10820,11 +10904,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const pending = isLeader ? store.getPendingApplications(grp.id) : [];
     const mode = store.getGroupJoinMode(grp);
 
-    /* H5 — 가입 전에는 간결한 가입 화면만 */
+    /* v36.2 — 가입 전에는 '모임 소개 화면'(모임 탭과 같은 구조 + 가입 버튼)만 */
     if (!joined) {
       el.groupModalBody.innerHTML = renderGuestGroupDetail(grp);
+      syncGroupDetailHead(grp, 'intro');
       return;
     }
+    syncGroupDetailHead(grp, 'member');
 
     /* v36.0 — 멤버에게 보이는 모임 상세는 **보기만** 한다(일정·아지트·멤버·규칙).
        운영·관리 항목(운영 구획·가입 정책·신청 목록·말머리·피드 미리보기)은 모두
@@ -10876,6 +10962,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const joinBtn = e.target.closest('[data-modal-join]');
     if (joinBtn) {
       const groupId = joinBtn.dataset.modalJoin;
+      /* v36.2 — 소개 화면에서 누른 가입이면 화면을 그대로 두고 버튼만 '모임 들어가기'로 바꾼다. */
+      const fromIntro = !!joinBtn.closest('[data-group-intro]');
       const wasJoined = store.isGroupJoined(groupId);
       const ok = store.toggleJoinGroup(groupId);
       if (!ok && !wasJoined) {
@@ -10884,10 +10972,28 @@ document.addEventListener('DOMContentLoaded', () => {
         renderGroupDetail(store.getGroup(groupId));
         return;
       }
-      renderGroupDetail(store.getGroup(groupId));
+      if (fromIntro) {
+        if (!wasJoined && store.isGroupJoined(groupId)) {
+          const grp = store.getGroup(groupId);
+          el.groupModalBody.innerHTML = renderGuestGroupDetail(grp);
+          syncGroupDetailHead(grp, 'intro');
+          showToast(`'${grp.name}' 모임에 가입했어요`);
+        }
+      } else {
+        renderGroupDetail(store.getGroup(groupId));
+      }
       renderExplore();
       renderFeed();
       updateBadges();
+      return;
+    }
+
+    /* v36.2 — 소개 화면에서 '모임 들어가기' — 가입한 모임의 공간으로 들어간다. */
+    const introEnter = e.target.closest('[data-intro-enter]');
+    if (introEnter) {
+      const groupId = introEnter.dataset.introEnter;
+      closeModal(el.groupModal);
+      setTimeout(() => enterGroupSpace(groupId, 'tab-groupinfo'), prefersReducedMotion() ? 0 : 220);
       return;
     }
 
