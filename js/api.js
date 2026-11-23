@@ -347,6 +347,27 @@
         return { ok: true, confirmed: !!res.confirmed, message: { id: m.id, text: m.text, at: m.at, from: m.from, authorId: m.authorId, authorName: m.authorName } };
       }
     },
+    /* v36.1 (#23461) — 일정 단톡방 보내기. 참석자(참석·대기)와 승인된 게스트만 쓸 수 있다. */
+    'event.chat.send': {
+      method: 'POST', mutate: true,
+      params: {
+        eventId: { type: 'string', required: true },
+        text: { type: 'string', required: true, max: 1000 },
+        pendingId: { type: 'string', optional: true, max: 64 }
+      },
+      response: ['ok', 'message', 'confirmed'],
+      local: (store, p) => {
+        const res = store.sendEventChatMessage(p.eventId, p.text, { pendingId: p.pendingId });
+        if (!res || !res.ok) {
+          const reason = res && res.reason;
+          if (reason === 'permission') throw new ApiError('unauthorized', '이 일정의 참석자만 쓸 수 있어요', { details: { eventId: p.eventId } });
+          if (reason === 'not_found') throw new ApiError('not_found', '그 일정을 찾지 못했어요', { details: { eventId: p.eventId } });
+          throw new ApiError('validation', '보낼 말을 적어 주세요', { details: { field: 'text' } });
+        }
+        const m = res.message;
+        return { ok: true, confirmed: !!res.confirmed, message: { id: m.id, text: m.text, at: m.at, from: m.from, authorId: m.authorId, authorName: m.authorName } };
+      }
+    },
     'groups.list': {
       method: 'GET', mutate: false, params: {},
       response: ['groups', 'count'],

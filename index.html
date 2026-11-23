@@ -514,6 +514,15 @@
           <div class="chat-group-rooms" id="chat-group-rooms"><!-- JS --></div>
         </section>
 
+        <!-- v36.1 (#23461) — 일정 단톡방: 내가 참석한 일정만. 일정이 생기면 방도 생긴다. -->
+        <section class="chat-group-section" id="chat-event-section" aria-labelledby="chat-event-title" hidden>
+          <div class="chat-section-head">
+            <h3 class="chat-section-title" id="chat-event-title">일정 단톡방</h3>
+            <span class="chat-section-sub" id="chat-event-count">0곳</span>
+          </div>
+          <div class="chat-group-rooms" id="chat-event-rooms"><!-- JS --></div>
+        </section>
+
         <!-- Sprint 28.5 — 모르는 사람의 첫 메시지는 '요청'으로 모아 수락/거절한다 -->
         <section class="chat-request-section" id="dm-request-section" aria-labelledby="chat-request-title" hidden>
           <div class="chat-section-head">
@@ -2060,6 +2069,19 @@
         <div id="group-leave-body"><!-- JS --></div>
       </div>
     </div>
+
+    <!-- ==================== v36.1 — 게스트 전용 화면 (승인된 일정·일정 단톡방만) ====================
+         모임에 가입하지 않은 사람이 그 일정에 승인되면 볼 수 있는 화면이다.
+         피드·게시판·멤버 목록·모임 전체 단톡방으로 가는 길은 이 화면에 없다(store 도 막는다). -->
+    <section class="subscreen" id="guest-screen" hidden aria-label="게스트 일정">
+      <header class="subscreen-head">
+        <button class="subscreen-back" id="btn-guest-back" type="button" aria-label="뒤로 가기">
+          <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
+        </button>
+        <h1 class="subscreen-title" id="guest-screen-title">게스트 일정</h1>
+      </header>
+      <div class="subscreen-body" id="guest-screen-body"><!-- JS --></div>
+    </section>
 
     <!-- ==================== 토스트 알림 ==================== -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

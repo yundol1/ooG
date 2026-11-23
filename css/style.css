@@ -26884,3 +26884,121 @@ body.group-mode .push-permission-banner { display: none !important; }
 /* 다크 — 면의 밝기 단계로 (테두리 없이) */
 [data-theme='dark'] .gs-input { background: var(--fill-subtle); }
 
+
+/* ==========================================================================
+ * v36.1 (#23461) — 일정 단톡방 · 게스트 전용 화면
+ * -------------------------------------------------------------------------
+ *  · 일정 상세의 '일정 단톡방' 줄: 48px 한 줄, 박스 대신 얇은 구분선.
+ *  · 게스트 화면: 승인된 일정 카드만. 피드·게시판·멤버 목록은 이 화면에 없다.
+ * ========================================================================== */
+.event-chat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  margin: 2px 0 8px;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font);
+}
+.event-chat-row:active { background: var(--bg-subtle); }
+.event-chat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green-text);
+}
+.event-chat-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.event-chat-title {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  color: var(--text-strong);
+}
+.event-chat-last {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.event-chat-go { flex: 0 0 auto; font-size: 18px; line-height: 1; color: var(--text-muted); }
+.event-chat-hint { margin: 2px 0 8px; }
+.guest-status .event-chat-row { margin: 4px 0 6px; }
+.guest-status .guest-schedule { width: 100%; }
+
+/* 채팅 탭 — 일정 단톡방 줄은 모임 단체방과 같은 모양, 지난 일정은 흐리게 */
+#tab-chat .chat-event-item .chat-event-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green-text);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-strong);
+}
+#tab-chat .chat-event-item.is-past { opacity: 0.62; }
+
+/* 게스트 전용 화면 */
+.guest-screen-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 12px 16px 4px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.guest-screen-note > svg,
+.guest-screen-note > .oo-icon-14 { flex: 0 0 auto; margin-top: 2px; }
+.guest-screen-note-text { flex: 1 1 auto; min-width: 0; }
+.guest-screen-note b { font-weight: var(--fw-label); color: var(--text-sub); }
+.guest-event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 16px 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--divider);
+}
+.guest-event-when {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--green-text);
+}
+.guest-event-title {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
+  color: var(--text-strong);
+}
+.guest-event-meta {
+  margin: 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.guest-event-actions { display: flex; gap: 8px; margin-top: 4px; }
+.guest-event-actions .btn-primary,
+.guest-event-actions .btn-secondary { flex: 1 1 0; min-height: 44px; }
+.gs-leave-note {
+  margin: 0 16px 4px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  line-height: 1.5;
+  color: var(--text-muted);
+}

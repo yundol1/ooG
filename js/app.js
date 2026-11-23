@@ -203,6 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
     gsGroupId: null,
     leaveGroupId: null,
     leaveKeepPosts: true,
+    /* v36.1 (#23461) — 일정 단톡방 · 게스트 전용 화면 */
+    openEventChatId: null,
+    guestScreenGroupId: null,
     azitEditGroupId: null,       // v35.2 — 활동 아지트 바꾸는 모임
     azitEditDraft: []            //          고른 아지트 id(1~3)
   };
@@ -560,6 +563,13 @@ document.addEventListener('DOMContentLoaded', () => {
     groupChatForm: $('#group-chat-form'),
     chatGroupRooms: $('#chat-group-rooms'),
     chatGroupCount: $('#chat-group-count'),
+    /* v36.1 — 일정 단톡방 줄 · 게스트 전용 화면 */
+    chatEventSection: $('#chat-event-section'),
+    chatEventRooms: $('#chat-event-rooms'),
+    chatEventCount: $('#chat-event-count'),
+    guestScreen: $('#guest-screen'),
+    guestScreenTitle: $('#guest-screen-title'),
+    guestScreenBody: $('#guest-screen-body'),
     chatDmCount: $('#chat-dm-count'),
     membersModal: $('#group-members-modal'),
     membersBody: $('#group-members-body'),
@@ -5481,6 +5491,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     ui.openGroupChatId = groupId;
+    ui.openEventChatId = null;
+    const infoBtn = $('#btn-group-chat-info');
+    if (infoBtn) infoBtn.textContent = '모임 정보';
+    if (el.groupChatInput) el.groupChatInput.placeholder = '모임원에게 한마디';
     el.groupChatAvatar.innerHTML = ic(grp.icon);
     /* R3 — 인라인 그라디언트 대신 대분류 색 토큰(--cat-N-soft) 이름을 넣는다 */
     el.groupChatAvatar.style.background = store.getHobbyToneColors(grp.hobbyId || grp.category).from;
@@ -5494,11 +5508,48 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => el.groupChatInput && el.groupChatInput.focus({ preventScroll: true }), 120);
   }
 
+  /**
+   * v36.1 (#23461) — 일정 단톡방을 연다.
+   *  같은 채팅 화면(#group-chat-modal)을 쓰되 머리말은 일정 기준이다.
+   *  문은 참석자(참석·대기)와 승인된 게스트에게만 열린다 — store.canUseEventChat 이 정한다.
+   */
+  function openEventChat(eventId) {
+    const ev = store.getGroupEvent(eventId);
+    if (!ev || !el.groupChatModal) return;
+    if (!store.canUseEventChat(eventId)) {
+      showToast('이 일정의 참석자만 들어갈 수 있는 단톡방이에요', 'warning');
+      return;
+    }
+    const grp = store.getGroup(ev.groupId);
+    const kind = store.getGroupEventKindsLabel(ev.kind);
+    const preview = store.getEventChatPreview(eventId);
+    ui.openEventChatId = eventId;
+    ui.openGroupChatId = null;
+    const infoBtn = $('#btn-group-chat-info');
+    if (infoBtn) infoBtn.textContent = '일정 정보';
+    el.groupChatAvatar.innerHTML = ic(kind.icon || 'clock');
+    el.groupChatAvatar.style.background = grp
+      ? store.getHobbyToneColors(grp.hobbyId || grp.category).from
+      : 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)';
+    el.groupChatName.textContent = ev.title;
+    el.groupChatSub.textContent = `일정 단톡방 · 참석 ${preview.people}명`;
+    if (el.groupChatInput) {
+      el.groupChatInput.value = '';
+      el.groupChatInput.placeholder = '일정 참석자에게 한마디';
+    }
+    el.groupChatModal.hidden = false;
+    document.body.classList.add('modal-open');
+    renderGroupChatMessages();
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(6);
+    setTimeout(() => el.groupChatInput && el.groupChatInput.focus({ preventScroll: true }), 120);
+  }
+
   function closeGroupChat() {
     if (!el.groupChatModal || el.groupChatModal.hidden) return;
     clearTimeout(ui.groupChatTimer);
     ui.groupChatTimer = null;
     ui.openGroupChatId = null;
+    ui.openEventChatId = null;
     el.groupChatModal.hidden = true;
     if (!document.querySelector('.modal-overlay.active')) {
       document.body.classList.remove('modal-open');
@@ -5509,13 +5560,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderGroupChatMessages() {
     if (!el.groupChatMessages) return;
-    const grp = store.getGroup(ui.openGroupChatId);
-    if (!grp) { el.groupChatMessages.innerHTML = ''; return; }
-    const messages = store.getGroupChatMessages(grp.id);
+    const eventId = ui.openEventChatId;
+    const grp = eventId ? null : store.getGroup(ui.openGroupChatId);
+    if (!eventId && !grp) { el.groupChatMessages.innerHTML = ''; return; }
+    const messages = eventId ? store.getEventChatMessages(eventId) : store.getGroupChatMessages(grp.id);
     if (!messages.length) {
       el.groupChatMessages.innerHTML = `
         <div class="chat-day"><span>오늘</span></div>
-        <p class="post-comment-empty">아직 대화가 없어요. 모임원에게 첫 인사를 남겨보세요.</p>`;
+        <p class="post-comment-empty">${eventId
+          ? '아직 대화가 없어요. 일정 참석자에게 첫 인사를 남겨보세요.'
+          : '아직 대화가 없어요. 모임원에게 첫 인사를 남겨보세요.'}</p>`;
       return;
     }
     let lastDay = null;
@@ -5531,7 +5585,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${mine ? '' : `<span class="chat-sender">${escapeHtml(msg.authorName)}</span>`}
             <div class="chat-bubble">${escapeHtml(msg.text)}</div>
           </div>
-          ${msg.failed ? `<button class="chat-resend" type="button" data-resend-group="${escapeHtml(grp.id)}"
+          ${msg.failed ? `<button class="chat-resend" type="button" ${eventId ? `data-resend-event="${escapeHtml(eventId)}"` : `data-resend-group="${escapeHtml(grp.id)}"`}
                   data-resend-message="${escapeHtml(msg.id)}"
                   aria-label="이 말을 다시 보내기"><span aria-hidden="true">${ic('repeat')}</span>재전송</button>` : ''}
           <span class="chat-msg-foot">
@@ -5545,14 +5599,20 @@ document.addEventListener('DOMContentLoaded', () => {
     el.groupChatMessages.scrollTop = el.groupChatMessages.scrollHeight;
   }
 
-  /* Sprint 32 — 모임 단체 채팅도 경계(`group.chat.send`)를 지난다(낙관적 업데이트 + 실패 롤백). */
+  /* Sprint 32 — 모임 단체 채팅도 경계(`group.chat.send`)를 지난다(낙관적 업데이트 + 실패 롤백).
+     v36.1 — 같은 화면이 일정 단톡방(event.chat.send)도 보낸다. */
   async function sendGroupChatMessage() {
-    if (!ui.openGroupChatId || !el.groupChatInput) return;
-    const groupId = ui.openGroupChatId;
+    if (!el.groupChatInput) return;
+    const eventId = ui.openEventChatId;
+    if (!eventId && !ui.openGroupChatId) return;
+    const groupId = eventId ? null : ui.openGroupChatId;
     const text = el.groupChatInput.value;
-    const created = store.createPendingGroupChatMessage(groupId, text);
+    const created = eventId
+      ? store.createPendingEventChatMessage(eventId, text)
+      : store.createPendingGroupChatMessage(groupId, text);
     if (!created.ok) {
       if (created.reason === 'empty') showToast('메시지를 입력해 주세요', 'warning');
+      else if (created.reason === 'permission') showToast('이 일정의 참석자만 쓸 수 있어요', 'warning');
       return;
     }
     el.groupChatInput.value = '';
@@ -5560,30 +5620,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8);
 
     const message = created.message;
-    const res = await store.apiCall('group.chat.send', { groupId, text: message.text, pendingId: message.id });
+    const res = eventId
+      ? await store.apiCall('event.chat.send', { eventId, text: message.text, pendingId: message.id })
+      : await store.apiCall('group.chat.send', { groupId, text: message.text, pendingId: message.id });
     if (!res.ok) {
       /* 실패 — 말풍선은 남기고 옆에 '재전송'(Sprint 33). 입력창은 비운 채로 둔다. */
-      store.markPendingGroupChatMessageFailed(groupId, message.id);
-      if (ui.openGroupChatId === groupId) renderGroupChatMessages();
+      if (eventId) store.markPendingEventChatMessageFailed(eventId, message.id);
+      else store.markPendingGroupChatMessageFailed(groupId, message.id);
+      if (ui.openEventChatId === eventId && ui.openGroupChatId === groupId) renderGroupChatMessages();
       showToast('전송하지 못했어요 · 말풍선 옆 재전송을 눌러 주세요', 'error');
       return;
     }
-    store.sendGroupChatMessage(groupId, message.text, { pendingId: message.id });
-    if (res.meta && res.meta.queued) store.markQueuedGroupChatMessage(groupId, message.id);
-    if (ui.openGroupChatId === groupId) renderGroupChatMessages();
-    if (ui.activeTab === 'tab-home') renderHomeChatPreview(store.getGroup(groupId));
+    if (eventId) {
+      store.sendEventChatMessage(eventId, message.text, { pendingId: message.id });
+      if (res.meta && res.meta.queued) store.markQueuedEventChatMessage(eventId, message.id);
+    } else {
+      store.sendGroupChatMessage(groupId, message.text, { pendingId: message.id });
+      if (res.meta && res.meta.queued) store.markQueuedGroupChatMessage(groupId, message.id);
+    }
+    if (ui.openEventChatId === eventId && ui.openGroupChatId === groupId) renderGroupChatMessages();
+    if (!eventId && ui.activeTab === 'tab-home') renderHomeChatPreview(store.getGroup(groupId));
+    if (eventId) renderChatEventRooms();
 
-    /* 시연용: 모임원 한 명이 잠시 뒤 답한다(알림은 만들지 않는다). */
-    const roster = store.getGroupRoster(groupId).members.filter((m) => !m.isMe);
+    /* 시연용: 참석자 한 명이 잠시 뒤 답한다(알림은 만들지 않는다). */
+    const roster = eventId
+      ? store.getEventChatMembers(eventId).filter((m) => m.memberId !== store.currentUser.id)
+      : store.getGroupRoster(groupId).members.filter((m) => !m.isMe);
     if (roster.length && Math.random() < 0.8) {
       clearTimeout(ui.groupChatTimer);
       ui.groupChatTimer = setTimeout(() => {
-        if (ui.openGroupChatId !== groupId) return;
+        if (ui.openEventChatId !== eventId || ui.openGroupChatId !== groupId) return;
         const speaker = roster[Math.floor(Math.random() * Math.min(4, roster.length))];
-        store.receiveGroupChatMessage(groupId, speaker.id,
+        if (eventId) store.receiveEventChatMessage(eventId, speaker.memberId,
+          GROUP_CHAT_REPLIES[Math.floor(Math.random() * GROUP_CHAT_REPLIES.length)]);
+        else store.receiveGroupChatMessage(groupId, speaker.id,
           GROUP_CHAT_REPLIES[Math.floor(Math.random() * GROUP_CHAT_REPLIES.length)]);
         renderGroupChatMessages();
-        if (ui.activeTab === 'tab-home') renderHomeChatPreview(store.getGroup(groupId));
+        if (eventId) renderChatEventRooms();
+        else if (ui.activeTab === 'tab-home') renderHomeChatPreview(store.getGroup(groupId));
       }, 1500);
     }
   }
@@ -5607,12 +5681,32 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('아직 보내지 못했어요', 'error');
   }
 
+  /** v36.1 — 실패한 일정 단톡방 말풍선 재전송(event.chat.send). */
+  async function resendEventChatMessage(eventId, messageId) {
+    const chat = store.getEventChat(eventId);
+    const pending = chat && (chat.messages || []).find((m) => m.id === messageId);
+    if (!pending) return;
+    store.retryPendingEventChatMessage(eventId, messageId);
+    if (ui.openEventChatId === eventId) renderGroupChatMessages();
+    const res = await store.apiCall('event.chat.send', { eventId, text: pending.text, pendingId: messageId });
+    if (res.ok) {
+      store.sendEventChatMessage(eventId, pending.text, { pendingId: messageId });
+      if (res.meta && res.meta.queued) store.markQueuedEventChatMessage(eventId, messageId);
+      if (ui.openEventChatId === eventId) renderGroupChatMessages();
+      return;
+    }
+    store.markPendingEventChatMessageFailed(eventId, messageId);
+    if (ui.openEventChatId === eventId) renderGroupChatMessages();
+    showToast('아직 보내지 못했어요', 'error');
+  }
+
   el.groupChatMessages && el.groupChatMessages.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-resend-message]');
     if (!btn) return;
     e.preventDefault();
     e.stopPropagation();
-    resendGroupChatMessage(btn.dataset.resendGroup, btn.dataset.resendMessage);
+    if (btn.dataset.resendEvent) resendEventChatMessage(btn.dataset.resendEvent, btn.dataset.resendMessage);
+    else resendGroupChatMessage(btn.dataset.resendGroup, btn.dataset.resendMessage);
   });
 
   /**
@@ -5670,6 +5764,36 @@ document.addEventListener('DOMContentLoaded', () => {
           ${nextEvent ? `<span class="chat-group-next">${escapeHtml(nextEvent.kindMeta.label)} · ${escapeHtml(nextEvent.title)} · ${escapeHtml(nextEvent.whenLabel)}</span>` : ''}
         </span>
         <span class="chat-group-count">${chat.count}</span>
+      </article>`).join('');
+  }
+
+  /**
+   * v36.1 (#23461) — 채팅 탭의 '일정 단톡방' 줄.
+   *  내가 참석으로 들어가 있는 일정만 보인다(참석을 누르면 생기고, 불참으로 바꾸면 사라진다).
+   *  모임 안에서는 그 모임 것만 보인다.
+   */
+  function renderChatEventRooms() {
+    if (!el.chatEventRooms) return;
+    const scope = isGroupMode() ? ui.groupSpaceId : null;
+    const list = store.getMyEventChats({ groupId: scope || null });
+    if (el.chatEventSection) el.chatEventSection.hidden = !list.length;
+    if (el.chatEventCount) el.chatEventCount.textContent = `${list.length}곳`;
+    el.chatEventRooms.innerHTML = list.map((row) => `
+      <article class="chat-group-item chat-event-item${row.past ? ' is-past' : ''}" role="button" tabindex="0"
+               data-event-chat="${escapeHtml(row.eventId)}"
+               aria-label="${escapeHtml(row.title)} 일정 단톡방 열기">
+        <span class="chat-group-emoji chat-event-emoji">${escapeHtml((row.kindMeta || {}).label ? row.kindMeta.label.charAt(0) : '일')}</span>
+        <span class="chat-group-body">
+          <span class="chat-group-name-row">
+            <span class="chat-group-name">${escapeHtml(row.title)}</span>
+            <span class="chat-group-members">참석 ${row.preview.people}</span>
+          </span>
+          <span class="chat-group-last">${row.preview.lastMessage
+            ? `${escapeHtml(row.preview.lastAuthor)}: ${escapeHtml(row.preview.lastMessage)}`
+            : '아직 대화가 없어요'}</span>
+          <span class="chat-group-next">${escapeHtml(row.groupName)} · ${escapeHtml(row.whenLabel)}</span>
+        </span>
+        <span class="chat-group-count">${row.preview.count}</span>
       </article>`).join('');
   }
 
@@ -5898,7 +6022,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (view === 'reports') return gsReportsView(grp);
     if (view === 'posts') return gsPostsView(grp);
     if (view === 'events') return gsEventsView(grp);
-    if (view === 'members') return gsMembersView(grp);
+    if (view === 'members') {
+      /* v36.1 — 운영진이 멤버 관리를 맡지 않은 모임에서는 화면도 열리지 않는다. */
+      if (!store.can(gid, 'mute_member')) return `<div class="gs-view">${gsEmpty('멤버 관리는 모임장이 운영진에게 맡긴 경우에만 쓸 수 있어요.')}</div>`;
+      return gsMembersView(grp);
+    }
     if (view === 'modlog') return gsModLogView(grp);
     if (view === 'edit') return gsEditView(grp);
     if (view === 'policy') return gsPolicyView(grp);
@@ -5961,7 +6089,10 @@ document.addEventListener('DOMContentLoaded', () => {
         gsRow({ label: '게시물·댓글 관리', action: 'data-gs-view="posts"', chev: true }),
         gsRow({ label: '일정 관리', action: 'data-gs-view="events"', chev: true }),
         gsRow({ label: '공지 작성', action: 'data-gs-notice="1"', chev: true }),
-        gsRow({ label: '멤버 관리', value: `${members}명`, action: 'data-gs-view="members"', chev: true }),
+        /* v36.1 — 멤버 관리는 모임장이 운영진에게 넘긴 경우에만 보인다(끄면 이 행도 없다). */
+        store.can(gid, 'mute_member')
+          ? gsRow({ label: '멤버 관리', value: `${members}명`, action: 'data-gs-view="members"', chev: true })
+          : '',
         gsRow({ label: '운영 기록', action: 'data-gs-view="modlog"', chev: true })
       ].join('')));
     }
@@ -6777,10 +6908,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="settings-choice-check" aria-hidden="true" data-oog-icon="check"></span>
           </button>
           <button class="settings-choice" data-leave-keep="delete" role="radio" aria-checked="false" type="button">
-            <span class="settings-choice-label">내 글 지우기</span>
+            <span class="settings-choice-label">내 글·댓글 지우기</span>
             <span class="settings-choice-check" aria-hidden="true" data-oog-icon="check"></span>
           </button>
         </div>
+        <p class="gs-leave-note">‘내 글·댓글 지우기’를 고르면 이 모임에 남긴 내 글과 내 댓글이 함께 지워져요.</p>
         <button class="btn-primary gs-save is-danger" type="button" data-leave-confirm="1">모임 나가기</button>`;
     }
     ui.leaveKeepPosts = true;
@@ -6796,7 +6928,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v36.0';
+  const APP_VERSION = 'v36.1';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -7065,6 +7197,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ------------------------------------------------ 일정 상세 시트 (Sprint 15) */
+  /**
+   * v36.1 (#23461) — 일정 상세 안의 '일정 단톡방' 줄.
+   *  참석자(참석·대기)·승인된 게스트에게는 방 미리보기가 보이고, 아직 아니면 참석 안내만 적는다.
+   */
+  function eventChatRowHTML(ev) {
+    if (!store.canUseEventChat(ev.id)) {
+      return `<p class="event-detail-hint event-chat-hint">${ic('chat')} 참석을 누르면 이 일정의 단톡방에 들어가요.</p>`;
+    }
+    const pv = store.getEventChatPreview(ev.id);
+    return `<button class="event-chat-row" data-event-chat="${ev.id}" type="button">
+      <span class="event-chat-icon" aria-hidden="true">${ic('chat')}</span>
+      <span class="event-chat-text">
+        <span class="event-chat-title">일정 단톡방</span>
+        <span class="event-chat-last">${pv.lastMessage
+          ? `${escapeHtml(pv.lastAuthor)}: ${escapeHtml(pv.lastMessage)}`
+          : `참석자 ${pv.people}명 · 첫 인사를 남겨보세요`}</span>
+      </span>
+      <span class="event-chat-go" aria-hidden="true">›</span>
+    </button>`;
+  }
+
   function openEventDetail(eventId) {
     if (!el.eventDetailModal) return;
     ui.openEventId = eventId;
@@ -7100,6 +7253,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `<div class="guest-status is-approved">
              <p class="guest-status-title">참석이 확정됐어요</p>
              <p class="guest-status-desc">모임장이 게스트 참석을 수락했어요 · ${escapeHtml(s.whenLabel)}</p>
+             ${eventChatRowHTML(ev)}
+             <button class="btn-secondary guest-schedule" data-guest-screen="${ev.groupId}" type="button">이 모임의 내 일정 보기</button>
              <button class="btn-secondary guest-cancel" data-guest-cancel="${ev.id}" type="button">게스트 참석 취소</button>
            </div>`
         : guestState === 'pending'
@@ -7170,7 +7325,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <p class="event-detail-hint">${full
             ? '정원이 찾아요 · 참석을 누르면 대기 명단에 들어가고, 자리가 나면 1순위부터 자동으로 올라가요.'
-            : '참석을 누르면 명단에 올라가요.'}</p>`}
+            : '참석을 누르면 명단에 올라가고, 그 일정의 단톡방에도 바로 들어가요.'}</p>`}
+      ${eventChatRowHTML(ev)}
       <section class="event-detail-block">
         <h4 class="event-detail-title">참석 ${s.yes}${s.capacity ? ` / ${s.capacity}` : ''}</h4>
         ${people(s.attendees, 'is-yes')}
@@ -7207,6 +7363,55 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="event-detail-edit-hint">${ev.guestOpen ? '게스트에게 열려 있어요 · 홈 추천 일정에 보여요' : '게스트 참여를 켜면 홈 추천 일정에도 올라가요'}</p>
         </div>`;
     }
+  }
+
+  /* ==========================================================================
+   * v36.1 (#23461) — 게스트 전용 화면
+   * --------------------------------------------------------------------------
+   *  모임에 가입하지 않은 사람이 일정에 승인되면, 그 모임에서 볼 수 있는 것은
+   *  **승인된 일정과 그 일정의 단톡방** 둘뿐이다. 이 화면이 그 둘만 보여준다.
+   *  피드·게시판·멤버 목록·모임 전체 단톡방으로 가는 길은 여기에 없다.
+   * ========================================================================== */
+  function openGuestScreen(groupId) {
+    const grp = store.getGroup(groupId);
+    if (!grp || !el.guestScreen) return;
+    if (!store.isApprovedGuestOf(groupId)) {
+      showToast('게스트로 승인된 모임만 열 수 있어요', 'warning');
+      return;
+    }
+    ui.guestScreenGroupId = groupId;
+    /* 일정 상세 시트에서 들어오면 그 시트를 먼지 닫고 게스트 화면을 연다(겹치지 않게). */
+    if (el.eventDetailModal && el.eventDetailModal.classList.contains('active')) closeModal(el.eventDetailModal);
+    renderGuestScreen();
+    openSubscreen(el.guestScreen);
+  }
+
+  function closeGuestScreen() {
+    ui.guestScreenGroupId = null;
+    closeSubscreens();
+  }
+
+  function renderGuestScreen() {
+    const gid = ui.guestScreenGroupId;
+    const grp = gid ? store.getGroup(gid) : null;
+    if (!grp || !el.guestScreenBody) { closeGuestScreen(); return; }
+    if (el.guestScreenTitle) el.guestScreenTitle.textContent = `${grp.name} · 게스트`;
+    const events = store.getGuestEvents(gid);
+    el.guestScreenBody.innerHTML = `
+      <p class="guest-screen-note">${ic('lock')}<span class="guest-screen-note-text">게스트는 이 모임에서 <b>승인된 일정</b>과 <b>그 일정의 단톡방</b>만 볼 수 있어요. 피드·게시판·멤버 목록·모임 전체 단톡방은 보이지 않아요.</span></p>
+      ${events.length ? events.map((ev) => {
+        const pv = store.getEventChatPreview(ev.id);
+        return `
+        <article class="guest-event-card">
+          <p class="guest-event-when">${escapeHtml(ev.kindMeta.label)} · ${escapeHtml(ev.whenLabel)}${ev.cancelled ? ' · 취소됨' : ''}</p>
+          <h3 class="guest-event-title">${escapeHtml(ev.title)}</h3>
+          <p class="guest-event-meta">참석 ${ev.yes}${ev.capacity ? ` / ${ev.capacity}` : ''} · 일정 톡방 ${pv.count}</p>
+          <div class="guest-event-actions">
+            <button class="btn-secondary" type="button" data-guest-detail="${ev.id}">일정 상세</button>
+            <button class="btn-primary" type="button" data-guest-chat-open="${ev.id}">일정 단톡방</button>
+          </div>
+        </article>`;
+      }).join('') : '<p class="gs-empty">아직 승인된 일정이 없어요.</p>'}`;
   }
 
   /* -------------------------------------------- 모임 일정 만들기(술모임·번개) */
@@ -7580,6 +7785,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.closest('[data-group-back]')) { exitGroupSpace(); }
   });
 
+  /* v36.1 — 게스트 전용 화면(승인된 일정·일정 단톡방만) */
+  const guestBackNode = $('#btn-guest-back');
+  if (guestBackNode) guestBackNode.addEventListener('click', closeGuestScreen);
+  if (el.guestScreenBody) {
+    el.guestScreenBody.addEventListener('click', (e) => {
+      const detail = e.target.closest('[data-guest-detail]');
+      if (detail) { openEventDetail(detail.dataset.guestDetail); return; }
+      const chatBtn = e.target.closest('[data-guest-chat-open]');
+      if (chatBtn) { openEventChat(chatBtn.dataset.guestChatOpen); return; }
+    });
+  }
+
   /* v36.0 — 모임 헤더 ⋯ 하나가 모임 설정 한 화면을 연다. */
   const groupSettingsBtnNode = $('#btn-group-settings');
   if (groupSettingsBtnNode) groupSettingsBtnNode.addEventListener('click', () => openGroupSettings('main'));
@@ -7650,7 +7867,7 @@ document.addEventListener('DOMContentLoaded', () => {
         exitGroupSpace();
         renderGallery();
         updateBadges();
-        showToast(grp ? `'${grp.name}'에서 나왔어요` : '모임에서 나왔어요', 'info');
+        showToast(grp ? `'${grp.name}'에서 나왔어요${res.removedComments ? ` · 내 댓글 ${res.removedComments}개도 지웠어요` : ''}` : '모임에서 나왔어요', 'info');
       }
     });
   }
@@ -8252,6 +8469,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  /* v36.1 (#23461) — 채팅 탭의 일정 단톡방 줄 */
+  if (el.chatEventRooms) {
+    const openEventRow = (node) => { if (node) openEventChat(node.dataset.eventChat); };
+    el.chatEventRooms.addEventListener('click', (e) => openEventRow(e.target.closest('[data-event-chat]')));
+    el.chatEventRooms.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const row = e.target.closest('[data-event-chat]');
+      if (!row) return;
+      e.preventDefault();
+      openEventRow(row);
+    });
+  }
+
   /* 단체 채팅 화면 */
   el.groupChatForm && el.groupChatForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -8261,6 +8491,12 @@ document.addEventListener('DOMContentLoaded', () => {
   groupChatBack && groupChatBack.addEventListener('click', closeGroupChat);
   const groupChatInfo = $('#btn-group-chat-info');
   groupChatInfo && groupChatInfo.addEventListener('click', () => {
+    const eventId = ui.openEventChatId;
+    if (eventId) {
+      closeGroupChat();
+      openEventDetail(eventId);
+      return;
+    }
     const grp = store.getGroup(ui.openGroupChatId);
     if (!grp) return;
     closeGroupChat();
@@ -8375,6 +8611,11 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ------------------------------------------------ 일정 상세 시트 이벤트 */
   if (el.eventDetailBody) {
     el.eventDetailBody.addEventListener('click', (e) => {
+      /* v36.1 — 일정 단톡방 열기 · 게스트 전용 일정 화면 */
+      const chatRow = e.target.closest('[data-event-chat]');
+      if (chatRow) { openEventChat(chatRow.dataset.eventChat); return; }
+      const guestScreenBtn = e.target.closest('[data-guest-screen]');
+      if (guestScreenBtn) { openGuestScreen(guestScreenBtn.dataset.guestScreen); return; }
       const rsvp = e.target.closest('[data-rsvp-status]');
       if (!rsvp) return;
       const eventId = rsvp.dataset.rsvpEvent;
@@ -11755,6 +11996,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const inGroup = isGroupMode();
     const scopeGroup = inGroup ? store.getGroup(ui.groupSpaceId) : null;
     renderChatGroupRooms();
+    /* v36.1 (#23461) — 일정 단톡방 줄(내가 참석한 일정만). */
+    renderChatEventRooms();
     renderGroupChatMembers(scopeGroup, inGroup);
     const allRooms = store.state.chatRooms;
     /* 모임 안에서는 그 모임에서 시작한 1:1 방만 보인다. (Sprint 29 — '안 읽은 대화만' 필터 제거) */
@@ -18194,6 +18437,8 @@ document.addEventListener('DOMContentLoaded', () => {
     openGroupChat, closeGroupChat, renderGroupChatMessages, sendGroupChatMessage,
     /* Sprint 15 — 공지 · 일정 상세 · 운영진 · 모임 내 1:1 · 돋보기 · 내 피드 */
     openNoticeSheet, renderNoticeSheet, openEventDetail, renderEventDetail,
+    /* v36.1 (#23461) — 일정 단톡방 · 게스트 전용 화면 */
+    openEventChat, openGuestScreen, renderGuestScreen, renderChatEventRooms, closeGroupChat,
     openGroupMembers: (gid) => openGroupMembers(gid),
     renderProfileMyFeed,
     setPastEventsOpen: (on) => { ui.pastEventsOpen = !!on; renderHomeEvents(homeGroup()); },
@@ -18206,6 +18451,8 @@ document.addEventListener('DOMContentLoaded', () => {
       view: ui.homeView,
       tag: ui.homeTag,
       openChat: ui.openGroupChatId,
+      openEventChat: ui.openEventChatId,
+      guestScreen: ui.guestScreenGroupId,
       membersGroup: ui.membersGroupId,
       memberDetail: ui.memberDetailId
     }),

@@ -161,6 +161,10 @@ const GROUP_ACTION_ROLES = {
   archive_group: ['owner'],
   delete_group: ['owner']
 };
+/* v36.1 (#23461) — 모임장이 '운영진에게 멤버 관리까지'를 켜야만 운영진이 쓸 수 있는 일.
+   끄면 운영진은 공지·일정·가입 승인까지만 하고, 멤버 음소거·경고·강퇴는 모임장만 한다.
+   (모임장은 이 스위치와 관계없이 늘 할 수 있다.) */
+const STAFF_DELEGATED_ACTIONS = ['mute_member', 'warn_member', 'kick_member'];
 /* v33.7 — 한 글에 붙일 수 있는 사진 수(인스타그램과 같은 10장). */
 const MAX_POST_IMAGES = 10;
 /* v33.7 — 글 사진으로 받는 앱 안 상대 경로(예시 사진 폴더 · 아이콘 폴더). */
@@ -3972,6 +3976,9 @@ const defaultInitialState = {
     }
   ],
 
+  /* v36.1 (#23461) — 일정 단톡방: 일정(eventId) 마다 하나. 참석자·승인 게스트가 자동으로 들어간다. */
+  eventChats: [],
+
   groupEvents: [
     {
       id: 'evt_cf_drink',
@@ -4247,6 +4254,7 @@ function stripAllContent(state) {
   state.groupNotices = [];
   state.groupEvents = [];
   state.groupChats = [];
+  state.eventChats = [];
   state.groupApplications = [];
   state.notificationLog = [];
   state.matchSwipes = [];
@@ -4981,6 +4989,28 @@ function sampleGroupChats() {
   ];
 }
 
+/**
+ * v36.1 — 예시 일정 단톡방 2곳.
+ *  일정을 만들면 방이 자동으로 생기고 참석자가 들어온다는 규칙을 첫 화면에서 눌러 볼 수 있게 한다.
+ */
+function sampleEventChats() {
+  return [
+    {
+      eventId: 'sample_evt_run', groupId: 'sample_grp_run', sample: true,
+      messages: [
+        { id: 'sample_ec_run_1', from: 'member', authorId: 'sample_p_mora', authorName: '모래', authorAvatarText: '모', authorGradient: 'linear-gradient(135deg, #20B0F1 0%, #05A1F6 100%)', text: '이번 주 5K는 공원 입구에서 8시에 출발해요. 늦어도 같이 출발해요!', at: ago(5 * HOUR) },
+        { id: 'sample_ec_run_2', from: 'member', authorId: 'sample_p_haru', authorName: '하루', authorAvatarText: '하', authorGradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', text: '끝나고 커피는 제가 살게요', at: ago(4 * HOUR) }
+      ]
+    },
+    {
+      eventId: 'sample_evt_board', groupId: 'sample_grp_board', sample: true,
+      messages: [
+        { id: 'sample_ec_board_1', from: 'member', authorId: 'sample_p_danchu', authorName: '단추', authorAvatarText: '단', authorGradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', text: '초보 게임 2개 먼저 하고, 익숙해지면 긴 게임 한 판 해요', at: ago(18 * HOUR) }
+      ]
+    }
+  ];
+}
+
 /** 동네 글 4개 — 지역 게시판의 필터·좋아요·댓글·글쓰기를 바로 시험할 수 있게. */
 function sampleExplorePosts(regionId) {
   const area = (regionDef(regionId) || {}).name || '우리 동네';
@@ -5063,6 +5093,7 @@ function buildSampleContent(regionId, areaId) {
     matchProfiles: samplePeople(regionId),
     chatRooms: sampleChatRooms(),
     groupChats: sampleGroupChats(),
+    eventChats: sampleEventChats(),
     groupNotices: sampleGroupNotices(),
     groupEvents: sampleGroupEvents(),
     joinedGroupIds: SAMPLE_JOINED_GROUP_IDS.slice(),
@@ -5090,6 +5121,7 @@ function applySampleData(state, options = {}) {
   state.matchProfiles = (state.matchProfiles || []).concat(block.matchProfiles);
   state.chatRooms = (state.chatRooms || []).concat(block.chatRooms);
   state.groupChats = (state.groupChats || []).concat(block.groupChats);
+  state.eventChats = (state.eventChats || []).concat(block.eventChats);
   state.groupNotices = (state.groupNotices || []).concat(block.groupNotices);
   state.groupEvents = (state.groupEvents || []).concat(block.groupEvents);
   if (!state.currentUser) state.currentUser = blankCurrentUser();
@@ -5122,6 +5154,7 @@ function stripSampleData(state) {
   state.matchProfiles = keep(state.matchProfiles);
   state.chatRooms = keep(state.chatRooms);
   state.groupChats = keep(state.groupChats);
+  state.eventChats = keep(state.eventChats);
   state.groupNotices = keep(state.groupNotices);
   state.groupEvents = keep(state.groupEvents);
   const sampleIds = SAMPLE_JOINED_GROUP_IDS;
@@ -5144,6 +5177,7 @@ function sampleSummaryOf(state) {
     posts: count(state.feedPosts) + count(state.explorePosts),
     people: count(state.matchProfiles),
     chats: count(state.chatRooms) + count(state.groupChats),
+    eventChats: count(state.eventChats),
     events: count(state.groupEvents)
   };
   return {
@@ -5281,6 +5315,8 @@ class Store {
   constructor() {
     this.state = this.loadState();
     this.listeners = [];
+    /* v36.1 — 일정 단톡방은 모든 일정에 하나씩 있다(샘플·옛 저장 상태 포함). */
+    this.eventChatSync = this.syncEventChats();
     /* Sprint 25 — 서버 API 경계(js/api.js). 붙기 전에는 null 이고, 붙어도 화면은
        지금처럼 동기 store 를 그대로 쓴다(경계는 데이터 출처를 바꾸는 자리다). */
     this.api = null;
@@ -5354,7 +5390,7 @@ class Store {
       };
       /* 콘텐츠 컬렉션은 저장된 그대로 — 없거나 타입이 틀리면 '빈 것'으로 본다. */
       ['groups', 'feedPosts', 'explorePosts', 'matchProfiles', 'partnerProfiles', 'chatRooms',
-        'stories', 'storyArchive', 'groupNotices', 'groupEvents', 'groupChats',
+        'stories', 'storyArchive', 'groupNotices', 'groupEvents', 'groupChats', 'eventChats',
         'groupApplications', 'notificationLog', 'matchSwipes'
       ].forEach((key) => { if (!Array.isArray(merged[key])) merged[key] = []; });
       if (!Array.isArray(merged.currentUser.joinedGroupIds)) merged.currentUser.joinedGroupIds = [];
@@ -5445,6 +5481,25 @@ class Store {
         ...p,
         comments: Array.isArray(p.comments) ? p.comments : []
       }));
+      /* v36.1 — 모든 일정에 단톡방이 있다(샘플·이전 저장 상태 모두). */
+      merged.eventChats = merged.eventChats
+        .filter((c) => c && c.eventId)
+        .map((c) => ({
+          ...c,
+          groupId: ((merged.groupEvents || []).find((e) => e.id === c.eventId) || {}).groupId || c.groupId || null,
+          messages: Array.isArray(c.messages) ? c.messages : []
+        }));
+      {
+        const haveEventChat = new Set(merged.eventChats.map((c) => c.eventId));
+        merged.groupEvents.forEach((e) => {
+          if (e && e.id && !haveEventChat.has(e.id)) {
+            merged.eventChats.push({ eventId: e.id, groupId: e.groupId, createdAt: new Date().toISOString(), messages: [] });
+            haveEventChat.add(e.id);
+          }
+        });
+        const eventIds = new Set(merged.groupEvents.map((e) => e && e.id));
+        merged.eventChats = merged.eventChats.filter((c) => eventIds.has(c.eventId));
+      }
       /* 홈 모임이 내 모임이 아니면(탈퇴 등) 첫 가입 모임으로 돌린다. */
       const homeValid = merged.homePrefs.groupId
         && merged.currentUser.joinedGroupIds.includes(merged.homePrefs.groupId);
@@ -5688,7 +5743,14 @@ class Store {
   can(groupId, action, memberId) {
     const allowed = GROUP_ACTION_ROLES[action];
     if (!allowed) return false;
-    return allowed.indexOf(this.roleOf(groupId, memberId)) >= 0;
+    const role = this.roleOf(groupId, memberId);
+    if (allowed.indexOf(role) < 0) return false;
+    /* v36.1 — 멤버 관리는 모임장이 운영진에게 넘긴 경우에만 운영진에게 열린다. */
+    if (role === 'staff' && STAFF_DELEGATED_ACTIONS.indexOf(action) >= 0) {
+      const group = this.getGroup(groupId);
+      return !!(group && group.deputyCanModerate === true);
+    }
+    return true;
   }
 
   /** 운영진이 손댈 수 있는 대상인가 — 대상은 멤버만(모임장·운영진·나 자신은 불가). */
@@ -5745,6 +5807,8 @@ class Store {
     const joined = this.state.currentUser.joinedGroupIds;
     const blocked = this.state.blockedMemberIds || [];
     let posts = this.state.feedPosts.filter((p) => blocked.indexOf(p.authorId) < 0);
+    /* v36.1 — 승인된 게스트(비멤버)는 그 모임의 글을 피드 어디에서도 볼 수 없다. */
+    posts = posts.filter((p) => !p.groupId || !this.isApprovedGuestOf(p.groupId));
 
     if (filterType === 'my') {
       posts = posts.filter((p) => joined.includes(p.groupId));
@@ -5828,8 +5892,38 @@ class Store {
     if (!this.can(groupId, 'leave_group')) return { ok: false, reason: 'permission' };
     const keepPosts = !options || options.keepPosts !== false;
     const me = this.currentUser;
+    let removedPosts = 0;
+    let removedComments = 0;
     if (!keepPosts) {
-      this.state.feedPosts = (this.state.feedPosts || []).filter((p) => !(p.groupId === groupId && p.authorId === me.id));
+      /* v36.1 (#23461) — '내 글 지우기'는 **내 글과 내 댓글을 함께** 지운다.
+         · 이 모임의 내 글은 통째로 사라진다.
+         · 남의 글에 내가 남긴 댓글도 지운다(다른 모임·동네 글의 댓글은 건드리지 않는다).
+         · 다른 사람이 내 댓글에 달은 답글은 지우지 않고 맨 댓글로 올린다(남의 말은 남긴다). */
+      const myCommentIds = new Set();
+      this.state.feedPosts = (this.state.feedPosts || []).filter((p) => {
+        const mine = p.groupId === groupId && p.authorId === me.id;
+        if (mine) removedPosts += 1;
+        return !mine;
+      });
+      this.state.feedPosts.forEach((p) => {
+        if (p.groupId !== groupId || !Array.isArray(p.comments)) return;
+        p.comments = p.comments.filter((c) => {
+          const mine = c && c.authorId === me.id;
+          if (mine) { myCommentIds.add(c.id); removedComments += 1; }
+          return !mine;
+        });
+      });
+      if (myCommentIds.size) {
+        this.state.feedPosts.forEach((p) => {
+          if (p.groupId !== groupId || !Array.isArray(p.comments)) return;
+          p.comments.forEach((c) => {
+            if (c && c.parentId && myCommentIds.has(c.parentId)) {
+              c.parentId = null;
+              c.replyToName = null;
+            }
+          });
+        });
+      }
     }
     this.state.currentUser.joinedGroupIds = this.state.currentUser.joinedGroupIds.filter((id) => id !== groupId);
     group.members = (group.members || []).filter((m) => m.id !== me.id);
@@ -5845,7 +5939,9 @@ class Store {
     this.saveState();
     return {
       ok: true, groupId, keepPosts,
-      removedPosts: keepPosts ? 0 : 'my_posts',
+      removedPosts,
+      removedComments,
+      removedItems: removedPosts + removedComments,
       nextGroupId: this.state.homePrefs ? this.state.homePrefs.groupId : null
     };
   }
@@ -5863,6 +5959,9 @@ class Store {
     this.state.groupNotices = (this.state.groupNotices || []).filter((n) => n.groupId !== groupId);
     this.state.groupEvents = (this.state.groupEvents || []).filter((e) => e.groupId !== groupId);
     this.state.groupChats = (this.state.groupChats || []).filter((c) => c.groupId !== groupId);
+    /* v36.1 — 이 모임 일정들의 단톡방도 함께 정리한다. */
+    this.state.eventChats = (this.state.eventChats || []).filter((c) => c.groupId !== groupId
+      && (this.state.groupEvents || []).some((e) => e.id === c.eventId));
     this.state.stories = (this.state.stories || []).filter((s) => s.groupId !== groupId);
     if (this.state.groupMembership) delete this.state.groupMembership[groupId];
     if (Array.isArray(this.state.groupReports)) {
@@ -7383,6 +7482,8 @@ class Store {
     req.status = 'approved';
     req.decidedAt = new Date().toISOString();
     req.decidedBy = this.currentUser.id;
+    /* v36.1 — 승인된 게스트는 그 일정 단톡방에 바로 들어간다. */
+    this.ensureEventChat(eventId);
     this.saveState();
     return { ok: true, eventId, memberId, status, summary: this.getGroupEventSummary(eventId) };
   }
@@ -10880,7 +10981,7 @@ class Store {
   }
 
   /* -------------------------------------------------- 게스트(일정만) */
-  /** 이 일정에 승인된 게스트인가 — 게스트는 그 일정과 일정 채팅만 볼 수 있다. */
+  /** 이 일정에 승인된 게스트인가 — 게스트는 그 일정과 일정 단톡방만 볼 수 있다. */
   isApprovedEventGuest(eventId, memberId) {
     const ev = this.getGroupEvent(eventId);
     if (!ev) return false;
@@ -10888,6 +10989,26 @@ class Store {
     const who = memberId || me.id;
     return (Array.isArray(ev.guestRequests) ? ev.guestRequests : [])
       .some((r) => r.memberId === who && r.status === 'approved');
+  }
+
+  /**
+   * v36.1 (#23461) — 이 모임의 **승인된 게스트(비멤버)** 인가.
+   *  게스트는 그 모임에서 자기 일정과 일정 단톡방만 본다. 피드·게시판·멤버 목록·
+   *  모임 전체 단톡방은 화면에서도 store 에서도 막힌다(공개 모임이라도 마찬가지).
+   */
+  isApprovedGuestOf(groupId, memberId) {
+    const me = this.state.currentUser || {};
+    const who = memberId || me.id;
+    if (!who) return false;
+    if (this.roleOf(groupId, who) !== 'guest') return false;
+    return (this.state.groupEvents || []).some((e) => e && e.groupId === groupId
+      && (Array.isArray(e.guestRequests) ? e.guestRequests : [])
+        .some((r) => r.memberId === who && r.status === 'approved'));
+  }
+
+  /** 게스트가 볼 수 있는 일정 — 나에게 승인된 일정만. */
+  getGuestEvents(groupId) {
+    return this.getGroupEvents(groupId).filter((e) => this.isApprovedEventGuest(e.id));
   }
 
   /**
@@ -10905,7 +11026,10 @@ class Store {
       feed: this.can(groupId, 'view_feed'),
       memberList: this.can(groupId, 'view_member_list'),
       events: role === 'guest' ? events.map((e) => e.id) : [],
-      eventChat: role === 'guest' ? events.map((e) => e.id) : []
+      eventChat: role === 'guest' ? events.map((e) => e.id) : [],
+      /* v36.1 — 게스트 진입 뷰가 쓰는 값(게스트가 아니면 비어 있다). */
+      guestEvents: role === 'guest' ? events.map((e) => e.id) : [],
+      groupChat: this.can(groupId, 'view_feed')
     };
   }
 
@@ -11378,6 +11502,8 @@ class Store {
 
   /** 모임의 사진·글 — 홈 사진 피드(그리드)의 재료. 말머리(tag)로 걸러 볼 수 있다. */
   getGroupPhotoPosts(groupId, tag = null) {
+    /* v36.1 — 승인된 게스트(비멤버)에게는 모임 피드·사진을 보여주지 않는다. */
+    if (this.isApprovedGuestOf(groupId)) return [];
     const seeHidden = this.roleOf(groupId) !== 'member';
     const blocked = this.state.blockedMemberIds || [];
     return (this.state.feedPosts || [])
@@ -11436,6 +11562,8 @@ class Store {
   }
 
   getGroupChatMessages(groupId) {
+    /* v36.1 — 모임 전체 단톡방은 멤버만. 승인된 게스트도 읽을 수 없다. */
+    if (this.isApprovedGuestOf(groupId)) return [];
     const chat = this.getGroupChat(groupId);
     if (!chat) return [];
     return chat.messages.slice().sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
@@ -11443,6 +11571,9 @@ class Store {
 
   /** 홈·채팅 목록을 한 줄로 보여줄 미리보기 — 마지막 말·시각·인원. */
   getGroupChatPreview(groupId) {
+    if (this.isApprovedGuestOf(groupId)) {
+      return { groupId, count: 0, lastMessage: '', lastAt: null, lastAuthor: '', speakers: 0 };
+    }
     const messages = this.getGroupChatMessages(groupId);
     const last = messages[messages.length - 1] || null;
     const speakers = new Set(messages.filter((m) => m.from !== 'me').map((m) => m.authorName));
@@ -11587,6 +11718,261 @@ class Store {
     return { ok: true, message, member };
   }
 
+  /* ------------------------------------------- 14-2b. 일정 단톡방 (v36.1) */
+  /*
+   * 11/23 루키 님 지시(#23461): "모임 일정이 생기면 그 일정 단톡방이 자동으로 생기고,
+   * 일정 참석자가 자동으로 들어가게. 게스트는 승인된 일정과 그 일정 단톡방만 본다."
+   *  · 방은 일정(eventId) 마다 하나 — state.eventChats: [{ eventId, groupId, messages:[] }]
+   *  · 참석자는 **따로 명단을 들고 있지 않다.** 참석(yes)·대기(maybe) 상태에서 그때그때
+   *    계산한다. 그래서 참석을 누르면 바로 들어가고, 불참으로 바꾸면 바로 나간다.
+   *  · 승인된 게스트도 그 일정의 참석자이므로 같은 방을 쓴다(초대·수락 절차 없음).
+   */
+
+  /** 일정 단톡방 객체 — 없으면 만든다(저장은 호출한 쪽에서). */
+  ensureEventChat(eventId) {
+    if (!Array.isArray(this.state.eventChats)) this.state.eventChats = [];
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return null;
+    let chat = this.state.eventChats.find((c) => c.eventId === eventId);
+    if (!chat) {
+      chat = { eventId, groupId: ev.groupId, createdAt: new Date().toISOString(), messages: [] };
+      this.state.eventChats.push(chat);
+    }
+    if (!Array.isArray(chat.messages)) chat.messages = [];
+    chat.groupId = ev.groupId;
+    return chat;
+  }
+
+  /** 지금 있는 모든 일정의 단톡방을 갖춘다(샘플·옛 저장 상태 포함). */
+  syncEventChats() {
+    if (!Array.isArray(this.state.eventChats)) this.state.eventChats = [];
+    const events = this.state.groupEvents || [];
+    const have = new Set(this.state.eventChats.map((c) => c && c.eventId));
+    let created = 0;
+    events.forEach((ev) => {
+      if (!ev || !ev.id || have.has(ev.id)) return;
+      this.state.eventChats.push({ eventId: ev.id, groupId: ev.groupId, createdAt: new Date().toISOString(), messages: [] });
+      have.add(ev.id);
+      created += 1;
+    });
+    /* 지워진 일정의 방은 함께 정리한다. */
+    const ids = new Set(events.map((e) => e && e.id));
+    const before = this.state.eventChats.length;
+    this.state.eventChats = this.state.eventChats.filter((c) => c && ids.has(c.eventId));
+    const removed = before - this.state.eventChats.length;
+    if (created || removed) this.saveState();
+    return { ok: true, created, removed, total: this.state.eventChats.length };
+  }
+
+  getEventChat(eventId) {
+    return (this.state.eventChats || []).find((c) => c.eventId === eventId) || null;
+  }
+
+  /** 일정 참석자 — 참석(yes)·대기(maybe)로 답한 사람. 승인된 게스트도 여기 들어온다. */
+  getEventChatMembers(eventId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return [];
+    return (Array.isArray(ev.rsvps) ? ev.rsvps : [])
+      .filter((r) => r && (r.status === 'yes' || r.status === 'maybe'))
+      .map((r) => ({
+        memberId: r.memberId, name: r.name, avatarText: r.avatarText,
+        gradient: r.gradient, status: r.status, guest: r.guest === true
+      }));
+  }
+
+  /** 이 일정 단톡방에 들어갈 수 있는가 — 참석자(참석·대기)와 승인된 게스트만. */
+  isEventChatMember(eventId, memberId) {
+    const me = this.state.currentUser || {};
+    const who = memberId || me.id;
+    if (!who) return false;
+    return this.getEventChatMembers(eventId).some((m) => m.memberId === who);
+  }
+
+  /**
+   * 일정 단톡방 열람·쓰기 권한 — 한 곳에서 정한다(화면과 액션이 같은 답).
+   *  · 멤버십은 참석 표시에서 계산한다(참석을 누르면 바로 들어간다).
+   *  · 게스트는 승인된 일정의 방만. 모임 전체 단톡방·피드는 여전히 없다.
+   */
+  canUseEventChat(eventId, memberId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return false;
+    const me = this.state.currentUser || {};
+    const who = memberId || me.id;
+    if (!who) return false;
+    /* 멤버는 참석 표시가 있어야, 게스트는 승인된 일정이어야 한다.
+       모임을 나가면(멤버가 아니게 되면) 그 모임의 일정 단톡방에서도 빠진다. */
+    if (this.isGroupMember(ev.groupId, who)) return this.isEventChatMember(eventId, who);
+    return this.isApprovedEventGuest(eventId, who);
+  }
+
+  getEventChatMessages(eventId) {
+    const chat = this.getEventChat(eventId);
+    if (!chat) return [];
+    return (chat.messages || []).slice().sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  }
+
+  /** 일정 단톡방 미리보기 — 마지막 말·시각·사람 수. */
+  getEventChatPreview(eventId) {
+    const messages = this.getEventChatMessages(eventId);
+    const last = messages[messages.length - 1] || null;
+    const people = this.getEventChatMembers(eventId);
+    return {
+      eventId,
+      count: messages.length,
+      people: people.length,
+      lastMessage: last ? last.text : '',
+      lastAt: last ? last.at : null,
+      lastAuthor: last ? (last.from === 'me' ? '나' : last.authorName) : ''
+    };
+  }
+
+  /** 내가 들어가 있는 일정 단톡방 — 지난 일정은 뒤로, 다가오는 일정은 가까운 순. */
+  getMyEventChats(options = {}) {
+    const o = options || {};
+    const now = Date.now();
+    const list = (this.state.groupEvents || [])
+      .filter((ev) => ev && !ev.cancelled)
+      .filter((ev) => (o.groupId ? ev.groupId === o.groupId : true))
+      .filter((ev) => this.canUseEventChat(ev.id))
+      .map((ev) => {
+        const grp = this.getGroup(ev.groupId);
+        const preview = this.getEventChatPreview(ev.id);
+        return {
+          eventId: ev.id,
+          groupId: ev.groupId,
+          groupName: grp ? grp.name : '모임',
+          title: ev.title,
+          when: ev.when,
+          whenLabel: this.getGroupEventWhenLabel(ev.when),
+          kindMeta: this.getGroupEventKindsLabel(ev.kind),
+          past: new Date(ev.when).getTime() < now,
+          preview
+        };
+      });
+    return list.sort((a, b) => {
+      if (a.past !== b.past) return a.past ? 1 : -1;
+      const ta = new Date(a.when).getTime();
+      const tb = new Date(b.when).getTime();
+      return a.past ? tb - ta : ta - tb;
+    });
+  }
+
+  /** 일정 단톡방 보내기 — 참석자만. 빈 말은 거부, 1000자까지. */
+  sendEventChatMessage(eventId, text, options = {}) {
+    if (!this.canUseEventChat(eventId)) return { ok: false, reason: 'permission' };
+    const body = String(text == null ? '' : text).trim().slice(0, 1000);
+    if (!body) return { ok: false, reason: 'empty' };
+    const chat = this.ensureEventChat(eventId);
+    if (!chat) return { ok: false, reason: 'not_found' };
+    const me = this.currentUser;
+    const pendingId = options && options.pendingId;
+    if (pendingId) {
+      const pending = chat.messages.find((m) => m.id === pendingId);
+      if (pending) {
+        pending.pending = false;
+        pending.queued = false;
+        pending.at = new Date().toISOString();
+        pending.text = body;
+        this.saveState();
+        return { ok: true, message: pending, confirmed: true };
+      }
+    }
+    const message = {
+      id: `ecm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      from: 'me',
+      authorId: me.id,
+      authorName: me.nickname,
+      authorAvatarText: me.avatarText,
+      authorGradient: me.avatarGradient,
+      text: body,
+      at: new Date().toISOString()
+    };
+    chat.messages.push(message);
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  /** '전송 중' 말풍선(낙관적 업데이트). */
+  createPendingEventChatMessage(eventId, text) {
+    if (!this.canUseEventChat(eventId)) return { ok: false, reason: 'permission' };
+    const body = String(text == null ? '' : text).trim().slice(0, 1000);
+    if (!body) return { ok: false, reason: 'empty' };
+    const chat = this.ensureEventChat(eventId);
+    if (!chat) return { ok: false, reason: 'not_found' };
+    const me = this.currentUser;
+    const message = {
+      id: `ecm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      from: 'me',
+      authorId: me.id,
+      authorName: me.nickname,
+      authorAvatarText: me.avatarText,
+      authorGradient: me.avatarGradient,
+      text: body,
+      at: new Date().toISOString(),
+      pending: true
+    };
+    chat.messages.push(message);
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  markPendingEventChatMessageFailed(eventId, messageId) {
+    const chat = this.getEventChat(eventId);
+    if (!chat || !Array.isArray(chat.messages)) return { ok: false, reason: 'not_found' };
+    const message = chat.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.pending = false;
+    message.failed = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  retryPendingEventChatMessage(eventId, messageId) {
+    const chat = this.getEventChat(eventId);
+    if (!chat || !Array.isArray(chat.messages)) return { ok: false, reason: 'not_found' };
+    const message = chat.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.failed = false;
+    message.pending = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  markQueuedEventChatMessage(eventId, messageId) {
+    const chat = this.getEventChat(eventId);
+    if (!chat || !Array.isArray(chat.messages)) return { ok: false, reason: 'not_found' };
+    const message = chat.messages.find((m) => m.id === messageId);
+    if (!message) return { ok: false, reason: 'not_found' };
+    message.pending = false;
+    message.queued = true;
+    this.saveState();
+    return { ok: true, message };
+  }
+
+  /** 참석자가 말하는 모습(시연·데모용) — 알림은 만들지 않는다. */
+  receiveEventChatMessage(eventId, memberId, text) {
+    const body = String(text == null ? '' : text).trim().slice(0, 1000);
+    if (!body) return { ok: false, reason: 'empty' };
+    const people = this.getEventChatMembers(eventId).filter((m) => m.memberId !== (this.currentUser || {}).id);
+    const speaker = people.find((m) => m.memberId === memberId) || people[0];
+    if (!speaker) return { ok: false, reason: 'not_found' };
+    const chat = this.ensureEventChat(eventId);
+    if (!chat) return { ok: false, reason: 'not_found' };
+    const message = {
+      id: `ecm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      from: 'member',
+      authorId: speaker.memberId,
+      authorName: speaker.name,
+      authorAvatarText: speaker.avatarText,
+      authorGradient: speaker.gradient,
+      text: body,
+      at: new Date().toISOString()
+    };
+    chat.messages.push(message);
+    this.saveState();
+    return { ok: true, message, member: speaker };
+  }
+
   /* ------------------------------------------------ 14-3. 모임 일정 (RSVP) */
   getGroupEventKinds() { return GROUP_EVENT_KINDS.map((k) => ({ ...k })); }
 
@@ -11720,8 +12106,10 @@ class Store {
   /** 모임의 일정 — 다가오는 순. 지난 일정은 뒤로 보낸다(지우지 않고 '지난 일정'으로). */
   getGroupEvents(groupId) {
     const now = Date.now();
+    /* v36.1 — 게스트는 자기가 승인된 일정만 본다. */
+    const guestOnly = this.isApprovedGuestOf(groupId);
     return (this.state.groupEvents || [])
-      .filter((e) => e.groupId === groupId)
+      .filter((e) => e.groupId === groupId && (!guestOnly || this.isApprovedEventGuest(e.id)))
       .map((e) => {
         const summary = this.getGroupEventSummary(e.id);
         return {
@@ -11951,6 +12339,8 @@ class Store {
     }
     rest.push(entry);
     ev.rsvps = rest;
+    /* v36.1 — 참석·대기를 고르면 그 일정 단톡방에 바로 들어간다(방이 없으면 만든다). */
+    if (finalStatus === 'yes' || finalStatus === 'maybe') this.ensureEventChat(eventId);
     /* 내가 참석에서 빠져 **정원이 차 있던 자리**가 비면 대기 1순위를 올린다. */
     const wasFull = !!capacity && rsvps.filter((r) => r.status === 'yes').length >= capacity;
     const promoted = (wasFull && prev && prev.status === 'yes' && finalStatus !== 'yes')
@@ -12027,6 +12417,8 @@ class Store {
       guestRequests: []
     };
     this.state.groupEvents.push(event);
+    /* v36.1 (#23461) — 일정이 생기면 그 일정의 단톡방도 바로 생긴다(만든 사람은 자동 참석). */
+    this.ensureEventChat(event.id);
     this.saveState();
     return { ok: true, event, summary: this.getGroupEventSummary(event.id) };
   }
@@ -12247,6 +12639,8 @@ class Store {
   /* ------------------------------------------------ 15-1. 모임 공지 */
   /** 모임 공지 — 고정된 것이 먼저, 그 다음 최신순. */
   getGroupNotices(groupId) {
+    /* v36.1 — 게스트는 공지·게시판을 볼 수 없다(그 일정과 일정 단톡방만). */
+    if (this.isApprovedGuestOf(groupId)) return [];
     return (this.state.groupNotices || [])
       .filter((n) => n.groupId === groupId)
       .slice()
@@ -12959,6 +13353,7 @@ class Store {
     applySampleData(this.state, {
       regionId: (this.state.currentUser && this.state.currentUser.regionId) || this.state.sampleData && this.state.sampleData.regionId
     });
+    this.eventChatSync = this.syncEventChats();
     this.saveState();
     return { ok: true, sample: this.getSampleSummary() };
   }
@@ -12974,6 +13369,7 @@ class Store {
       seededAt: (this.state.sampleData && this.state.sampleData.seededAt) || null,
       clearedAt: new Date().toISOString()
     };
+    this.eventChatSync = this.syncEventChats();
     this.saveState();
     return { ok: true, removed: res.removed, before, sample: this.getSampleSummary() };
   }
@@ -13614,6 +14010,8 @@ class Store {
   /** 데이터 초기화 — 내 계정·활동을 모두 지우고 회원가입부터 다시 시작한다. */
   resetAllData() {
     this.state = buildCleanState();
+    /* v36.1 — 새 상태의 일정에도 단톡방을 갖춘다. */
+    this.eventChatSync = this.syncEventChats();
     try {
       LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
     } catch (e) { /* 저장소가 막혔어도 새 상태로는 진행한다 */ }
@@ -13636,6 +14034,8 @@ class Store {
   /** 테스트·미리보기 전용 — 예전 데모 계정(내 모임·내 글·내 디엠)으로 되돌린다. */
   seedDemoAccount() {
     this.state = upgradeGroupGeo(buildDemoState());
+    /* v36.1 — 씨드를 다시 깔아도 모든 일정에 단톡방이 있다. */
+    this.eventChatSync = this.syncEventChats();
     this.saveState();
     return { ok: true, user: this.state.currentUser };
   }
