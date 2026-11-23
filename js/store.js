@@ -3889,12 +3889,6 @@ const defaultInitialState = {
     }
   ],
 
-  /* ---------------- PWA (Sprint 5) — 홈 화면 설치 안내 상태 ----------------
-   * installDismissed: '홈 화면에 추가' 안내를 닫았는지 (사용자가 다시 열 수 있다)
-   * installed       : standalone(홈 화면에서 실행) 으로 감지됐는지
-   * ------------------------------------------------------------------------- */
-  pwa: { installDismissed: false, installed: false },
-
   /* ---------------- 프로필 수정 폼의 선택지 (Sprint 4) ---------------- */
   activityOptions: [
     { icon: 'sunrise', label: '새벽' },
@@ -4227,7 +4221,6 @@ function stripAllContent(state) {
   state.currentUser = blankCurrentUser();
   state.homePrefs = { groupId: null };
   state.explorePrefs = { filter: 'all', age: 'all', region: 'all', radius: 'all', ageMin: 0, ageMax: 99 };
-  state.pwa = { installDismissed: false, installed: false };
   return state;
 }
 
@@ -5472,7 +5465,6 @@ class Store {
         seededAt: (merged.sampleData && merged.sampleData.seededAt) || null,
         clearedAt: (merged.sampleData && merged.sampleData.clearedAt) || (sd.clearedAt || null)
       };
-      merged.settings.lastSettingsGroup = merged.settings.lastSettingsGroup || 'account';
       merged.schemaVersion = STORAGE_SCHEMA_VERSION;
       return merged;
     } catch (e) {
@@ -10422,24 +10414,10 @@ class Store {
     return badges;
   }
 
-  /* ---------------- Sprint 5 — PWA(홈 화면 설치) 상태 ----------------
-   * 설치 안내 배너를 닫았는지 / 이미 standalone 으로 실행 중인지만 기억한다.
-   * manifest.json · sw.js 자체는 정적 파일이라 저장소가 관여하지 않는다.
+  /* ---------------- Sprint 5 — PWA(홈 화면 설치) 힌트 ----------------
+   * v35.3 (설정 S1) — 설치 안내 카드가 사라지고 설정의 '홈 화면에 추가' 행만 남아
+   * 저장할 상태(닫음/설치됨)가 없어졌다. 설치 여부는 isStandalone() 으로 그때그때 본다.
    * ---------------------------------------------------------------------- */
-  get pwaState() {
-    return this.state.pwa || { installDismissed: false, installed: false };
-  }
-
-  updatePwa(patch) {
-    const d = patch || {};
-    const next = { ...this.pwaState };
-    if (typeof d.installDismissed === 'boolean') next.installDismissed = d.installDismissed;
-    if (typeof d.installed === 'boolean') next.installed = d.installed;
-    this.state.pwa = next;
-    this.setStateChanged();
-    return next;
-  }
-
   /* ==========================================================================
    * Sprint 6 — C. 내 활동 로그 (Activity Log)
    * ------------------------------------------------------------------------
@@ -12296,21 +12274,6 @@ class Store {
     return { ok: true, removed: res.removed, before, sample: this.getSampleSummary() };
   }
 
-  /** 설정 사이드바에서 마지막에 펼친 묶음 — 앱을 다시 열어도 그 자리로 돌아온다. */
-  getLastSettingsGroup() {
-    const key = (this.state.settings || {}).lastSettingsGroup;
-    return typeof key === 'string' && key ? key : 'account';
-  }
-
-  setLastSettingsGroup(key) {
-    const allowed = ['account', 'profile', 'groups', 'talk', 'alerts', 'display', 'data'];
-    if (!allowed.includes(key)) return { ok: false, reason: 'invalid' };
-    if (!this.state.settings) this.state.settings = { darkMode: false };
-    this.state.settings.lastSettingsGroup = key;
-    this.saveState();
-    return { ok: true, key };
-  }
-
   /** 공개 앨범의 첫 장 = 대표 사진. 지금 대표가 무엇인지. */
   getAlbumCover(kind = 'public') {
     return this.getMyAlbum(kind)[0] || null;
@@ -12473,9 +12436,10 @@ class Store {
     return !!(this.state.settings && typeof this.state.settings.darkMode === 'boolean');
   }
 
+  /* null 을 넣으면 '기기 설정 따르기'(settings.darkMode = null) — 화면 모드 3중 1의 기본값이다. */
   setDarkMode(on) {
-    if (!this.state.settings) this.state.settings = { darkMode: false };
-    this.state.settings.darkMode = !!on;
+    if (!this.state.settings) this.state.settings = { darkMode: null };
+    this.state.settings.darkMode = typeof on === 'boolean' ? on : null;
     this.saveState();
     return { ok: true, darkMode: this.state.settings.darkMode };
   }

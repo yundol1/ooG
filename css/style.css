@@ -2702,54 +2702,6 @@ img, svg { display: block; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-
-.settings-menu-list .menu-item[hidden] { display: none; }
-
-.settings-menu-list {
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-}
-
-.menu-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: var(--row-settings);
-  padding: var(--sp-3) var(--sp-4);
-  border-bottom: 1px solid var(--border-soft);
-  font-size: var(--fs-small);
-  font-weight: var(--fw-body);
-  color: var(--text-sub);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.menu-item:last-child { border-bottom: none; }
-.menu-item:hover { background: var(--bg-subtle); }
-.menu-item.highlight-menu { background: linear-gradient(90deg, var(--green-tint) 0%, var(--bg-elevated) 70%); }
-
-.menu-label { font-weight: var(--fw-strong); }
-
-.menu-val {
-  font-size: var(--fs-sub);
-  font-weight: var(--fw-meta);
-  color: var(--green-dark);
-}
-
-.menu-badge {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  color: var(--green-dark);
-  background: var(--green-soft);
-  border: 1px solid var(--green-soft-border);
-  padding: 3px 9px;
-  border-radius: var(--r-full);
-}
-
 /* ==========================================================================
    08. 모달
    ========================================================================== */
@@ -4549,89 +4501,72 @@ img, svg { display: block; }
 }
 
 /* ------------------------------------------------- 12-2. 알림 설정 · 알림함 */
-.notif-settings-card {
-  margin: 4px 16px 14px;
-  padding: 14px;
-  border-radius: var(--r-lg);
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.notif-settings-head {
+/* v35.3 (설정 S1) — 설정 › 알림은 카드 없이 행 목록.
+   행 48px · 좌우 16px · 구분선은 맞닿은 행 사이에만(좌우 16px 안쪽). */
+.notif-row,
+.notif-cat-item,
+.notif-dnd-row {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.notif-settings-title {
-  font-size: var(--fs-small);
-  font-weight: var(--fw-strong);
-  color: var(--text-strong);
-  letter-spacing: -0.2px;
-}
-
-.notif-settings-state {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  padding: 3px 8px;
-  border-radius: 8px;
-  background: var(--bg-soft);
-  color: var(--text-muted);
-}
-
-.notif-settings-state.granted {
-  background: var(--green-soft);
-  color: var(--green-dark);
-}
-
-.notif-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  padding: 8px 0 0;
-  border-top: 1px solid var(--border-soft);
+  min-height: var(--row-settings);
+  padding: 0 16px;
 }
 
-.notif-row-main {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+/* 맞닿은 두 행 사이의 1px 구분선 */
+.notif-cat-item + .notif-cat-item::before,
+.notif-row + .notif-dnd-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: var(--divider);
 }
+
+.notif-cat-item.off .notif-row-label { color: var(--text-muted); }
 
 .notif-row-label {
-  font-size: var(--fs-sub);
-  font-weight: var(--fw-label);
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
   color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.notif-row-desc {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  color: var(--text-muted);
-  line-height: 1.35;
-}
-
-.notif-switch {
+/* 스위치 — 보이는 트랙 46×27, 손가락 영역은 44×44(::after) */
+#settings-notif .notif-switch {
   flex: 0 0 auto;
+  position: relative;
   width: 46px;
+  min-width: 46px;
   height: 27px;
-  padding: 3px;
+  min-height: 27px;
+  padding: 0;
   border: 0;
   border-radius: var(--r-full);
   background: var(--border-strong);
+  background-clip: border-box;
+  box-sizing: border-box;
   cursor: pointer;
   transition: background 0.18s ease;
 }
+#settings-notif .notif-switch::after {
+  content: '';
+  position: absolute;
+  inset: -9px -4px;
+}
+#settings-notif .notif-switch.on { background: var(--green-dark); }
 
-.notif-switch.on { background: var(--green-dark); }
-
-.notif-switch-knob {
+#settings-notif .notif-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
   display: block;
   width: 21px;
   height: 21px;
@@ -4641,47 +4576,46 @@ img, svg { display: block; }
   transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
-.notif-switch.on .notif-switch-knob { transform: translateX(19px); }
+#settings-notif .notif-switch.on .notif-switch-knob { transform: translateX(19px); }
 
-.notif-denied-note {
+/* 받을 알림 종류 같은 묶음 제목 — 행이 아니라 작은 회색 캡션 */
+.notif-section-title {
+  margin: 16px 0 4px;
+  padding: 0 16px;
   font-size: var(--fs-caption);
   font-weight: var(--fw-meta);
-  line-height: 1.45;
-  color: #B91C1C;
-  background: var(--red-soft);
-  border-radius: var(--r-sm);
-  padding: 8px 10px;
-}
-
-.notif-ios-hint {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  line-height: 1.45;
   color: var(--text-muted);
-  background: var(--bg-base);
-  border: 1px dashed var(--border-strong);
+}
+
+.notif-denied-note,
+.notif-ios-hint,
+.notif-dnd-now {
+  margin: 8px 16px 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  line-height: 1.45;
   border-radius: var(--r-sm);
   padding: 8px 10px;
 }
 
+.notif-denied-note { color: #B91C1C; background: var(--red-soft); }
+.notif-ios-hint { color: var(--text-muted); background: var(--bg-subtle); }
 .notif-ios-hint strong { color: var(--text); font-weight: var(--fw-strong); }
+.notif-dnd-now { color: #92400E; background: var(--amber-soft); }
 
 .notif-permission-btn {
-  border: 1px dashed var(--green-soft-border);
+  display: block;
+  margin: 8px 16px 0;
+  width: calc(100% - 32px);
+  min-height: var(--row-settings);
+  border: 0;
+  border-radius: var(--r-sm);
   background: var(--green-tint);
   color: var(--green-dark);
   font-family: var(--font);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-body);
   font-weight: var(--fw-label);
-  padding: 9px 10px;
-  border-radius: var(--r-sm);
   cursor: pointer;
-}
-
-.notif-dnd-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .notif-time-label {
@@ -4703,37 +4637,41 @@ img, svg { display: block; }
   padding: 7px 8px;
 }
 
-.notif-dnd-now {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  line-height: 1.4;
-  color: #92400E;
-  background: var(--amber-soft);
-  border: 1px solid #FDE68A;
-  border-radius: var(--r-sm);
-  padding: 7px 9px;
-}
-
 .notif-test-btn {
-  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: calc(100% - 32px);
+  margin: 16px 16px 0;
+  min-height: var(--row-settings);
+  border: 1px solid var(--border);
   border-radius: var(--r-sm);
-  background: var(--green-dark);
-  color: #FFFFFF;
+  background: none;
+  color: var(--text-strong);
   font-family: var(--font);
-  font-size: var(--fs-sub);
+  font-size: var(--fs-body);
   font-weight: var(--fw-label);
-  padding: 10px 12px;
   cursor: pointer;
 }
 
-.notif-test-btn:active { transform: scale(0.985); }
+.notif-test-btn:active { background: var(--fill-subtle); }
 
 .notif-test-result {
+  margin: 6px 16px 0;
   font-size: var(--fs-caption);
   font-weight: var(--fw-meta);
   color: var(--text-muted);
-  text-align: center;
 }
+
+/* 알림에서 피드 글로 딥링크했을 때 잠깐 강조 */
+.feed-card.is-highlight {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.45), 0 12px 24px -12px rgba(4, 120, 87, 0.5);
+  transition: box-shadow 0.35s ease;
+}
+
+/* 프로필 편집 사진 미리보기 이미지 */
+.pe-photo-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .notif-list {
   display: flex;
@@ -5476,103 +5414,11 @@ img, svg { display: block; }
   color: #92400E;
 }
 
-/* ---------------------------------------- 5-2. 알림 종류별 토글 (프로필 탭) */
-.notif-section-title {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 12px 0 6px;
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  letter-spacing: -0.1px;
-  color: var(--text-muted);
-}
-
+/* ---------------------------------------- 5-2. 알림 종류별 토글 — 목록만 둔다
+   (행·구분선·스위치는 12-2 한 곳에서 정한다) */
 .notif-cat-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.notif-cat-item {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--r-sm);
-  background: var(--bg-base);
-}
-
-.notif-cat-item.off { opacity: 0.6; }
-
-.notif-cat-emoji {
-  flex: 0 0 auto;
-  font-size: 15px;
-  font-weight: var(--fw-body);
-  line-height: 1;
-}
-
-.notif-cat-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.notif-cat-label {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  color: var(--text-strong);
-}
-
-.notif-cat-desc {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  line-height: 1.35;
-  color: var(--text-muted);
-}
-
-.notif-cat-state {
-  flex: 0 0 auto;
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  color: var(--text-muted);
-}
-
-.notif-cat-item .notif-switch { width: 40px; height: 24px; padding: 3px; }
-.notif-cat-item .notif-switch-knob { width: 18px; height: 18px; }
-.notif-cat-item .notif-switch.on .notif-switch-knob { transform: translateX(16px); }
-
-/* 알림 시뮬레이션 — 실제 이벤트와 같은 경로(dispatchNotification)로 보낸다 */
-.notif-sim-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.notif-sim-btn {
-  flex: 1 1 auto;
-  border: 1px dashed var(--green-soft-border);
-  border-radius: var(--r-full);
-  background: var(--green-tint);
-  color: var(--green-deep);
-  font-family: var(--font);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  padding: 7px 9px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.notif-sim-btn:active { transform: scale(0.97); }
-
-.notif-sim-note {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  line-height: 1.4;
-  color: var(--text-muted);
 }
 
 /* 알림함 목록의 종류 칩 */
@@ -5585,107 +5431,6 @@ img, svg { display: block; }
   color: var(--text-muted);
   font-size: var(--fs-caption);
   font-weight: var(--fw-label);
-}
-
-/* ------------------------------------------ 5-3. PWA · 홈 화면에 추가 카드 */
-.pwa-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0 16px 14px;
-  padding: 12px 14px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--green-soft-border);
-  background: linear-gradient(160deg, var(--green-tint) 0%, var(--bg-base) 62%);
-  box-shadow: var(--shadow-sm);
-}
-
-.pwa-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.pwa-card-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-sub);
-  font-weight: var(--fw-label);
-  color: var(--text-strong);
-}
-
-.pwa-card-state {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  padding: 2px 7px;
-  border-radius: 8px;
-  background: var(--bg-soft);
-  color: var(--text-muted);
-}
-
-.pwa-card-state.ready { background: var(--green-dark); color: #FFFFFF; }
-
-.pwa-card-desc {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  line-height: 1.45;
-  color: var(--text-sub);
-}
-
-.pwa-install-btn {
-  border: 0;
-  border-radius: var(--r-sm);
-  background: var(--green-dark);
-  color: #FFFFFF;
-  font-family: var(--font);
-  font-size: var(--fs-sub);
-  font-weight: var(--fw-label);
-  padding: 10px 12px;
-  cursor: pointer;
-}
-
-.pwa-install-btn:disabled {
-  background: var(--border-strong);
-  color: var(--text-muted);
-  cursor: default;
-}
-
-.pwa-steps {
-  margin: 0;
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-/* 아이폰 안내는 번호 목록 — 항목 사이 간격만 준다 */
-ol.pwa-steps,
-ul.pwa-steps {
-  padding-left: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* 안드로이드·데스크톱 안내는 한 문단 — 조각마다 줄이 바뀌지 않게 */
-p.pwa-steps {
-  padding-left: 0;
-}
-
-.pwa-steps strong { color: var(--text); font-weight: var(--fw-strong); }
-
-/* 알림에서 피드 글로 딥링크했을 때 잠깐 강조 */
-.feed-card.is-highlight {
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.45), 0 12px 24px -12px rgba(4, 120, 87, 0.5);
-  transition: box-shadow 0.35s ease;
-}
-
-.pwa-card-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
 }
 
 /* 좁은 화면(320px)에서 게시글 카드의 취미 라벨이 한 글자씩 세로로 쪼개지지 않게 */
@@ -5824,32 +5569,6 @@ p.pwa-steps {
   color: var(--text-muted);
   letter-spacing: -0.1px;
 }
-
-.notif-cat-item {
-  position: relative;
-  padding-left: 12px;
-  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
-}
-
-.notif-cat-item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: var(--r-full);
-  background: var(--border-strong);
-}
-
-.notif-cat-item.tone-chat::before { background: #047857; }
-.notif-cat-item.tone-like::before { background: #BE185D; }
-.notif-cat-item.tone-comment::before { background: #1D4ED8; }
-.notif-cat-item.tone-join_request::before { background: #B45309; }
-.notif-cat-item.tone-join_result::before { background: #059669; }
-
-.notif-cat-item:active { transform: scale(0.995); }
-.notif-cat-item.off::before { background: var(--border-strong); }
 
 /* ------------------------------------------------ 6-3. 내 활동 로그 시트 */
 .activity-sheet {
@@ -6086,12 +5805,10 @@ p.pwa-steps {
 .group-tile-join:active { transform: scale(0.97); }
 
 .explore-chip,
-.notif-sim-btn,
 .btn-secondary {
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.14s ease;
 }
 
-.notif-sim-btn:active,
 .btn-secondary:active { transform: scale(0.97); }
 
 /* 시트 제목·부제의 리듬 통일 */
@@ -6727,16 +6444,6 @@ p.pwa-steps {
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
 }
 
-.notif-exception-row {
-  margin-top: 2px;
-  padding: 9px 10px;
-  border-radius: var(--r-md);
-  border: 1px dashed var(--green-soft-border);
-  background: var(--green-tint);
-}
-
-.notif-exception-row .notif-row-label { color: var(--green-deep); }
-
 /* ------------------------------- 7-5. 활동 로그: 이번 주/이번 달 + 바로 취소 */
 .activity-stats {
   display: flex;
@@ -7176,58 +6883,6 @@ p.pwa-steps {
 .notif-act:active { transform: scale(0.95); }
 .notif-act.danger:hover { color: #9F1239; border-color: #FDA4AF; background: #FFF1F5; }
 
-/* 알림 종류별 예시 미리보기 */
-.notif-cat-preview-btn {
-  flex: 0 0 auto;
-  height: 22px;
-  padding: 0 8px;
-  border-radius: var(--r-full);
-  border: 1px dashed var(--border-strong);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  letter-spacing: -0.2px;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease, transform 0.14s ease;
-}
-
-.notif-cat-preview-btn:hover { color: var(--green-dark); border-color: var(--green-dark); }
-.notif-cat-preview-btn:active { transform: scale(0.95); }
-
-.notif-preview {
-  margin: 2px 0 8px;
-  padding: 9px 10px 10px;
-  border-radius: var(--r-md);
-  border: 1px dashed var(--green-soft-border);
-  background: var(--green-tint);
-  animation: fadeUp 0.2s ease;
-}
-
-.notif-preview-tag {
-  display: block;
-  margin-bottom: 6px;
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  letter-spacing: 0.2px;
-  color: var(--green-dark);
-}
-
-.notif-preview-item {
-  display: flex;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: var(--r-md);
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-}
-
-.notif-preview .notif-title { font-size: var(--fs-caption);
-  font-weight: var(--fw-label); }
-.notif-preview .notif-body { font-size: var(--fs-caption);
-  font-weight: var(--fw-meta); }
-
 /* --------------------------------- 8-4. 활동 기간 필터 · 모임별 묶어보기 */
 .activity-controls {
   display: flex;
@@ -7337,7 +6992,6 @@ p.pwa-steps {
 .activity-range-chip:focus-visible,
 .activity-view-chip:focus-visible,
 .notif-act:focus-visible,
-.notif-cat-preview-btn:focus-visible,
 .hot-card:focus-visible,
 .hot-row:focus-visible,
 .notif-item:focus-visible,
@@ -7381,7 +7035,6 @@ p.pwa-steps {
   .hot-card-media svg,
   .masonry-card,
   .activity-group,
-  .notif-preview { animation: none; transition: none; }
 }
 
 /* ==========================================================================
@@ -8237,7 +7890,6 @@ body {
 .group-description,
 .group-desc,
 .detail-bio,
-.notif-preview-body,
 .activity-title,
 .policy-desc,
 .banner-sub {
@@ -8290,8 +7942,7 @@ body {
 .activity-item,
 .activity-group,
 .notif-item,
-.ppb,
-.pwa-card {
+.ppb {
   transition:
     transform var(--dur-quick) var(--ease-spring),
     box-shadow var(--dur-quick) ease,
@@ -8529,7 +8180,6 @@ body {
 .btn-secondary,
 .apply-btn,
 .notif-test-btn,
-.pwa-install-btn,
 .ppb-cta,
 .explore-filter-btn,
 .explore-type-btn {
@@ -8545,14 +8195,12 @@ body {
 .btn-primary:active,
 .btn-primary-action:active,
 .apply-btn:active,
-.pwa-install-btn:active,
 .ppb-cta:active { transform: scale(0.965); }
 
 @media (hover: hover) and (pointer: fine) {
   .btn-primary:hover,
   .btn-primary-action:hover,
-  .apply-btn:hover,
-  .pwa-install-btn:hover {
+  .apply-btn:hover {
     filter: brightness(1.04);
     box-shadow: 0 10px 22px -12px rgba(4, 120, 87, 0.55);
   }
@@ -12928,8 +12576,6 @@ select.ob-input { appearance: none; -webkit-appearance: none; }
 .confirm-actions { display: flex; gap: 8px; padding-top: 6px; }
 .confirm-actions > button { flex: 1; }
 .btn-primary.danger { background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%); box-shadow: 0 8px 18px -8px rgba(185, 28, 28, 0.5); }
-.menu-item.danger .menu-label { color: #B91C1C; }
-.menu-item.danger .menu-val { color: #DC2626; }
 
 /* Sprint 17 — 보관함/표지/읽음 시트의 바깥 상자 */
 .archive-sheet,
@@ -13293,13 +12939,6 @@ body.drawer-open { overflow: hidden; }
 .drawer-menu-value { font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-muted); }
 .drawer-menu-item.danger { color: #B91C1C; }
 
-/* 내정보 사이드바 안의 기존 카드/메뉴 — 여백만 맞춘다 */
-.drawer-profile .settings-menu-list { display: flex; flex-direction: column; }
-.drawer-profile .menu-item { border-radius: var(--r-md); }
-.drawer-profile .pwa-card,
-.drawer-profile .notif-settings-card { margin: 10px 0 0; }
-.drawer-profile .profile-nav-sections { margin-top: 4px; }
-
 /* ---- 사진이 없는 자리: 예시 그림 대신 단색·이니셜·한 줄 ---- */
 .person-photo-empty {
   position: absolute;
@@ -13581,7 +13220,6 @@ body {
 .post-card,
 .feed-card,
 .hot-card,
-.pwa-card,
 .ppb,
 .notif-item,
 .activity-group,
@@ -13590,7 +13228,6 @@ body {
 .chat-room-item,
 .profile-block,
 .home-block,
-.settings-menu-list,
 .apply-card,
 .myapp-item,
 .joined-item,
@@ -13599,7 +13236,6 @@ body {
 .profile-saved-item,
 .profile-recent-item,
 .region-row,
-.notif-cat-item,
 .policy-question-item,
 .drawer-mini {
   border-radius: var(--r-card);
@@ -13700,7 +13336,6 @@ body {
 .btn-secondary,
 .apply-btn,
 .ppb-cta,
-.pwa-install-btn,
 .gallery-find,
 .ob-btn,
 .chat-send,
@@ -13721,7 +13356,6 @@ body {
 .btn-secondary,
 .apply-btn,
 .ppb-cta,
-.pwa-install-btn,
 .ob-btn.primary,
 .chat-send,
 .comment-submit {
@@ -13733,7 +13367,6 @@ body {
 .btn-secondary:active,
 .apply-btn:active,
 .ppb-cta:active,
-.pwa-install-btn:active,
 .ob-btn:active,
 .chat-send:active,
 .comment-submit:active {
@@ -14331,7 +13964,6 @@ body {
 .joined-emoji .oo-ic { width: 20px; height: 20px; }
 .chip-thumb .oo-ic { width: 13px; height: 13px; }
 .notif-emoji .oo-ic { width: 15px; height: 15px; }
-.notif-cat-emoji .oo-ic { width: 16px; height: 16px; }
 .activity-emoji .oo-ic { width: 15px; height: 15px; }
 .region-row-emoji .oo-ic { width: 16px; height: 16px; }
 .myapp-emoji .oo-ic { width: 16px; height: 16px; }
@@ -15742,11 +15374,6 @@ select.ob-input {
 .secret-lock { color: var(--text-muted); }
 .secret-lock .oo-ic { width: 20px; height: 20px; }
 
-/* ---------------------------------------- 24-9. 설정 › 화면 › 다크모드 행 */
-.menu-item.is-switch { cursor: pointer; }
-.menu-item.is-switch .switch-toggle { margin-left: 8px; pointer-events: none; }
-.menu-item.is-switch.on .menu-val { color: var(--green-dark); }
-
 /* 다크 테마 보조 클래스 — body 에 함께 붙여 테마별 예외를 잡는다 */
 
 .album-lock { display: inline-flex; align-items: center; color: var(--green-dark); }
@@ -16401,94 +16028,6 @@ body.is-album-viewing { overflow: hidden; }
 #tab-explore.is-field-empty .empty-actions { margin-top: 18px; }
 .empty-primary { min-width: 176px; height: 46px; padding: 0 22px; border-radius: 16px; }
 
-/* ---------------------------------------------- 27-6. 설정 사이드바 아코디언 */
-#profile-drawer .drawer-section.acc {
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  border: 0;
-  overflow: hidden;
-  position: relative;
-}
-#profile-drawer .drawer-section.acc + .drawer-section.acc { margin-top: 0; border-top: 0; }
-/* 섹션 사이 1px 구분선 (테두리 대신 그린 선) */
-#profile-drawer .drawer-section.acc + .drawer-section.acc::before {
-  content: '';
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  top: 0;
-  height: 1px;
-  background: var(--divider);
-  pointer-events: none;
-}
-#profile-drawer .drawer-section.acc .drawer-section-title { margin: 0; padding: 0; }
-.acc-head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  width: 100%;
-  min-height: var(--row-settings);
-  padding: var(--sp-3) var(--pad-tile);
-  border: none;
-  background: none;
-  text-align: left;
-  font-family: inherit;
-  font-size: var(--fs-small);
-  font-weight: 680;
-  letter-spacing: -0.02em;
-  color: var(--text-strong);
-}
-.acc-head:active { background: var(--bg-subtle); }
-.acc-head:focus-visible { outline: 2px solid var(--green); outline-offset: -3px; }
-.acc-label { flex: 0 0 auto; }
-.acc-meta {
-  margin-left: auto;
-  font-size: var(--fs-caption);
-  font-weight: 620;
-  letter-spacing: -0.01em;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 45%;
-}
-.acc-chevron {
-  flex: 0 0 auto;
-  display: inline-grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  margin-left: 2px;
-  color: var(--text-muted);
-  transition: transform 0.24s var(--spring-soft), color 0.18s ease;
-}
-.acc-chevron .oo-ic { width: 15px; height: 15px; stroke-width: 2.4; }
-.drawer-section.is-open .acc-chevron { transform: rotate(180deg); color: var(--green-dark); }
-.drawer-section.is-open .acc-head { border-bottom: 1px solid var(--border-soft); }
-.acc-body { padding: 4px 0 2px; }
-.acc-body.is-opening { animation: accBodyIn 0.22s ease both; }
-@keyframes accBodyIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
-}
-.acc-body .settings-menu-list {
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  border-radius: 14px;
-}
-.acc-body .menu-item { padding: 12px 0; border-bottom: 1px solid var(--border-soft); border-radius: 0; font-size: var(--fs-sub); font-weight: 560; }
-.acc-body .menu-item + .menu-item { margin-top: 1px; }
-.acc-body .menu-item:last-child { border-bottom: 0; }
-.acc-body .notif-settings-card,
-.acc-body .pwa-card { margin: 0; box-shadow: none; border: 0; background: transparent; padding: 6px 0 10px; }
-.acc-body .notif-settings-card + .pwa-card { border-top: 1px solid var(--border-soft); padding-top: 12px; }
-.acc-body .menu-item.is-switch .menu-val { margin-left: auto; padding-right: 10px; }
-.acc-body .menu-item.is-switch .switch-toggle { flex: 0 0 auto; }
-.acc-body .menu-item { justify-content: flex-start; }
-.acc-body .menu-item .menu-val { margin-left: auto; text-align: right; }
 /* 프로필 올리기 줄의 글자도 누를 수 있는 자리임을 알린다(스위치는 그대로) */
 .explore-profile-publish .epp-text { cursor: pointer; }
 .explore-profile-publish .epp-text:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 8px; }
@@ -16587,9 +16126,7 @@ body.is-album-viewing { overflow: hidden; }
 .filter-current,
 .dm-scope-name,
 .section-count,
-.gallery-title + .gallery-sub,
-.menu-val,
-.acc-meta {
+.gallery-title + .gallery-sub {
   color: var(--green-text);
 }
 
@@ -16639,7 +16176,6 @@ body.is-album-viewing { overflow: hidden; }
 .icon-btn,
 .nav-tab-item,
 .group-top-tab,
-.menu-item,
 .explore-nearby-chip,
 .explore-region-all-btn,
 .explore-filter-btn,
@@ -16676,7 +16212,6 @@ body.is-album-viewing { overflow: hidden; }
 
 @media (hover: hover) {
   .chat-room-item:hover,
-  .menu-item:hover,
   .board-row:hover {
     background: var(--green-on);
   }
@@ -16691,8 +16226,6 @@ body.is-album-viewing { overflow: hidden; }
 .board-row,
 .chat-room-item,
 .chat-group-item,
-.menu-item,
-.settings-menu-list,
 .drawer-section,
 .modal-sheet,
 .filter-sheet,
@@ -16722,7 +16255,6 @@ body.is-album-viewing { overflow: hidden; }
 .chat-room-item,
 .chat-group-item,
 .chat-request-card,
-.menu-item,
 .member-row,
 .notif-item {
   background: transparent;
@@ -16736,7 +16268,6 @@ body.is-album-viewing { overflow: hidden; }
 .post-card + .post-card::before,
 .board-row + .board-row::before,
 .chat-room-item + .chat-room-item::before,
-.menu-item + .menu-item::before,
 .member-row + .member-row::before,
 .notif-item + .notif-item::before {
   content: '';
@@ -16807,7 +16338,7 @@ input:focus, textarea:focus, select:focus, .ob-input:focus {
 
 /* 나머지 전환은 150ms 이하 페이드/이동 */
 .gallery-card, .recommend-card, .group-tile, .post-card, .board-row,
-.chat-room-item, .chat-group-item, .menu-item, .album-slot, .hot-card, .hot-row {
+.chat-room-item, .chat-group-item, .album-slot, .hot-card, .hot-row {
   transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease,
               transform var(--dur-base) var(--ease-out), opacity var(--dur-base) ease;
 }
@@ -17094,88 +16625,6 @@ body.group-mode #tab-board .board-block-title#board-posts-title::before { conten
 
 /* ---------------------------------------- 28.5-9. 홈 2열 카드 통일 */
 .gallery-grid, .home-browse-grid, .home-recommend-grid { align-items: stretch; }
-
-/* ---------------------------------------- 28.5-10. 설정 = iOS 그룹 목록 */
-.drawer-profile .drawer-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;                 /* Sprint 31 — 16 → 10: 다른 화면과 같은 세로 밀도 */
-  padding: var(--sp-3) var(--sp-3) var(--sp-8);
-}
-
-/* 아코디언을 없애고 모두 펼친 채로 — 순서: 알림 · 비밀앨범 · 화면 설정 · 계정 */
-.drawer-profile .drawer-body { overflow-y: auto; }
-.drawer-profile .drawer-section { flex: 0 0 auto; }   /* 사이드바 높이에 맞춰 찌그러지지 않게 */
-.drawer-profile .drawer-section[data-acc="alerts"] { order: 1; }
-.drawer-profile .drawer-section[data-acc="profile"] { order: 2; }
-.drawer-profile .drawer-section[data-acc="display"] { order: 3; }
-.drawer-profile .drawer-section[data-acc="account"] { order: 4; }
-.drawer-profile .drawer-section[data-acc="groups"] { order: 5; }
-.drawer-profile .drawer-section[data-acc="talk"] { order: 6; }
-.drawer-profile .drawer-section[data-acc="data"] { order: 7; }
-
-.drawer-profile .acc-body { display: block !important; }
-
-.drawer-profile .drawer-section {
-  border-radius: var(--r-3);
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  box-shadow: none;
-  overflow: hidden;
-}
-
-.drawer-profile .acc-head {
-  min-height: var(--tap);    /* 44 — 손가락 하한 유지(라벨 행이지만 규칙은 하나로) */
-  padding: 4px var(--sp-3);  /* Sprint 31 — 위아래 8 → 4 로 제목 여백만 다듬는다 */
-  background: transparent;
-  border: 0;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  pointer-events: none;   /* 더 이상 접고 펼치는 제목이 아니다 */
-}
-
-.drawer-profile .acc-chevron { display: none; }
-
-.drawer-profile .acc-label {
-  font-size: var(--fs-sub);
-  font-weight: var(--fw-label);
-  letter-spacing: 0.02em;
-  color: var(--text-muted);
-  text-transform: none;
-}
-
-.drawer-profile .acc-meta { margin-left: auto; color: var(--text-muted); }
-
-.drawer-profile .settings-menu-list { border-top: 0; }
-
-/* 설정 묶음 목록은 카드가 아니라 행 묶음 — 배경·테두리·모서리 없이 (U1) */
-.drawer-profile .settings-menu-list,
-.acc-body .settings-menu-list {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.drawer-profile .menu-item {
-  min-height: 48px;
-  padding: var(--sp-2) var(--sp-3);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  background: var(--bg-base);
-  border-bottom: 1px solid var(--border-soft);
-  font-size: var(--fs-body);
-}
-
-.drawer-profile .menu-item:last-child { border-bottom: 0; }
-.drawer-profile .menu-item.danger .menu-label { color: #B91C1C; }
-.drawer-profile .notif-settings-card { border: 0; box-shadow: none; }
-
-/* 데이터 초기화는 개발 모드에서만 */
-body:not(.oog-dev) #menu-reset-data { display: none !important; }
 
 /* ---------------------------------------- 28.5-11. 내 프로필 */
 .myprofile-head { border-radius: 0; border: 0; box-shadow: none; padding-bottom: var(--sp-3); }
@@ -17497,30 +16946,6 @@ img[loading="lazy"] { content-visibility: auto; }
   box-shadow: var(--sh-1);
 }
 
-/* 설정 › 알림 — iOS 목록처럼 한 줄씩. 설명·예시 버튼은 접는다. */
-.drawer-profile .notif-cat-desc,
-.drawer-profile .notif-cat-preview-btn,
-.drawer-profile .notif-cat-state,
-.drawer-profile .notif-section-hint,
-.drawer-profile .notif-row-desc,
-.drawer-profile .notif-ios-hint,
-.drawer-profile .notif-denied-note,
-.drawer-profile .notif-dnd-now {
-  display: none !important;
-}
-.drawer-profile .notif-cat-item {
-  min-height: 52px;
-  padding: 6px 10px;
-  border-radius: var(--r-2);
-  margin-bottom: 2px;
-}
-.drawer-profile .notif-cat-label { font-size: var(--fs-body); font-weight: 600; }
-.drawer-profile .notif-section-title { margin: var(--sp-3) 0 var(--sp-2); font-size: var(--fs-small); color: var(--text-muted); }
-.drawer-profile .notif-row { min-height: 52px; }
-.drawer-profile .notif-permission-btn { min-height: 44px; }
-.drawer-profile .notif-settings-card { padding: 0; }
-.drawer-profile #notif-settings-body { padding: 0 4px 4px; }
-
 /* 프로필 카드 버튼 글자가 두 줄로 접히지 않게 */
 .detail-actions .detail-btn,
 .detail-actions button { white-space: nowrap; min-width: 0; padding-left: var(--sp-3); padding-right: var(--sp-3); }
@@ -17554,7 +16979,6 @@ img[loading="lazy"] { content-visibility: auto; }
 .drawer-close,
 .notif-permission-btn,
 .notif-test-btn,
-.notif-sim-btn,
 .notif-time-input,
 .quick-like {
   min-height: 44px;
@@ -17704,19 +17128,6 @@ img[loading="lazy"] { content-visibility: auto; }
 .person-card .quick-like { right: 10px; bottom: 10px; }
 .person-card .card-dm { right: 60px; bottom: 10px; }
 
-/* 알림 종류의 '예시' 미리보기는 남긴다 — 작은 글자 버튼으로 */
-.drawer-profile .notif-cat-preview-btn {
-  display: inline-flex !important;
-  align-items: center;
-  min-height: 36px;
-  padding: 0 8px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-1);
-  background: var(--bg-base);
-  color: var(--text-sub);
-  font-size: var(--fs-small);
-}
-
 /* 매칭 팝업(어두운 판) 위의 공통 칩·추천 문구는 판에 맞는 톤으로 */
 .match-popup .common-chip {
   background: rgba(52, 211, 153, 0.12);
@@ -17731,54 +17142,6 @@ img[loading="lazy"] { content-visibility: auto; }
   color: var(--text-sub);
   text-align: left;
 }
-
-/* 알림 종류 6개는 2열로 — 설정 첫 화면에서 아래 묶음도 보이게 */
-.drawer-profile .notif-cat-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-}
-.drawer-profile .notif-cat-item { min-height: 48px; padding: 4px 6px; gap: 6px; }
-.drawer-profile .notif-cat-emoji { width: 20px; height: 20px; flex: 0 0 20px; }
-.drawer-profile .notif-cat-main { min-width: 0; }
-.drawer-profile .notif-cat-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.drawer-profile .notif-cat-preview-btn { display: none !important; }
-.drawer-profile .notif-exception-row { display: none !important; }
-
-/* 설정 › 알림 — 한 줄 목록으로 되돌리고, 시험용 도구는 접는다 */
-.drawer-profile .notif-cat-list {
-  display: block;
-  grid-template-columns: none;
-}
-.drawer-profile .notif-cat-item { min-height: 48px; margin-bottom: 2px; }
-.drawer-profile .notif-cat-label { font-size: var(--fs-small) !important; }
-.drawer-profile .notif-sim,
-.drawer-profile .notif-sim-list,
-.drawer-profile .notif-sim-note,
-.drawer-profile .notif-test-btn,
-.drawer-profile .notif-test-result,
-.drawer-profile .notif-cat-preview-btn { display: none !important; }
-.drawer-profile .notif-switch { flex: 0 0 44px; min-width: 44px !important; }
-
-/* 설정 › 알림 — 기본은 한 줄 요약, '자세히'에서 펼친다 */
-.drawer-profile .notif-expand-btn {
-  width: 100%;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  font-size: var(--fs-body);
-  font-weight: 600;
-}
-.drawer-profile .notif-expand-btn span:first-child { flex: 1 1 auto; text-align: left; }
-.drawer-profile .notif-expand-chevron { display: inline-flex; color: var(--text-muted); transition: transform var(--dur-fast) ease; }
-.drawer-profile .notif-expanded .notif-expand-chevron { transform: rotate(180deg); }
-.drawer-profile #notif-settings-body:not(.notif-expanded) > *:not(#notif-expand-btn) { display: none !important; }
-.drawer-profile .notif-sim-row { display: none !important; }
 
 /* 하단 탭 뱃지 — 아이콘 위가 아니라 오른쪽 위 모서리에 */
 .nav-badge {
@@ -17851,8 +17214,7 @@ img[loading="lazy"] { content-visibility: auto; }
 /* U1 — 행(목록·게시판)은 다크에서도 카드 면을 주지 않는다 */
 :root[data-theme="dark"] .post-card,
 :root[data-theme="dark"] .notif-item,
-:root[data-theme="dark"] .region-row,
-:root[data-theme="dark"] .settings-menu-list {
+:root[data-theme="dark"] .region-row {
   background: transparent;
   color: var(--text);
 }
@@ -17884,11 +17246,6 @@ img[loading="lazy"] { content-visibility: auto; }
 :root[data-theme="dark"] .stat-cell,
 :root[data-theme="dark"] .chat-group-item:hover {
   color: var(--text);
-}
-:root[data-theme="dark"] .menu-item {
-  background: transparent;
-  color: var(--text-sub);
-  border-color: var(--divider);
 }
 :root[data-theme="dark"] .media-option,
 :root[data-theme="dark"] .input-bar {
@@ -18008,9 +17365,6 @@ img[loading="lazy"] { content-visibility: auto; }
 }
 :root[data-theme="dark"] .onboarding-panel,
 :root[data-theme="dark"] .album-open { background: transparent; }
-:root[data-theme="dark"] #profile-drawer .drawer-section.acc {
-  box-shadow: none;
-}
 :root[data-theme="dark"] .ob-answer { box-shadow: var(--clay-out), var(--clay-light); }
 
 /* ---------------------------------------- 29-5. 사진·스크림 위의 판과 글자 (테마와 무관하게 어둡다) */
@@ -18104,8 +17458,6 @@ body {
 .board-row-sub,
 .explore-count,
 .home-week-sub,
-.menu-val,
-.acc-meta,
 .ob-note,
 .ob-hint,
 .ob-label,
@@ -18188,15 +17540,9 @@ body {
 .profile-recent-sub,
 .profile-recent-time,
 .drawer-sub,
-.notif-settings-state,
 .notif-permission-btn,
 .notif-time-label,
 .notif-test-result,
-.notif-sim-btn,
-.notif-sim-note,
-.pwa-card-state,
-.pwa-card-desc,
-.pwa-steps,
 .home-browse-chip,
 .hot-rank {
   font-size: var(--fs-sub);
@@ -18362,7 +17708,6 @@ body {
 .btn-secondary,
 .btn-join-group,
 .apply-btn,
-.pwa-install-btn,
 .ppb-cta,
 .ob-btn,
 .chat-send,
@@ -18394,7 +17739,6 @@ body {
 .board-block,
 .profile-block,
 .album-block,
-.pwa-card,
 .drawer-section,
 .myprofile-head,
 .person-card,
@@ -18413,7 +17757,6 @@ body {
 .push-permission-banner,
 .push-banner,
 .skeleton-card,
-.notif-cat-item,
 .empty-state,
 .event-card {
   background: var(--bg-base);
@@ -18442,7 +17785,6 @@ body {
 .event-card,
 .apply-card,
 .joined-item,
-.pwa-card,
 .myprofile-head,
 .home-photo-guide,
 .push-permission-banner,
@@ -18556,25 +17898,12 @@ body {
   color: var(--text-sub);
 }
 
-/* 설정·메뉴의 행은 카드 안의 행 — 테두리 없이 구분선만 */
-.drawer-section .menu-item,
-.drawer-profile .settings-menu-list .menu-item {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  min-height: 48px;
-}
-
-.drawer-section .menu-item:first-child { border-top: 0; }
-
 /* 카드 안의 카드(행 목록)는 테두리 없이 구획만 */
 .gallery-card .gallery-card-inner,
 .post-card,
 .board-row,
 .chat-room-item,
 .chat-group-item,
-.menu-item,
 .member-row,
 .notif-item {
   box-shadow: none;
@@ -18873,7 +18202,6 @@ body {
 .btn-secondary.btn-solid,
 .apply-btn,
 .apply-btn.accept,
-.pwa-install-btn,
 .home-browse-new,
 .filter-apply,
 #btn-filter-apply,
@@ -18907,7 +18235,6 @@ body {
 .btn-primary:hover,
 .btn-primary-action:hover,
 .apply-btn:hover,
-.pwa-install-btn:hover,
 .home-browse-new:hover,
 .filter-apply:hover,
 #btn-filter-apply:hover {
@@ -19387,18 +18714,11 @@ select:focus,
 .dm-scope-name,
 .section-count,
 .gallery-title + .gallery-sub,
-.acc-meta,
 .gallery-next,
 .chat-group-next,
 .home-event-next,
 .event-card .event-next {
   color: var(--text-sub);
-}
-
-/* 값(오른쪽 정렬)은 회색보다 한 단계 진하게 — 읽는 정보라 대비를 남긴다 */
-.menu-val,
-.menu-item.is-switch.on .menu-val {
-  color: var(--text);
 }
 
 /* 섹션 제목 옆 개수 뱃지 = 면 + 중립 글자(초록 알약 아님) */
@@ -19460,8 +18780,7 @@ select:focus,
 .profile-avatar-large .avatar-letter,
 .myprofile-avatar .avatar-letter { color: var(--text-sub); }
 /* 헤더·설정 머리의 내 아바타도 같은 중립 면(paintMyAvatars · renderProfileDrawer 가 칠한다) */
-.header-avatar,
-#profile-drawer-avatar {
+.header-avatar {
   background: var(--bg-soft);
   color: var(--text-sub);
   border: 0;
@@ -19642,8 +18961,6 @@ select:focus,
   color: var(--text-strong);
 }
 
-/* 설정 — 묶음 헤더의 초록 요약값은 중립 */
-.acc-meta { color: var(--text-sub); }
 .drawer-chip.active {
   background: var(--green-solid);
   border-color: transparent;
@@ -19834,14 +19151,6 @@ select:focus,
 
 /* 디엠 */
 .chat-read { color: var(--text-muted); }
-
-/* 설정 */
-.pwa-card-state,
-.pwa-card-state.ready {
-  background: var(--fill-subtle);
-  color: var(--text-sub);
-  border: 0;
-}
 
 /* 모임 안 — 피드 */
 .feed-tag {
@@ -20459,8 +19768,6 @@ select:focus,
 .myprofile-stat { padding: 8px 6px; }
 .myprofile-stat strong { font-size: var(--fs-title); }
 .album-block { padding: var(--pad-card); }
-.drawer-profile .acc-head { min-height: var(--tap); }
-.drawer-profile .menu-item { min-height: 44px; }
 
 /* ---------------------------------------- 32-11. 목록·알림도 같은 밀도 */
 .notif-item,
@@ -20991,23 +20298,157 @@ textarea,
 .album-block { padding: var(--pad-card) var(--pad-card) 10px; }
 .myprofile-stat { padding: 6px; }
 
-/* ---------------------------------------- 34-5. 설정 목록 */
-/* 행 48 · 아이콘 20 · 그룹 제목 12 */
-.menu-item {
-  min-height: var(--row-settings);
-  padding: 0 10px;
+/* ---------------------------------------- 34-5. 설정 — 전체 화면 행 목록 */
+/* v35.3 (설정 S1) — 사이드바·아코디언·카드 박스를 걷어내고 평평한 행 목록 하나.
+   행 48px · 구분선 1px(좌우 16px 안쪽) · 그룹 사이 16px · 행 왼쪽 아이콘 없이 · 보조 문구는 상태 값만. */
+#settings-screen .subscreen-body { padding: 8px 0 calc(28px + env(safe-area-inset-bottom)); }
+.settings-view { display: flex; flex-direction: column; }
+.settings-view[hidden] { display: none; }
+.settings-group { display: flex; flex-direction: column; }
+.settings-group + .settings-group,
+#settings-dev-slot > .settings-group { margin-top: 16px; }
+/* 그룹 사이 구분선 — 좌우 16px 안쪽. (로그아웃·개발자 도구 앞) */
+.settings-group.is-separated { position: relative; }
+.settings-group.is-separated::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: var(--divider);
 }
-.menu-item .oo-ic,
-.acc-head .oo-ic,
-.menu-icon,
-.menu-icon .oo-ic { width: var(--set-icon); height: var(--set-icon); }
-.acc-head { min-height: var(--row-settings); padding: 0 10px; }
-.drawer-section-title,
-.acc-label,
-.drawer .acc-label { font-size: var(--fs-sub); }
-.acc-meta { font-size: var(--fs-sub); }
-.menu-item.is-switch { min-height: 52px; }
-.settings-menu-list { gap: 0; }
+.settings-group-title {
+  margin: 0;
+  padding: 0 16px 6px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+
+/* 한 줄 = 48px · 좌우 16px · 행 전체가 눌림 영역 */
+.settings-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--row-settings);
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.settings-row:active { background: var(--fill-subtle); }
+/* 행 사이 구분선 — 좌우 16px 안쪽 */
+.settings-row + .settings-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: var(--divider);
+}
+.settings-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-strong);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-row-value {
+  flex: 0 0 auto;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.settings-row-chev { flex: 0 0 auto; display: inline-flex; color: var(--text-muted); }
+.settings-row-chev .oo-ic { width: 18px; height: 18px; }
+.settings-row.is-plain .settings-row-label { font-weight: var(--fw-body); }
+.settings-row.is-danger .settings-row-label { color: #B91C1C; }
+
+/* 프로필 행 — 아바타 + 닉네임 + 한 줄 소개 */
+.settings-row.is-profile { gap: 12px; }
+.settings-avatar {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  background: var(--bg-soft);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-strong);
+  color: var(--text-sub);
+}
+.settings-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.settings-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.settings-row-sub {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 맨 아래 앱 버전 — 작은 회색 글씨 */
+.settings-version {
+  margin: 24px 0 0;
+  padding: 0 16px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+
+/* 알림 하위 페이지 — 카드 없이 같은 행 규칙 */
+.settings-notif-body { display: flex; flex-direction: column; }
+
+/* 화면 모드 하위 페이지 (v35.3 S2 — 예전 바텀시트를 그대로 옮긴 3중 1 라디오 행) */
+.settings-choice-group { display: flex; flex-direction: column; margin: 2px 0 6px; }
+.settings-choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--row-settings);
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-family: var(--font);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-body);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.settings-choice + .settings-choice::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: var(--divider);
+}
+.settings-choice:active { background: var(--fill-subtle); }
+.settings-choice-label { flex: 1 1 auto; min-width: 0; }
+.settings-choice-check { display: none; flex: 0 0 auto; color: var(--green-dark); }
+.settings-choice.is-on .settings-choice-check { display: inline-flex; }
+.settings-choice-check .oo-ic { width: 20px; height: 20px; }
 
 /* ---------------------------------------- 34-6. 모임 안 3탭 · 사람 상세 · MATCH · 시트 */
 /* 모임 안 머리 — 히어로·게시글 박스 */
@@ -21139,7 +20580,7 @@ textarea,
     .home-recommend-taste,
     .home-block-more, .board-block-more, .hot-more, .comment-more, .comment-submit, .event-open,
     .feed-group-badge, .chat-profile-btn, .group-topbar-act, .btn-primary, .btn-secondary,
-    .album-tab, .album-add, .myprofile-settings, .drawer-close, .drawer .menu-item,
+    .album-tab, .album-add, .myprofile-settings, .drawer-close,
     .chat-request-actions button, .explore-action-btn, .filter-nearby-chip, .age-range-clear,
     .composer-group-chip, .tag-pick, #btn-publish, #btn-composer-cancel,
     .icon-btn, .ppb-close, .group-back, .chat-back-btn, .chat-album-btn, .feed-avatar,
@@ -21157,7 +20598,7 @@ textarea,
     .home-recommend-taste,
     .home-block-more, .board-block-more, .hot-more, .comment-more, .comment-submit, .event-open,
     .feed-group-badge, .chat-profile-btn, .group-topbar-act, .btn-primary, .btn-secondary,
-    .album-tab, .album-add, .myprofile-settings, .drawer-close, .drawer .menu-item,
+    .album-tab, .album-add, .myprofile-settings, .drawer-close,
     .chat-request-actions button, .explore-action-btn, .filter-nearby-chip, .age-range-clear,
     .composer-group-chip, .tag-pick, #btn-publish, #btn-composer-cancel,
     .icon-btn, .ppb-close, .group-back, .chat-back-btn, .chat-album-btn, .feed-avatar,
@@ -21816,18 +21257,6 @@ body.subscreen-open { overflow: hidden; }
   font-size: var(--fs-sub);
   font-weight: var(--fw-meta);
   color: var(--text-muted);
-}
-.mygroups-list-head {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  margin: 4px 0 12px;
-}
-.mygroups-list-title {
-  font-size: var(--fs-section);
-  font-weight: var(--fw-display);
-  letter-spacing: -0.3px;
-  color: var(--text-strong);
 }
 .mygroups-empty { padding: 12px 0; }
 
@@ -26108,6 +25537,38 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   font-weight: var(--fw-body);
 }
 .pe-row.is-area { align-items: flex-start; }
+/* v35.3 (설정 S1) — 사진·닉네임·소개를 한 화면에서: 사진 행 */
+.pe-row.is-photo { gap: 12px; }
+.pe-photo {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  background: var(--bg-soft);
+  font-size: var(--fs-sub);
+  font-weight: var(--fw-strong);
+  color: var(--text-sub);
+}
+.pe-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pe-photo-letter { font-size: var(--fs-body); font-weight: var(--fw-strong); line-height: 1; }
+.pe-photo-btn {
+  flex: 0 0 auto;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: none;
+  font-family: var(--font);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  color: var(--text-strong);
+  cursor: pointer;
+}
+.pe-photo-btn:active { background: var(--bg-soft); }
 .pe-row.is-area .pe-label { padding-top: 10px; }
 .pe-row.is-pick { align-items: center; }
 .pe-pick {
@@ -27487,3 +26948,89 @@ body.group-mode .push-permission-banner { display: none !important; }
 }
 .azit-edit-save { width: 100%; }
 .sheet-azit-list { gap: 6px; }
+
+/* ==========================================================================
+   v35.3 S2 — 설정에서 옮겨 온 항목의 새 자리
+   · 내 프로필 탭: 2시간 프로필 상태 행(상단) · 내 활동 두 줄(하단)
+   · 내 그룹 화면: 탭 2개(가입한 모임 / 신청 현황)
+   · 설정: 화면 모드를 바텀시트 → 전체 화면 하위 페이지
+   박스 없이 행(48px)과 1px 구분선만 쓴다.
+   ========================================================================== */
+
+/* 내 프로필 탭의 행 목록 — 행 48px · 좌우 글자 시작선에 맞춘 구분선 */
+.mp-rows { display: flex; flex-direction: column; }
+.mp-rows .settings-row { padding: 0 2px; }
+.mp-rows .settings-row + .settings-row::before { left: 2px; right: 2px; }
+.mp-rows .settings-row:active { border-radius: var(--r-1, 8px); }
+
+/* 2시간 프로필 상태 — 프로필 머리와 다음 일정 사이 한 줄 */
+.mp-status {
+  margin: 2px 0 10px;
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+}
+.mp-status[hidden] { display: none !important; }
+.mp-status .settings-row-value { white-space: nowrap; }
+.mp-status .settings-row.is-on .settings-row-value {
+  color: var(--green-dark);
+  font-weight: var(--fw-label);
+}
+
+/* 내 활동 — 내 피드 아래, 제목 한 줄 + 구분선만 있는 행 2개 */
+.myprofile-activity { margin-top: 18px; }
+.myprofile-activity-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--divider);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  color: var(--text-strong);
+}
+.mp-activity-rows { padding-top: 2px; }
+
+/* 내 그룹 화면 — 탭 2개(밑줄형) */
+.subscreen-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--divider);
+  background: var(--bg-app);
+}
+.subscreen-tab {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-family: var(--font);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-body);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.subscreen-tab.is-active { color: var(--text-strong); font-weight: var(--fw-strong); }
+.subscreen-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--green);
+}
+.subscreen-tab-count {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+.subscreen-tab-count[hidden] { display: none; }
+.subscreen-panel[hidden] { display: none; }

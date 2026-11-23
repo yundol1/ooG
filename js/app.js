@@ -120,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 4.5 — 알림 파이프라인 · 가입 심사 */
     applyGroupId: null,          // 지금 신청서를 쓰는 모임
     applyAnswers: [],            // 신청서 답변 드래프트
+    mygroupsTab: 'joined',       // v35.3 S2 — 내 그룹 화면 탭 'joined' | 'apps'
 
     /* Sprint 6 — 내 활동 로그 */
     activityType: 'all',         // 'all' | 'like' | 'post' | 'comment' | 'group'
@@ -133,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
     notifSessionUnread: []       // 알림함을 연 순간의 안 읽은 id (열면 읽음처리되므로 스냅샷을 둔다)
     ,
     /* Sprint 8 — 알림함 2차(스와이프·예시) · 실베 순위 · 다음 페이지 프리페치 */
-    notifPreview: null,          // 예시 미리보기를 펼친 알림 종류 id
     hotRendered: false,          // 실베 스트립을 한 번이라도 그렸는지(첫 렌더 지연)
     exploreBuffer: null,         // { key, page, items } — 다음 페이지 프리페치
     feedRenderedOnce: false,     // 피드 첫 렌더 여부(첫 화면 경량화)
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dmSent: null,                // 방금 쪽지를 보낸 상대 {partnerId, name, roomId}
     confirmAction: null,         // 확인 시트에서 실행할 동작
 
-    /* Sprint 18 — 사이드바(Drawer): 모임 멤버·설정 / 내정보 설정 */
+    /* Sprint 18 — 모임 사이드바(Drawer). 내정보 설정은 v35.3 부터 전체 화면 페이지다. */
     drawerOpen: null,            // null | 'group' | 'profile'
     azitEditGroupId: null,       // v35.2 — 활동 아지트 바꾸는 모임
     azitEditDraft: [],           //          고른 아지트 id(1~3)
@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     myProfileAvatarImg: $('#myprofile-avatar-img'),
     myProfileName: $('#myprofile-name'),
     myProfileMeta: $('#myprofile-meta'),
-    /* v34.2 — 인스타형 내 프로필: 아이디·소개·삼선바 설정·공개 사진 미니·내 피드(격자/피드) */
+    /* v34.2 — 인스타형 내 프로필: 아이디·소개·설정(톱니, v35.3)·공개 사진 미니·내 피드(격자/피드) */
     myProfileHandle: $('#myprofile-handle'),
     myProfileBio: $('#myprofile-bio'),
     myProfileMenu: $('#btn-myprofile-menu'),
@@ -352,9 +352,39 @@ document.addEventListener('DOMContentLoaded', () => {
     albumSecretCamera: $('#album-secret-camera'),
     myProfileStats: $('#myprofile-stats'),
     mpNextEvent: $('#mp-next-event'),
-    /* Sprint 24 — 화면 설정(다크모드) */
-    menuDarkMode: $('#menu-dark-mode'),
-    menuDarkModeState: $('#menu-dark-mode-state'),
+    /* v35.3 (설정 S1) — 전체 화면 '설정' 페이지(사이드바·아코디언 없음) */
+    settingsScreen: $('#settings-screen'),
+    settingsBack: $('#btn-settings-back'),
+    settingsTitle: $('#settings-title'),
+    settingsMain: $('#settings-main'),
+    settingsNotifView: $('#settings-notif'),
+    settingsThemeView: $('#settings-theme'),
+    settingsGroupMain: $('#settings-group-main'),
+    settingsDevSlot: $('#settings-dev-slot'),
+    settingsAvatar: $('#settings-avatar'),
+    settingsNickname: $('#settings-nickname'),
+    settingsBio: $('#settings-bio'),
+    settingsNotifState: $('#settings-notif-state'),
+    settingsThemeState: $('#settings-theme-state'),
+    settingsVersion: $('#settings-version'),
+    themeChoices: $('#theme-choices'),
+    /* v35.3 S2 — 내 프로필 탭의 새 자리(2시간 프로필 상태 · 내 활동) */
+    mpStatus: $('#mp-status'),
+    mpStatusRow: $('#mp-status-row'),
+    mpStatusState: $('#mp-status-state'),
+    mpLikedCount: $('#mp-liked-count'),
+    mpActivityCount: $('#mp-activity-count'),
+    /* v35.3 S2 — 내 그룹 화면 탭 2개(가입한 모임 / 신청 현황) */
+    myGroupsTabs: $('#mygroups-tabs'),
+    myGroupsAppsList: $('#mygroups-apps-list'),
+    myGroupsAppsCount: $('#mygroups-apps-count'),
+    myGroupsPanelJoined: $('#mygroups-panel-joined'),
+    myGroupsPanelApps: $('#mygroups-panel-apps'),
+    /* v35.3 (설정 S1) — 프로필 편집 안의 사진 */
+    editPhotoPreview: $('#edit-photo-preview'),
+    editPhotoLetter: $('#edit-photo-letter'),
+    editPhotoImg: $('#edit-photo-img'),
+    btnEditPhoto: $('#btn-edit-photo'),
     /* Sprint 24 — 1:1 대화방 비밀앨범 */
     chatAlbumBtn: $('#btn-chat-album'),
     secretAlbumModal: $('#secret-album-modal'),
@@ -391,7 +421,6 @@ document.addEventListener('DOMContentLoaded', () => {
     onboardingPanel: $('#onboarding-panel'),
     storyReplyForm: $('#story-reply-form'),
     storyReplyInput: $('#story-reply-input'),
-    btnStoryArchive: $('#btn-story-archive'),
     storyArchiveModal: $('#story-archive-modal'),
     storyArchiveGrid: $('#story-archive-grid'),
     coverModal: $('#cover-modal'),
@@ -404,17 +433,6 @@ document.addEventListener('DOMContentLoaded', () => {
     confirmDesc: $('#confirm-desc'),
     confirmOk: $('#btn-confirm-ok'),
     profileAvatarImg: $('#profile-avatar-img'),
-    menuStoryArchiveCount: $('#menu-story-archive-count'),
-    menuPhotoState: $('#menu-photo-state'),
-    /* Sprint 26.5 — 설정 아코디언의 요약 값 */
-    menuAlbumsState: $('#menu-albums-state'),
-    menuProfileStatusVal: $('#menu-profile-status-val'),
-    accMetaDisplay: $('#acc-meta-display'),
-    accMetaAlerts: $('#acc-meta-alerts'),
-    accMetaGroups: $('#acc-meta-groups'),
-    menuSampleData: $('#menu-sample-data'),
-    menuSampleState: $('#menu-sample-state'),
-    menuSampleRestore: $('#menu-sample-restore'),
     profilePhotoInput: $('#profile-photo-input'),
     groupSpace: $('#group-space'),
     groupSpaceName: $('#group-space-name'),
@@ -426,10 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
     groupDrawerName: $('#group-drawer-name'),
     groupDrawerMeta: $('#group-drawer-meta'),
     groupDrawerAvatar: $('#group-drawer-avatar'),
-    profileDrawer: $('#profile-drawer'),
-    profileDrawerName: $('#profile-drawer-name'),
-    profileDrawerMeta: $('#profile-drawer-meta'),
-    profileDrawerAvatar: $('#profile-drawer-avatar'),
     profileTopbarTitle: $('#profile-topbar-title'),
     profileTopbarSub: $('#profile-topbar-sub'),
     storyBar: $('#story-bar'),
@@ -595,9 +609,6 @@ document.addEventListener('DOMContentLoaded', () => {
     statLikes: $('#stat-likes'),
     statComments: $('#stat-comments'),
     notifDot: $('#notif-dot'),
-    joinedCount: $('#menu-joined-count'),
-    menuLikedCount: $('#menu-liked-count'),
-    menuActivityCount: $('#menu-activity-count'),
     /* Sprint 13 — 프로필 밀도(내 모임·저장한 글·최근 활동) */
     profileGroupStrip: $('#profile-group-strip'),
     profileGroupsCount: $('#profile-groups-count'),
@@ -620,7 +631,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btnOpenChatRoom: $('#btn-open-chat-room'),
     btnKeepSwiping: $('#btn-keep-swiping'),
     chatRooms: $('#chat-rooms-container'),
-    menuChatCount: $('#menu-chat-count'),
     /* Sprint 4 — 무한 스크롤 · 게시글 · 대화방 · 폼 */
     exploreLoader: $('#explore-loader'),
     exploreSentinel: $('#explore-sentinel'),
@@ -749,13 +759,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnPushDismiss: $('#btn-push-dismiss'),
     pushBannerStack: $('#push-banner-stack'),
     notifSettingsBody: $('#notif-settings-body'),
-    notifPermissionState: $('#notif-permission-state'),
-    menuMyApplications: $('#menu-my-applications'),
-    menuMyApplicationsCount: $('#menu-my-applications-count'),
     groupApplyModal: $('#group-apply-modal'),
     groupApplyBody: $('#group-apply-body'),
-    myApplicationsModal: $('#my-applications-modal'),
-    myApplicationsBody: $('#my-applications-body'),
     notifModal: $('#notif-modal'),
     notifBody: $('#notif-body'),
     notifHeadNote: $('#notif-head-note'),
@@ -766,12 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
     activityStats: $('#activity-stats'),
     createGroupAge: $('#create-group-age'),
     createGroupQuestion: $('#create-group-question'),
-    createGroupQuestionPresets: $('#create-group-question-presets'),
-    /* Sprint 5 — PWA(홈 화면 설치) */
-    pwaCard: $('#pwa-card'),
-    pwaCardState: $('#pwa-card-state'),
-    pwaCardDesc: $('#pwa-card-desc'),
-    pwaCardActions: $('#pwa-card-actions')
+    createGroupQuestionPresets: $('#create-group-question-presets')
   };
 
   /* ------------------------------------------------------------- 유틸 */
@@ -828,10 +828,6 @@ document.addEventListener('DOMContentLoaded', () => {
         el.profileAvatarImg.removeAttribute('src');
         el.profileAvatarImg.hidden = true;
       }
-    }
-    if (el.menuPhotoState) el.menuPhotoState.textContent = u.photoUrl ? '등록됨' : '기본 아바타';
-    if (el.menuStoryArchiveCount) {
-      el.menuStoryArchiveCount.textContent = `${store.getStoryArchiveStats().count}개`;
     }
   }
 
@@ -1811,7 +1807,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExplore();
     renderChatRooms();
     updateBadges();
-    renderProfileDrawer();
+    renderSettingsPage();
     showToast('예시 데이터를 비웠어요 · 내가 만든 것은 그대로예요', 'info');
   }
 
@@ -1823,7 +1819,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExplore();
     renderChatRooms();
     updateBadges();
-    renderProfileDrawer();
+    renderSettingsPage();
     showToast('예시 데이터를 다시 넣었어요', 'success');
   }
 
@@ -2087,7 +2083,7 @@ document.addEventListener('DOMContentLoaded', () => {
        모임에 가입하지 않은 이용자도 홈에서 바로 자유 피드를 쓸 수 있어야 한다.
        v35.2 — 게시판 탭은 '공지 쓰기' 버튼이 따로 있어 + 를 겹치지 않게 감춘다. */
     el.fab.classList.toggle('visible', tabId === 'tab-home');
-    /* v34.2 — 설정(삼선바)은 내 프로필 탭 우측 상단에만 있다. */
+    /* v34.2 — 설정(톱니, v35.3)은 내 프로필 탭 우측 상단에만 있다. */
     if (el.myProfileMenu) el.myProfileMenu.hidden = tabId !== 'tab-myprofile';
 
     /* 같은 탭 재선택이면 맨 위로, 탭 전환이면 기억한 위치로 (Sprint 9 — 복원 정확도 2차) */
@@ -3380,10 +3376,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------------------------------- 내 그룹 전체 */
 
-  /** 내 그룹 전체 화면 — 위: 내 일정, 아래: 가입한 모임(모임 카드 그리드). */
+  /** v35.3 S2 — 내 그룹 화면의 탭 = 'joined'(가입한 모임) | 'apps'(신청 현황) */
+  function myGroupsTab() {
+    return ui.mygroupsTab === 'apps' ? 'apps' : 'joined';
+  }
+
+  /** 탭 2개의 선택 표시와 패널 표시를 맞춘다(신청 현황 탭에는 대기 건수만). */
+  function renderMyGroupsTabs() {
+    const tab = myGroupsTab();
+    if (el.myGroupsTabs) {
+      el.myGroupsTabs.querySelectorAll('[data-mygroups-tab]').forEach((b) => {
+        const on = b.dataset.mygroupsTab === tab;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-selected', String(on));
+      });
+    }
+    if (el.myGroupsPanelJoined) el.myGroupsPanelJoined.hidden = tab !== 'joined';
+    if (el.myGroupsPanelApps) el.myGroupsPanelApps.hidden = tab !== 'apps';
+    const apps = store.isSignedIn() ? (store.getMyApplications() || []) : [];
+    const pending = apps.filter((a) => a.status === 'pending').length;
+    if (el.myGroupsAppsCount) {
+      el.myGroupsAppsCount.textContent = pending ? String(pending) : '';
+      el.myGroupsAppsCount.hidden = pending === 0;
+    }
+  }
+
+  function switchMyGroupsTab(tab) {
+    ui.mygroupsTab = tab === 'apps' ? 'apps' : 'joined';
+    renderMyGroupsTabs();
+    if (myGroupsTab() === 'apps') renderMyGroupApplications();
+  }
+
+  /** 내 그룹 전체 화면 — 위: 내 일정, 아래: 가입한 모임(모임 카드 그리드).
+   *  v35.3 S2 — 맨 위 탭 2개(가입한 모임 / 신청 현황). */
   function renderMyGroupsScreen() {
     if (!el.myGroupsList) return;
     renderMyGroupsWeek();
+    renderMyGroupsTabs();
+    renderMyGroupApplications();
     const items = store.getGroupGallery();
     if (el.myGroupsCount) el.myGroupsCount.textContent = String(items.length);
     if (!items.length) {
@@ -3445,6 +3475,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openMyGroupsScreen() {
+    ui.mygroupsTab = 'joined';
     renderMyGroupsScreen();
     openSubscreen(el.myGroupsScreen);
   }
@@ -3679,6 +3710,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (backMy) backMy.addEventListener('click', () => closeSubscreens());
     const newMy = $('#btn-mygroups-new');
     if (newMy) newMy.addEventListener('click', () => openGroupCreate());
+    /* v35.3 S2 — 탭 2개(가입한 모임 / 신청 현황) */
+    if (el.myGroupsTabs) {
+      el.myGroupsTabs.addEventListener('click', (e) => {
+        const tab = e.target.closest('[data-mygroups-tab]');
+        if (tab) switchMyGroupsTab(tab.dataset.mygroupsTab);
+      });
+    }
     if (el.myGroupsList) {
       el.myGroupsList.addEventListener('click', (e) => {
         const card = e.target.closest('[data-group-card]');
@@ -5722,42 +5760,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ==========================================================================
-   * Sprint 18 — 사이드바(Drawer)
+   * Sprint 18 — 모임 사이드바(Drawer)
    * --------------------------------------------------------------------------
    * 11/16 사용자: "모임내 멤버, 설정 등 사이드바에 넣어줄 수 있어? 내정보에 설정들도
    * 사이드바에 넣어주고 …".
-   *  · 모임 안: 상단 메뉴 아이콘 → **모임 사이드바**(멤버 명단·부방장 지정·1:1 대화·모임 설정)
-   *  · 내정보: 상단 메뉴 아이콘 → **내정보 사이드바**(프로필·알림·설치·활동·계정)
+   *  · 모임 안: 상단 삼선바 → **모임 사이드바**(멤버 명단·부방장 지정·1:1 대화·모임 설정)
    *  · 오른쪽에서 슬라이드로 열리고, 바깥을 누르거나 Esc 로 닫힌다. 모션 줄이기에서는 즉시.
+   *  · v35.3 (설정 S1) — 내정보 설정 사이드바는 없어졌다. 설정은 전체 화면 페이지
+   *    (#settings-screen · openSettingsPage)로 열린다. 이 드로어는 **모임 전용**이다.
    * ========================================================================== */
-  function drawerKindOf(node) {
-    if (!node) return null;
-    if (node === el.groupDrawer) return 'group';
-    if (node === el.profileDrawer) return 'profile';
-    return null;
-  }
-
   function openDrawer(kind) {
-    const node = kind === 'profile' ? el.profileDrawer : el.groupDrawer;
+    if (kind !== 'group') return;
+    const node = el.groupDrawer;
     if (!node) return;
-    if (kind === 'group') {
-      const gid = (ui.groupSpaceId && store.isGroupJoined(ui.groupSpaceId)) ? ui.groupSpaceId : store.getHomeGroupId();
-      const grp = gid ? store.getGroup(gid) : null;
-      if (!grp) { showToast('모임을 먼저 열어 주세요', 'info'); return; }
-      ui.drawerMemberId = null;
-      renderGroupDrawer(grp);
-    } else {
-      renderProfileDrawer();
-      restoreSettingsGroup();
-    }
-    ui.drawerOpen = kind;
+    const gid = (ui.groupSpaceId && store.isGroupJoined(ui.groupSpaceId)) ? ui.groupSpaceId : store.getHomeGroupId();
+    const grp = gid ? store.getGroup(gid) : null;
+    if (!grp) { showToast('모임을 먼저 열어 주세요', 'info'); return; }
+    ui.drawerMemberId = null;
+    renderGroupDrawer(grp);
+    ui.drawerOpen = 'group';
     node.hidden = false;
     node.classList.remove('is-closing');
     /* 다음 프레임에 is-open 을 붙여야 transform 트랜지션이 걸린다. */
     requestAnimationFrame(() => node.classList.add('is-open'));
     document.body.classList.add('drawer-open');
-    const btn = kind === 'profile' ? el.profileDrawerBtn : el.groupDrawerBtn;
-    if (btn) btn.setAttribute('aria-expanded', 'true');
+    if (el.groupDrawerBtn) el.groupDrawerBtn.setAttribute('aria-expanded', 'true');
     const panel = node.querySelector('.drawer');
     if (panel && typeof panel.focus === 'function') {
       try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
@@ -5765,11 +5792,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function closeDrawer(options = {}) {
-    const kind = ui.drawerOpen;
-    const node = kind === 'profile' ? el.profileDrawer : (kind === 'group' ? el.groupDrawer : null);
+    const node = el.groupDrawer;
     ui.drawerOpen = null;
     document.body.classList.remove('drawer-open');
-    [el.groupDrawerBtn, el.boardDrawerBtn, el.profileDrawerBtn].forEach((btn) => {
+    [el.groupDrawerBtn, el.boardDrawerBtn].forEach((btn) => {
       if (btn) btn.setAttribute('aria-expanded', 'false');
     });
     if (!node) return;
@@ -5951,125 +5977,178 @@ document.addEventListener('DOMContentLoaded', () => {
       </section>`;
   }
 
-  /** 내정보 사이드바 — 계정·활동·알림·설치·계정 정리. */
   /* ==========================================================================
-   * Sprint 26.5 — 설정 사이드바: 카테고리별 접기/펼치기
-   * ------------------------------------------------------------------------
-   * 11/17 사용자: "사이드바에 있는 설정들은 접고 접을 수 있게해줘 다 펼쳐져있으니
-   * 너무 많아보여 … 이반시티나 잭디 그런걸 확인해줘"
-   *  · 한 번에 한 묶음만 펼친다(다른 묶음을 열면 앞의 것이 접힌다).
-   *  · 처음에는 '계정 및 보안' 하나만 열려 있어, 사이드바가 짧고 읽기 쉽다.
-   *  · 접힌 묶음은 hidden 이라 화면 낭독기·Tab 순서에서도 빠진다.
+   * v35.3 (설정 S1) — 전체 화면 '설정' 페이지
+   * --------------------------------------------------------------------------
+   *  · 예전의 내정보 사이드바(#profile-drawer)와 아코디언 7묶음을 걷어내고
+   *    평평한 행 목록 한 장으로 바꿨다(프로필 · 알림 · 화면 모드 · 홈 화면에 추가 · 로그아웃).
+   *  · 알림 세부 설정은 같은 페이지 안의 하위 화면(#settings-notif)으로 들어간다.
+   *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
+   *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const SETTINGS_GROUPS = ['account', 'profile', 'groups', 'talk', 'alerts', 'display', 'data'];
+  const APP_VERSION = 'v35.3';
 
-  function settingsSection(key) {
-    return el.profileDrawer ? el.profileDrawer.querySelector(`.drawer-section[data-acc="${key}"]`) : null;
-  }
+  /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
+  let settingsView = 'main';
 
-  function setSettingsGroup(key, open) {
-    const sec = settingsSection(key);
-    if (!sec) return { ok: false, reason: 'not_found', key };
-    const head = sec.querySelector('.acc-head');
-    const body = sec.querySelector('.acc-body');
-    const next = open == null ? !sec.classList.contains('is-open') : !!open;
-    sec.classList.toggle('is-open', next);
-    if (head) head.setAttribute('aria-expanded', String(next));
-    if (body) {
-      body.hidden = !next;
-      body.classList.remove('is-opening');
-      if (next) {
-        /* 펼칠 때만 짧게 떠오르게(접을 때는 즉시) */
-        void body.offsetHeight;
-        body.classList.add('is-opening');
-      }
-    }
-    return { ok: true, key, open: next };
-  }
-
-  /** 테스트·딥링크용 — 사이드바를 열고 그 묶음을 펼친다. */
-  function openSettingsGroup(key) {
-    if (ui.drawerOpen !== 'profile') openDrawer('profile');
-    SETTINGS_GROUPS.forEach((k) => { if (k !== key) setSettingsGroup(k, false); });
-    const res = setSettingsGroup(key, true);
-    /* 테스트·딥링크로 열어도 '마지막에 펼친 묶음' 기억에 남긴다. */
-    if (SETTINGS_GROUPS.includes(key)) store.setLastSettingsGroup(key);
-    return res;
-  }
-
-  function getSettingsState() {
-    return {
-      open: ui.drawerOpen,
-      lastGroup: store.getLastSettingsGroup(),
-      groups: SETTINGS_GROUPS.map((key) => {
-        const sec = settingsSection(key);
-        return { key, open: !!(sec && sec.classList.contains('is-open')) };
-      })
-    };
-  }
-
-  /** 사이드바를 열 때 마지막에 펼쳤던 묶음을 그대로 펼친다(27.5). */
-  function restoreSettingsGroup() {
-    const key = store.getLastSettingsGroup();
-    const target = SETTINGS_GROUPS.includes(key) ? key : 'account';
-    SETTINGS_GROUPS.forEach((k) => setSettingsGroup(k, k === target));
-    return target;
-  }
-
-  /** 아코디언 헤더의 요약 — 펼치지 않아도 지금 상태가 보이게. */
-  function renderSettingsSummary() {
+  /* ?dev=1 — 개발자 도구(예시 데이터·초기화)는 이 주소에서만 그린다. */
+  function settingsDevMode() {
     try {
-      const albums = store.getAlbumSummary();
-      if (el.menuAlbumsState) {
-        el.menuAlbumsState.textContent = `공개 ${albums.public.count}/${ALBUM_MAX} · 비밀 ${albums.secret.count}/${ALBUM_MAX}`;
-      }
-      const pub = store.getMyExplorePublishState ? store.getMyExplorePublishState() : { active: false };
-      if (el.menuProfileStatusVal) {
-        el.menuProfileStatusVal.textContent = pub.active
-          ? `${pub.meetStyleLabel || '올림'} · ${pub.remainingLabel}`
-          : '내려감';
-      }
-    } catch (e) { /* 값이 아직 없을 때는 요약을 건너뛴다 */ }
-    if (el.accMetaDisplay) el.accMetaDisplay.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '다크' : '라이트';
-    if (el.accMetaAlerts) {
-      const ns = store.notificationSettings || {};
-      const channels = ns.channels || {};
-      const on = Object.keys(channels).filter((k) => channels[k]).length;
-      el.accMetaAlerts.textContent = on ? `켜짐 ${on}` : '꺼짐';
-    }
-    /* Sprint 27.5 — '모임' 묶음 요약: 가입 N · 신청 N */
-    if (el.accMetaGroups) {
-      const joined = (store.currentUser.joinedGroupIds || []).length;
-      const pending = store.getMyPendingApplicationCount();
-      el.accMetaGroups.textContent = `가입 ${joined} · 신청 ${pending}`;
-    }
-    /* Sprint 27.5 — 예시 데이터 요약과 비우기/다시 넣기 줄 */
-    const sample = store.getSampleSummary();
-    if (el.menuSampleState) {
-      el.menuSampleState.textContent = sample.seeded
-        ? `모임 ${sample.counts.groups} · 사람 ${sample.counts.people}`
-        : '없음';
-    }
-    if (el.menuSampleData) el.menuSampleData.hidden = !sample.seeded;
-    if (el.menuSampleRestore) el.menuSampleRestore.hidden = sample.seeded;
+      return new URLSearchParams(window.location.search || '').get('dev') === '1';
+    } catch (e) { return false; }
   }
 
-  function renderProfileDrawer() {
-    const me = store.currentUser;
-    if (el.profileDrawerName) el.profileDrawerName.textContent = me.nickname || '내정보';
-    if (el.profileDrawerMeta) {
-      el.profileDrawerMeta.textContent = [me.handle, me.location].filter(Boolean).join(' · ') || '내 설정';
+  /** 톱니 버튼이 부른다 — 설정 첫 화면을 연다. */
+  function openSettingsPage() {
+    if (!el.settingsScreen) return;
+    showSettingsMain();
+    renderSettingsPage();
+    openSubscreen(el.settingsScreen);
+  }
+
+  /** 설정 첫 화면으로 (알림·화면 모드 하위 화면에서 뒤로) */
+  function showSettingsMain() {
+    settingsView = 'main';
+    if (el.settingsMain) el.settingsMain.hidden = false;
+    if (el.settingsNotifView) el.settingsNotifView.hidden = true;
+    if (el.settingsThemeView) el.settingsThemeView.hidden = true;
+    if (el.settingsTitle) el.settingsTitle.textContent = '설정';
+    const body = el.settingsScreen && el.settingsScreen.querySelector('.subscreen-body');
+    if (body) body.scrollTop = 0;
+  }
+
+  /** 알림 하위 페이지 — 예전 알림 설정 카드의 내용을 행 목록으로 보여준다. */
+  function openSettingsNotif() {
+    settingsView = 'notif';
+    if (el.settingsMain) el.settingsMain.hidden = true;
+    if (el.settingsNotifView) el.settingsNotifView.hidden = false;
+    if (el.settingsThemeView) el.settingsThemeView.hidden = true;
+    if (el.settingsTitle) el.settingsTitle.textContent = '알림';
+    renderNotificationSettings();
+    const body = el.settingsScreen && el.settingsScreen.querySelector('.subscreen-body');
+    if (body) body.scrollTop = 0;
+  }
+
+  /**
+   * 화면 모드 하위 페이지 (v35.3 S2) — 바텀시트가 아니라 알림과 같은 전체 화면 하위 페이지.
+   *  · 머리말 제목이 '화면 모드'가 되고, '<' 는 설정 첫 화면으로 돌아간다.
+   *  · 기기 설정 / 라이트 / 다크 3중 1 — 고르면 그 자리에서 바로 반영·저장한다(페이지는 열린 채).
+   */
+  function openSettingsTheme() {
+    settingsView = 'theme';
+    if (el.settingsMain) el.settingsMain.hidden = true;
+    if (el.settingsNotifView) el.settingsNotifView.hidden = true;
+    if (el.settingsThemeView) el.settingsThemeView.hidden = false;
+    if (el.settingsTitle) el.settingsTitle.textContent = '화면 모드';
+    renderThemeChoices();
+    const body = el.settingsScreen && el.settingsScreen.querySelector('.subscreen-body');
+    if (body) body.scrollTop = 0;
+  }
+
+  /** '<' — 하위 화면이면 설정 첫 화면으로, 거기서는 앱으로 돌아간다. */
+  function settingsBack() {
+    if (settingsView !== 'main') { showSettingsMain(); return; }
+    closeSubscreens();
+  }
+
+  function isSettingsOpen() {
+    return !!(el.settingsScreen && !el.settingsScreen.hidden);
+  }
+
+  /* 화면 모드 — 'system' | 'light' | 'dark' (저장값이 없으면 기기 설정) */
+  function themeMode() {
+    if (!store.hasDarkModeChoice()) return 'system';
+    return store.isDarkMode() ? 'dark' : 'light';
+  }
+
+  function themeModeLabel() {
+    const mode = themeMode();
+    return mode === 'system' ? '기기 설정' : (mode === 'dark' ? '다크' : '라이트');
+  }
+
+  /** 화면 모드 하위 페이지 — 3중 1(라디오 행)의 지금 값을 표시한다. */
+  function renderThemeChoices() {
+    if (!el.themeChoices) return;
+    const mode = themeMode();
+    el.themeChoices.querySelectorAll('[data-theme-mode]').forEach((btn) => {
+      const on = btn.dataset.themeMode === mode;
+      btn.setAttribute('aria-checked', String(on));
+      btn.classList.toggle('is-on', on);
+    });
+  }
+
+  function setThemeMode(mode) {
+    store.setDarkMode(mode === 'system' ? null : mode === 'dark');
+    applyThemeDom(store.isDarkMode());
+    renderThemeChoices();
+    if (isSettingsOpen()) renderSettingsPage();
+    showToast(mode === 'system' ? '기기 설정을 따를게요'
+      : (mode === 'dark' ? '다크로 바꿨어요' : '라이트로 바꿨어요'), 'info');
+  }
+
+  /** 개발자 도구 그룹 — ?dev=1 일 때만 DOM 에 만든다(그 외에는 아예 없다). */
+  function renderSettingsDevGroup() {
+    if (!el.settingsDevSlot) return;
+    if (!settingsDevMode()) { el.settingsDevSlot.innerHTML = ''; return; }
+    const sample = store.getSampleSummary();
+    el.settingsDevSlot.innerHTML = `
+      <div class="settings-group is-separated" id="settings-group-dev">
+        <p class="settings-group-title">개발자 도구</p>
+        ${sample.seeded
+          ? `<button class="settings-row" id="settings-sample-data" type="button">
+               <span class="settings-row-label">예시 데이터 비우기</span>
+             </button>`
+          : `<button class="settings-row" id="settings-sample-restore" type="button">
+               <span class="settings-row-label">예시 데이터 다시 넣기</span>
+             </button>`}
+        <button class="settings-row is-danger" id="settings-reset-data" type="button">
+          <span class="settings-row-label">데이터 초기화</span>
+        </button>
+      </div>`;
+  }
+
+  /** PWA — 설치할 수 있을 때만 '홈 화면에 추가' 행을 **렌더**한다(불가·설치됨이면 행이 없다). */
+  function canOfferInstall() {
+    return !isStandalone() && (!!deferredInstallPrompt || isIosDevice());
+  }
+
+  function renderSettingsInstallRow() {
+    if (!el.settingsGroupMain) return;
+    const existing = el.settingsGroupMain.querySelector('#settings-row-pwa');
+    if (!canOfferInstall()) {
+      if (existing) existing.remove();
+      return;
     }
-    renderSettingsSummary();
-    if (el.profileDrawerAvatar) {
-      el.profileDrawerAvatar.innerHTML = me.photoUrl
+    if (existing) return;
+    el.settingsGroupMain.insertAdjacentHTML('beforeend', `
+      <button class="settings-row" id="settings-row-pwa" type="button">
+        <span class="settings-row-label">홈 화면에 추가</span>
+        <span class="settings-row-chev" aria-hidden="true" data-oog-icon="chevronRight"></span>
+      </button>`);
+    hydrateIcons(el.settingsGroupMain);
+  }
+
+  /** 설정 첫 화면의 값(프로필·알림·화면 모드·설치·버전)을 채운다. */
+  function renderSettingsPage() {
+    if (!el.settingsScreen) return;
+    const me = store.currentUser || {};
+    if (el.settingsNickname) el.settingsNickname.textContent = me.nickname || '내 프로필';
+    if (el.settingsBio) {
+      const bio = (me.bio || '').trim();
+      el.settingsBio.textContent = bio || '한 줄 소개를 적어보세요';
+      el.settingsBio.classList.toggle('is-empty', !bio);
+    }
+    if (el.settingsAvatar) {
+      el.settingsAvatar.innerHTML = me.photoUrl
         ? `<img src="${escapeHtml(me.photoUrl)}" alt="">`
         : escapeHtml(me.avatarText || (me.nickname || '·').charAt(0));
-      el.profileDrawerAvatar.style.background = me.photoUrl ? 'transparent' : 'var(--bg-soft)';
     }
-    updateBadges();
-    renderNotificationSettings();
-    renderPwaCard();
+    const ns = store.notificationSettings || {};
+    if (el.settingsNotifState) el.settingsNotifState.textContent = ns.pushEnabled ? '켜짐' : '꺼짐';
+    if (el.settingsThemeState) el.settingsThemeState.textContent = themeModeLabel();
+    if (el.settingsVersion) el.settingsVersion.textContent = `ooG ${APP_VERSION}`;
+    renderSettingsInstallRow();
+    renderSettingsDevGroup();
   }
 
   function memberOf(groupId, memberId) {
@@ -6691,45 +6770,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.closest('[data-group-back]')) { exitGroupSpace(); }
   });
 
-  /* Sprint 18 — 모임·내정보 사이드바 열기 */
+  /* Sprint 18 — 모임 사이드바 열기 · 닫기 */
   el.groupDrawerBtn && el.groupDrawerBtn.addEventListener('click', () => openDrawer('group'));
   el.boardDrawerBtn && el.boardDrawerBtn.addEventListener('click', () => openDrawer('group'));
-  el.profileDrawerBtn && el.profileDrawerBtn.addEventListener('click', () => openDrawer('profile'));
-
-  /* 사이드바 닫기 — 바깥(스크림)·닫기 버튼 */
-  [el.groupDrawer, el.profileDrawer].forEach((node) => {
-    node && node.addEventListener('click', (e) => {
-      if (e.target.closest('[data-drawer-close]')) closeDrawer();
-    });
+  el.groupDrawer && el.groupDrawer.addEventListener('click', (e) => {
+    if (e.target.closest('[data-drawer-close]')) closeDrawer();
   });
 
-  /* 내정보 사이드바: 항목을 누르면 사이드바를 접고 그 화면(시트)을 연다 */
-  if (el.profileDrawer) {
-    el.profileDrawer.addEventListener('click', (e) => {
-      if (e.target.closest('.menu-item')) closeDrawer({ silent: true });
-    });
-    /* Sprint 26.5 — 아코디언 헤더: 한 번에 한 묶음만 펼친다. */
-    el.profileDrawer.querySelectorAll('.drawer-section[data-acc] .acc-head').forEach((head) => {
-      head.addEventListener('click', () => {
-        const sec = head.closest('.drawer-section');
-        const key = sec && sec.dataset.acc;
-        if (!key) return;
-        const willOpen = !sec.classList.contains('is-open');
-        if (willOpen) SETTINGS_GROUPS.forEach((k) => { if (k !== key) setSettingsGroup(k, false); });
-        setSettingsGroup(key, willOpen);
-        /* Sprint 27.5 — 마지막에 펼친 묶음을 기억한다(앱을 다시 열어도 그 자리로). */
-        if (willOpen) store.setLastSettingsGroup(key);
-      });
-    });
-    /* 헤더를 키보드(Enter·Space)로도 — button 이라 기본 동작이지만, 포커스 이동을 보장 */
-    el.profileDrawer.querySelectorAll('.acc-head').forEach((head) => {
-      head.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        e.preventDefault();
-        head.click();
-      });
-    });
-  }
+  /* v35.3 (설정 S1) — 설정은 전체 화면 페이지. 톱니 두 곳(내 프로필 탭 헤더 · 내정보 탭)이 같은 페이지를 연다. */
+  el.myProfileMenu && el.myProfileMenu.addEventListener('click', openSettingsPage);
+  el.profileDrawerBtn && el.profileDrawerBtn.addEventListener('click', openSettingsPage);
+  el.settingsBack && el.settingsBack.addEventListener('click', settingsBack);
+  $('#settings-row-profile') && $('#settings-row-profile').addEventListener('click', openProfileEdit);
+  $('#settings-row-notif') && $('#settings-row-notif').addEventListener('click', openSettingsNotif);
+  $('#settings-row-theme') && $('#settings-row-theme').addEventListener('click', openSettingsTheme);
+  $('#settings-row-logout') && $('#settings-row-logout').addEventListener('click', () => {
+    askConfirm('로그아웃할까요?', '이 기기에 계정과 프로필은 남고, 회원가입(로그인) 화면으로 돌아가요.', '로그아웃', runSignOut);
+  });
+  /* 동적 행(설치·개발자 도구)은 한 곳에서 받는다 */
+  el.settingsScreen && el.settingsScreen.addEventListener('click', (e) => {
+    const pwa = e.target.closest('#settings-row-pwa');
+    if (pwa) { promptInstall(); return; }
+    const sample = e.target.closest('#settings-sample-data');
+    if (sample) {
+      const sum = store.getSampleSummary();
+      askConfirm('예시 데이터를 비울까요?',
+        `예시 모임 ${sum.counts.groups} · 사람 ${sum.counts.people} · 글 ${sum.counts.posts}만 사라지고, 내가 만든 모임·글·대화는 그대로 남아요.`, '비우기', runClearSampleData);
+      return;
+    }
+    if (e.target.closest('#settings-sample-restore')) { runRestoreSampleData(); return; }
+    if (e.target.closest('#settings-reset-data')) {
+      askConfirm('데이터를 초기화할까요?', '내 계정·모임·글·스토리·디엠·알림 기록이 모두 비워지고 회원가입부터 다시 시작해요. 되돌릴 수 없어요.',
+        '초기화', runResetData);
+    }
+  });
+  /* 화면 모드 하위 페이지 — 라디오 행(고르면 그 자리에서 바로 반영·저장, 페이지는 그대로) */
+  el.themeChoices && el.themeChoices.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-theme-mode]');
+    if (!btn) return;
+    setThemeMode(btn.dataset.themeMode);
+  });
 
   /* 모임 사이드바 안의 동작들 */
   el.groupDrawerBody && el.groupDrawerBody.addEventListener('click', (e) => {
@@ -6833,7 +6913,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (el.storyReplyForm) {
     el.storyReplyForm.addEventListener('submit', (e) => { e.preventDefault(); sendStoryReply(); });
   }
-  el.btnStoryArchive && el.btnStoryArchive.addEventListener('click', openStoryArchive);
   $('#btn-close-archive') && $('#btn-close-archive').addEventListener('click', () => closeModal(el.storyArchiveModal));
   if (el.storyArchiveGrid) {
     el.storyArchiveGrid.addEventListener('click', (e) => {
@@ -7129,28 +7208,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* 계정 — 로그아웃 · 데이터 초기화 · 프로필 사진 등록/변경 · 스토리 보관함 */
-  $('#menu-logout') && $('#menu-logout').addEventListener('click', () => {
-    askConfirm('로그아웃할까요?', '이 기기에 계정과 프로필은 남고, 회원가입(로그인) 화면으로 돌아가요.', '로그아웃', runSignOut);
-  });
-  $('#menu-reset-data') && $('#menu-reset-data').addEventListener('click', () => {
-    askConfirm('데이터를 초기화할까요?', '내 계정·모임·글·스토리·디엠·알림 기록이 모두 비워지고 회원가입부터 다시 시작해요. 되돌릴 수 없어요.',
-      '초기화', runResetData);
-  });
-  /* Sprint 27.5 — 예시 데이터 비우기 / 다시 넣기 */
-  $('#menu-sample-data') && $('#menu-sample-data').addEventListener('click', () => {
-    const sum = store.getSampleSummary();
-    askConfirm('예시 데이터를 비울까요?',
-      `예시 모임 ${sum.counts.groups} · 사람 ${sum.counts.people} · 글 ${sum.counts.posts}만 사라지고, 내가 만든 모임·글·대화는 그대로 남아요.`, '비우기', runClearSampleData);
-  });
-  $('#menu-sample-restore') && $('#menu-sample-restore').addEventListener('click', () => runRestoreSampleData());
-  $('#menu-story-archive') && $('#menu-story-archive').addEventListener('click', openStoryArchive);
-  if (!SHOW_STORIES) {
-    const row = $('#menu-story-archive');
-    if (row) row.hidden = true;
-    if (el.storyBar) el.storyBar.hidden = true;
-  }
-  $('#menu-edit-photo') && $('#menu-edit-photo').addEventListener('click', () => {
+  /* v35.3 (설정 S1) — 로그아웃·초기화·예시 데이터·스토리 보관함 행은 설정 페이지로 옮겼다.
+     스토리 UI 자체는 여전히 감춘다(SHOW_STORIES=false). */
+  if (!SHOW_STORIES && el.storyBar) el.storyBar.hidden = true;
+
+  /* 프로필 편집 안의 사진 — 예전 설정의 '프로필 사진 등록·변경'을 여기로 합쳤다. */
+  el.btnEditPhoto && el.btnEditPhoto.addEventListener('click', () => {
     el.profilePhotoInput && el.profilePhotoInput.click();
   });
   el.profilePhotoInput && el.profilePhotoInput.addEventListener('change', () => {
@@ -7159,10 +7222,12 @@ document.addEventListener('DOMContentLoaded', () => {
     readImageFile(file, (url) => {
       store.updateProfilePhoto(url);
       paintMyAvatars();
+      paintProfileEditPhoto();
       renderProfileHeader();
       renderHome();
       ui.exploreBuffer = null;
       renderExploreWithSkeleton();
+      if (isSettingsOpen()) renderSettingsPage();
       showToast('프로필 사진을 등록했어요');
     });
     el.profilePhotoInput.value = '';
@@ -11262,7 +11327,6 @@ document.addEventListener('DOMContentLoaded', () => {
       el.dmSub.textContent = inGroup ? '단체방과 멤버 1:1 대화를 한곳에서' : '';
     }
     if (el.chatDmCount) el.chatDmCount.textContent = `${rooms.length}명`;
-    if (el.menuChatCount) el.menuChatCount.textContent = `${allRooms.length}개`;
 
     /* Sprint 15 — 1:1 대화를 꺼둔 모임이 있으면 여기서 먼저 알려준다. */
     if (el.chatDmPolicy) {
@@ -11626,32 +11690,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sendChatMessage();
   });
 
-  /* Sprint 26.5 — 새 설정 행: 앨범 · 2시간 프로필 상태 */
-  const menuMyAlbums = $('#menu-my-albums');
-  menuMyAlbums && menuMyAlbums.addEventListener('click', () => {
-    switchTab('tab-profile');
-    const block = document.querySelector('#tab-myprofile .album-block');
-    if (block) block.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-  });
-  const menuProfileStatus = $('#menu-profile-status');
-  menuProfileStatus && menuProfileStatus.addEventListener('click', () => {
-    switchTab('tab-explore');
-    setTimeout(openPublishSheet, 120);
-  });
-
-  const menuOpenChat = $('#menu-open-chat');
-  menuOpenChat && menuOpenChat.addEventListener('click', () => switchTab('tab-chat'));
-  const menuLikedPeople = $('#menu-liked-people');
-  menuLikedPeople && menuLikedPeople.addEventListener('click', () => {
-    const liked = store.getLikedProfiles();
-    if (!liked.length) {
-      showToast('아직 좋아요를 보낸 취미친구가 없어요', 'info');
-      switchTab('tab-explore');
-      return;
-    }
-    showToast(`좋아요를 보낸 취미친구 ${liked.length}명 · ${liked.map((p) => p.nickname).join(', ')}`, 'info');
-  });
-
   /* ==========================================================================
    * 6-3. 가입한 소모임 관리 (프로필 탭 메뉴)
    * ======================================================================== */
@@ -11712,9 +11750,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const joinedClose = $('#btn-close-joined');
   joinedClose && joinedClose.addEventListener('click', () => closeModal(el.joinedModal));
-
-  const menuJoined = $('#menu-joined-manage');
-  menuJoined && menuJoined.addEventListener('click', openJoinedGroups);
 
   /* Sprint 13 — 프로필 섹션(내 모임·저장한 글·최근 활동) */
   const btnProfileGroups = $('#btn-profile-groups');
@@ -12255,7 +12290,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (u.age) chips.push(`<span class="spec-chip">${u.age}세</span>`);
       el.profileSpecs.innerHTML = chips.join('');
     }
-    /* Sprint 18 — 내정보 상단 한 줄(설정은 사이드바로) */
+    /* 내정보 상단 한 줄 — 설정은 v35.3 부터 우측 톱니의 전체 화면 페이지 */
     /* Sprint 34 — 모임 안에서는 바로 위 줄이 모임 이름을 이미 보여 준다. 같은 이름을 두 번 쓰지 않는다. */
     if (el.profileTopbarTitle) {
       el.profileTopbarTitle.hidden = isGroupMode();
@@ -12338,10 +12373,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.editNickname) el.editNickname.value = u.nickname || '';
     if (el.editHandle) el.editHandle.value = displayHandleOf(u);
     if (el.editBio) el.editBio.value = u.bio || '';
+    paintProfileEditPhoto();
     renderEditHobbies();
     renderEditHobbyValue();
     setEditHobbyPicker(false);
     openModal(el.profileEditModal);
+  }
+
+  /** 프로필 편집 시트의 사진 미리보기 — 사진·닉네임·소개를 한 화면에서 바꾼다. */
+  function paintProfileEditPhoto() {
+    const u = store.currentUser || {};
+    if (el.editPhotoImg) {
+      if (u.photoUrl) {
+        el.editPhotoImg.src = u.photoUrl;
+        el.editPhotoImg.hidden = false;
+      } else {
+        el.editPhotoImg.removeAttribute('src');
+        el.editPhotoImg.hidden = true;
+      }
+    }
+    if (el.editPhotoLetter) {
+      el.editPhotoLetter.hidden = !!u.photoUrl;
+      el.editPhotoLetter.textContent = u.photoUrl ? '' : myAvatarText();
+    }
   }
 
   if (el.editHobbyOpen) {
@@ -12439,14 +12493,13 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModal(el.profileEditModal);
     renderProfileHeader();
     renderMyProfileTab();
+    if (isSettingsOpen()) renderSettingsPage();
     renderFeed();
     renderExplore({ preserve: true });
     updateBadges();
     showToast('프로필을 저장했어요');
   });
 
-  const btnEditProfile = $('#menu-edit-profile');
-  btnEditProfile && btnEditProfile.addEventListener('click', openProfileEdit);
   const btnEditCancel = $('#btn-edit-cancel');
   btnEditCancel && btnEditCancel.addEventListener('click', () => closeModal(el.profileEditModal));
 
@@ -13847,26 +13900,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'bell';
   }
 
-  /** 알림 종류 하나의 예시 미리보기 — 실제 알림과 같은 모양으로 그린다(Sprint 8). */
-  function notifPreviewHTML(categoryId) {
-    const p = store.getNotificationPreview(categoryId);
-    if (!p) return '';
-    return `<div class="notif-preview" data-notif-preview="${p.category}" role="note"
-                 aria-label="${escapeHtml(p.label)} 예시 알림">
-      <span class="notif-preview-tag">이런 알림이 와요</span>
-      <div class="notif-preview-item tone-${escapeHtml(p.category)}">
-        <span class="notif-emoji" aria-hidden="true">${ic(pushKindIcon(p.kind))}</span>
-        <div class="notif-main">
-          <span class="notif-title">${escapeHtml(p.title)}</span>
-          <p class="notif-body">${escapeHtml(p.body)}</p>
-          <span class="notif-time">방금 전 · 앱 알림
-            <span class="notif-cat-chip">${ic(p.icon)} ${escapeHtml(p.label)}</span>
-          </span>
-        </div>
-      </div>
-    </div>`;
-  }
-
   function categoryLabel(entry) {
     const cat = store.getNotificationCategories().find((c) => c.id === entry.category);
     if (cat) return cat.label;
@@ -13910,14 +13943,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.notifSettingsBody) return;
     const s = store.notificationSettings;
     const supported = supportsNotifications();
-    const permLabel = !supported ? '지원 안 함'
-      : s.permission === 'granted' ? '허용됨'
-        : s.permission === 'denied' ? '차단됨' : '미설정';
-
-    if (el.notifPermissionState) {
-      el.notifPermissionState.textContent = `권한 ${permLabel}`;
-      el.notifPermissionState.classList.toggle('granted', s.permission === 'granted');
-    }
 
     const lastTest = s.lastTestAt
       ? `마지막 테스트 ${timeAgo(s.lastTestAt)}`
@@ -13930,22 +13955,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const categories = store.getNotificationCategories();
 
     el.notifSettingsBody.innerHTML = `
-      <button class="notif-expand-btn" id="notif-expand-btn" type="button" aria-expanded="false">
-        <span>알림 설정 자세히</span>
-        <span class="notif-expand-chevron" aria-hidden="true">${ic('chevronDown')}</span>
-      </button>
       <div class="notif-row">
-        <div class="notif-row-main">
-          <span class="notif-row-label">푸시 알림</span>
-          <span class="notif-row-desc">${supported
-            ? '앱을 꺼도 새 메시지를 알려드려요'
-            : '이 브라우저는 시스템 알림을 지원하지 않아요'}</span>
-        </div>
-        <button class="notif-switch ${s.pushEnabled ? 'on' : ''}" data-notif-action="toggle-push"
-                role="switch" aria-checked="${s.pushEnabled ? 'true' : 'false'}"
-                aria-label="푸시 알림 ${s.pushEnabled ? '끄기' : '켜기'}" type="button">
-          <span class="notif-switch-knob"></span>
-        </button>
+        <span class="notif-row-label">푸시 알림</span>
+        ${supported
+          ? `<button class="notif-switch ${s.pushEnabled ? 'on' : ''}" data-notif-action="toggle-push"
+               role="switch" aria-checked="${s.pushEnabled ? 'true' : 'false'}"
+               aria-label="푸시 알림 ${s.pushEnabled ? '끄기' : '켜기'}" type="button">
+               <span class="notif-switch-knob"></span></button>`
+          : `<span class="settings-row-value">지원 안 함</span>`}
       </div>
       ${s.permission === 'denied'
         ? `<p class="notif-denied-note">${isIosBrowserTab()
@@ -13956,35 +13973,23 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `<button class="notif-permission-btn" data-notif-action="request-permission" type="button">${ic('unlock')} 브라우저 알림 권한 허용하기</button>`
         : ''}
       ${isIosBrowserTab()
-        ? `<p class="notif-ios-hint">${ic('phone')} 아이폰 사파리는 <strong>홈 화면에 추가한 웹앱</strong>에서만 푸시를 받을 수 있어요. 아래 <strong>홈 화면에 추가</strong>를 먼저 해두면 앱을 꺼도 알림이 와요.</p>`
+        ? `<p class="notif-ios-hint">${ic('phone')} 아이폰 사파리는 <strong>홈 화면에 추가한 웹앱</strong>에서만 푸시를 받을 수 있어요.</p>`
         : ''}
-      <div class="notif-section-title">받을 알림 종류 <span class="notif-section-hint">6종 각각 켜고 끌 수 있어요</span></div>
+      <div class="notif-section-title">받을 알림 종류</div>
       <div class="notif-cat-list" role="group" aria-label="알림 종류별 설정">
         ${categories.map((c) => `
-          <div class="notif-cat-item tone-${escapeHtml(c.tone || 'chat')} ${c.enabled ? '' : 'off'}" data-cat-item="${c.id}">
-            <span class="notif-cat-emoji" aria-hidden="true">${ic(c.icon)}</span>
-            <div class="notif-cat-main">
-              <span class="notif-cat-label">${escapeHtml(c.label)}</span>
-              <span class="notif-cat-desc">${escapeHtml(c.desc)}</span>
-            </div>
-            <button class="notif-cat-preview-btn" type="button" data-notif-action="toggle-preview" data-cat="${c.id}"
-                    aria-expanded="${ui.notifPreview === c.id ? 'true' : 'false'}"
-                    aria-controls="notif-preview-${c.id}">${ui.notifPreview === c.id ? '닫기' : '예시'}</button>
-            <span class="notif-cat-state">${c.enabled ? 'ON' : 'OFF'}</span>
+          <div class="notif-cat-item ${c.enabled ? '' : 'off'}" data-cat-item="${c.id}">
+            <span class="notif-row-label">${escapeHtml(c.label)}</span>
             <button class="notif-switch ${c.enabled ? 'on' : ''}" type="button"
                     data-notif-action="toggle-cat" data-cat="${c.id}"
                     role="switch" aria-checked="${c.enabled ? 'true' : 'false'}"
                     aria-label="${escapeHtml(c.label)} 알림 ${c.enabled ? '끄기' : '켜기'}">
               <span class="notif-switch-knob"></span>
             </button>
-          </div>
-          ${ui.notifPreview === c.id ? `<div id="notif-preview-${c.id}">${notifPreviewHTML(c.id)}</div>` : ''}`).join('')}
+          </div>`).join('')}
       </div>
       <div class="notif-row">
-        <div class="notif-row-main">
-          <span class="notif-row-label">방해 금지 (야간)</span>
-          <span class="notif-row-desc">${escapeHtml(s.dndStart)}~${escapeHtml(s.dndEnd)} 에는 알림을 조용히 모아둬요</span>
-        </div>
+        <span class="notif-row-label">방해 금지 (야간)</span>
         <button class="notif-switch ${s.dndEnabled ? 'on' : ''}" data-notif-action="toggle-dnd"
                 role="switch" aria-checked="${s.dndEnabled ? 'true' : 'false'}"
                 aria-label="방해 금지 모드 ${s.dndEnabled ? '끄기' : '켜기'}" type="button">
@@ -14000,11 +14005,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ${dndOnNow
         ? `<p class="notif-dnd-now">${ic('moon')} 지금은 방해 금지 시간이에요 — 가입 결과를 뺀 알림은 조용히 모이고 있어요</p>`
         : ''}
-      <div class="notif-row notif-exception-row">
-        <div class="notif-row-main">
-          <span class="notif-row-label">${ic('checkCircle')} 모임 가입 결과는 밤에도 알림</span>
-          <span class="notif-row-desc">방해 금지 시간이어도 수락·거절 소식은 바로 보내드려요</span>
-        </div>
+      <div class="notif-row">
+        <span class="notif-row-label">모임 가입 결과는 밤에도 알림</span>
         <button class="notif-switch ${joinExempt ? 'on' : ''}" data-notif-action="toggle-dnd-exception"
                 data-cat="join_result" role="switch" aria-checked="${joinExempt ? 'true' : 'false'}"
                 aria-label="모임 가입 결과 야간 예외 ${joinExempt ? '끄기' : '켜기'}" type="button">
@@ -14012,17 +14014,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </button>
       </div>
       <button class="notif-test-btn" data-notif-action="test" type="button">${ic('bell')} 푸시 알림 테스트하기</button>
-      <p class="notif-test-result" id="notif-test-result">${lastTest}</p>
-      <div class="notif-section-title">${ic('flask')} 알림 종류 시험해 보기</div>
-      <div class="notif-sim-row">
-        <button class="notif-sim-btn" data-notif-action="sim-chat" type="button">${ic('chat')} 1:1 대화</button>
-        <button class="notif-sim-btn" data-notif-action="sim-like" type="button">${ic('heart')} 좋아요</button>
-        <button class="notif-sim-btn" data-notif-action="sim-comment" type="button">${ic('comment')} 댓글</button>
-        <button class="notif-sim-btn" data-notif-action="sim-join" type="button">${ic('users')} 가입 신청</button>
-        <button class="notif-sim-btn" data-notif-action="sim-result" type="button">${ic('checkCircle')} 가입 결과</button>
-        <button class="notif-sim-btn" data-notif-action="sim-hot" type="button">${ic('fire')} 실베 진입</button>
-      </div>
-      <p class="notif-sim-note">실제 이벤트와 <strong>똑같은 경로</strong>로 알림을 보내 봅니다. 대화는 첫 1:1 방에, 좋아요·댓글은 내가 올린 동네 글에, 가입 신청은 내가 모임장인 모임에, 실베 진입은 내 최신 글이 Top 10에 들면 도착해요.</p>`;
+      <p class="notif-test-result" id="notif-test-result">${lastTest}</p>`;
+
+    /* 설정 첫 화면의 알림 행 값도 함께 맞춘다 */
+    if (el.settingsNotifState) el.settingsNotifState.textContent = s.pushEnabled ? '켜짐' : '꺼짐';
   }
 
   /** 권한 안내 배너 — 아직 허용하지 않았고 '나중에'를 누르지 않았을 때만 보인다. */
@@ -14577,83 +14572,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (next && store.notificationSettings.permission !== 'granted') requestPushPermission();
       return;
     }
-    /* Sprint 5~6 — 알림 종류 시험 (실제 이벤트와 같은 dispatchNotification 경로) */
-    if (action === 'sim-chat') {
-      const res = store.simulateChatReply();
-      if (!res.ok) {
-        showToast('아직 1:1 대화방이 없어요 · 탐색에서 하트를 보내 매칭을 만들어 보세요', 'warning');
-        switchTab('tab-explore');
-        return;
-      }
-      deliverNotification(res.res);
-      renderChatRooms();
-      updateBadges();
-      showToast(`${res.room.partnerName}님에게 새 메시지가 도착했어요${deliveryNote(res.res)}`);
-      return;
-    }
-    if (action === 'sim-like' || action === 'sim-comment') {
-      const isLike = action === 'sim-like';
-      const res = store.simulateIncomingReaction(isLike ? 'like' : 'comment');
-      if (!res.ok) {
-        showToast('먼저 내 동네 글을 하나 올려 주세요 · 탐색 탭에서 쓸 수 있어요', 'warning');
-        switchTab('tab-explore');
-        return;
-      }
-      deliverNotification(res.res);
-      renderExplore({ preserve: true });
-      showToast(`${res.persona.name}님이 내 글에 ${isLike ? '좋아요를 남겼어요' : '댓글을 남겼어요'}${deliveryNote(res.res)}`);
-      return;
-    }
-    if (action === 'sim-join') {
-      const res = store.simulateJoinRequest();
-      if (!res.ok) {
-        showToast('내가 모임장인 모임이 없어요', 'warning');
-        return;
-      }
-      deliverNotification(res.res);
-      renderExplore({ preserve: true });
-      showToast(`${res.application.applicantName}님이 '${res.group.name}' 가입을 신청했어요${deliveryNote(res.res)}`);
-      return;
-    }
-    if (action === 'sim-result') {
-      const res = store.simulateJoinDecision(true);
-      if (!res.ok) {
-        showToast('승인 대기 중인 내 신청이 없어요 · 모임 상세에서 가입 신청을 먼저 해보세요', 'warning');
-        return;
-      }
-      deliverNotification(res.res);
-      renderExplore({ preserve: true });
-      updateBadges();
-      showToast(`'${res.application.groupName}' 가입이 수락되었어요${deliveryNote(res.res)}`);
-      return;
-    }
-    /* Sprint 8 — 종류별 예시 알림 미리보기 (펼치기/닫기) */
-    if (action === 'toggle-preview') {
-      const id = btn.dataset.cat;
-      ui.notifPreview = ui.notifPreview === id ? null : id;
-      renderNotificationSettings();
-      const reopened = document.querySelector(`[data-notif-action="toggle-preview"][data-cat="${id}"]`);
-      if (reopened && ui.notifPreview === id) reopened.focus({ preventScroll: true });
-      return;
-    }
-    /* Sprint 8 — 실베 진입 시뮬레이션 (내 글에 반응이 몰린 상황) */
-    if (action === 'sim-hot') {
-      const res = store.simulateHotEntry({ regionId: ui.exploreRegion });
-      if (!res.ok) {
-        showToast('먼저 내 동네 글을 하나 올려 주세요 · 탐색 탭에서 쓸 수 있어요', 'warning');
-        switchTab('tab-explore');
-        return;
-      }
-      if (res.res) deliverNotification(res.res);
-      ui.hotRendered = true;
-      renderHotStrip();
-      renderExplore({ preserve: true });
-      updateBadges();
-      showToast(res.rank && res.rank <= 10
-        ? `내 글이 실베 ${res.rank}위에 올랐어요 (Top 10 진입 알림)${deliveryNote(res.res)}`
-        : '반응이 몰렸지만 아직 10위 밖이에요 · 조금 더 반응이 필요해요', res.rank && res.rank <= 10 ? 'success' : 'info');
-      return;
-    }
     if (action === 'test') sendTestPush();
   });
 
@@ -14680,7 +14598,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el.btnPushDismiss && el.btnPushDismiss.addEventListener('click', () => {
     store.updateNotificationSettings({ promptDismissed: true });
     renderPushPrompt();
-    showToast('프로필 → 알림 설정에서 언제든 켤 수 있어요', 'info');
+    showToast('설정 › 알림에서 언제든 켤 수 있어요', 'info');
   });
 
   /* Sprint 7 — 알림함 종류 필터·안 읽은 것만·모두 읽음 */
@@ -15132,8 +15050,6 @@ document.addEventListener('DOMContentLoaded', () => {
     openActivityTarget(entry);
   });
 
-  const menuActivityLog = $('#menu-activity-log');
-  menuActivityLog && menuActivityLog.addEventListener('click', openActivityLog);
   const activityClose = $('#btn-close-activity');
   activityClose && activityClose.addEventListener('click', () => closeModal(el.activityModal));
 
@@ -15143,7 +15059,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * 6-4b. PWA — 홈 화면에 추가 · Service Worker · 오프라인 (Sprint 5)
    * ------------------------------------------------------------------------
    *  · manifest.json + 아이콘은 정적 파일이고, 여기서는
-   *    ① 설치 안내 카드(프로필 탭) ② SW 등록 ③ SW 가 보내는 알림 클릭 수신
+   *    ① 설정의 '홈 화면에 추가' 행(v35.3 — 카드에서 행으로) ② SW 등록 ③ SW 알림 클릭 수신
    *    을 맡는다.
    *  · file:// (index.html 직접 열기) 나 단일 HTML 번들에서는 SW 등록을 **건너뛴다**.
    *    그렇게 해야 파일로 열 때도 콘솔 오류 없이 앱이 그대로 동작한다.
@@ -15156,65 +15072,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let swRegistration = null;
   let swStatus = 'idle';          /* idle | registering | ready | unsupported | protocol | bundle | error */
 
-  function swStatusLabel() {
-    if (swStatus === 'ready') return '오프라인 준비됨';
-    if (swStatus === 'registering') return '준비 중';
-    if (swStatus === 'protocol' || swStatus === 'bundle') return '설치 안내';
-    if (swStatus === 'error') return '오프라인 미지원';
-    return '확인 중';
-  }
-
-  function renderPwaCard() {
-    if (!el.pwaCard) return;
-    const installed = isStandalone();
-    const dismissed = !!store.pwaState.installDismissed;
-    /* 홈 화면에서 이미 앱으로 실행 중이면 계속 보여준다(상태 확인용). 닫았으면 숨긴다. */
-    el.pwaCard.hidden = installed ? false : dismissed;
-    if (el.pwaCard.hidden) return;
-
-    const stateEl = el.pwaCardState;
-    const descEl = el.pwaCardDesc;
-    const actions = el.pwaCardActions;
-
-    if (stateEl) {
-      stateEl.textContent = installed ? '설치됨' : (deferredInstallPrompt ? '설치 가능' : swStatusLabel());
-      stateEl.classList.toggle('ready', installed || !!deferredInstallPrompt || swStatus === 'ready');
-    }
-
-    if (installed) {
-      if (descEl) descEl.textContent = '홈 화면에서 ooG 앱으로 실행 중이에요. 이제 앱을 꺼도 푸시 알림을 받을 수 있고, 오프라인에서도 화면이 열려요.';
-      if (actions) actions.innerHTML = `<p class="pwa-steps">${swStatus === 'ready'
-        ? '오프라인 캐시가 준비되어 있어요'
-        : '오프라인 캐시를 준비하려면 한 번 더 열어 주세요'}</p>`;
-      return;
-    }
-
-    if (deferredInstallPrompt) {
-      if (descEl) descEl.textContent = '앱처럼 전체 화면으로 열리고, 홈 화면 아이콘으로 바로 시작할 수 있어요.';
-      if (actions) actions.innerHTML = `
-        <button class="pwa-install-btn" data-pwa-action="install" type="button">홈 화면에 추가하기</button>
-        <p class="pwa-steps">설치하면 앱을 꺼도 푸시 알림을 받을 수 있어요.</p>`;
-      return;
-    }
-
-    if (isIosDevice()) {
-      if (descEl) descEl.textContent = '아이폰은 사파리에서 홈 화면에 추가하면 앱처럼 열려요.';
-      if (actions) actions.innerHTML = `
-        <ol class="pwa-steps">
-          <li>사파리 <strong>공유 버튼</strong>(네모에 화살표)을 눌러요</li>
-          <li><strong>‘홈 화면에 추가’</strong>를 고르고 <strong>추가</strong>를 누르면 끝!</li>
-        </ol>`;
-      return;
-    }
-
-    if (descEl) descEl.textContent = '브라우저 메뉴에서 설치하면 앱처럼 열리고 오프라인에서도 화면이 떠요.';
-    if (actions) actions.innerHTML = `
-      <p class="pwa-steps">주소창 오른쪽 <strong>설치 아이콘</strong> 또는 메뉴 › <strong>‘ooG 설치’</strong> 를 눌러 주세요.</p>`;
+  /** v35.3 (설정 S1) — PWA 카드 대신 설정의 '홈 화면에 추가' 행 하나로 알린다.
+      설치할 수 없거나(지원 안 함·이미 설치됨) 이미 설치했으면 행 자체가 없다. */
+  function renderPwaRow() {
+    renderSettingsInstallRow();
   }
 
   async function promptInstall() {
     if (!deferredInstallPrompt) {
-      renderPwaCard();
+      renderPwaRow();
       showToast(isIosDevice()
         ? '사파리 공유 버튼 → 홈 화면에 추가를 눌러 주세요'
         : '브라우저 메뉴에서 ooG를 설치할 수 있어요', 'info');
@@ -15224,7 +15090,7 @@ document.addEventListener('DOMContentLoaded', () => {
     deferredInstallPrompt = null;
     try { await prompt.prompt(); } catch (e) { /* 사용자가 취소 */ }
     const choice = await (prompt.userChoice || Promise.resolve({ outcome: 'dismissed' }));
-    renderPwaCard();
+    renderPwaRow();
     if (choice && choice.outcome === 'accepted') showToast('ooG를 홈 화면에 추가했어요');
     return choice && choice.outcome;
   }
@@ -15236,30 +15102,30 @@ document.addEventListener('DOMContentLoaded', () => {
   async function registerServiceWorker() {
     if (document.documentElement.dataset.bundle === 'true') {
       swStatus = 'bundle';
-      renderPwaCard();
+      renderPwaRow();
       return 'bundle';
     }
     if (location.protocol !== 'http:' && location.protocol !== 'https:') {
       swStatus = 'protocol';
-      renderPwaCard();
+      renderPwaRow();
       return 'protocol';
     }
     if (!('serviceWorker' in navigator)) {
       swStatus = 'unsupported';
-      renderPwaCard();
+      renderPwaRow();
       return 'unsupported';
     }
     swStatus = 'registering';
-    renderPwaCard();
+    renderPwaRow();
     try {
       const reg = await navigator.serviceWorker.register('sw.js', { scope: './' });
       swRegistration = reg;
       swStatus = 'ready';
-      renderPwaCard();
+      renderPwaRow();
       return 'ready';
     } catch (e) {
       swStatus = 'error';
-      renderPwaCard();
+      renderPwaRow();
       return 'error';
     }
   }
@@ -15275,27 +15141,16 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
-    renderPwaCard();
+    renderPwaRow();
   });
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
-    store.updatePwa({ installed: true, installDismissed: true });
-    renderPwaCard();
+    renderPwaRow();
     showToast('ooG를 홈 화면에 추가했어요 · 이제 앱을 꺼도 알림을 받을 수 있어요');
   });
 
-  el.pwaCardActions && el.pwaCardActions.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-pwa-action]');
-    if (!btn) return;
-    if (btn.dataset.pwaAction === 'install') promptInstall();
-    if (btn.dataset.pwaAction === 'dismiss') {
-      store.updatePwa({ installDismissed: true });
-      renderPwaCard();
-    }
-  });
-
-  if (isStandalone()) store.updatePwa({ installed: true });
+  /* 설치 상태는 isStandalone() 으로 그때그때 본다(저장하지 않는다). */
 
   /* ==========================================================================
    * 6-5. 모임 가입 심사 (Sprint 4.5) — 신청서 · 대기 목록 · 내 신청 현황
@@ -15535,6 +15390,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGroupDetail(store.getGroup(groupId));
     renderExplore({ preserve: true });
     renderFeed();
+    renderMyGroupApplications();
+    renderMyGroupsTabs();
     updateBadges();
   }
 
@@ -15564,18 +15421,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('#btn-close-apply') && $('#btn-close-apply').addEventListener('click', () => closeModal(el.groupApplyModal));
 
-  /* 내 가입 신청 현황 */
-  function renderMyApplications() {
-    if (!el.myApplicationsBody) return;
+  /* 내 가입 신청 현황 — v35.3 S2 부터는 같은 목록을 내 그룹 화면의 '신청 현황' 탭에도 그린다. */
+  function myApplicationsHTML() {
     const apps = store.getMyApplications();
     if (!apps.length) {
-      el.myApplicationsBody.innerHTML = `
+      return `
         <div class="empty-state myapp-empty">
           ${emptyArt('applications')}
           <p class="empty-title">아직 낸 신청서가 없어요</p>
           <p class="empty-desc">승인제 모임에 가입 신청하면 진행 상황이 여기에 보여요.</p>
         </div>`;
-      return;
     }
     const statusMap = {
       pending: ['승인 대기 중', 'pending'],
@@ -15583,7 +15438,7 @@ document.addEventListener('DOMContentLoaded', () => {
       rejected: ['거절됨', 'rejected'],
       canceled: ['취소됨', 'canceled']
     };
-    el.myApplicationsBody.innerHTML = apps.map((a) => {
+    return apps.map((a) => {
       const st = statusMap[a.status] || statusMap.pending;
       const decided = a.decidedAt ? ` · ${timeAgo(a.decidedAt)} 처리` : '';
       return `
@@ -15602,34 +15457,32 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('');
   }
 
-  function openMyApplications() {
-    renderMyApplications();
-    openModal(el.myApplicationsModal);
+  function renderMyGroupApplications() {
+    if (!el.myGroupsAppsList) return;
+    el.myGroupsAppsList.innerHTML = myApplicationsHTML();
   }
 
-  el.menuMyApplications && el.menuMyApplications.addEventListener('click', openMyApplications);
-  el.menuMyApplications && el.menuMyApplications.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
-    openMyApplications();
-  });
-
-  el.myApplicationsBody && el.myApplicationsBody.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-myapp-cancel]');
-    if (!btn) return;
-    const res = store.cancelApplication(btn.dataset.myappCancel);
+  /** 신청 취소 — 시트와 내 그룹 화면의 신청 현황 탭을 함께 맞춘다. */
+  function cancelMyApplication(id) {
+    const res = store.cancelApplication(id);
     if (!res.ok) {
       showToast('신청을 취소하지 못했어요', 'warning');
       return;
     }
-    renderMyApplications();
+    renderMyGroupApplications();
+    renderMyGroupsTabs();
     renderGroupDetail(res.group);
     renderExplore({ preserve: true });
     updateBadges();
     showToast('가입 신청을 취소했어요', 'info');
+  }
+
+  el.myGroupsAppsList && el.myGroupsAppsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-myapp-cancel]');
+    if (!btn) return;
+    cancelMyApplication(btn.dataset.myappCancel);
   });
 
-  $('#btn-close-my-applications') && $('#btn-close-my-applications').addEventListener('click', () => closeModal(el.myApplicationsModal));
   $('#btn-close-notif') && $('#btn-close-notif').addEventListener('click', () => closeModal(el.notifModal));
 
   /* ==========================================================================
@@ -15784,14 +15637,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const upcoming = homeId ? store.getUpcomingGroupEvents(homeId, 9).length : 0;
       el.navHomeBadge.textContent = String(upcoming);
       el.navHomeBadge.classList.toggle('hide', upcoming === 0);
-    }
-    if (el.joinedCount) el.joinedCount.textContent = `${store.currentUser.joinedGroupIds.length}개`;
-    if (el.menuLikedCount) el.menuLikedCount.textContent = `${store.getLikedProfiles().length}명`;
-    if (el.menuActivityCount) {
-      el.menuActivityCount.textContent = `${store.getActivityStats().total}건`;
-    }
-    if (el.menuMyApplicationsCount) {
-      el.menuMyApplicationsCount.textContent = `${store.getMyPendingApplicationCount()}건`;
     }
     /* Sprint 29 — 안 읽은 대화 배지 없음(디엠 탭 숫자 배지 제거). 헤더 알림 점만 남긴다. */
     /* 헤더 알림 점 — 읽지 않은 알림·모임장 대기 신청 */
@@ -16143,7 +15988,9 @@ document.addEventListener('DOMContentLoaded', () => {
       closeModal(openSheet);
       return;
     }
-    /* 1-b) H1 — 모달이 없을 때 전용 화면(내 그룹 전체·모임 찾기)을 뒤로 한 번으로 닫는다. */
+    /* 1-b) H1 — 모달이 없을 때 전용 화면(내 그룹 전체·모임 찾기·설정)을 뒤로 한 번으로 닫는다.
+       설정의 알림 하위 화면에서는 먼저 설정 첫 화면으로 돌아간다. */
+    if (isSettingsOpen() && settingsView === 'notif') { showSettingsMain(); return; }
     if (subscreenOpen()) { closeSubscreens(); return; }
     closeMatchPopup();
     /* 2) 모달이 없을 때만 전체 화면 대화방을 닫는다 */
@@ -16178,7 +16025,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderNotificationSettings();
     renderPushPrompt();
     renderNotificationList();
-    renderPwaCard();
+    renderPwaRow();
     updateBadges();
   });
 
@@ -16488,7 +16335,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Sprint 24 — 다크모드 · 내 프로필 탭(공개 4장 / 비밀 4장) · 대화방 비밀앨범
    * ------------------------------------------------------------------------
    * 11/17 00:30 루키 님 지시 8건 중 1·3·5·6·7·8번의 화면 쪽 구현.
-   *  · 다크모드: 설정 › 화면 › 다크모드. 값은 저장 상태(settings.darkMode)에 남는다.
+   *  · 다크모드: 설정 › 화면 모드(기기 설정·라이트·다크 3중 1). 값은 settings.darkMode 에 남는다.
    *  · 로고: 어디에 있든 처음 화면(바깥 홈 탭 최상단)으로.
    *  · 내 프로필 탭: 공개 사진 4칸 · 비밀앨범 4칸(앨범/카메라).
    *  · 1:1 대화방: 비밀앨범 공개/해제 · 공개 전에는 잠금.
@@ -16507,15 +16354,9 @@ document.addEventListener('DOMContentLoaded', () => {
       m.removeAttribute('media');
       m.setAttribute('content', on ? '#0D1117' : '#FFFFFF');
     });
-    if (el.menuDarkMode) {
-      el.menuDarkMode.setAttribute('aria-checked', String(on));
-      el.menuDarkMode.classList.toggle('on', on);
-    }
-    if (el.menuDarkModeState) {
-      el.menuDarkModeState.textContent = store.hasDarkModeChoice()
-        ? (on ? '켜짐' : '꺼짐')
-        : `기기 설정 · ${on ? '다크' : '라이트'}`;
-    }
+    /* v35.3 (설정 S1) — 화면 모드 행의 값과 바텀시트의 선택을 함께 맞춘다. */
+    if (el.settingsThemeState) el.settingsThemeState.textContent = themeModeLabel();
+    if (el.themeChoices) renderThemeChoices();
     return on;
   }
 
@@ -16578,7 +16419,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * v34.2 (#22500 · IMG_4578) — 내 프로필을 인스타그램 프로필처럼 다시 지었다.
    *  · 큰 대표 사진 = 공개 사진 1번 · 나머지 2~4번은 바로 아래 작은 미리보기
-   *  · 우측 상단 삼선바 로 설정(사이드바) · 프로필 카드 우측은 자물쇠 비밀 사진
+   *  · 우측 상단 톱니로 설정(전체 화면 페이지, v35.3) · 프로필 카드 우측은 자물쇠 비밀 사진
    *  · 하단은 내가 올린 피드 — 격자(3열) ↔ 인스타형 피드 전환
    */
   function renderMyProfileTab() {
@@ -16636,6 +16477,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 aria-label="내 그룹 ${groups}개 보기"><strong>${groups}</strong><span>내 그룹</span></button>`;
     }
     renderMyNextEvent();
+    renderMyProfileStatusRow();
+    renderMyProfileActivityRows();
     renderMyProfileFeed();
   }
 
@@ -17464,12 +17307,70 @@ document.addEventListener('DOMContentLoaded', () => {
   /* v34.3 — 공개 사진은 위 한 줄(1 + 3 원형)에서만 더한다. 예전 '사진 추가' 버튼은 걷어냈다. */
   $('#btn-album-secret-add') && $('#btn-album-secret-add').addEventListener('click', () => openAlbumPicker('secret', false));
 
-  /* v34.4 (#22760) — 통계의 '다녀온 모임'(목록·공개 설정) · '내 그룹'(모임 목록) */
+  /* v34.4 (#22760) — 통계의 '다녀온 모임'(목록·공개 설정) · '내 그룹'(모임 목록)
+     v35.3 S2 — '내 그룹'은 설정에서 옮겨 온 '가입한 모임 / 신청 현황' 탭 2개가 있는
+     내 그룹 전체 화면(#my-groups-screen)을 연다(홈의 [전체 보기]와 같은 화면). */
   el.myProfileStats && el.myProfileStats.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-my-schedule]');
     if (btn) { openMyScheduleSheet(btn.dataset.mySchedule); return; }
-    if (e.target.closest('[data-my-groups]')) openProfileGroupsSheet();
+    if (e.target.closest('[data-my-groups]')) openMyGroupsScreen();
   });
+
+  /* ==========================================================================
+   * v35.3 S2 — 설정에서 옮겨 온 항목의 새 자리 (내 프로필 탭)
+   * ------------------------------------------------------------------------
+   *  · 상단 '2시간 프로필' 행 — 지금 값(켜짐 · 남은 시간 / 내려감)을 보여 주고,
+   *    누르면 올리기(탐색의 내 프로필 올리기 시트) 또는 내리기를 한다.
+   *  · 하단 '내 활동' — 내가 좋아요한 취미친구 · 내 활동 기록 두 줄.
+   * ======================================================================== */
+
+  /** 2시간 프로필 상태 행 — 켜져 있으면 '켜짐 · 1시간 59분 남음', 아니면 '내려감'. */
+  function renderMyProfileStatusRow() {
+    if (!el.mpStatus) return;
+    if (!store.isSignedIn()) { el.mpStatus.hidden = true; return; }
+    const pub = store.getMyExplorePublishState();
+    el.mpStatus.hidden = false;
+    if (el.mpStatusState) {
+      el.mpStatusState.textContent = pub.active
+        ? `켜짐 · ${pub.remainingLabel || '2시간'}`
+        : '내려감';
+    }
+    if (el.mpStatusRow) el.mpStatusRow.classList.toggle('is-on', !!pub.active);
+  }
+
+  /** 내 활동 두 줄의 숫자 — 좋아요한 취미친구 N명 · 내 활동 기록 N건. */
+  function renderMyProfileActivityRows() {
+    if (!store.isSignedIn()) return;
+    if (el.mpLikedCount) el.mpLikedCount.textContent = `${store.getLikedProfiles().length}명`;
+    if (el.mpActivityCount) {
+      const n = (store.getActivityLogs({}) || []).length;
+      el.mpActivityCount.textContent = `${n}건`;
+    }
+  }
+
+  /** 내가 좋아요한 취미친구 — 설정에서 있던 그 자리(핸들러)를 그대로 옮겨 왔다. */
+  function openLikedFriends() {
+    const liked = store.getLikedProfiles();
+    if (!liked.length) {
+      showToast('아직 좋아요를 보낸 취미친구가 없어요', 'info');
+      switchTab('tab-explore');
+      return;
+    }
+    showToast(`좋아요를 보낸 취미친구 ${liked.length}명 · ${liked.map((p) => p.nickname).join(', ')}`, 'info');
+  }
+
+  el.mpStatusRow && el.mpStatusRow.addEventListener('click', () => {
+    /* 켜져 있으면 내리기, 내려가 있으면 탐색의 '내 프로필 올리기' 시트(기존 #menu-profile-status 핸들러) */
+    if (store.isMyProfileExploreVisible()) {
+      setExploreProfileVisible(false);
+      renderMyProfileStatusRow();
+      return;
+    }
+    switchTab('tab-explore');
+    setTimeout(openPublishSheet, 120);
+  });
+  $('#mp-row-liked') && $('#mp-row-liked').addEventListener('click', openLikedFriends);
+  $('#mp-row-activity') && $('#mp-row-activity').addEventListener('click', openActivityLog);
   el.myScheduleSeg && el.myScheduleSeg.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-my-schedule-tab]');
     if (!btn) return;
@@ -17523,8 +17424,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btn-profile-groups-close') && $('#btn-profile-groups-close').addEventListener('click', () => closeModal(el.profileGroupsModal));
   $('#btn-past-meetings-close') && $('#btn-past-meetings-close').addEventListener('click', () => closeModal(el.pastMeetingsModal));
 
-  /* v34.2 — 설정은 우측 상단 삼선바(삼선바)로, 프로필 카드 우측은 자물쇠 비밀 사진. */
-  el.myProfileMenu && el.myProfileMenu.addEventListener('click', () => openDrawer('profile'));
+  /* v34.2 — 설정은 우측 상단 톱니(v35.3), 프로필 카드 우측은 자물쇠 비밀 사진. */
   el.myProfileSecret && el.myProfileSecret.addEventListener('click', () => {
     renderMyProfileTab();
     openModal(el.mySecretModal);
@@ -17642,6 +17542,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => {
     const active = store.isMyProfileExploreVisible();
     renderExploreProfileToggle();
+    /* v35.3 S2 — 내 프로필 탭의 '2시간 프로필' 행 남은 시간도 같이 줄어든다. */
+    if (ui.activeTab === 'tab-myprofile') renderMyProfileStatusRow();
     if (publishWasActive && !active) {
       ui.exploreBuffer = null;
       if (ui.exploreRendered) renderExploreWithSkeleton();
@@ -17669,15 +17571,6 @@ document.addEventListener('DOMContentLoaded', () => {
     /* 탭을 벗어나면 다시 보이게 해 둔다(돌아왔을 때 검색창이 사라져 있지 않게). */
     el.navButtons.forEach((btn) => btn.addEventListener('click', () => top.classList.remove('is-tucked')));
   }
-
-  /* 설정 › 알림은 기본으로 접어 두고, '자세히'를 누르면 펼친다(iOS 하위 화면처럼). */
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('#notif-expand-btn');
-    if (!btn) return;
-    const shell = btn.closest('#notif-settings-body');
-    const on = shell.classList.toggle('notif-expanded');
-    btn.setAttribute('aria-expanded', String(on));
-  });
 
   /* ==========================================================================
    * Sprint 28.5 — 홈 · 디엠 · 프로필의 새 조각
@@ -17790,43 +17683,14 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>`;
   }
 
-  /* Sprint 28.5 — 설정은 iOS 목록 순서(알림 → 비밀앨범 → 화면 설정 → 계정 → …)로
-     DOM 자체를 옮긴다. 화면 순서와 읽는 순서를 같게 하기 위해서다. */
-  (function reorderSettingsSections() {
-    const body = document.getElementById('profile-drawer-body');
-    if (!body) return;
-    const order = ['alerts', 'profile', 'display', 'account', 'groups', 'talk', 'data'];
-    order.forEach((key) => {
-      const sec = body.querySelector(`.drawer-section[data-acc="${key}"]`);
-      if (sec) body.appendChild(sec);
-    });
-  })();
-
   /* ---------------------------------------------- 이벤트 배선 */
   el.headerHomeBtn && el.headerHomeBtn.addEventListener('click', goHomeTop);
-  el.menuDarkMode && el.menuDarkMode.addEventListener('click', () => applyThemePreference());
-  const menuThemeSystem = $('#menu-theme-system');
-  menuThemeSystem && menuThemeSystem.addEventListener('click', () => {
-    store.setDarkMode(null);
-    applyThemeDom(store.isDarkMode());
-    showToast('기기 밝기 설정을 따를게요', 'info');
-  });
-  el.menuDarkMode && el.menuDarkMode.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
-    applyThemePreference();
-  });
   el.chatAlbumBtn && el.chatAlbumBtn.addEventListener('click', () => {
     const room = ui.openRoomId ? store.getChatRoom(ui.openRoomId) : null;
     if (room) openSecretAlbum(room.partnerId);
   });
 
   /* --- 초기 마운트 --- */
-  /* Sprint 28.5 — ?dev=1 일 때만 개발용 항목(데이터 초기화 등)을 보인다. */
-  try {
-    const qp = new URLSearchParams(window.location.search || '');
-    if (qp.get('dev') === '1') document.body.classList.add('oog-dev');
-  } catch (e) { /* 주소를 못 읽어도 앱은 연다 */ }
   const bootStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
   /* v33.4 — 좋아요 수 = '좋아요한 사람' 목록 크기. 앱이 아는 사람보다 큰 수는 한 번 내린다. */
   store.normalizePostLikes();
@@ -17864,7 +17728,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderPushPrompt();
   /* Sprint 10 — 주간 요약 알림: 한 주에 한 번만, 첫 실행은 조용히 기록만 한다. */
   /* Sprint 5 — PWA: 설치 카드 + Service Worker 등록(오프라인 캐시·푸시 기반) */
-  renderPwaCard();
+  renderPwaRow();
   registerServiceWorker();
   /* Sprint 28.5 — 첫 화면이 다 그려졌다. 스플래시는 여기서 바로 걷는다(최대 1.5초). */
   splash.ready && splash.ready();
@@ -17898,10 +17762,10 @@ document.addEventListener('DOMContentLoaded', () => {
     openProfileEdit, openGroupCreate, togglePostLike, quickLike, undoLike,
     /* Sprint 4.5 */
     openNotificationCenter, requestPushPermission, sendTestPush, deliverNotification,
-    openApplyModal, openMyApplications, submitApplication, showPushBanner,
+    openApplyModal, submitApplication, showPushBanner,
     dismissAllPushBanners, renderNotificationSettings,
     /* Sprint 5 — 알림 범위 확장 · PWA */
-    renderPwaCard, registerServiceWorker, promptInstall, openFromNotification,
+    renderPwaRow, registerServiceWorker, promptInstall, openFromNotification,
     simulateIncomingReaction: (kind) => store.simulateIncomingReaction(kind),
     simulateJoinRequest: () => store.simulateJoinRequest(),
     simulateJoinDecision: (approved) => store.simulateJoinDecision(approved),
@@ -17922,7 +17786,6 @@ document.addEventListener('DOMContentLoaded', () => {
     simulateHotEntry: (opts) => store.simulateHotEntry(opts),
     markNotifRead, removeNotif,
     renderNotificationList,
-    setNotifPreview: (id) => { ui.notifPreview = ui.notifPreview === id ? null : id; renderNotificationSettings(); },
     setActivityView: (v) => { ui.activityView = v; renderActivityLog(); },
     setActivityRange: (r) => { ui.activityRange = r; renderActivityLog(); },
     prefetchExplorePage,
@@ -18051,13 +17914,22 @@ document.addEventListener('DOMContentLoaded', () => {
       src: el.albumViewerImg ? el.albumViewerImg.getAttribute('src') : null,
       hidden: !!(el.albumViewer && el.albumViewer.hidden)
     }),
-    /* Sprint 18 — 사이드바(모임 멤버·설정 / 내정보 설정) */
-    openDrawer, closeDrawer, renderGroupDrawer, renderProfileDrawer,
+    /* Sprint 18 — 모임 사이드바(멤버·모임 설정) */
+    openDrawer, closeDrawer, renderGroupDrawer,
     getDrawerState: () => ({ open: ui.drawerOpen }),
-    /* Sprint 26.5 — 설정 아코디언 · 라이트박스 길게 누르기 메뉴 */
-    openSettingsGroup: (key) => openSettingsGroup(key),
-    setSettingsGroup: (key, open) => setSettingsGroup(key, open),
-    getSettingsState: () => getSettingsState(),
+    /* v35.3 (설정 S1·S2) — 전체 화면 설정 페이지 · 알림/화면 모드 하위 페이지 */
+    openSettingsPage, openSettingsNotif, openSettingsTheme, settingsBack, renderSettingsPage,
+    setThemeMode: (mode) => setThemeMode(mode),
+    getSettingsState: () => ({
+      open: isSettingsOpen(),
+      view: settingsView,
+      rows: el.settingsMain
+        ? [...el.settingsMain.querySelectorAll('.settings-view:not([hidden]) .settings-row')]
+          .map((n) => (n.querySelector('.settings-row-label') || n).textContent.trim())
+        : [],
+      dev: settingsDevMode(),
+      version: el.settingsVersion ? el.settingsVersion.textContent : ''
+    }),
     /* Sprint 27.5 — 가이드 단계 바로 열기(스포트라이트 확인·테스트) */
     openGuideAt: (stepId) => startGuide({ step: stepId }),
     closeGuide: (status) => closeGuide(status),
