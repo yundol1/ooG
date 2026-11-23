@@ -26896,3 +26896,300 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 
 /* v35.0 — 내 프로필 '다음 일정' 칩의 날짜 줄(11px 캡션)은 600 이상. */
 .mp-next-text span { font-weight: 600; }
+
+/* ============================================================================
+   v35.1 (2026-11-23, #23062 · #23069 · #23073 · #23087 · #23099)
+   ----------------------------------------------------------------------------
+   ① 모임 피드 카드의 글자 좌우 여백을 14px 로 — 사진은 그대로 풀블리드
+   ② @아이디는 다시 상단 헤더(ooG 와 같은 줄) 가운데 · 타인 프로필은 머리말 가운데
+   ③ 공개 사진 2~4번 + 비밀앨범 원형을 3열 통계 바로 아래(오른쪽 칸)로
+   ④ 프로필에서 나이·지역 노출 제거
+   ⑤ 글 상세: 하트 초록색 · 하트↔숫자 좁게 · 제목 맥락에 맞게
+   ⑥ 점 세 개(⋯) 게시물 메뉴 시트 · 글 수정 화면의 글 삭제
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   ① 피드 카드 — 글자 영역 좌우 여백 (IMG_4585)
+   ---------------------------------------------------------------------------
+   홈 피드는 이미 화면 끝에서 14px 이다. 모임 공간은 #group-space(14) +
+   .home-block(12) + .feed-container(14) 세 겹을 지나 글자가 40px 안쪽에서 시작했다.
+   카드를 그 세 겹만큼 바깥으로 당겨 화면 끝에서 14px 로 맞추고, 사진은 그 14px 만
+   반대 방향으로 밀어 화면 끝까지 붙인다(구분선은 글자 폭에 맞춘다). */
+.group-feed {
+  --ig-out-x: calc(var(--gutter-x) + 12px + var(--feed-pad-x, 14px) - 14px);
+}
+.group-feed .ig-post {
+  margin-left: calc(-1 * var(--ig-out-x));
+  margin-right: calc(-1 * var(--ig-out-x));
+}
+.group-feed .ig-post .ig-media { --bleed-x: var(--gutter-x); }
+
+/* ---------------------------------------------------------------------------
+   ② @아이디 — 상단 헤더 가운데 (내 프로필) · 타인 프로필 머리말 가운데
+   --------------------------------------------------------------------------- */
+.app-header { position: relative; }
+.app-header .profile-top-id {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-width: 46%;
+  font-size: 16px;
+  font-weight: var(--fw-display);
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.app-header .profile-top-id[hidden] { display: none !important; }
+/* 아이디가 가운데 서는 동안에는 로고 옆 영문 태그와 검색 버튼을 접어 자리를 비운다(겹침 0).
+   검색(모임 찾기)은 홈·탐색·모임 화면에 그대로 있고, 프로필 탭에서만 잠시 비켜 준다. */
+.app-header.has-id .brand-tag { display: none; }
+.app-header.has-id #btn-header-search { display: none; }
+
+/* 타인 프로필 머리말 — '<' 와 같은 줄 가운데, 같은 크기·굵기 */
+.person-head { position: relative; }
+.person-head .person-top-id {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  max-width: 60%;
+  font-size: 16px;
+  font-weight: var(--fw-display);
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.person-head .person-top-id[hidden] { display: none !important; }
+.match-detail-body .person-top-id { display: none !important; }
+
+/* ---------------------------------------------------------------------------
+   ③ 공개 사진 2~4번 + 비밀앨범 원형 — 3열 통계 바로 아래 (IMG_4586)
+   --------------------------------------------------------------------------- */
+.mp-id-col .mp-rings-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: 4px;
+  gap: 6px;
+  margin-top: 2px;
+  min-height: 0;
+  --mp-ring: clamp(32px, 9vw, 38px);
+}
+.mp-id-col .mp-rings-line .mp-photos-note {
+  margin-left: 2px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* 원형은 보이는 크기만 줄이고 손가락 영역은 44px 를 지킨다. */
+.mp-id-col .mp-ring,
+.mp-id-col .myprofile-secret.mp-secret-ring { position: relative; }
+.mp-id-col .mp-ring::after,
+.mp-id-col .myprofile-secret.mp-secret-ring::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  right: -3px;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+}
+.mp-id-col .mp-ring-plus .oo-ic { font-size: 15px; }
+.mp-id-col .mp-secret-ring .myprofile-secret-ic .oo-ic { font-size: 16px; }
+.mp-id-col .myprofile-secret-count { font-size: 10px; min-width: 18px; height: 18px; line-height: 18px; }
+
+/* 타인 프로필의 원형도 통계 바로 아래(오른쪽 칸)로 — 사진 2~4번 */
+.detail-id-col .detail-photo-rings {
+  margin: 4px 0 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.detail-id-col .detail-photo-rings .detail-ring {
+  flex: 0 0 clamp(32px, 9vw, 38px);
+  width: clamp(32px, 9vw, 38px);
+  height: clamp(32px, 9vw, 38px);
+}
+.detail-id-col .detail-ring-more { font-size: var(--fs-caption); color: var(--text-muted); }
+
+/* ---------------------------------------------------------------------------
+   ⑤ 게시물 상세 — 액션 줄 (IMG_4587)
+   --------------------------------------------------------------------------- */
+/* 하트는 피드 카드와 같은 브랜드 초록(빨강 아님). */
+.post-detail-actionbar .post-detail-like.liked,
+.post-detail-like.liked { color: var(--green-text); border-color: transparent; background: transparent; }
+/* 하트 ↔ 숫자, 댓글 아이콘 ↔ 숫자를 v34.1 카드처럼 좁게 붙인다(손가락 영역은 44px 그대로). */
+.post-detail-actionbar {
+  gap: 1px;
+}
+.post-detail-actionbar .post-detail-like {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+}
+.post-detail-actionbar .post-detail-count {
+  min-width: 0;
+  padding: 0 3px;
+  gap: 3px;
+  position: relative;
+}
+.post-detail-actionbar .post-detail-count::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+  border-radius: 8px;
+}
+.post-detail-actionbar .post-detail-count.is-private { min-width: 0; width: auto; opacity: 1; pointer-events: auto; }
+.post-detail-lock { display: inline-flex; align-items: center; color: var(--text-muted); }
+.post-detail-lock .oo-ic { font-size: 13px; }
+.post-detail-head .page-title { text-align: left; }
+.page-more {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-strong);
+  cursor: pointer;
+}
+.page-more:active { background: var(--bg-soft); }
+.page-more .oo-ic { font-size: 20px; }
+
+/* ---------------------------------------------------------------------------
+   ⑥ 피드 카드의 점 세 개 · 좋아요 비공개 표시
+   --------------------------------------------------------------------------- */
+.ig-more {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: -4px -4px -4px 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.ig-more:active { background: var(--bg-subtle); }
+.ig-more .oo-ic { font-size: 18px; }
+.ig-act-lock { display: inline-flex; align-items: center; color: var(--text-muted); }
+.ig-act-lock .oo-ic { font-size: 12px; font-weight: var(--fw-label); }
+.ig-act-num.ig-act-private {
+  min-width: 0;
+  width: auto;
+  padding: 0 3px;
+  overflow: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 게시물 메뉴 시트 ------------------------------------------------------- */
+.post-menu-sheet { padding-top: 8px; }
+.pm-body { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 6px; }
+.pm-title {
+  padding: 2px 2px 8px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  color: var(--text-muted);
+}
+.pm-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 2px;
+  border: 0;
+  border-top: 1px solid var(--divider);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pm-row:first-of-type { border-top: 0; }
+.pm-row:active { background: var(--fill-subtle); }
+.pm-row-ic {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--fill-subtle);
+  color: var(--text-strong);
+}
+.pm-row-ic .oo-ic { font-size: 18px; }
+.pm-row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pm-row-title { font-size: var(--fs-body); font-weight: var(--fw-title); color: var(--text-strong); }
+.pm-row-desc {
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pm-check { flex: 0 0 auto; display: inline-flex; color: var(--green-text); }
+.pm-check .oo-ic { font-size: 18px; }
+.pm-cancel {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--fill-subtle);
+  color: var(--text-sub);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.pm-cancel:active { background: var(--bg-subtle); }
+
+/* 글 수정 화면의 글 삭제 ------------------------------------------------- */
+.composer-delete-row { padding: 2px 16px 14px; }
+.composer-delete-row[hidden] { display: none; }
+.composer-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--divider);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--red);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.composer-delete:active { background: var(--fill-subtle); }
+.composer-delete .oo-ic { font-size: 16px; }

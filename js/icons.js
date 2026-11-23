@@ -60,6 +60,9 @@ window.OOGIcons = (function () {
     close: '<path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/>',
     closeCircle: '<circle cx="12" cy="12" r="8.6"/><path d="M9 9l6 6M15 9l-6 6"/>',
     plus: '<path d="M12 5.4v13.2M5.4 12h13.2"/>',
+    /* v35.1 (#23087) — 게시물 메뉴(점 세 개) · 공유(위로 내보내기) */
+    more: '<circle cx="12" cy="5.4" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="18.6" r="1.5" fill="currentColor" stroke="none"/>',
+    share: '<path d="M12 3.6v10.8"/><path d="M8.2 7.2 12 3.4l3.8 3.8"/><path d="M6.4 12.4v6.4a1.8 1.8 0 0 0 1.8 1.8h7.6a1.8 1.8 0 0 0 1.8-1.8v-6.4"/>',
     trash: '<path d="M4.6 7h14.8M9.6 7V5.3A1.3 1.3 0 0 1 10.9 4h2.2a1.3 1.3 0 0 1 1.3 1.3V7"/><path d="M6.6 7l.8 11.1a2 2 0 0 0 2 1.9h5.2a2 2 0 0 0 2-1.9L17.4 7"/><path d="M10.2 10.8v5.4M13.8 10.8v5.4"/>',
     pencil: '<path d="M16.6 4.5a2.1 2.1 0 0 1 3 3L8.2 18.9l-4.7 1.4 1.4-4.7z"/><path d="M14.4 6.7l2.9 2.9"/>',
     pin: '<path d="M12 21.2s6.6-5.9 6.6-10.7A6.6 6.6 0 0 0 5.4 10.5c0 4.8 6.6 10.7 6.6 10.7z"/><circle cx="12" cy="10.4" r="2.4"/>',

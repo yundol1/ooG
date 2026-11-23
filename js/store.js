@@ -5744,6 +5744,30 @@ class Store {
     return { liked: !!post.likedByMe, likes: Math.max(0, Number(post.likes) || 0), changed: before.liked !== want, before, kind: kind || 'feed' };
   }
 
+  /**
+   * v35.1 (#23087) — 글쓴이가 자기 글의 **좋아요 수·누른 사람**을 비공개로 둔다.
+   *  · 글쓴이만 바꿀 수 있다(다른 사람 글은 권한 없음).
+   *  · 값은 글 객체의 `likesHidden` 하나다 — 화면은 볼 사람이 글쓴이인지 보고 그린다.
+   * @param {string} postId
+   * @param {boolean} hidden
+   */
+  setPostLikesHidden(postId, hidden, kind) {
+    const post = kind === 'explore'
+      ? (this.getExplorePost ? this.getExplorePost(postId) : null)
+      : (this.getPost(postId) || (this.getExplorePost ? this.getExplorePost(postId) : null));
+    if (!post) return { ok: false, reason: 'not_found' };
+    if (post.authorId !== this.state.currentUser.id) return { ok: false, reason: 'permission' };
+    post.likesHidden = !!hidden;
+    this.saveState();
+    return { ok: true, postId, hidden: post.likesHidden };
+  }
+
+  /** v35.1 — 이 글의 좋아요가 비공개인가(글 객체 값 그대로). */
+  isPostLikesHidden(postId) {
+    const post = this.getPost(postId) || (this.getExplorePost ? this.getExplorePost(postId) : null);
+    return !!(post && post.likesHidden);
+  }
+
   /** Sprint 33 — 경계가 실패했을 때 되돌릴 좋아요 상태 복원. */
   restorePostLike(postId, before, kind) {
     if (!before) return null;

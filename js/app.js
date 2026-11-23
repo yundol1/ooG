@@ -308,6 +308,15 @@ document.addEventListener('DOMContentLoaded', () => {
     appHeader: document.querySelector('.app-header'),
     /* v34.5 (#22887) — 프로필 본문 맨 위 중앙의 아이디 */
     profileTopHandle: $('#profile-top-handle'),
+    /* v35.1 (#23062 · #23073 · #23087 · #23099) — 타인 프로필 머리말 아이디 · 게시물 머리말/메뉴 · 글 삭제 */
+    personTopId: $('#person-top-id'),
+    postDetailTitle: $('#post-detail-title'),
+    postDetailBack: $('#btn-post-detail-back'),
+    postDetailMore: $('#btn-post-detail-more'),
+    postMenuModal: $('#post-menu-modal'),
+    postMenuBody: $('#post-menu-body'),
+    composerDeleteRow: $('#composer-delete-row'),
+    composerDelete: $('#btn-composer-delete'),
     myScheduleTitle: $('#my-schedule-title'),
     myScheduleShare: $('#my-schedule-share'),
     myScheduleShareToggle: $('#my-schedule-share-toggle'),
@@ -2004,21 +2013,21 @@ document.addEventListener('DOMContentLoaded', () => {
   function scrollTop() { if (el.main) el.main.scrollTop = 0; }
 
   /**
-   * v34.4 (#22772) — 내 프로필 탭(모임 밖)에서는 상단 바 **중앙**에 인스타그램처럼 @아이디.
-   * 다른 탭이나 모임 안에서는 감춘다(모임 안은 모임 이름을 쓰는 기존 머리말 그대로).
-   */
-  /**
-   * 프로필 본문 맨 위 중앙의 @아이디 — v34.5 (#22887) 부터는 헤더(로고·알림·삼선바)가 아니라
-   * 본문 첫 줄에 크게 둔다. 내 프로필 탭(모임 밖)에서만 보인다.
+   * v35.1 (#23062) — 내 프로필 탭(모임 밖)에서는 상단 헤더(ooG 로고와 같은 줄) **가운데**에
+   * 인스타그램처럼 @아이디를 보여 준다. 다른 탭이나 모임 안에서는 감춘다.
+   * v34.5 에서 본문 맨 위로 내렸던 아이디를 v34.4 처럼 헤더 가운데로 되돌렸다.
    */
   function syncHeaderProfileId() {
     const onProfile = ui.activeTab === 'tab-myprofile' && !isGroupMode();
     const me = store.currentUser || {};
     const handle = store.isSignedIn() ? displayHandleOf(me) : '';
+    const show = !!(onProfile && handle);
     if (el.profileTopHandle) {
       el.profileTopHandle.textContent = handle ? `@${handle}` : '';
-      el.profileTopHandle.hidden = !(onProfile && handle);
+      el.profileTopHandle.hidden = !show;
     }
+    /* v35.1 — 아이디가 헤더 가운데 서는 동안 로고 옆 영문 태그를 접어 겹치지 않게 한다. */
+    if (el.appHeader) el.appHeader.classList.toggle('has-id', show);
   }
 
   /* ==========================================================================
@@ -2842,10 +2851,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const hours = Math.max(0, Math.round((Date.now() - when.getTime()) / 36e5));
     const whenLabel = hours < 1 ? '방금' : (hours < 24 ? `${hours}시간 전` : `${Math.round(hours / 24)}일 전`);
     const likeCount = Number(p.likes) || 0;
+    /* v35.1 (#23087) — 글쓴이가 '좋아요 비공개'를 켜면:
+       · 남이 볼 때는 좋아요 숫자·누른 사람 줄을 감춘다(자물쇠만).
+       · 글쓴이 본인에게는 숫자와 함께 작은 자물쇠를 붙여 '비공개 중'임을 알린다. */
+    const meId = (store.currentUser || {}).id;
+    const isMine = !!meId && p.authorId === meId;
+    const likesHidden = !!p.likesHidden;
+    const likesHiddenForViewer = likesHidden && !isMine;
     /* v33.9 (#22267) — 좋아요한 사람 줄(아바타 3개 + '〇〇님 외 N명이 좋아합니다').
        목록은 글 id 로 정해지므로 다시 그려도 같은 얼굴이 나온다. */
-    const likersInfo = likeCount ? store.getPostLikeInfo(p.id) : { count: 0, people: [] };
-    const likerCount = likersInfo.count || likeCount;
+    const likersInfo = (likeCount && !likesHiddenForViewer) ? store.getPostLikeInfo(p.id) : { count: 0, people: [] };
+    const likerCount = likesHiddenForViewer ? 0 : (likersInfo.count || likeCount);
+    const likeCountHTML = likesHiddenForViewer
+      ? `<span class="ig-act-lock" aria-hidden="true">${ic('lock')}</span>`
+      : `<span class="ig-act-count" data-feed-like-count="${escapeHtml(p.id)}">${fmtCount(likeCount)}</span>`
+        + (likesHidden ? `<span class="ig-act-lock" aria-hidden="true">${ic('lock')}</span>` : '');
     return `
       <article class="ig-post" data-home-feed-post="${escapeHtml(it.uid)}" data-suggest-post="${escapeHtml(p.id)}"
                data-post-id="${escapeHtml(p.id)}" data-post-round="${it.round || 0}">
@@ -2862,6 +2882,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="ig-place">${ic('map')} ${escapeHtml(place)}</span>
             </span>
           </span>
+          <button class="ig-more" type="button" data-feed-more="${escapeHtml(p.id)}"
+                  aria-label="게시물 메뉴" aria-haspopup="dialog" aria-expanded="false">${ic('more')}</button>
         </header>
         <div class="ig-media${mediaClass}">${media}</div>
         <div class="ig-actions">
@@ -2870,9 +2892,9 @@ document.addEventListener('DOMContentLoaded', () => {
                   aria-label="${p.likedByMe ? '좋아요 취소' : '좋아요'}">
             ${p.likedByMe ? ic('heartFilled') : ic('heart')}
           </button>
-          <button class="ig-act ig-act-num ${likeCount ? '' : 'is-zero'}" data-feed-likers="${escapeHtml(p.id)}" type="button"
-                  aria-label="좋아요한 사람 ${likeCount}명">
-            <span class="ig-act-count" data-feed-like-count="${escapeHtml(p.id)}">${fmtCount(likeCount)}</span>
+          <button class="ig-act ig-act-num ${(!likesHiddenForViewer && !likeCount) ? 'is-zero' : ''}${likesHiddenForViewer ? ' ig-act-private' : ''}" data-feed-likers="${escapeHtml(p.id)}" type="button"
+                  aria-label="${likesHiddenForViewer ? '좋아요 비공개' : `좋아요한 사람 ${likeCount}명`}">
+            ${likeCountHTML}
           </button>
           <button class="ig-act" data-feed-comment-open="${escapeHtml(p.id)}" type="button"
                   aria-label="댓글 보기">
@@ -3212,6 +3234,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const hash = e.target.closest('[data-hashtag]');
       if (hash) { e.preventDefault(); openHashtag(hash.dataset.hashtag); return; }
       if (e.target.closest('[data-hashtag-clear]')) { e.preventDefault(); clearHashtag(); return; }
+      /* v35.1 (#23087) — 카드 우상단 점 세 개 → 게시물 메뉴(수정·좋아요 비공개·공유). */
+      const more = e.target.closest('[data-feed-more]');
+      if (more) {
+        e.preventDefault();
+        e.stopPropagation();
+        openPostMenuSheet(more.dataset.feedMore);
+        return;
+      }
       const like = e.target.closest('[data-feed-like]');
       if (like) {
         const res = likeWithBoundary(like.dataset.feedLike, 'feed');
@@ -6228,6 +6258,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const author = personFor(post.authorId, post.authorName);
     const likeCount = Number(post.likes) || 0;
     const detailImages = postImages(post);
+    /* v35.1 (#23087) — 좋아요 비공개: 남에게는 숫자·누른 사람을 감춘다(글쓴이에게만 보인다). */
+    const meId = (store.currentUser || {}).id;
+    const isMine = !!meId && post.authorId === meId;
+    const likesHidden = !!post.likesHidden;
+    const likesHiddenForViewer = likesHidden && !isMine;
+    setPostDetailTitle(isMine ? '내 게시물' : '게시물');
     el.postBody.innerHTML = `
       <div class="post-detail-head">
         <button class="post-detail-avatar" type="button" style="${avatarStyle(author)}"
@@ -6254,19 +6290,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 aria-pressed="${post.likedByMe}" aria-label="${post.likedByMe ? '좋아요 취소' : '좋아요'}" type="button">
           ${HEART_SVG(post.likedByMe)}
         </button>
-        <button class="post-detail-count ${likeCount ? '' : 'is-zero'}" data-feed-post-likers="${post.id}" type="button"
-                data-feed-like-count="${post.id}" aria-label="좋아요한 사람 ${likeCount}명">${fmtCount(likeCount)}</button>
+        <button class="post-detail-count ${(!likesHiddenForViewer && !likeCount) ? 'is-zero' : ''}${likesHiddenForViewer ? ' is-private' : ''}" data-feed-post-likers="${post.id}" type="button"
+                ${likesHiddenForViewer ? '' : `data-feed-like-count="${post.id}"`} aria-label="${likesHiddenForViewer ? '좋아요 비공개' : `좋아요한 사람 ${likeCount}명`}">${likesHiddenForViewer
+                  ? `<span class="post-detail-lock" aria-hidden="true">${ic('lock')}</span>`
+                  : `${fmtCount(likeCount)}${likesHidden ? `<span class="post-detail-lock" aria-hidden="true">${ic('lock')}</span>` : ''}`}</button>
         <button class="post-detail-count" data-post-comments="${post.id}" type="button"
                 aria-label="댓글 ${comments.length}개">${COMMENT_SVG()}</button>
         <button class="post-detail-count ${comments.length ? '' : 'is-zero'}" data-post-comments="${post.id}" type="button"
                 data-feed-comment-count="${post.id}" aria-label="댓글 ${comments.length}개 보기">${comments.length}</button>
       </div>
-      <div class="post-detail-actions">
-        ${grp ? `<button class="post-detail-group" data-feed-post-group="${grp.id}" type="button">모임 보기</button>` : ''}
-        ${post.authorId === store.currentUser.id
-          ? `<button class="post-detail-group" data-feed-post-edit="${post.id}" type="button">글 수정</button>` : ''}
-      </div>
-      ${post.recommendOptIn ? '<p class="post-detail-optin">추천 피드에 노출 중이에요 · 글 수정에서 바꿀 수 있어요</p>' : ''}
+      ${grp ? `<div class="post-detail-actions">
+        <button class="post-detail-group" data-feed-post-group="${grp.id}" type="button">모임 보기</button>
+      </div>` : ''}
       <div class="post-comment-head">
         <h4 class="post-comment-title">댓글 <span class="section-count">${comments.length}</span></h4>
         <span class="post-comment-privacy">모임원만 볼 수 있는 반응이에요</span>
@@ -6303,6 +6338,118 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!post || !el.postModal) return;
     renderGroupPostDetail(postId);
     if (!el.postModal.classList.contains('active')) openModal(el.postModal);
+  }
+
+  /* ==========================================================================
+   * v35.1 (#23073 · #23087) — 게시물 상세 머리말 제목 + 점 세 개(⋯) 메뉴
+   * ------------------------------------------------------------------------
+   *  · 제목은 맥락을 따른다: 내 글 → '내 게시물', 남의 글 → '게시물', 동네 글 → '동네 글'.
+   *    ('동네 글 상세'가 프로필에서 연 글에도 붙어 있던 것을 고쳤다)
+   *  · 점 세 개는 피드 카드와 게시물 상세 양쪽에 있고, 누르면 아래에서 작은 시트가 올라온다.
+   *      내 글  : 글 수정 · 좋아요 비공개(켜기/끄기) · 공유
+   *      남의 글: 공유
+   * ======================================================================== */
+  function setPostDetailTitle(text) {
+    if (el.postDetailTitle) el.postDetailTitle.textContent = text || '게시물';
+  }
+
+  /** 이 글의 글쓴이가 나인가(좋아요 비공개·수정은 내 글에서만). */
+  function isMyPost(post) {
+    const meId = (store.currentUser || {}).id;
+    return !!(post && meId && post.authorId === meId);
+  }
+
+  function postMenuRow(attrs, icon, title, desc, extra) {
+    return `<button class="pm-row" type="button" ${attrs}>
+      <span class="pm-row-ic" aria-hidden="true">${ic(icon)}</span>
+      <span class="pm-row-text"><span class="pm-row-title">${escapeHtml(title)}</span>
+      ${desc ? `<span class="pm-row-desc">${escapeHtml(desc)}</span>` : ''}</span>
+      ${extra || ''}
+    </button>`;
+  }
+
+  /** 점 세 개를 누르면 열리는 게시물 메뉴 시트. */
+  function openPostMenuSheet(postId) {
+    if (!el.postMenuModal || !el.postMenuBody) return;
+    const post = store.getPost(postId) || store.getExplorePost(postId);
+    if (!post) return;
+    ui.postMenuId = post.id;
+    ui.postMenuKind = store.getPost(postId) ? 'feed' : 'explore';
+    const mine = isMyPost(post);
+    const hidden = !!post.likesHidden;
+    /* 수정은 피드 글(내 모임·자유 피드)만 — 동네 글은 수정 화면으로 이어지지 않는다. */
+    const canEdit = mine && !!store.getPost(post.id);
+    el.postMenuBody.innerHTML = `
+      <p class="pm-title">${mine ? '내 게시물' : '게시물'}</p>
+      ${canEdit ? postMenuRow(`data-pm="edit"`, 'pencil', '글 수정', '사진·내용·추천 피드 노출 바꾸기') : ''}
+      ${mine ? postMenuRow(`data-pm="likes"`, hidden ? 'lock' : 'unlock',
+        hidden ? '좋아요 비공개 해제' : '좋아요 비공개',
+        hidden ? '다시 숫자와 누른 사람이 보여요' : '숫자·누른 사람을 나만 볼 수 있게',
+        hidden ? `<span class="pm-check" aria-hidden="true">${ic('check')}</span>` : '') : ''}
+      ${postMenuRow(`data-pm="share"`, 'share', '공유', '링크를 보내 이 글을 알려요')}`;
+    openModal(el.postMenuModal);
+  }
+
+  function closePostMenuSheet() {
+    closeModal(el.postMenuModal);
+    if (el.postDetailMore) el.postDetailMore.setAttribute('aria-expanded', 'false');
+  }
+
+  /* 메뉴 항목 — 수정 · 좋아요 비공개 토굴 · 공유 */
+  if (el.postMenuBody) {
+    el.postMenuBody.addEventListener('click', (e) => {
+      const row = e.target.closest('[data-pm]');
+      if (!row) return;
+      const postId = ui.postMenuId;
+      const post = postId ? (store.getPost(postId) || store.getExplorePost(postId)) : null;
+      if (!post) { closePostMenuSheet(); return; }
+      const act = row.dataset.pm;
+      closePostMenuSheet();
+      if (act === 'edit') {
+        /* 상세에서 열었으면 상세를 덮고 수정 화면을 연다(뒤로 가면 원래 화면). */
+        if (!store.getPost(post.id)) { showToast('이 글은 수정할 수 없어요', 'warning'); return; }
+        openComposerEditing(post.id);
+        return;
+      }
+      if (act === 'likes') {
+        const res = store.setPostLikesHidden(post.id, !post.likesHidden, ui.postMenuKind);
+        if (!res || !res.ok) { showToast('내가 쓴 글만 바꿀 수 있어요', 'warning'); return; }
+        repaintAfterPostChange(post.id);
+        showToast(res.hidden ? '좋아요를 비공개로 두었어요 · 나만 볼 수 있어요' : '좋아요를 다시 공개했어요', 'info');
+        return;
+      }
+      if (act === 'share') sharePost(post.id);
+    });
+  }
+  const postMenuCancel = $('#btn-post-menu-cancel');
+  postMenuCancel && postMenuCancel.addEventListener('click', closePostMenuSheet);
+  if (el.postDetailMore) {
+    el.postDetailMore.addEventListener('click', () => {
+      if (!ui.postSheetId) return;
+      el.postDetailMore.setAttribute('aria-expanded', 'true');
+      openPostMenuSheet(ui.postSheetId);
+    });
+  }
+  if (el.postDetailBack) {
+    /* v35.1 (#23073) — '<' 는 늘 **직전 화면**(프로필·피드)으로 돌아간다. */
+    el.postDetailBack.addEventListener('click', () => closeModal(el.postModal));
+  }
+
+  /** 글 하나가 바뀌었을 때(좋아요 비공개·삭제·수정) 그 글이 보이는 화면들을 다시 그린다. */
+  function repaintAfterPostChange(postId) {
+    if (el.postModal && el.postModal.classList.contains('active') && ui.postSheetId === postId) {
+      if (store.getPost(postId)) renderGroupPostDetail(postId);
+      else closeModal(el.postModal);
+    }
+    renderHomeSuggestFeed();
+    if (homeGroup()) renderHomeFeed(homeGroup());
+    if (isGroupMode() && ui.groupSpaceId) {
+      const grp = store.getGroup(ui.groupSpaceId);
+      if (grp) renderGroupFeed(grp);
+    }
+    renderMyProfileTab();
+    if (ui.personSheetId) renderPersonFeed(ui.personSheetId);
+    updateBadges();
   }
 
 
@@ -7244,12 +7391,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (cmtBtn) {
         const input = el.postBody.querySelector('.comment-input');
         if (input) { input.focus(); input.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
-        return;
-      }
-      const editBtn = e.target.closest('[data-feed-post-edit]');
-      if (editBtn) {
-        closeModal(el.postModal);
-        openComposerEditing(editBtn.dataset.feedPostEdit);
         return;
       }
       const groupBtn = e.target.closest('[data-feed-post-group]');
@@ -8678,8 +8819,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeAction = `<button class="detail-btn ghost" data-person-action="close" type="button">닫기</button>`;
 
     const metaBadges = [
-      p.age ? `<span class="detail-age">${p.age}세</span>` : '',
-      p.location ? `<span class="detail-badge">${escapeHtml(p.location)}${p.distanceKm != null ? ` · ${p.distanceKm}km` : ''}</span>` : '',
+      /* v35.1 (#23069 · IMG_4586) — 나이·지역은 프로필에 노출하지 않는다(닉네임·소개·취미는 그대로). */
       p.cycle ? `<span class="detail-badge">${escapeHtml(p.cycle)}</span>` : ''
     ].filter(Boolean).join('');
 
@@ -8703,9 +8843,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handle = `@${store.personHandle(p)}`;
     const bio = String(p.bio || '').trim();
+    /* v35.1 (#23062) — @아이디는 이 화면 머리말(뒤로가기와 같은 줄) 가운데로 올렸다.
+       본문 맨 위에 같은 아이디를 또 내리지 않는다. */
+    if (el.personTopId) {
+      el.personTopId.textContent = handle;
+      el.personTopId.hidden = !store.personHandle(p);
+    }
 
     el.personDetailBody.innerHTML = `
-      <p class="person-top-id" id="person-top-id" ${handle ? '' : 'hidden'}>${escapeHtml(handle)}</p>
       <div class="detail-top">
         <div class="detail-photo" ${p.photoUrl ? '' : `style="background:${p.avatarGradient || 'linear-gradient(135deg,#10B981,#047857)'}"`}>
           ${p.photoUrl
@@ -8717,9 +8862,9 @@ document.addEventListener('DOMContentLoaded', () => {
           ${isMe ? '<span class="me-badge">나</span>' : ''}
           ${metaBadges ? `<div class="detail-badges">${metaBadges}</div>` : ''}
           ${personStats}
+          ${personPhotoRingsHTML(p)}
         </div>
       </div>
-      ${personPhotoRingsHTML(p)}
       ${bio ? `<p class="detail-bio">${escapeHtml(bio)}</p>` : ''}
       <div class="detail-actions">
         ${primary}
@@ -8901,6 +9046,13 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ------------------------------------------------------ 좋아요한 사람 시트 */
   function openLikers(postId) {
     if (!el.likersModal) return;
+    /* v35.1 (#23087) — 글쓴이가 좋아요를 비공개로 두었으면 남에게는 목록도 열어 주지 않는다. */
+    const post = store.getPost(postId) || store.getExplorePost(postId);
+    const meId = (store.currentUser || {}).id;
+    if (post && post.likesHidden && post.authorId !== meId) {
+      showToast('글쓴이가 좋아요를 비공개로 두었어요', 'info');
+      return;
+    }
     ui.likersPostId = postId;
     renderLikers();
     openModal(el.likersModal);
@@ -9932,15 +10084,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (freshInput) freshInput.focus();
   });
 
-  /* 게시물 링크 공유 — 클립보드 복사(가능한 경우) 후 안내.
-     실제 서비스에서는 이 링크가 로그인/모임 가입 여부를 검사하는 딥링크가 된다. */
+  /* 게시물 링크 공유 — v35.1 (#23087) 부터는 웹 Share API 를 먼저 시도하고,
+     안 되면 링크를 복사한 뒤 안내한다. */
   function sharePost(postId) {
     const base = location.href.split('#')[0];
     const link = `${base}#${postId}`;
+    const post = store.getPost(postId) || store.getExplorePost(postId) || {};
+    const title = 'ooG 게시물';
+    const text = String(post.caption || '').trim().slice(0, 80) || 'ooG 에서 본 게시물';
     const done = () => {
       showToast('이 글의 링크를 복사했어요 · 모임원만 열람할 수 있어요', 'info');
       if (navigator.vibrate) navigator.vibrate(8);
     };
+    if (navigator.share) {
+      navigator.share({ title, text, url: link }).then(() => {
+        showToast('게시물을 공유했어요', 'info');
+      }).catch((err) => {
+        /* 사용자가 닫은 경우엔 조용히 끝낸다. */
+        if (err && err.name === 'AbortError') return;
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done).catch(() => showToast(link, 'info'));
+        else showToast(link, 'info');
+      });
+      return;
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(link).then(done).catch(() => {
         showToast(link, 'info');
@@ -10160,6 +10326,8 @@ document.addEventListener('DOMContentLoaded', () => {
       el.publishBtn.textContent = step === 2 ? '게시'
         : (mode === 'home' ? '다음' : (c.editId ? '저장' : '게시'));
     }
+    /* v35.1 (#23099) — '글 삭제'는 수정 화면에서만, 사진·내용 단계에만 보인다. */
+    if (el.composerDeleteRow) el.composerDeleteRow.hidden = !(c.editId && step === 1);
     /* 추천 피드 체크는 2단계 · 모임 공간 · 글 수정에서만 보인다(renderComposerRecommend 가 판단). */
     renderComposerGroups();
     renderComposerPhotos();
@@ -11224,6 +11392,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const author = personFor(post.authorId, post.authorName);
     const likeCount = Number(post.likes) || 0;
+    const meId = (store.currentUser || {}).id;
+    const isMineExplore = !!meId && post.authorId === meId;
+    /* v35.1 (#23087) — 동네 글도 글쓴이의 '좋아요 비공개'를 따른다. */
+    const likesHidden = !!post.likesHidden;
+    const likesHiddenForViewer = likesHidden && !isMineExplore;
+    setPostDetailTitle('동네 글');
     el.postBody.innerHTML = `
       <div class="post-detail-head">
         <button class="post-detail-avatar" type="button" style="${avatarStyle(author)}"
@@ -11249,8 +11423,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 aria-pressed="${post.likedByMe}" aria-label="${post.likedByMe ? '좋아요 취소' : '좋아요'}" type="button">
           ${HEART_SVG(post.likedByMe)}
         </button>
-        <button class="post-detail-count ${likeCount ? '' : 'is-zero'}" data-post-likers="${post.id}" type="button"
-                data-feed-like-count="${post.id}" aria-label="좋아요한 사람 ${likeCount}명">${fmtCount(likeCount)}</button>
+        <button class="post-detail-count ${(!likesHiddenForViewer && !likeCount) ? 'is-zero' : ''}${likesHiddenForViewer ? ' is-private' : ''}" data-post-likers="${post.id}" type="button"
+                ${likesHiddenForViewer ? '' : `data-feed-like-count="${post.id}"`} aria-label="${likesHiddenForViewer ? '좋아요 비공개' : `좋아요한 사람 ${likeCount}명`}">${likesHiddenForViewer
+                  ? `<span class="post-detail-lock" aria-hidden="true">${ic('lock')}</span>`
+                  : `${fmtCount(likeCount)}${likesHidden ? `<span class="post-detail-lock" aria-hidden="true">${ic('lock')}</span>` : ''}`}</button>
         <button class="post-detail-count" data-post-comments="${post.id}" type="button"
                 aria-label="댓글 ${comments.length}개">${COMMENT_SVG()}</button>
         <button class="post-detail-count ${comments.length ? '' : 'is-zero'}" data-post-comments="${post.id}" type="button"
@@ -15545,6 +15721,31 @@ document.addEventListener('DOMContentLoaded', () => {
   /* v34.0 — 글쓰기 '<' 는 2단계에서는 1단계로, 1단계에서는 창을 닫는다. */
   el.btnComposerBack && el.btnComposerBack.addEventListener('click', composerBack);
 
+  /* v35.1 (#23099) — 글 수정 화면의 '글 삭제'.
+     한 번 물어본 뒤 지우고, 수정 화면을 닫아 목록/프로필로 돌아간다. 바로 되살릴 수 있게 토스트를 남긴다. */
+  if (el.composerDelete) {
+    el.composerDelete.addEventListener('click', () => {
+      const c = ui.composer;
+      if (!c || !c.editId) return;
+      const postId = c.editId;
+      askConfirm('글을 삭제할까요?', '이 글의 사진·댓글·좋아요가 함께 사라져요.', '삭제', () => {
+        const removed = store.deletePost(postId);
+        ui.composer = null;
+        closeModal(el.composerModal);
+        repaintAfterPostChange(postId);
+        if (!removed) { showToast('글을 삭제하지 못했어요', 'warning'); return; }
+        showToast('글을 삭제했어요', 'info', {
+          label: '되돌리기',
+          onClick: () => {
+            store.restorePost(removed.post, removed.index);
+            repaintAfterPostChange(postId);
+            showToast('글을 되살렸어요');
+          }
+        });
+      });
+    });
+  }
+
   const postDetailClose = $('#btn-close-post-detail');
   postDetailClose && postDetailClose.addEventListener('click', () => closeModal(el.postModal));
 
@@ -16016,9 +16217,9 @@ document.addEventListener('DOMContentLoaded', () => {
       el.myProfileBio.hidden = !bio;
     }
     if (el.myProfileMeta) {
-      const bits = [me.age ? `${me.age}세` : '', me.location || ''].filter(Boolean);
-      el.myProfileMeta.textContent = bits.join(' · ');
-      el.myProfileMeta.hidden = !bits.length;
+      /* v35.1 (#23069) — 나이·지역은 프로필에 노출하지 않는다. 값은 남겨 두되 화면에는 띄우지 않는다. */
+      el.myProfileMeta.textContent = '';
+      el.myProfileMeta.hidden = true;
     }
     if (el.myProfileAvatarLetter) el.myProfileAvatarLetter.textContent = me.avatarText || (me.nickname || '나').charAt(0);
     if (el.myProfileAvatarImg) {
