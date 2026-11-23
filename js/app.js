@@ -4782,6 +4782,27 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${d.getMonth() + 1}월 ${d.getDate()}일`;
   }
 
+  /**
+   * v36.3 (#23599 · IMG_4591) — '멤버 N' 버튼 안의 겹친 아바타 미리보기.
+   *  · 피드 좋아요 줄(.ig-liker-face)과 같은 모양의 작은 원형 아바타를 최대 3개 살짝 겹친다.
+   *  · 순서는 모임장(owner) → 운영진(staff) → 멤버(member). 같은 역할 안에서는 명단 순서 그대로.
+   *  · 이름은 옆의 '멤버 N' 글자가 이미 말하므로 아바타는 화면낭독기에서 감춘다(aria-hidden).
+   */
+  function ginfoFacesHTML(roster, max) {
+    const rank = { owner: 0, staff: 1, member: 2 };
+    const people = ((roster && roster.members) || [])
+      .map((m, i) => ({ m, i, r: rank[m.groupRole] === undefined ? 3 : rank[m.groupRole] }))
+      .sort((a, b) => (a.r - b.r) || (a.i - b.i))
+      .slice(0, Math.max(0, max || 3))
+      .map((entry) => entry.m);
+    if (!people.length) return '';
+    const faces = people.map((m) => {
+      const inner = m.photoUrl ? avatarImgHTML(m.photoUrl, m.name) : escapeHtml(m.avatarText || String(m.name || '').charAt(0));
+      return `<span class="ginfo-face" style="background:${escapeHtml(m.gradient || 'var(--bg-subtle)')}">${inner}</span>`;
+    }).join('');
+    return `<span class="ginfo-faces" aria-hidden="true">${faces}</span>`;
+  }
+
   /* ------------------------------------------------------------------
    * 1-C2. v35.2 — 모임 홈/정보 (하단 1번 탭 = 원형 모임 대표 이미지)
    * ----------------------------------------------------------------
@@ -4807,12 +4828,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
     const isLeader = store.isGroupLeader(grp.id);
     const azitLabel = azits.length ? azits[0].name : (grp.location || '온라인');
-    const roleOf = (m) => {
-      const role = store.roleOf(grp.id, m.id);
-      if (role === 'owner' || role === 'staff') return groupRoleBadge(role);
-      if (m.isMe) return '<span class="ginfo-role me">나</span>';
-      return '';
-    };
+    const faces = ginfoFacesHTML(roster, 3);
 
     el.groupInfoBody.innerHTML = `
       <section class="ginfo-hero" aria-label="${escapeHtml(grp.name)} 모임 정보">
@@ -4827,7 +4843,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="ginfo-actions">
           <button class="ginfo-btn primary" data-ginfo-chat="${grp.id}" type="button">
             <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chat"></span>단체 채팅</button>
-          <button class="ginfo-btn" data-ginfo-members="${grp.id}" type="button">멤버 ${roster.total}</button>
+          <button class="ginfo-btn${faces ? ' has-faces' : ''}" data-ginfo-members="${grp.id}" type="button"
+                  aria-label="멤버 ${roster.total}명 전체 보기">${faces}멤버 ${roster.total}</button>
           ${isLeader ? `<button class="ginfo-btn" data-ginfo-edit="${grp.id}" type="button">모임 정보 수정</button>` : ''}
         </div>
       </section>
@@ -4856,21 +4873,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </ul>
       </section>
 
-      <section class="ginfo-card" aria-labelledby="ginfo-members-title">
-        <div class="ginfo-card-head">
-          <h3 class="ginfo-card-title" id="ginfo-members-title">멤버 <span class="section-count">${roster.total}</span></h3>
-          <button class="ginfo-more" data-ginfo-members="${grp.id}" type="button">전체 보기 ›</button>
-        </div>
-        <div class="ginfo-members">
-          ${roster.members.slice(0, 8).map((m) => `
-            <button class="ginfo-member" data-ginfo-member="${m.id}" type="button" ${m.isMe ? 'disabled aria-disabled="true"' : ''}>
-              <span class="ginfo-member-avatar" style="background:${m.gradient}">${m.photoUrl ? avatarImgHTML(m.photoUrl, m.name) : escapeHtml(m.avatarText)}</span>
-              <span class="ginfo-member-name">${escapeHtml(m.name)}</span>
-              ${roleOf(m)}
-            </button>`).join('')}
-        </div>
-      </section>
-
+      <!-- v36.3 (#23599) — 하단 '멤버 N (전체 보기)' 카드는 걷어냈다.
+           멤버는 상단 '멤버 N' 버튼(겹친 아바타 + 전체 명단) 하나로 모은다. -->
       ${grp.rules ? `<section class="ginfo-card" aria-labelledby="ginfo-rules-title">
         <h3 class="ginfo-card-title" id="ginfo-rules-title">모임 규칙</h3>
         <p class="ginfo-rules">${escapeHtml(grp.rules)}</p>
@@ -6928,7 +6932,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v36.2';
+  const APP_VERSION = 'v36.3';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -7998,13 +8002,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ginfoMembers) { openGroupMembers(ginfoMembers.dataset.ginfoMembers || ui.groupSpaceId); return; }
     const ginfoEdit = e.target.closest('[data-ginfo-edit]');
     if (ginfoEdit) { openGroupDetail(ginfoEdit.dataset.ginfoEdit || ui.groupSpaceId); return; }
-    const ginfoMember = e.target.closest('[data-ginfo-member]');
-    if (ginfoMember && ui.groupSpaceId) {
-      const dm = store.getGroupDmPolicy(ui.groupSpaceId);
-      if (!dm.enabled) { showToast('모임장이 1:1 대화를 꺼두었어요', 'warning'); return; }
-      goMemberChat(ui.groupSpaceId, ginfoMember.dataset.ginfoMember);
-      return;
-    }
 
     const chatMember = e.target.closest('[data-group-chat-member]');
     if (chatMember && ui.groupSpaceId) {

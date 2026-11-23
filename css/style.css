@@ -26480,6 +26480,26 @@ body.group-mode #group-nav { display: flex !important; }
   font-weight: 650;
 }
 .ginfo-btn.primary { background: var(--green-solid); border-color: var(--green-solid); color: #fff; }
+/* v36.3 (#23599 · IMG_4591) — '멤버 N' 버튼 안의 겹친 아바타(최대 3) */
+.ginfo-btn.has-faces { padding-left: 7px; gap: 6px; }
+.ginfo-faces { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.ginfo-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 2px solid var(--bg-base);   /* 버튼 바탕색으로 겹친 아바타 사이를 띄운다 */
+  overflow: hidden;
+  background: var(--bg-subtle);
+  color: #FFFFFF;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+.ginfo-face + .ginfo-face { margin-left: -6px; }
+.ginfo-face .avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .ginfo-card {
   border: 1px solid var(--border);
@@ -26492,7 +26512,6 @@ body.group-mode #group-nav { display: flex !important; }
 }
 .ginfo-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ginfo-card-title { margin: 0; font-size: var(--fs-sub); font-weight: 700; color: var(--text-strong); }
-.ginfo-more { border: 0; background: none; color: var(--text-muted); font-size: var(--fs-caption); font-weight: 600; }
 .ginfo-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .ginfo-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--fs-caption); color: var(--text-muted); }
 .ginfo-stat b { font-size: var(--fs-body); font-weight: 750; color: var(--text-strong); font-variant-numeric: tabular-nums; }
