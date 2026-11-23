@@ -23,7 +23,7 @@
    v35.3 (설정 정리 S1~S3) — 설정 17항목 → 5행 · 톱니(⚙) 전체 화면 설정 · 화면 모드/알림 하위 페이지 ·
    2시간 프로필·내 활동은 내 프로필로, 가입한 모임/신청 현황은 내 그룹 2탭으로 이동 · 데이터 도구는 ?dev=1.
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v35-3';
+const CACHE_VERSION = 'oog-shell-v36-0';
 const SHELL_ASSETS = [
   './',
   './index.html',

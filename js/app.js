@@ -113,14 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
       step: 1, hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '',
       cover: { photoUrl: null, presetId: null }, azitId: null, azitArea: 'all', azitQuery: ''
     },
-    /* Sprint 32.5 — 홈: 내 그룹 레일·아지트 칩·추천 일정/피드 */
+    /* Sprint 32.5 — 홈: 내 모임 레일·아지트 칩·추천 일정/피드 */
     homeAzitId: 'all',           // 홈 둘러보기의 아지트 필터
     homeSuggestEventSeat: null,  // 방금 게스트로 참석한 일정(잠깐 '참석함' 표시)
 
     /* Sprint 4.5 — 알림 파이프라인 · 가입 심사 */
     applyGroupId: null,          // 지금 신청서를 쓰는 모임
     applyAnswers: [],            // 신청서 답변 드래프트
-    mygroupsTab: 'joined',       // v35.3 S2 — 내 그룹 화면 탭 'joined' | 'apps'
+    mygroupsTab: 'joined',       // v35.3 S2 — 내 모임 화면 탭 'joined' | 'apps'
 
     /* Sprint 6 — 내 활동 로그 */
     activityType: 'all',         // 'all' | 'like' | 'post' | 'comment' | 'group'
@@ -198,11 +198,13 @@ document.addEventListener('DOMContentLoaded', () => {
     dmSent: null,                // 방금 쪽지를 보낸 상대 {partnerId, name, roomId}
     confirmAction: null,         // 확인 시트에서 실행할 동작
 
-    /* Sprint 18 — 모임 사이드바(Drawer). 내정보 설정은 v35.3 부터 전체 화면 페이지다. */
-    drawerOpen: null,            // null | 'group' | 'profile'
+    /* v36.0 — 모임 설정 한 화면이 다루는 상태(하위 화면 id · 모임 · 탈퇴 선택). */
+    gsView: 'main',
+    gsGroupId: null,
+    leaveGroupId: null,
+    leaveKeepPosts: true,
     azitEditGroupId: null,       // v35.2 — 활동 아지트 바꾸는 모임
-    azitEditDraft: [],           //          고른 아지트 id(1~3)
-    drawerMemberId: null         // 모임 사이드바에서 펼쳐 둔 멤버
+    azitEditDraft: []            //          고른 아지트 id(1~3)
   };
 
   /* Sprint 7 — 마지막 탐색 필터 복원: 앱을 다시 열어도 나이·지역·종류 조건이 그대로다. */
@@ -241,7 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tabViews: $$('.tab-view'),
     /* Sprint 16 — 바깥 홈 · 모임 전용 공간 · 스토리 · 게시판 · 나이 슬라이더 · 쪽지 */
     groupGallery: $('#group-gallery'),
-    /* H1 — 홈: 내 그룹 원형 줄 · 추천 그룹(칩 3) · 추천 일정 · 추천 피드 */
+    /* H1 — 홈: 내 모임 원형 줄 · 추천 모임(칩 3) · 추천 일정 · 추천 피드 */
     myGroupsRail: $('#my-groups-rail'),
     myGroupsSub: $('#my-groups-sub'),
     btnMyGroupsMore: $('#btn-my-groups-more'),
@@ -256,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
     homeSuggestFeed: $('#home-suggest-feed'),
     homeSuggestFeedSub: $('#home-suggest-feed-sub'),
     homeSuggestFeedList: $('#home-suggest-feed-list'),
-    /* H1 — 내 그룹 전체 화면 · 모임 찾기 전용 화면 */
+    /* H1 — 내 모임 전체 화면 · 모임 찾기 전용 화면 */
     myGroupsScreen: $('#my-groups-screen'),
     myGroupsList: $('#mygroups-list'),
     myGroupsCount: $('#mygroups-count'),
@@ -374,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mpStatusState: $('#mp-status-state'),
     mpLikedCount: $('#mp-liked-count'),
     mpActivityCount: $('#mp-activity-count'),
-    /* v35.3 S2 — 내 그룹 화면 탭 2개(가입한 모임 / 신청 현황) */
+    /* v35.3 S2 — 내 모임 화면 탭 2개(가입한 모임 / 신청 현황) */
     myGroupsTabs: $('#mygroups-tabs'),
     myGroupsAppsList: $('#mygroups-apps-list'),
     myGroupsAppsCount: $('#mygroups-apps-count'),
@@ -437,13 +439,8 @@ document.addEventListener('DOMContentLoaded', () => {
     groupSpace: $('#group-space'),
     groupSpaceName: $('#group-space-name'),
     groupSpaceMeta: $('#group-space-meta'),
-    groupDrawerBtn: $('#btn-group-drawer'),
+    groupSettingsScreen: $('#group-settings-screen'),
     profileDrawerBtn: $('#btn-profile-drawer'),
-    groupDrawer: $('#group-drawer'),
-    groupDrawerBody: $('#group-drawer-body'),
-    groupDrawerName: $('#group-drawer-name'),
-    groupDrawerMeta: $('#group-drawer-meta'),
-    groupDrawerAvatar: $('#group-drawer-avatar'),
     profileTopbarTitle: $('#profile-topbar-title'),
     profileTopbarSub: $('#profile-topbar-sub'),
     storyBar: $('#story-bar'),
@@ -1937,7 +1934,6 @@ document.addEventListener('DOMContentLoaded', () => {
     node.classList.toggle('is-page', asPage);
     if (asPage) ensurePageHead(node);
     /* Sprint 18 — 사이드바에서 연 시트가 사이드바 뒤에 가리지 않게 먼저 접는다. */
-    if (ui.drawerOpen) closeDrawer({ silent: true });
     /* Sprint 12 — 닫히는 중인 다른 시트가 남아 있으면 즉시 정리한다
        (닫자마자 다른 시트를 열면 겹쳐 보이지 않게). */
     document.querySelectorAll('.modal-overlay.is-closing').forEach((other) => {
@@ -2036,7 +2032,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * ======================================================================== */
   function switchTab(tabId) {
     closeAllPostMenus();
-    /* H1 — 전용 화면(내 그룹 전체·모임 찾기)은 탭을 옮기면 닫는다. */
+    /* H1 — 전용 화면(내 모임 전체·모임 찾기)은 탭을 옮기면 닫는다. */
     if (subscreenOpen()) closeSubscreens();
     /* Sprint 28.5 — 모임 밖 화면(탐색·내 프로필)으로 가면 모임 문맥을 닫는다. */
     if ((tabId === 'tab-explore' || tabId === 'tab-myprofile') && isGroupMode()) {
@@ -2347,7 +2343,6 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function exitGroupSpace() {
     clearGroupSplash();
-    if (ui.drawerOpen) closeDrawer({ silent: true });
     ui.feedHashtag = null;
     const back = ui.groupReturnTab || 'tab-home';
     ui.groupSpaceId = null;
@@ -2388,7 +2383,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * v35.2 — 모임 전용 헤더: < 뒤로가기 · 모임 이름 · 멤버/사진 · 삼선바 그룹 설정.
+   * v35.2 — 모임 전용 헤더: < 뒤로가기 · 모임 이름 · 멤버/사진 · 삼선바 모임 설정.
    * 하단 1번 탭의 원형 대표 이미지도 같은 곳에서 맞춘다.
    */
   function renderGroupHeader(grp) {
@@ -2444,14 +2439,14 @@ document.addEventListener('DOMContentLoaded', () => {
    * H1 (11/21) — 홈은 아래 요소만 남긴다
    * ------------------------------------------------------------------------
    *  루키 님 지시서 1단계(H1): 헤더·안내 배너(앱 셸) 아래에
-   *   ① 내 그룹 원형 줄([내 그룹 전체] · 가입 모임 · [+ 새 모임])
-   *   ② 추천 그룹 — 가입하지 않은 모임만 · 칩 3개 · 2열 이미지 카드(박스 없이)
+   *   ① 내 모임 원형 줄([내 모임 전체] · 가입 모임 · [+ 새 모임])
+   *   ② 추천 모임 — 가입하지 않은 모임만 · 칩 3개 · 2열 이미지 카드(박스 없이)
    *   ③ 추천 일정 — '게스트 참여 가능' 일정만 · 행 + 얇은 구분선
    *   ④ 추천 피드 — '추천 피드 노출' 허용 글만 · 이미지 + 제목 + 모임명
    *  모임 찾기는 홈에서 빠져 전용 화면(#find-screen)으로 갔다.
-   *  '내 일정'과 가입 모임 전체 목록은 '내 그룹 전체'(#my-groups-screen)로,
+   *  '내 일정'과 가입 모임 전체 목록은 '내 모임 전체'(#my-groups-screen)로,
    *  '프로필 사진 추가' 안내는 내 프로필 탭 맨 위 한 줄로 옮겼다.
-   *  모임 카드는 groupCardHTML() 하나로 그린다(추천·내 그룹 전체·모임 찾기).
+   *  모임 카드는 groupCardHTML() 하나로 그린다(추천·내 모임 전체·모임 찾기).
    * ======================================================================== */
 
   /**
@@ -2479,7 +2474,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHomeHub();
   }
 
-  /** 홈의 네 영역을 한 번에 — 내 그룹 · 추천 그룹 · 추천 일정 · 추천 피드 */
+  /** 홈의 네 영역을 한 번에 — 내 모임 · 추천 모임 · 추천 일정 · 추천 피드 */
   function renderHomeHub() {
     renderMyGroups();
     renderHomeRecommend();
@@ -2487,9 +2482,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHomeSuggestFeed();
   }
 
-  /* ---------------------------------------- H1-① 내 그룹 원형 줄 */
+  /* ---------------------------------------- H1-① 내 모임 원형 줄 */
 
-  /** '내 그룹' 원형 레일 — [내 그룹 전체] · 가입한 모임들 · [+ 새 모임] (마지막 칸 고정). */
+  /** '내 모임' 원형 레일 — [내 모임 전체] · 가입한 모임들 · [+ 새 모임] (마지막 칸 고정). */
   function renderMyGroups() {
     if (!el.myGroupsRail) return;
     const items = store.getGroupGallery();
@@ -2500,11 +2495,11 @@ document.addEventListener('DOMContentLoaded', () => {
         : '';
     }
     const all = `
-      <button class="my-group-item" data-my-group-all="1" type="button" aria-label="내 그룹 전체 보기">
+      <button class="my-group-item" data-my-group-all="1" type="button" aria-label="내 모임 전체 보기">
         <span class="my-group-ring">
           <span class="my-group-face is-all" aria-hidden="true">${ic('grid')}</span>
         </span>
-        <span class="my-group-name">내 그룹<br>전체</span>
+        <span class="my-group-name">내 모임<br>전체</span>
       </button>`;
     const rows = items.map((it) => {
       const g = it.group;
@@ -2535,7 +2530,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------------------------------- 모임 카드 컴포넌트 (1개) */
 
   /**
-   * 모임 카드 — 홈 추천 그룹 · 내 그룹 전체 · 모임 찾기가 모두 이 함수 하나로 그린다.
+   * 모임 카드 — 홈 추천 모임 · 내 모임 전체 · 모임 찾기가 모두 이 함수 하나로 그린다.
    *  · 박스(테두리·그림자) 없이 이미지를 둥글게, 글자는 이미지 아래에.
    *  · 대표 이미지가 없으면 취미 대분류 색 + 아이콘 타일.
    */
@@ -2552,7 +2547,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <article class="group-card tone-${escapeHtml(item.tone || vis.tone)}"
                data-group-card="1" data-group-id="${g.id}" data-joined="${joined ? '1' : '0'}"
                role="button" tabindex="0"
-               aria-label="${escapeHtml(g.name)} · ${joined ? '내 그룹 열기' : '모임 둘러보기'}">
+               aria-label="${escapeHtml(g.name)} · ${joined ? '내 모임 열기' : '모임 둘러보기'}">
         <div class="group-card-cover">
           ${vis.photoUrl
             ? `<img class="group-card-photo" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
@@ -2564,7 +2559,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </article>`;
   }
 
-  /* ---------------------------------------- H1-② 추천 그룹 */
+  /* ---------------------------------------- H1-② 추천 모임 */
 
   const RECOMMEND_SORTS = [
     { id: 'near', label: '가까운 순' },
@@ -2576,7 +2571,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return RECOMMEND_SORTS.some((s) => s.id === ui.homeRecSort) ? ui.homeRecSort : 'near';
   }
 
-  /** 추천 그룹 — 가입하지 않은 모임만. 칩 3개가 순서를 바꾼다. */
+  /** 추천 모임 — 가입하지 않은 모임만. 칩 3개가 순서를 바꾼다. */
   function renderHomeRecommend() {
     if (!el.homeRecommendGrid) return;
     const sort = homeRecommendSort();
@@ -2867,7 +2862,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   ${profileAttrs(author.id, author.nickname)}
                   aria-label="${escapeHtml(p.authorName)} 프로필 열기">${avatarInnerHTML(author)}</button>
           <span class="ig-head-text">
-            <button class="ig-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(p.authorName)}</button>
+            <button class="ig-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(p.authorName)}</button>${authorRoleBadge(p.groupId, p.authorId)}
             <span class="ig-subline">
               ${it.group
                 ? `<span class="ig-group">${escapeHtml(it.groupName)}</span>`
@@ -2961,9 +2956,9 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ==========================================================================
    * Sprint 33 — 홈 통합 피드 (루키 님 #21895)
    * ------------------------------------------------------------------------
-   *  흠어져 있던 '추천 그룹 · 추천 일정 · 피드'를 **하나의 피드 흐름**으로 합쳤다.
+   *  흠어져 있던 '추천 모임 · 추천 일정 · 피드'를 **하나의 피드 흐름**으로 합쳤다.
    *  · 주인공은 인스타형 피드 글(무제한 스크롤)
-   *  · 글 2개마다 한 번씩 **가로로 넘기는 레일**(추천 그룹 ↔ 추천 일정 번갈아)이 끼어든다(릴스처럼).
+   *  · 글 2개마다 한 번씩 **가로로 넘기는 레일**(추천 모임 ↔ 추천 일정 번갈아)이 끼어든다(릴스처럼).
    *  · 레일은 `data-hscroll` + `touch-action: pan-x pan-y` — 좌우 드래그는 레일이,
    *    위아래는 화면 스크롤이 먹는다(v33.8). 스와이프 뒤로가기 제스처는 가로로 넘치는
    *    영역에서 시작한 손을 건너뛰다(충돌 0).
@@ -2976,15 +2971,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return list.slice(k).concat(list.slice(0, k));
   }
 
-  /** 추천 그룹 가로 레일 — 가입하지 않은 모임만(기존 추천 규칙 그대로). */
+  /** 추천 모임 가로 레일 — 가입하지 않은 모임만(기존 추천 규칙 그대로). */
   function feedRailGroupsHTML(railIndex) {
     const all = store.getRecommendedGroups({ limit: 8, sort: homeRecommendSort() });
     if (!all.length) return '';
     const items = rotateBy(all, railIndex);
     return `
-      <section class="feed-rail" data-rail="groups" aria-label="추천 그룹">
+      <section class="feed-rail" data-rail="groups" aria-label="추천 모임">
         <header class="feed-rail-head">
-          <h3 class="feed-rail-title">추천 그룹</h3>
+          <h3 class="feed-rail-title">추천 모임</h3>
           <button class="feed-rail-more" type="button" data-home-find="1">모임 찾기${ic('chevronRight')}</button>
         </header>
         <div class="feed-rail-track" data-hscroll="1" role="list">
@@ -2995,7 +2990,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </section>`;
   }
 
-  /** 추천 그룹 레일의 일정 한 칸 — 모임명·아지트만(정확한 장소는 아니다). */
+  /** 추천 모임 레일의 일정 한 칸 — 모임명·아지트만(정확한 장소는 아니다). */
   function feedRailEventCardHTML(it) {
     const ev = it.event;
     const d = new Date(ev.when);
@@ -3046,7 +3041,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
     /* 첫 화면에서 레일이 하나만 나오면(글 3개) 다른 종류의 레일을 한 번 더 붙여
-       '추천 그룹'과 '추천 일정'이 처음부터 둘 다 보이게 한다. */
+       '추천 모임'과 '추천 일정'이 처음부터 둘 다 보이게 한다. */
     if (isFirstPage && rail < 2) {
       const extra = feedRailHTML(rail % 2 === 0 ? 'groups' : 'events', rail);
       if (extra) { html += extra; rail += 1; }
@@ -3339,7 +3334,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }, { capture: true, passive: true });
 
   /* ==========================================================================
-   * H1 — 전용 화면 두 개 (내 그룹 전체 · 모임 찾기)
+   * H1 — 전용 화면 두 개 (내 모임 전체 · 모임 찾기)
    * ======================================================================== */
 
   /** 전용 화면을 연다 — 한 번에 하나만, 뒤로 가면 홈으로 돌아온다. */
@@ -3374,9 +3369,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return !!ui.openSubscreen;
   }
 
-  /* ---------------------------------------- 내 그룹 전체 */
+  /* ---------------------------------------- 내 모임 전체 */
 
-  /** v35.3 S2 — 내 그룹 화면의 탭 = 'joined'(가입한 모임) | 'apps'(신청 현황) */
+  /** v35.3 S2 — 내 모임 화면의 탭 = 'joined'(가입한 모임) | 'apps'(신청 현황) */
   function myGroupsTab() {
     return ui.mygroupsTab === 'apps' ? 'apps' : 'joined';
   }
@@ -3407,7 +3402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (myGroupsTab() === 'apps') renderMyGroupApplications();
   }
 
-  /** 내 그룹 전체 화면 — 위: 내 일정, 아래: 가입한 모임(모임 카드 그리드).
+  /** 내 모임 전체 화면 — 위: 내 일정, 아래: 가입한 모임(모임 카드 그리드).
    *  v35.3 S2 — 맨 위 탭 2개(가입한 모임 / 신청 현황). */
   function renderMyGroupsScreen() {
     if (!el.myGroupsList) return;
@@ -3537,7 +3532,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   type="button" aria-pressed="${on}">${escapeHtml(o.label)}</button>`;
       }).join('');
     }
-    /* v34.1 — 추천 그룹 '더 보기'로 왔을 때 추천 일정도 같은 화면에 보인다. */
+    /* v34.1 — 추천 모임 '더 보기'로 왔을 때 추천 일정도 같은 화면에 보인다. */
     renderFindEvents();
     const res = store.getGroupBrowse({
       query: s.query, categoryId: s.categoryId, sort: s.sort, azitId: s.azitId,
@@ -3572,7 +3567,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 모임 찾기 전용 화면을 연다 — 헤더 검색 아이콘·추천 그룹 '더 보기'가 부른다. */
+  /** 모임 찾기 전용 화면을 연다 — 헤더 검색 아이콘·추천 모임 '더 보기'가 부른다. */
   function openFindScreen(options = {}) {
     const s = findState();
     if (options.sort) s.sort = options.sort;
@@ -3598,7 +3593,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * H1 — 홈 배선
    * ======================================================================== */
   function bindHomeHub() {
-    /* 내 그룹 원형 줄 — 전체 · 모임 열기 · 새 모임 */
+    /* 내 모임 원형 줄 — 전체 · 모임 열기 · 새 모임 */
     if (el.myGroupsRail) {
       el.myGroupsRail.addEventListener('click', (e) => {
         if (e.target.closest('[data-my-group-all]')) { openMyGroupsScreen(); return; }
@@ -3609,7 +3604,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.btnMyGroupsMore) el.btnMyGroupsMore.addEventListener('click', () => openMyGroupsScreen());
 
-    /* 추천 그룹 — 칩으로 순서 바꾸기 · 카드 열기 · 더 보기 → 모임 찾기 */
+    /* 추천 모임 — 칩으로 순서 바꾸기 · 카드 열기 · 더 보기 → 모임 찾기 */
     if (el.homeRecommendChips) {
       el.homeRecommendChips.addEventListener('click', (e) => {
         const chip = e.target.closest('[data-home-rec-sort]');
@@ -3641,7 +3636,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    /* Sprint 33 — 피드에 끼어든 가로 레일(추천 그룹·추천 일정)의 탭.
+    /* Sprint 33 — 피드에 끼어든 가로 레일(추천 모임·추천 일정)의 탭.
        카드를 누르면 그 모임/일정 상세로 — 레일을 좌우로 미는 드래그는 건드리지 않는다. */
     if (el.homeSuggestFeedList) {
       el.homeSuggestFeedList.addEventListener('click', (e) => {
@@ -3705,7 +3700,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeLikers = $('#btn-close-likers');
     if (closeLikers) closeLikers.addEventListener('click', () => closeModal(el.likersModal));
 
-    /* 내 그룹 전체 화면 — 뒤로 · 새 모임 · 카드 · 내 일정 */
+    /* 내 모임 전체 화면 — 뒤로 · 새 모임 · 카드 · 내 일정 */
     const backMy = $('#btn-mygroups-back');
     if (backMy) backMy.addEventListener('click', () => closeSubscreens());
     const newMy = $('#btn-mygroups-new');
@@ -3901,7 +3896,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    /* v34.1 (#22485) — 모임 찾기의 추천 일정(게스트 참여 가능) — 추천 그룹 '더 보기'와 함께 보인다. */
+    /* v34.1 (#22485) — 모임 찾기의 추천 일정(게스트 참여 가능) — 추천 모임 '더 보기'와 함께 보인다. */
     if (el.findEventsList) {
       el.findEventsList.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-guest-event]');
@@ -4581,7 +4576,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openStoryViewer(storyId) {
-    if (ui.drawerOpen) closeDrawer({ silent: true });
     const story = store.getStory(storyId);
     if (!story) {
       showToast('이미 사라졌거나 24시간이 지난 스토리예요', 'info');
@@ -4804,8 +4798,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const isLeader = store.isGroupLeader(grp.id);
     const azitLabel = azits.length ? azits[0].name : (grp.location || '온라인');
     const roleOf = (m) => {
-      if (m.role === 'leader') return '<span class="ginfo-role leader">모임장</span>';
-      if (store.isGroupDeputy(grp.id, m.id)) return '<span class="ginfo-role deputy">부방장</span>';
+      const role = store.roleOf(grp.id, m.id);
+      if (role === 'owner' || role === 'staff') return groupRoleBadge(role);
       if (m.isMe) return '<span class="ginfo-role me">나</span>';
       return '';
     };
@@ -4872,9 +4866,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <p class="ginfo-rules">${escapeHtml(grp.rules)}</p>
       </section>` : ''}
 
-      <button class="ginfo-settings-link" data-ginfo-settings="1" type="button">
-        <span class="oo-icon-17" aria-hidden="true" data-oog-icon="menuLines"></span>그룹 설정 열기
-      </button>`;
+`;
   }
 
   /* ------------------------------------------------------------------
@@ -4924,7 +4916,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * 게시판 작성 권한 — 모임장·부방장은 늘 쓸 수 있고, 일반 멤버는 삼선바 그룹 설정의
+   * 게시판 작성 권한 — 모임장·운영진은 늘 쓸 수 있고, 일반 멤버는 삼선바 모임 설정의
    * '게시판 멤버 작성 허용'이 켜져 있을 때만 쓸 수 있다. 끼져 있으면 버튼을 잠그고
    * "운영자만 작성할 수 있어요"를 적는다.
    */
@@ -4941,7 +4933,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (el.boardWriteNote) {
       el.boardWriteNote.textContent = policy.canWrite
-        ? (policy.role === 'member' ? '멤버도 공지·일정을 쓸 수 있어요' : '모임장·부방장이 공지·일정을 쓸 수 있어요')
+        ? (policy.role === 'member' ? '멤버도 공지·일정을 쓸 수 있어요' : '모임장·운영진이 공지·일정을 쓸 수 있어요')
         : '운영자만 작성할 수 있어요';
       el.boardWriteNote.classList.toggle('is-locked', !policy.canWrite);
     }
@@ -4954,7 +4946,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const groups = store.getGroupNoticeGroups(grp.id, { recentCount: 1 });
     const rows = groups.recent.concat(ui.boardNoticeExpanded ? groups.past : []);
     const rowHTML = (n) => {
-      const role = n.authorRole === 'deputy' ? '부방장' : (n.authorRole === 'leader' ? '모임장' : '멤버');
+      const role = n.authorRole === 'deputy' ? '운영진' : (n.authorRole === 'leader' ? '모임장' : '멤버');
       const read = store.getNoticeReadState(n.id) || { readCount: 0, total: 0, iRead: false };
       return `
         <article class="board-notice ${n.pinned ? 'is-pinned' : ''} ${read.iRead ? 'is-read' : ''}"
@@ -4975,7 +4967,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!rows.length) {
       /* v35.2 — 고정 공지 하나뿐이면 위 공지 바와 같은 내용을 빈 칸으로 또 쓰지 않는다. */
       el.boardNoticeList.innerHTML = groups.pinned ? ''
-        : '<p class="board-empty">아직 공지가 없어요. 모임장과 부방장이 공지를 남길 수 있어요.</p>';
+        : '<p class="board-empty">아직 공지가 없어요. 모임장과 운영진이 공지를 남길 수 있어요.</p>';
     } else {
       el.boardNoticeList.innerHTML = rows.map(rowHTML).join('');
     }
@@ -5227,7 +5219,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </button>`;
       return;
     }
-    const roleLabel = pinned.authorRole === 'deputy' ? '부방장'
+    const roleLabel = pinned.authorRole === 'deputy' ? '운영진'
       : (pinned.authorRole === 'leader' ? '모임장' : '멤버');
     el.homeNoticeBar.innerHTML = `
       <button class="home-notice-line" data-notice-open="${grp.id}" type="button"
@@ -5482,7 +5474,6 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
 
   function openGroupChat(groupId) {
-    if (ui.drawerOpen) closeDrawer({ silent: true });
     const grp = store.getGroup(groupId);
     if (!grp || !el.groupChatModal) return;
     if (!store.isGroupJoined(groupId)) {
@@ -5696,10 +5687,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const groupName = grp.name;
     /* 모임장이 곧 나인 모임도 있다 — 역할 배지와 '나' 배지를 함께 붙여 구분한다. */
     const isDeputy = store.isGroupDeputy(grp.id, member.id);
-    const roleBadge = `${member.role === 'leader' ? '<span class="member-role-badge leader">모임장</span>' : ''}`
-      + `${isDeputy ? '<span class="member-role-badge deputy">부방장</span>' : ''}`
+    const memberRole = store.roleOf(grp.id, member.id);
+    const roleBadge = `${groupRoleBadge(memberRole)}`
       + `${member.isMe ? '<span class="member-role-badge me">나</span>' : ''}`
-      + `${!member.isMe && member.role !== 'leader' && !isDeputy ? '<span class="member-role-badge member">멤버</span>' : ''}`;
+      + `${!member.isMe && memberRole === 'member' ? '<span class="member-role-badge member">멤버</span>' : ''}`;
     const open = ui.memberDetailId === member.id;
     const hobbyTags = (member.hobbies || []).map((h) => `<span class="member-hobby">${escapeHtml(h.name)}</span>`).join('');
     const dmEnabled = store.getGroupDmPolicy(grp.id).enabled;
@@ -5721,7 +5712,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="member-detail-grid">
             <span class="member-detail-cell"><span class="member-detail-label">취미</span><span class="member-detail-value">${(member.hobbies || []).map((h) => h.name).join(' · ') || groupName}</span></span>
             <span class="member-detail-cell"><span class="member-detail-label">가입</span><span class="member-detail-value">${escapeHtml(member.joinedLabel)}</span></span>
-            <span class="member-detail-cell"><span class="member-detail-label">역할</span><span class="member-detail-value">${member.role === 'leader' ? '모임장' : (isDeputy ? '부방장' : (member.isMe ? '나' : '멤버'))}</span></span>
+            <span class="member-detail-cell"><span class="member-detail-label">역할</span><span class="member-detail-value">${member.isMe && memberRole === 'member' ? '나' : store.roleLabel(memberRole)}</span></span>
           </div>
           <div class="member-detail-actions">
             ${member.isMe
@@ -5730,9 +5721,7 @@ document.addEventListener('DOMContentLoaded', () => {
                   ? `<button class="btn-secondary" data-member-chat="${member.id}" type="button">1:1 대화</button>`
                   : `<button class="btn-secondary is-locked" data-member-chat-locked="1" type="button" disabled aria-disabled="true">1:1 대화 꺼둠</button>`}
                  <button class="btn-primary" data-member-profile="${member.id}" type="button">프로필 보기</button>
-                 ${iAmLeader && member.role !== 'leader'
-                   ? `<button class="btn-secondary deputy-btn ${isDeputy ? 'on' : ''}" data-member-deputy="${member.id}" type="button">${isDeputy ? '부방장 해제' : '부방장 지정'}</button>`
-                   : ''}`}
+                 `}
           </div>
           ${!member.isMe && !dmEnabled
             ? '<p class="member-dm-note">이 모임은 모임장이 1:1 대화를 꺼두었어요. 모임 전체방에서 이야기해 주세요.</p>'
@@ -5753,228 +5742,1049 @@ document.addEventListener('DOMContentLoaded', () => {
       const leader = roster.members.find((m) => m.role === 'leader');
       const deputies = store.getGroupDeputies(grp.id).map((d) => d.name).join(', ');
       el.membersSub.textContent = `전체 ${roster.total}명 · 모임장 ${leader ? leader.name : '-'}`
-        + `${deputies ? ` · 부방장 ${deputies}` : ''}`
+        + `${deputies ? ` · 운영진 ${deputies}` : ''}`
         + ` · 1:1 대화 ${dm.enabled ? '허용' : '꺼둠'}`;
     }
     el.membersBody.innerHTML = roster.members.map((m) => memberRowHTML(m, grp)).join('');
   }
 
   /* ==========================================================================
-   * Sprint 18 — 모임 사이드바(Drawer)
+   * v36.0 — 모임 설정 (역할별 한 화면)
    * --------------------------------------------------------------------------
-   * 11/16 사용자: "모임내 멤버, 설정 등 사이드바에 넣어줄 수 있어? 내정보에 설정들도
-   * 사이드바에 넣어주고 …".
-   *  · 모임 안: 상단 삼선바 → **모임 사이드바**(멤버 명단·부방장 지정·1:1 대화·모임 설정)
-   *  · 오른쪽에서 슬라이드로 열리고, 바깥을 누르거나 Esc 로 닫힌다. 모션 줄이기에서는 즉시.
-   *  · v35.3 (설정 S1) — 내정보 설정 사이드바는 없어졌다. 설정은 전체 화면 페이지
-   *    (#settings-screen · openSettingsPage)로 열린다. 이 드로어는 **모임 전용**이다.
+   *  · 진입점은 모임 헤더 오른쪽 **⋯ 하나**. 예전 모임 드로어(#group-drawer)와
+   *    모임 상세 안의 운영 구획·가입 정책 편집·말머리 관리·신청 목록은 모두
+   *    이 화면으로 합치고 코드까지 지웠다(중복 진입점 없음).
+   *  · 한 화면 안에서 역할(모임장·운영진·멤버)에 따라 섹션이 달라진다.
+   *    권한 없는 항목은 회색으로 두지 않고 **아예 그리지 않는다** — 판단은
+   *    store.can(groupId, action) 한 함수만 본다.
+   *  · 행 48px · 1px 구분선 · 박스 없음 · 아이콘 없는 행(설정 화면과 같은 규칙).
    * ========================================================================== */
-  function openDrawer(kind) {
-    if (kind !== 'group') return;
-    const node = el.groupDrawer;
-    if (!node) return;
-    const gid = (ui.groupSpaceId && store.isGroupJoined(ui.groupSpaceId)) ? ui.groupSpaceId : store.getHomeGroupId();
+  const GS_TITLES = {
+    main: '모임 설정',
+    profile: '모임 프로필',
+    notify: '이 모임 알림',
+    info: '모임 정보',
+    activity: '내 활동',
+    apps: '가입 신청함',
+    reports: '신고 접수함',
+    posts: '게시물·댓글 관리',
+    events: '일정 관리',
+    members: '멤버 관리',
+    modlog: '운영 기록',
+    edit: '모임 정보 수정',
+    policy: '가입·공개',
+    defaults: '추천 노출 기본값',
+    staff: '운영진 관리',
+    transfer: '모임장 위임',
+    report: '신고하기',
+    block: '차단'
+  };
+
+  const GS_NOTIFY_MODES = [
+    { id: 'all', label: '전체' },
+    { id: 'mentions', label: '멘션·공지만' },
+    { id: 'off', label: '끔' }
+  ];
+
+  /** 이 화면이 다루는 모임 — 모임 안이면 그 모임, 아니면 홈 모임. */
+  function groupSettingsGroupId() {
+    if (ui.gsGroupId && store.getGroup(ui.gsGroupId)) return ui.gsGroupId;
+    if (ui.groupSpaceId && store.isGroupJoined(ui.groupSpaceId)) return ui.groupSpaceId;
+    return store.getHomeGroupId();
+  }
+
+  /** 모임 헤더 오른쪽 ⋯ — 모임 설정 한 화면을 연다. */
+  function openGroupSettings(view) {
+    const gid = groupSettingsGroupId();
     const grp = gid ? store.getGroup(gid) : null;
     if (!grp) { showToast('모임을 먼저 열어 주세요', 'info'); return; }
-    ui.drawerMemberId = null;
-    renderGroupDrawer(grp);
-    ui.drawerOpen = 'group';
-    node.hidden = false;
-    node.classList.remove('is-closing');
-    /* 다음 프레임에 is-open 을 붙여야 transform 트랜지션이 걸린다. */
-    requestAnimationFrame(() => node.classList.add('is-open'));
-    document.body.classList.add('drawer-open');
-    if (el.groupDrawerBtn) el.groupDrawerBtn.setAttribute('aria-expanded', 'true');
-    const panel = node.querySelector('.drawer');
-    if (panel && typeof panel.focus === 'function') {
-      try { panel.focus({ preventScroll: true }); } catch (e) { panel.focus(); }
-    }
+    if (!store.can(gid, 'view_group_info')) { showToast('모임 멤버만 설정을 볼 수 있어요', 'warning'); return; }
+    ui.gsGroupId = gid;
+    ui.gsView = GS_TITLES[view] ? view : 'main';
+    renderGroupSettings();
+    openSubscreen($('#group-settings-screen'));
   }
 
-  function closeDrawer(options = {}) {
-    const node = el.groupDrawer;
-    ui.drawerOpen = null;
-    document.body.classList.remove('drawer-open');
-    [el.groupDrawerBtn, el.boardDrawerBtn].forEach((btn) => {
-      if (btn) btn.setAttribute('aria-expanded', 'false');
-    });
-    if (!node) return;
-    if (options.silent || prefersReducedMotion()) {
-      node.hidden = true;
-      node.classList.remove('is-open', 'is-closing');
+  function closeGroupSettings() {
+    ui.gsGroupId = null;
+    ui.gsView = 'main';
+    closeSubscreens();
+  }
+
+  /** '<' — 하위 화면이면 첫 화면으로, 거기서는 모임으로 돌아간다. */
+  function groupSettingsBack() {
+    if (ui.gsView && ui.gsView !== 'main') {
+      ui.gsView = 'main';
+      renderGroupSettings();
       return;
     }
-    node.classList.remove('is-open');
-    node.classList.add('is-closing');
-    setTimeout(() => {
-      if (ui.drawerOpen) return;          // 그 사이 다시 열렸으면 그대로 둔다
-      node.hidden = true;
-      node.classList.remove('is-closing');
-    }, 220);
+    closeGroupSettings();
   }
 
-  /** 모임 사이드바 — 멤버 명단 + 모임 설정. */
-  function renderGroupDrawer(grp) {
-    if (!el.groupDrawerBody || !grp) return;
-    const roster = store.getGroupRoster(grp.id);
-    const isLeader = store.isGroupLeader(grp.id);
-    const dm = store.getGroupDmPolicy(grp.id);
-    const perms = store.getDeputyPermissions(grp.id);
-    const joinMode = store.getGroupJoinMode(grp);
-    const ageLimit = store.getGroupAgeLimit(grp.id);
-    const ageRange = store.getGroupAgeRange(grp.id);
-    const cover = store.getGroupCover(grp.id);
-    const leader = roster.members.find((m) => m.isLeader) || roster.members[0];
-    /* v35.2 — 그룹 설정창: 게시판 작성 권한 · 모임 알림 · 가입 신청 */
-    const boardPolicy = store.getGroupBoardPolicy(grp.id);
-    const notify = store.getGroupNotifySetting(grp.id);
-    const pendingApps = isLeader && joinMode === 'approval' ? store.getPendingApplications(grp.id).length : 0;
+  /* -------------------------------------------------- 작은 조각들 */
+  function gsEsc(v) { return escapeHtml(v == null ? '' : String(v)); }
 
-    if (el.groupDrawerAvatar) {
-      const vis = groupCoverVisual(grp, 'circle');
-      const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
-      el.groupDrawerAvatar.className = `drawer-avatar tone-${tone}`;
-      el.groupDrawerAvatar.innerHTML = vis.photoUrl
-        ? `<img class="drawer-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" decoding="async">`
-        : escapeHtml((grp.name || '?').charAt(0));
-    }
-    if (el.groupDrawerName) el.groupDrawerName.textContent = grp.name;
-    if (el.groupDrawerMeta) {
-      el.groupDrawerMeta.textContent = `멤버 ${roster.total}명 · ${isLeader ? '내가 모임장' : `${leader ? leader.name : '모임장'} 모임장`}`;
+  function gsRow(opts) {
+    const o = opts || {};
+    return `
+      <button class="settings-row ${o.danger ? 'is-danger' : ''}" type="button" ${o.action || ''}>
+        <span class="settings-row-label">${gsEsc(o.label)}</span>
+        ${o.value ? `<span class="settings-row-value">${gsEsc(o.value)}</span>` : ''}
+        ${o.chev ? '<span class="settings-row-chev" aria-hidden="true" data-oog-icon="chevronRight"></span>' : ''}
+      </button>`;
+  }
+
+  function gsSwitchRow(label, key, on, sub) {
+    return `
+      <div class="settings-row gs-switch-row">
+        <span class="settings-row-label">${gsEsc(label)}${sub ? `<span class="settings-row-sub">${gsEsc(sub)}</span>` : ''}</span>
+        <button class="switch-toggle ${on ? 'on' : ''}" data-gs-toggle="${key}" role="switch"
+                aria-checked="${on ? 'true' : 'false'}" type="button" aria-label="${gsEsc(label)}">
+          <span class="switch-knob" aria-hidden="true"></span>
+        </button>
+      </div>`;
+  }
+
+  function gsGroup(title, inner) {
+    if (!inner) return '';
+    return `<div class="settings-group">
+      ${title ? `<p class="settings-group-title">${gsEsc(title)}</p>` : ''}
+      ${inner}
+    </div>`;
+  }
+
+  function gsEmpty(text) {
+    return `<p class="gs-empty">${gsEsc(text)}</p>`;
+  }
+
+  /** 역할 배지 — 모임장/운영진만 붙는다(멤버는 배지 없음). */
+  function groupRoleBadge(role) {
+    if (role === 'owner') return '<span class="role-badge owner">모임장</span>';
+    if (role === 'staff') return '<span class="role-badge staff">운영진</span>';
+    return '';
+  }
+
+  /** 글·댓글 작성자의 역할 배지 — 그 글이 속한 모임 기준. */
+  function authorRoleBadge(groupId, authorId) {
+    if (!groupId || !authorId) return '';
+    return groupRoleBadge(store.roleOf(groupId, authorId));
+  }
+
+  /* -------------------------------------------------- 화면 그리기 */
+  function renderGroupSettings() {
+    const screen = $('#group-settings-screen');
+    const body = $('#group-settings-body');
+    const titleEl = $('#group-settings-title');
+    if (!screen || !body) return;
+    const gid = groupSettingsGroupId();
+    const grp = gid ? store.getGroup(gid) : null;
+    if (!grp) { closeGroupSettings(); return; }
+    const view = ui.gsView && GS_TITLES[ui.gsView] ? ui.gsView : 'main';
+    ui.gsView = view;
+    if (titleEl) titleEl.textContent = GS_TITLES[view];
+    body.innerHTML = renderGroupSettingsView(grp, view);
+    const scroller = screen.querySelector('.subscreen-body');
+    if (scroller) scroller.scrollTop = 0;
+  }
+
+  function renderGroupSettingsView(grp, view) {
+    const gid = grp.id;
+    const role = store.roleOf(gid);
+    if (view === 'profile') return gsProfileView(grp);
+    if (view === 'notify') return gsNotifyView(grp);
+    if (view === 'info') return gsInfoView(grp);
+    if (view === 'activity') return gsActivityView(grp);
+    if (view === 'apps') return gsAppsView(grp);
+    if (view === 'reports') return gsReportsView(grp);
+    if (view === 'posts') return gsPostsView(grp);
+    if (view === 'events') return gsEventsView(grp);
+    if (view === 'members') return gsMembersView(grp);
+    if (view === 'modlog') return gsModLogView(grp);
+    if (view === 'edit') return gsEditView(grp);
+    if (view === 'policy') return gsPolicyView(grp);
+    if (view === 'defaults') return gsDefaultsView(grp);
+    if (view === 'staff') return gsStaffView(grp);
+    if (view === 'transfer') return gsTransferView(grp);
+    if (view === 'report') return gsReportView(grp);
+    if (view === 'block') return gsBlockView(grp);
+    return gsMainView(grp, role);
+  }
+
+  function gsNotifyModeLabel(mode) {
+    const hit = GS_NOTIFY_MODES.find((m) => m.id === mode);
+    return hit ? hit.label : '전체';
+  }
+
+  /* -------------------------------------------------- 첫 화면 (역할별) */
+  function gsMainView(grp, role) {
+    const gid = grp.id;
+    const m = store.getGroupMembership(gid);
+    const act = store.getMyGroupActivity(gid);
+    const parts = [];
+
+    /* ① 나의 설정 — 멤버라면 누구나 */
+    parts.push(gsGroup('내 설정', [
+      gsRow({ label: '모임 프로필', value: m.nickname || '계정 닉네임', action: 'data-gs-view="profile"', chev: true }),
+      gsRow({ label: '이 모임 알림', value: gsNotifyModeLabel(m.notifyMode), action: 'data-gs-view="notify"', chev: true }),
+      gsSwitchRow('멤버 목록에서 숨기기', 'hiddenInList', m.hiddenInList),
+      gsSwitchRow('모임 상단 고정', 'pinned', m.pinned),
+      gsSwitchRow('모임 음소거', 'muted', m.muted)
+    ].join('')));
+
+    /* ② 모임 정보 · 내 활동 */
+    parts.push(gsGroup('모임', [
+      gsRow({ label: '모임 정보 보기', value: '소개·규칙·아지트', action: 'data-gs-view="info"', chev: true }),
+      gsRow({
+        label: '내 활동',
+        value: `글 ${act.posts.length} · 댓글 ${act.comments.length} · 일정 ${act.events.length}`,
+        action: 'data-gs-view="activity"', chev: true
+      })
+    ].join('')));
+
+    /* ③ 신고 · 차단 */
+    parts.push(gsGroup('신고·차단', [
+      gsRow({ label: '신고하기', action: 'data-gs-view="report"', chev: true }),
+      gsRow({ label: '차단', value: `${(store.state.blockedMemberIds || []).length}명`, action: 'data-gs-view="block"', chev: true })
+    ].join('')));
+
+    /* ④ 운영 도구 — 운영진 이상에게만 그린다 */
+    if (store.can(gid, 'write_notice')) {
+      const apps = store.getGroupJoinMode(grp) === 'approval'
+        ? store.getApplicationsForGroup(gid, 'pending').length : 0;
+      const reports = store.getGroupReports(gid, 'pending').length;
+      const members = store.getGroupRoleCounts(gid).member;
+      parts.push(gsGroup('운영 도구', [
+        store.getGroupJoinMode(grp) === 'approval'
+          ? gsRow({ label: '가입 신청함', value: apps ? `대기 ${apps}명` : '없음', action: 'data-gs-view="apps"', chev: true })
+          : '',
+        gsRow({ label: '신고 접수함', value: reports ? `대기 ${reports}건` : '없음', action: 'data-gs-view="reports"', chev: true }),
+        gsRow({ label: '게시물·댓글 관리', action: 'data-gs-view="posts"', chev: true }),
+        gsRow({ label: '일정 관리', action: 'data-gs-view="events"', chev: true }),
+        gsRow({ label: '공지 작성', action: 'data-gs-notice="1"', chev: true }),
+        gsRow({ label: '멤버 관리', value: `${members}명`, action: 'data-gs-view="members"', chev: true }),
+        gsRow({ label: '운영 기록', action: 'data-gs-view="modlog"', chev: true })
+      ].join('')));
     }
 
-    const memberRow = (m) => {
-      const isDeputy = store.isGroupDeputy(grp.id, m.id);
-      const badges = `${m.role === 'leader' ? '<span class="drawer-badge leader">모임장</span>' : ''}`
-        + `${isDeputy ? '<span class="drawer-badge deputy">부방장</span>' : ''}`
-        + `${m.isMe ? '<span class="drawer-badge me">나</span>' : ''}`;
-      const dmDisabled = !dm.enabled;
-      const actions = m.isMe ? ''
-        : `<span class="drawer-member-actions">
-             <button class="drawer-mini ${dmDisabled ? 'is-locked' : ''}" data-drawer-chat="${m.id}" type="button"
-                     ${dmDisabled ? 'disabled aria-disabled="true" title="모임장이 1:1 대화를 꺼두었어요"' : ''}>1:1</button>
-             ${isLeader && m.role !== 'leader'
-               ? `<button class="drawer-mini ${isDeputy ? 'on' : ''}" data-drawer-deputy="${m.id}" type="button">${isDeputy ? '부방장 해제' : '부방장'}</button>`
-               : ''}
-           </span>`;
-      return `
-        <div class="drawer-member ${m.isMe ? 'is-me' : ''}">
-          <span class="drawer-member-avatar" style="background:${m.gradient}">${m.photoUrl ? avatarImgHTML(m.photoUrl, m.name) : escapeHtml(m.avatarText)}</span>
-          <span class="drawer-member-name">${escapeHtml(m.name)} ${badges}</span>
-          ${actions}
-        </div>`;
+    /* ⑤ 모임 관리 — 모임장만 */
+    if (store.can(gid, 'edit_group')) {
+      const staff = store.getGroupDeputies(gid).length;
+      const dm = store.getGroupDmPolicy(gid);
+      const board = store.getGroupBoardPolicy(gid);
+      const mod = store.getDeputyPermissions(gid).deputyCanModerate;
+      parts.push(gsGroup('모임 관리', [
+        gsRow({ label: '모임 정보 수정', action: 'data-gs-view="edit"', chev: true }),
+        gsRow({ label: '가입·공개', value: store.getGroupJoinMode(grp) === 'approval' ? '승인제' : '바로 가입', action: 'data-gs-view="policy"', chev: true }),
+        gsRow({ label: '추천 노출 기본값', action: 'data-gs-view="defaults"', chev: true }),
+        gsRow({ label: '운영진 관리', value: `${staff}/${GROUP_STAFF_MAX_UI}명`, action: 'data-gs-view="staff"', chev: true }),
+        gsSwitchRow('모임 내 1:1 대화 허용', 'gs-dm', dm.enabled),
+        gsSwitchRow('운영진에게 멤버 관리까지', 'gs-deputymod', mod, '끄면 운영진은 공지·일정만'),
+        gsSwitchRow('게시판 멤버 작성 허용', 'gs-boardwrite', board.memberCanWrite, '끄면 운영진만 공지·일정을 써요')
+      ].join('')));
+      parts.push(gsGroup('위험 영역', [
+        gsRow({ label: '모임장 위임', action: 'data-gs-view="transfer"', chev: true, danger: true }),
+        gsRow({ label: grp.archived ? '모임 보관 해제' : '모임 보관 (일시 중지)', action: 'data-gs-archive="1"', chev: true, danger: true }),
+        gsRow({ label: '모임 삭제', action: 'data-gs-delete="1"', chev: true, danger: true })
+      ].join('')));
+    }
+
+    /* ⑥ 나가기 — 모임장은 탈퇴할 수 없으므로 그리지 않는다 */
+    if (role !== 'owner') {
+      parts.push(gsGroup('', gsRow({ label: '모임 나가기', action: 'data-gs-leave="1"', danger: true })));
+    }
+
+    /* ⑦ ?dev=1 — 역할 보기 전환(일반 모드에서는 아예 없다) */
+    if (settingsDevMode()) {
+      const preview = store.getRolePreview();
+      const now = preview && preview.groupId === gid ? preview.role : role;
+      parts.push(gsGroup('개발자 도구 · 역할 보기', `
+        <div class="gs-role-switch" role="radiogroup" aria-label="역할 보기 전환">
+          ${['owner', 'staff', 'member'].map((r) => `
+            <button class="settings-choice ${now === r ? 'is-on' : ''}" data-gs-role="${r}" role="radio"
+                    aria-checked="${now === r ? 'true' : 'false'}" type="button">
+              <span class="settings-choice-label">${store.roleLabel(r)}</span>
+              <span class="settings-choice-check" aria-hidden="true" data-oog-icon="check"></span>
+            </button>`).join('')}
+        </div>
+        <p class="gs-note">보기 역할은 이 화면에서만 쓰고 저장하지 않아요.</p>`));
+    }
+
+    return `<div class="gs-view">${parts.join('')}</div>`;
+  }
+
+  const GROUP_STAFF_MAX_UI = 3;
+
+  /* -------------------------------------------------- 하위 화면들 */
+  function gsProfileView(grp) {
+    const pid = grp.id;
+    const m = store.getGroupMembership(pid);
+    return `
+      <div class="gs-view">
+        <div class="gs-form">
+          <label class="gs-field">
+            <span class="gs-field-label">이 모임에서 쓸 이름</span>
+            <input class="gs-input" id="gs-profile-nick" type="text" maxlength="12"
+                   autocomplete="off" placeholder="비우면 계정 닉네임" value="${gsEsc(m.nickname)}">
+          </label>
+          <label class="gs-field">
+            <span class="gs-field-label">한 줄 소개</span>
+            <textarea class="gs-input gs-textarea" id="gs-profile-bio" maxlength="60"
+                      placeholder="이 모임에서 나를 한 줄로">${gsEsc(m.bio)}</textarea>
+          </label>
+          <div class="settings-group">
+            ${gsSwitchRow('모임 안에서 사진 보이기', 'photoVisible', m.photoVisible)}
+          </div>
+          <button class="btn-primary gs-save" type="button" data-gs-save="profile">저장</button>
+          <p class="gs-note">이 이름·소개는 이 모임 안에서만 쓰여요. 피드 글과 멤버 목록에도 함께 보여요.</p>
+        </div>
+      </div>`;
+  }
+
+  function gsNotifyView(grp) {
+    const m = store.getGroupMembership(grp.id);
+    return `
+      <div class="gs-view">
+        <div class="settings-choice-group" role="radiogroup" aria-label="이 모임 알림">
+          ${GS_NOTIFY_MODES.map((mode) => `
+            <button class="settings-choice ${m.notifyMode === mode.id ? 'is-on' : ''}" data-gs-notify="${mode.id}"
+                    role="radio" aria-checked="${m.notifyMode === mode.id ? 'true' : 'false'}" type="button">
+              <span class="settings-choice-label">${mode.label}</span>
+              <span class="settings-choice-check" aria-hidden="true" data-oog-icon="check"></span>
+            </button>`).join('')}
+        </div>
+        <div class="settings-group is-separated">
+          ${gsSwitchRow('일정 알림', 'notifyEvents', m.notifyEvents, '일정이 다가오면 알려드려요')}
+        </div>
+      </div>`;
+  }
+
+  function gsInfoView(grp) {
+    const gid = grp.id;
+    const azits = store.getGroupHangouts(grp);
+    const staffs = store.getGroupDeputies(gid);
+    const owner = store.getGroupRoster(gid, { viewerRole: 'owner' }).members.find((x) => x.id === grp.leaderId);
+    return `
+      <div class="gs-view">
+        ${gsGroup('소개', `<p class="gs-text">${gsEsc(grp.description || '아직 소개가 없어요.')}</p>`)}
+        ${gsGroup('규칙', `<p class="gs-text">${gsEsc(grp.rules || '아직 규칙이 없어요.')}</p>`)}
+        ${gsGroup('활동 지역', `<p class="gs-text">${gsEsc(grp.location || '온라인')}</p>`)}
+        ${gsGroup('아지트', `<p class="gs-text">${azits.length ? azits.map((a) => gsEsc(a.name)).join(' · ') : '아직 없어요'}</p>`)}
+        ${gsGroup('운영진', `<p class="gs-text">모임장 ${gsEsc(owner ? owner.name : grp.leaderName || '')}${staffs.length ? ` · 운영진 ${staffs.map((s) => gsEsc(s.name)).join(', ')}` : ' · 운영진 없음'}</p>`)}
+      </div>`;
+  }
+
+  function gsActivityView(grp) {
+    const act = store.getMyGroupActivity(grp.id);
+    const postRows = act.posts.slice(0, 20).map((p) => gsRow({
+      label: (p.caption || '(사진 글)').slice(0, 24), value: timeAgo(p.createdAt),
+      action: `data-gs-post="${p.id}"`, chev: true
+    })).join('');
+    const commentRows = act.comments.slice(0, 20).map((c) => gsRow({
+      label: (c.text || '').slice(0, 24), value: c.at ? timeAgo(c.at) : '',
+      action: `data-gs-post="${c.postId}"`, chev: true
+    })).join('');
+    const eventRows = act.events.slice(0, 20).map((e) => gsRow({
+      label: e.title, value: store.getGroupEventWhenLabel(e.when)
+    })).join('');
+    return `
+      <div class="gs-view">
+        ${gsGroup(`내 글 ${act.posts.length}`, postRows || gsEmpty('아직 쓴 글이 없어요.'))}
+        ${gsGroup(`내 댓글 ${act.comments.length}`, commentRows || gsEmpty('아직 쓴 댓글이 없어요.'))}
+        ${gsGroup(`참여한 일정 ${act.events.length}`, eventRows || gsEmpty('참여한 일정이 없어요.'))}
+      </div>`;
+  }
+
+  function gsAppsView(grp) {
+    const gid = grp.id;
+    if (store.getGroupJoinMode(grp) !== 'approval') {
+      return `<div class="gs-view">${gsEmpty('바로 가입 모임이에요. 신청서 없이 들어오고, 운영진은 멤버 관리에서 손볼 수 있어요.')}</div>`;
+    }
+    const pending = store.getApplicationsForGroup(gid, 'pending');
+    if (!pending.length) return `<div class="gs-view">${gsEmpty('지금은 기다리는 신청서가 없어요.')}</div>`;
+    return `<div class="gs-view">
+      ${pending.map((a) => `
+        <article class="gs-item">
+          <div class="gs-item-head">
+            <span class="gs-item-name">${gsEsc(a.applicantName)}</span>
+            <span class="gs-item-meta">${a.applicantAge ? `${a.applicantAge}세` : ''} ${gsEsc(a.applicantHobby || '')} · ${timeAgo(a.createdAt)}</span>
+          </div>
+          ${(a.answers || []).map((ans) => `
+            <div class="gs-answer">
+              <span class="gs-answer-q">Q. ${gsEsc(ans.question)}</span>
+              <p class="gs-answer-a">${gsEsc(ans.answer)}</p>
+            </div>`).join('')}
+          <div class="gs-item-actions">
+            <button class="btn-primary gs-mini" type="button" data-gs-approve="${a.id}">수락</button>
+            <button class="btn-secondary gs-mini" type="button" data-gs-reject="${a.id}">거절</button>
+          </div>
+        </article>`).join('')}
+    </div>`;
+  }
+
+  function gsReportsView(grp) {
+    const lists = store.getGroupReports(grp.id);
+    if (!lists.length) return `<div class="gs-view">${gsEmpty('접수된 신고가 없어요.')}</div>`;
+    const pending = lists.filter((r) => r.status === 'pending');
+    const done = lists.filter((r) => r.status !== 'pending');
+    const rowOf = (r) => `
+      <article class="gs-item">
+        <div class="gs-item-head">
+          <span class="gs-item-name">${gsEsc(r.targetName || r.targetType)}</span>
+          <span class="gs-item-meta">${gsEsc(r.reporterName)} 신고 · ${timeAgo(r.at)}</span>
+        </div>
+        <p class="gs-item-body">${gsEsc(r.reason)}</p>
+        ${r.status === 'pending'
+          ? `<div class="gs-item-actions">
+               <button class="btn-primary gs-mini" type="button" data-gs-report-handle="${r.id}">처리</button>
+               <button class="btn-secondary gs-mini" type="button" data-gs-report-ignore="${r.id}">무시</button>
+             </div>`
+          : `<p class="gs-item-meta">${r.status === 'handled' ? '처리함' : '무시함'}</p>`}
+      </article>`;
+    return `<div class="gs-view">
+      ${gsGroup(`대기 ${pending.length}`, pending.length ? pending.map(rowOf).join('') : gsEmpty('대기 중인 신고가 없어요.'))}
+      ${done.length ? gsGroup('지난 신고', done.slice(0, 10).map(rowOf).join('')) : ''}
+    </div>`;
+  }
+
+  function gsPostsView(grp) {
+    const gid = grp.id;
+    const posts = store.getGroupPhotoPosts(gid).slice(0, 20);
+    const comments = [];
+    posts.forEach((p) => (p.comments || []).forEach((c) => comments.push({ postId: p.id, c })));
+    return `<div class="gs-view">
+      ${gsGroup(`글 ${posts.length}`, posts.length ? posts.map((p) => `
+        <article class="gs-item">
+          <div class="gs-item-head">
+            <span class="gs-item-name">${gsEsc(p.authorName)}</span>
+            <span class="gs-item-meta">${timeAgo(p.createdAt)}${p.hidden ? ' · 숨김' : ''}</span>
+          </div>
+          <p class="gs-item-body">${gsEsc((p.caption || '(사진 글)').slice(0, 60))}</p>
+          <div class="gs-item-actions">
+            <button class="btn-secondary gs-mini" type="button" data-gs-post-hide="${p.id}">${p.hidden ? '숨김 해제' : '숨김'}</button>
+            <button class="btn-secondary gs-mini is-danger" type="button" data-gs-post-delete="${p.id}">삭제</button>
+          </div>
+        </article>`).join('') : gsEmpty('관리할 글이 없어요.'))}
+      ${gsGroup(`댓글 ${comments.length}`, comments.length ? comments.slice(0, 20).map(({ postId, c }) => `
+        <article class="gs-item is-row">
+          <span class="gs-item-name">${gsEsc(c.authorName || '멤버')}</span>
+          <span class="gs-item-body">${gsEsc((c.text || '').slice(0, 40))}</span>
+          <button class="gs-link is-danger" type="button" data-gs-comment-delete="${postId}:${c.id}">삭제</button>
+        </article>`).join('') : gsEmpty('관리할 댓글이 없어요.'))}
+    </div>`;
+  }
+
+  function gsEventsView(grp) {
+    const gid = grp.id;
+    const events = store.getGroupEvents(gid);
+    if (!events.length) return `<div class="gs-view">${gsEmpty('아직 일정이 없어요. 게시판에서 일정을 만들어 보세요.')}</div>`;
+    return `<div class="gs-view">
+      ${gsGroup('', gsRow({ label: '새 일정 만들기', action: 'data-gs-event-new="1"', chev: true }))}
+      ${events.slice(0, 20).map((e) => {
+        const guests = store.getGuestRequests(e.id).filter((r) => r.status === 'pending');
+        return `
+          <article class="gs-item">
+            <div class="gs-item-head">
+              <span class="gs-item-name">${gsEsc(e.title)}${e.cancelled ? ' (취소됨)' : ''}</span>
+              <span class="gs-item-meta">${gsEsc(store.getGroupEventWhenLabel(e.when))}</span>
+            </div>
+            ${guests.length ? `<div class="gs-guest-list">
+              <p class="gs-item-meta">게스트 신청 ${guests.length}</p>
+              ${guests.map((g) => `
+                <div class="gs-item is-row">
+                  <span class="gs-item-name">${gsEsc(g.name || g.memberName || '게스트')}</span>
+                  <button class="gs-link" type="button" data-gs-guest-ok="${e.id}:${g.memberId}">승인</button>
+                  <button class="gs-link is-danger" type="button" data-gs-guest-no="${e.id}:${g.memberId}">거절</button>
+                </div>`).join('')}
+            </div>` : ''}
+            ${e.cancelled ? '' : `<div class="gs-item-actions">
+              <button class="btn-secondary gs-mini" type="button" data-gs-event-edit="${e.id}">수정</button>
+              <button class="btn-secondary gs-mini is-danger" type="button" data-gs-event-cancel="${e.id}">일정 취소</button>
+            </div>`}
+          </article>`;
+      }).join('')}
+    </div>`;
+  }
+
+  function gsMembersView(grp) {
+    const gid = grp.id;
+    const roster = store.getGroupRoster(gid, { viewerRole: store.roleOf(gid) });
+    if (!roster.members.length) return `<div class="gs-view">${gsEmpty('보여줄 멤버가 없어요.')}</div>`;
+    return `<div class="gs-view">
+      ${gsGroup(`멤버 ${roster.total}`, roster.members.map((m) => {
+        const targetRole = store.roleOf(gid, m.id);
+        const canTouch = store.canManageMember(gid, m.id);
+        return `
+          <div class="settings-row gs-member-row">
+            <span class="gs-member-name">${gsEsc(m.name)}${groupRoleBadge(targetRole)}</span>
+            ${canTouch ? `<span class="gs-member-acts">
+              <button class="gs-link" type="button" data-gs-member-mute="${m.id}">음소거</button>
+              <button class="gs-link" type="button" data-gs-member-warn="${m.id}">경고</button>
+              <button class="gs-link is-danger" type="button" data-gs-member-kick="${m.id}">강퇴</button>
+            </span>` : ''}
+          </div>`;
+      }).join(''))}
+    </div>`;
+  }
+
+  function gsModLogView(grp) {
+    const log = store.getGroupModLog(grp.id);
+    if (!log.length) return `<div class="gs-view">${gsEmpty('아직 운영 기록이 없어요.')}</div>`;
+    const labels = {
+      staff_add: '운영진 임명', staff_remove: '운영진 해임', kick: '강퇴', mute: '음소거',
+      unmute: '음소거 해제', warn: '경고', report_handle: '신고 처리', report_ignore: '신고 무시',
+      post_hide: '글 숨김', post_show: '글 숨김 해제', post_delete: '글 삭제', comment_delete: '댓글 삭제',
+      join_policy: '가입·공개 변경', defaults: '추천 노출 기본값 변경', group_edit: '모임 정보 수정',
+      transfer: '모임장 위임', archive: '모임 보관', unarchive: '모임 보관 해제',
+      event_cancel: '일정 취소', leave: '멤버 나감', approve: '가입 수락', reject: '가입 거절'
     };
+    return `<div class="gs-view">
+      ${log.map((r) => `
+        <div class="settings-row gs-log-row">
+          <span class="settings-row-label">${gsEsc(labels[r.action] || r.action)}${r.targetName ? ` · ${gsEsc(r.targetName)}` : ''}</span>
+          <span class="settings-row-value">${gsEsc(r.actorName)} · ${timeAgo(r.at)}</span>
+        </div>`).join('')}
+    </div>`;
+  }
 
-    el.groupDrawerBody.innerHTML = `
-      <section class="drawer-section" aria-labelledby="drawer-members-title">
-        <div class="drawer-section-head">
-          <h3 class="drawer-section-title" id="drawer-members-title">멤버 <span class="section-count">${roster.total}</span></h3>
-          <button class="drawer-link" data-drawer-members="1" type="button">전체 멤버 보기</button>
+  function gsEditView(grp) {
+    const gid = grp.id;
+    const chips = store.getHobbyChips ? store.getHobbyChips() : [];
+    const azits = store.getGroupHangouts(grp);
+    return `
+      <div class="gs-view">
+        <div class="gs-form">
+          <label class="gs-field">
+            <span class="gs-field-label">모임 이름</span>
+            <input class="gs-input" id="gs-edit-name" type="text" maxlength="24" value="${gsEsc(grp.name)}">
+          </label>
+          <label class="gs-field">
+            <span class="gs-field-label">한 줄 소개</span>
+            <textarea class="gs-input gs-textarea" id="gs-edit-desc" maxlength="120">${gsEsc(grp.description || '')}</textarea>
+          </label>
+          <label class="gs-field">
+            <span class="gs-field-label">취미</span>
+            <select class="gs-input" id="gs-edit-hobby">
+              ${chips.map((c) => `<option value="${c.id}" ${c.id === grp.hobbyId ? 'selected' : ''}>${gsEsc(c.name)}</option>`).join('')}
+            </select>
+          </label>
+          <label class="gs-field">
+            <span class="gs-field-label">활동 지역</span>
+            <input class="gs-input" id="gs-edit-location" type="text" maxlength="30" value="${gsEsc(grp.location || '')}">
+          </label>
+          <div class="settings-group">
+            ${gsRow({ label: '아지트', value: `${azits.length}곳 · ${azits.map((a) => a.name).join(', ').slice(0, 18)}`, action: 'data-gs-azit="1"', chev: true })}
+            ${gsRow({ label: '대표 이미지', value: (store.getGroupCover(gid) || {}).custom ? '직접 고름' : '최근 사진', action: 'data-gs-cover="1"', chev: true })}
+          </div>
+          <label class="gs-field">
+            <span class="gs-field-label">규칙</span>
+            <textarea class="gs-input gs-textarea" id="gs-edit-rules" maxlength="400">${gsEsc(grp.rules || '')}</textarea>
+          </label>
+          <button class="btn-primary gs-save" type="button" data-gs-save="edit">저장</button>
         </div>
-        <div class="drawer-members">
-          ${roster.members.slice(0, 6).map(memberRow).join('')}
-        </div>
-        ${roster.total > 6 ? `<button class="drawer-more" data-drawer-members="1" type="button">외 ${roster.total - 6}명 더 보기</button>` : ''}
-        ${roster.total === 1 ? '<p class="drawer-note">아직 나 혼자예요 · 탐색에서 모임을 알리거나 친구를 초대해 보세요.</p>' : ''}
-      </section>
+        ${gsGroup(`말머리 태그 ${grp.customTags.length}`, `
+          ${grp.customTags.map((t) => `
+            <div class="settings-row gs-question-row">
+              <span class="settings-row-label">#${gsEsc(t)}</span>
+              <button class="gs-link is-danger" type="button" data-gs-tagdel="${gsEsc(t)}">삭제</button>
+            </div>`).join('') || gsEmpty('아직 말머리가 없어요.')}
+          <form class="gs-question-form" data-gs-tagform="1">
+            <input class="gs-input" id="gs-tag-new" type="text" maxlength="10" placeholder="새 말머리 (10자)">
+            <button class="btn-secondary gs-mini" type="submit">추가</button>
+          </form>
+          <p class="gs-note">말머리는 멤버가 글을 쓸 때 고를 수 있어요. 이미 올린 글의 태그는 그대로 남아요.</p>`)}
+        <p class="gs-note">아지트는 위 '아지트' 행에서, 대표 이미지는 모임 정보 화면에서 고를 수 있어요.</p>
+      </div>`;
+  }
 
-      <section class="drawer-section" aria-labelledby="drawer-settings-title">
-        <div class="drawer-section-head">
-          <h3 class="drawer-section-title" id="drawer-settings-title">모임 설정</h3>
-          <span class="drawer-role ${isLeader ? 'is-leader' : ''}">${isLeader ? '모임장' : '멤버'}</span>
-        </div>
-
-        <div class="drawer-setting">
-          <span class="drawer-setting-label">가입 방식</span>
-          ${isLeader
-            ? `<span class="drawer-seg" role="group" aria-label="가입 방식">
-                 <button class="drawer-seg-btn ${joinMode === 'open' ? 'active' : ''}" data-drawer-join="open" type="button" aria-pressed="${joinMode === 'open'}">자유 가입</button>
-                 <button class="drawer-seg-btn ${joinMode === 'approval' ? 'active' : ''}" data-drawer-join="approval" type="button" aria-pressed="${joinMode === 'approval'}">승인제</button>
-               </span>`
-            : `<span class="drawer-setting-value">${joinMode === 'open' ? '자유 가입' : '승인제'}</span>`}
-        </div>
-
-        <div class="drawer-setting is-wrap">
-          <span class="drawer-setting-label">나이 제한</span>
-          ${isLeader
-            ? ageSliderHTML({ host: 'drawer', groupId: grp.id, min: ageRange.min, max: ageRange.max })
-            : `<span class="drawer-setting-value">${escapeHtml(ageSliderLabel(ageRange.min, ageRange.max))}</span>`}
-        </div>
-
-        <div class="drawer-toggle-row">
-          <span class="drawer-toggle-text">
-            <span class="drawer-toggle-title">모임 내 1:1 대화 허용</span>
-            <span class="drawer-toggle-desc">끄면 멤버끼리 1:1을 시작할 수 없어요 · 전체방은 그대로</span>
-          </span>
-          ${isLeader
-            ? `<button class="switch-toggle ${dm.enabled ? 'on' : ''}" data-drawer-dm="1" role="switch"
-                       aria-checked="${dm.enabled}" type="button" aria-label="모임 내 1:1 대화 허용">
-                 <span class="switch-knob" aria-hidden="true"></span></button>`
-            : `<span class="drawer-setting-value">${dm.enabled ? '허용' : '꺼둠'}</span>`}
-        </div>
-
-        <div class="drawer-toggle-row">
-          <span class="drawer-toggle-text">
-            <span class="drawer-toggle-title">부방장에게 멤버 승인·강퇴까지</span>
-            <span class="drawer-toggle-desc">끄면 부방장은 공지·일정만 쓸 수 있어요</span>
-          </span>
-          ${isLeader
-            ? `<button class="switch-toggle ${perms.deputyCanModerate ? 'on' : ''}" data-drawer-deputy-mod="1" role="switch"
-                       aria-checked="${perms.deputyCanModerate}" type="button" aria-label="부방장에게 멤버 승인·강퇴 권한">
-                 <span class="switch-knob" aria-hidden="true"></span></button>`
-            : `<span class="drawer-setting-value">${perms.deputyCanModerate ? '함께 관리' : '모임장만'}</span>`}
-        </div>
-
-        <!-- v35.2 — 게시판(공지·일정) 멤버 작성 허용. 모임장만 바꿀 수 있다. -->
-        <div class="drawer-toggle-row" data-drawer-board-row="1">
-          <span class="drawer-toggle-text">
-            <span class="drawer-toggle-title">게시판 멤버 작성 허용</span>
-            <span class="drawer-toggle-desc">끄면 모임장·부방장만 공지·일정을 쓸 수 있어요</span>
-          </span>
-          ${isLeader
-            ? `<button class="switch-toggle ${boardPolicy.memberCanWrite ? 'on' : ''}" data-drawer-board-write="1" role="switch"
-                       aria-checked="${boardPolicy.memberCanWrite}" type="button" aria-label="게시판 멤버 작성 허용">
-                 <span class="switch-knob" aria-hidden="true"></span></button>`
-            : `<span class="drawer-setting-value">${boardPolicy.memberCanWrite ? '멤버도 씀' : '운영자만'}</span>`}
-        </div>
-
-        <div class="drawer-menu">
-          <button class="drawer-menu-item" data-drawer-cover="1" type="button">
-            <span>표지 사진</span>
-            <span class="drawer-menu-value">${cover && cover.custom ? '직접 고름' : '최근 사진'}</span>
+  function gsPolicyView(grp) {
+    const gid = grp.id;
+    const s = store.getGroupSettings(gid);
+    const questions = store.getGroupJoinQuestions(gid);
+    return `
+      <div class="gs-view">
+        <div class="settings-choice-group" role="radiogroup" aria-label="가입 방식">
+          <button class="settings-choice ${s.joinMode === 'open' ? 'is-on' : ''}" data-gs-join="open" role="radio"
+                  aria-checked="${s.joinMode === 'open' ? 'true' : 'false'}" type="button">
+            <span class="settings-choice-label">바로 가입</span>
+            <span class="settings-choice-check" aria-hidden="true" data-oog-icon="check"></span>
           </button>
-          <button class="drawer-menu-item" data-drawer-info="1" type="button">
-            <span>모임 정보 · 아지트 수정</span>
-            <span class="drawer-menu-value">›</span>
+          <button class="settings-choice ${s.joinMode === 'approval' ? 'is-on' : ''}" data-gs-join="approval" role="radio"
+                  aria-checked="${s.joinMode === 'approval' ? 'true' : 'false'}" type="button">
+            <span class="settings-choice-label">승인제</span>
+            <span class="settings-choice-check" aria-hidden="true" data-oog-icon="check"></span>
           </button>
-          ${isLeader && joinMode === 'approval'
-            ? `<button class="drawer-menu-item" data-drawer-applications="1" type="button">
-                 <span>가입 신청 관리</span>
-                 <span class="drawer-menu-value ${pendingApps ? 'has-alert' : ''}">${pendingApps ? `대기 ${pendingApps}명` : '없음'} ›</span></button>`
-            : ''}
-          ${isLeader
-            ? `<button class="drawer-menu-item danger" data-drawer-delete="1" type="button">
-                 <span>모임 삭제</span><span class="drawer-menu-value">되돌릴 수 없어요</span></button>`
-            : `<button class="drawer-menu-item danger" data-drawer-leave="1" type="button">
-                 <span>모임 나가기</span><span class="drawer-menu-value">›</span></button>`}
         </div>
-      </section>
 
-      <!-- v35.2 — 알림: 이 모임의 새 공지·일정·채팅을 받을지(나에게 오는 알림) -->
-      <section class="drawer-section" aria-labelledby="drawer-notify-title">
-        <div class="drawer-section-head">
-          <h3 class="drawer-section-title" id="drawer-notify-title">알림</h3>
+        ${gsGroup(`가입 질문 ${questions.length}/3`, `
+          ${questions.map((q, i) => `
+            <div class="settings-row gs-question-row">
+              <span class="settings-row-label">${gsEsc(q)}</span>
+              <button class="gs-link is-danger" type="button" data-gs-qdel="${i}">삭제</button>
+            </div>`).join('')}
+          ${questions.length < 3 ? `
+            <form class="gs-question-form" data-gs-qform="1">
+              <input class="gs-input" id="gs-question-new" type="text" maxlength="60" placeholder="새 가입 질문 (60자)">
+              <button class="btn-secondary gs-mini" type="submit">추가</button>
+            </form>` : ''}
+          <p class="gs-note">승인제는 질문이 하나 이상 있어야 신청서를 받을 수 있어요.</p>`)}
+
+        ${gsGroup('나이 제한', ageSliderHTML({ host: 'gs', groupId: gid, min: store.getGroupAgeRange(grp).min, max: store.getGroupAgeRange(grp).max }))}
+
+        ${gsGroup('공개', [
+          gsSwitchRow('검색·추천에 노출', 'listedInSearch', s.listedInSearch),
+          gsRow({ label: '멤버 목록 공개', value: s.memberListVisibility === 'staff' ? '운영진만' : '멤버만', action: 'data-gs-listvis="1"', chev: true })
+        ].join(''))}
+      </div>`;
+  }
+
+  function gsDefaultsView(grp) {
+    const s = store.getGroupSettings(grp.id);
+    return `<div class="gs-view">
+      ${gsGroup('새 일정·글의 기본값', [
+        gsSwitchRow('일정 게스트 참여 허용', 'defaultGuestEvents', s.defaultGuestEvents, '새 일정을 만들 때 이 값을 먼저 켜요'),
+        gsSwitchRow('피드 추천 노출 허용', 'defaultFeedRecommend', s.defaultFeedRecommend, '새 글을 추천에 올릴지 먼저 정해 둬요')
+      ].join(''))}
+      <p class="gs-note">둘 다 기본은 꺼짐이에요. 켜도 일정·글마다 다시 고를 수 있어요.</p>
+    </div>`;
+  }
+
+  function gsStaffView(grp) {
+    const gid = grp.id;
+    const roster = store.getGroupRoster(gid, { viewerRole: 'owner' });
+    const staffCount = store.getGroupDeputies(gid).length;
+    const full = staffCount >= GROUP_STAFF_MAX_UI;
+    return `<div class="gs-view">
+      <p class="gs-note">운영진은 최대 ${GROUP_STAFF_MAX_UI}명 · 지금 ${staffCount}명</p>
+      ${roster.members.filter((m) => !m.isMe).map((m) => {
+        const r = store.roleOf(gid, m.id);
+        return `
+          <div class="settings-row gs-member-row">
+            <span class="gs-member-name">${gsEsc(m.name)}${groupRoleBadge(r)}</span>
+            ${r === 'staff' ? `<button class="gs-link is-danger" type="button" data-gs-staff-off="${m.id}">해임</button>` : ''}
+            ${r === 'member' ? `<button class="gs-link ${full ? 'is-locked' : ''}" type="button" data-gs-staff-on="${m.id}"
+              ${full ? 'disabled aria-disabled="true"' : ''}>운영진 임명</button>` : ''}
+          </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  function gsTransferView(grp) {
+    const gid = grp.id;
+    const roster = store.getGroupRoster(gid, { viewerRole: 'owner' });
+    const candidates = roster.members.filter((m) => !m.isMe && store.roleOf(gid, m.id) === 'member');
+    return `<div class="gs-view">
+      <p class="gs-note">모임장을 넘기면 나는 운영진(자리 있으면)이 되고, 새 모임장이 모든 관리를 맡아요.</p>
+      ${candidates.length ? candidates.map((m) => `
+        <div class="settings-row gs-member-row">
+          <span class="gs-member-name">${gsEsc(m.name)}</span>
+          <button class="gs-link is-danger" type="button" data-gs-transfer="${m.id}">이 멤버에게 위임</button>
+        </div>`).join('') : gsEmpty('위임할 수 있는 멤버가 없어요.')}
+    </div>`;
+  }
+
+  function gsReportView(grp) {
+    const gid = grp.id;
+    const roster = store.getGroupRoster(gid);
+    return `<div class="gs-view">
+      <div class="gs-form">
+        <label class="gs-field">
+          <span class="gs-field-label">무엇을 신고할까요</span>
+          <select class="gs-input" id="gs-report-target">
+            <option value="group">모임 전체</option>
+            ${roster.members.filter((m) => !m.isMe).map((m) => `<option value="member:${m.id}">멤버 · ${gsEsc(m.name)}</option>`).join('')}
+          </select>
+        </label>
+        <label class="gs-field">
+          <span class="gs-field-label">이유</span>
+          <textarea class="gs-input gs-textarea" id="gs-report-reason" maxlength="200" placeholder="운영진이 확인할 수 있게 적어 주세요"></textarea>
+        </label>
+        <button class="btn-primary gs-save" type="button" data-gs-save="report">신고 보내기</button>
+        <p class="gs-note">신고는 이 모임 운영진의 접수함에만 들어가요.</p>
+      </div>
+    </div>`;
+  }
+
+  function gsBlockView(grp) {
+    const roster = store.getGroupRoster(grp.id);
+    const blocked = store.state.blockedMemberIds || [];
+    return `<div class="gs-view">
+      ${roster.members.filter((m) => !m.isMe).map((m) => `
+        <div class="settings-row gs-member-row">
+          <span class="gs-member-name">${gsEsc(m.name)}</span>
+          <button class="gs-link ${blocked.indexOf(m.id) >= 0 ? 'is-danger' : ''}" type="button" data-gs-block="${m.id}">
+            ${blocked.indexOf(m.id) >= 0 ? '차단 해제' : '차단'}</button>
+        </div>`).join('')}
+      <p class="gs-note">차단하면 이 사람의 글·댓글이 내 화면에서 보이지 않아요.</p>
+    </div>`;
+  }
+
+  /* -------------------------------------------------- 동작 (한 곳에서 받는다) */
+  function gsToastAndRender(message, type) {
+    renderGroupSettings();
+    if (message) showToast(message, type || 'info');
+  }
+
+  function gsHandleClick(e) {
+    const gid = groupSettingsGroupId();
+    const grp = gid ? store.getGroup(gid) : null;
+    if (!grp) return;
+    const t = e.target.closest('button, [data-gs-view]');
+    if (!t) return;
+
+    /* 화면 이동 */
+    if (t.dataset.gsView) { ui.gsView = t.dataset.gsView; renderGroupSettings(); return; }
+    if (t.dataset.gsNotice) { openNoticeSheet(gid); return; }
+    if (t.dataset.gsAzit) { openGroupAzitEditor(gid); return; }
+    if (t.dataset.gsCover) { openCoverPicker(gid); return; }
+    if (t.dataset.gsPost) {
+      closeGroupSettings();
+      openPostDetail ? openPostDetail(t.dataset.gsPost) : null;
+      return;
+    }
+
+    /* 모임 운영 스위치 — 모임장 */
+    if (t.dataset.gsToggle === 'gs-dm') {
+      const on = !store.getGroupDmPolicy(gid).enabled;
+      const res = store.updateGroupDmPolicy(gid, on);
+      gsToastAndRender(res.ok ? (on ? '모임 내 1:1 대화를 허용했어요' : '모임 내 1:1 대화를 꺼두었어요') : '모임장만 바꿀 수 있어요',
+        res.ok ? 'success' : 'warning');
+      return;
+    }
+    if (t.dataset.gsToggle === 'gs-deputymod') {
+      const on = !store.getDeputyPermissions(gid).deputyCanModerate;
+      const res = store.setDeputyModeratePermission(gid, on);
+      gsToastAndRender(res.ok ? (on ? '운영진에게 멤버 관리까지 맡겼어요' : '운영진은 공지·일정만 써요') : '모임장만 바꿀 수 있어요',
+        res.ok ? 'success' : 'warning');
+      return;
+    }
+    if (t.dataset.gsToggle === 'gs-boardwrite') {
+      const on = !store.getGroupBoardPolicy(gid).memberCanWrite;
+      const res = store.updateGroupBoardPolicy(gid, on);
+      gsToastAndRender(res.ok ? (on ? '이제 멤버도 공지·일정을 쓸 수 있어요' : '게시판은 운영진만 쓰게 바꿨어요') : '모임장만 바꿀 수 있어요',
+        res.ok ? 'success' : 'warning');
+      return;
+    }
+    if (t.dataset.gsToggle === 'defaultGuestEvents' || t.dataset.gsToggle === 'defaultFeedRecommend') {
+      const key = t.dataset.gsToggle;
+      const cur = store.getGroupSettings(gid)[key];
+      const patch = {}; patch[key] = !cur;
+      const res = store.updateGroupDefaultSettings(gid, patch);
+      gsToastAndRender(res.ok ? '기본값을 바꿨어요' : '모임장만 바꿀 수 있어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+
+    /* 나의 설정 — 스위치 */
+    if (t.dataset.gsToggle) {
+      const key = t.dataset.gsToggle;
+      const patch = {};
+      if (key === 'muted') {
+        const on = !store.getGroupMembership(gid).muted;
+        patch.muted = on;
+        patch.notifyMode = on ? 'off' : 'all';
+      } else {
+        patch[key] = !store.getGroupMembership(gid)[key];
+      }
+      const res = store.updateGroupMembership(gid, patch);
+      if (!res.ok) { showToast('바꾸지 못했어요', 'warning'); return; }
+      renderGroupSettings();
+      return;
+    }
+
+    /* 알림 모드 */
+    if (t.dataset.gsNotify) {
+      store.updateGroupNotifySetting(gid, { notifyMode: t.dataset.gsNotify });
+      renderGroupSettings();
+      return;
+    }
+
+    /* 프로필·정보 저장 */
+    if (t.dataset.gsSave === 'profile') {
+      const nick = ($('#gs-profile-nick') || {}).value || '';
+      const bio = ($('#gs-profile-bio') || {}).value || '';
+      const res = store.updateGroupProfile(gid, { nickname: nick, bio });
+      if (!res.ok) { showToast('이름은 12자까지 쓸 수 있어요', 'warning'); return; }
+      showToast('이 모임 프로필을 바꿨어요');
+      ui.gsView = 'main'; renderGroupSettings();
+      return;
+    }
+    if (t.dataset.gsSave === 'edit') {
+      const res = store.updateGroupInfo(gid, {
+        name: ($('#gs-edit-name') || {}).value,
+        description: ($('#gs-edit-desc') || {}).value,
+        hobbyId: ($('#gs-edit-hobby') || {}).value,
+        location: ($('#gs-edit-location') || {}).value,
+        rules: ($('#gs-edit-rules') || {}).value
+      });
+      if (!res.ok) {
+        showToast(res.reason === 'permission' ? '모임장만 고칠 수 있어요' : '이름은 2~24자로 적어 주세요', 'warning');
+        return;
+      }
+      renderGroupHeader(store.getGroup(gid));
+      showToast('모임 정보를 고쳤어요');
+      ui.gsView = 'main'; renderGroupSettings();
+      return;
+    }
+    if (t.dataset.gsSave === 'report') {
+      const sel = ($('#gs-report-target') || {}).value || 'group';
+      const reason = ($('#gs-report-reason') || {}).value || '';
+      const [type, targetId] = sel.indexOf(':') >= 0 ? sel.split(':') : ['group', null];
+      const target = targetId ? store.getGroupRoster(gid).members.find((m) => m.id === targetId) : null;
+      const res = store.reportGroupTarget(gid, {
+        targetType: type, targetId, targetName: target ? target.name : grp.name, reason
+      });
+      if (!res.ok) { showToast('신고 이유를 적어 주세요', 'warning'); return; }
+      ui.gsView = 'main'; renderGroupSettings();
+      showToast('신고를 접수했어요');
+      return;
+    }
+
+    /* 가입 신청 */
+    if (t.dataset.gsApprove) {
+      const res = store.approveApplication(t.dataset.gsApprove);
+      gsToastAndRender(res.ok ? '가입을 수락했어요' : '수락하지 못했어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+    if (t.dataset.gsReject) {
+      const res = store.rejectApplication(t.dataset.gsReject);
+      gsToastAndRender(res.ok ? '가입을 거절했어요' : '거절하지 못했어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+
+    /* 신고 접수함 */
+    if (t.dataset.gsReportHandle) {
+      const res = store.resolveGroupReport(gid, t.dataset.gsReportHandle, 'handle');
+      gsToastAndRender(res.ok ? '신고를 처리했어요' : '처리하지 못했어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+    if (t.dataset.gsReportIgnore) {
+      const res = store.resolveGroupReport(gid, t.dataset.gsReportIgnore, 'ignore');
+      gsToastAndRender(res.ok ? '신고를 무시했어요' : '처리하지 못했어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+
+    /* 글·댓글 관리 */
+    if (t.dataset.gsPostHide) {
+      const res = store.moderateGroupPost(t.dataset.gsPostHide, 'hide');
+      gsToastAndRender(res.ok ? (res.action === 'hide' ? '글을 숨겼어요' : '글을 다시 보이게 했어요') : '바꾸지 못했어요',
+        res.ok ? 'success' : 'warning');
+      return;
+    }
+    if (t.dataset.gsPostDelete) {
+      const pid = t.dataset.gsPostDelete;
+      askConfirm('이 글을 삭제할까요?', '글과 사진·댓글이 함께 사라지고 되돌릴 수 없어요.', '삭제', () => {
+        const res = store.moderateGroupPost(pid, 'delete');
+        gsToastAndRender(res.ok ? '글을 삭제했어요' : '삭제하지 못했어요', res.ok ? 'success' : 'warning');
+      });
+      return;
+    }
+    if (t.dataset.gsCommentDelete) {
+      const [pid, cid] = t.dataset.gsCommentDelete.split(':');
+      const res = store.moderateGroupComment(pid, cid);
+      gsToastAndRender(res.ok ? '댓글을 삭제했어요' : '삭제하지 못했어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+
+    /* 일정·게스트 */
+    if (t.dataset.gsEventNew) {
+      closeGroupSettings();
+      openEventForm(gid);
+      return;
+    }
+    if (t.dataset.gsEventEdit) {
+      closeGroupSettings();
+      openEventForm(gid, t.dataset.gsEventEdit);
+      return;
+    }
+    if (t.dataset.gsEventCancel) {
+      const eid = t.dataset.gsEventCancel;
+      askConfirm('이 일정을 취소할까요?', '참석자에게 취소된 일정으로 보여요.', '취소', () => {
+        const res = store.cancelGroupEvent(eid);
+        gsToastAndRender(res.ok ? '일정을 취소했어요' : '취소하지 못했어요', res.ok ? 'success' : 'warning');
+      });
+      return;
+    }
+    if (t.dataset.gsGuestOk || t.dataset.gsGuestNo) {
+      const raw = t.dataset.gsGuestOk || t.dataset.gsGuestNo;
+      const [eid, mid] = raw.split(':');
+      const res = t.dataset.gsGuestOk ? store.approveGuestSeat(eid, mid) : store.rejectGuestSeat(eid, mid);
+      gsToastAndRender(res.ok ? (t.dataset.gsGuestOk ? '게스트를 승인했어요' : '게스트를 거절했어요') : '처리하지 못했어요',
+        res.ok ? 'success' : 'warning');
+      return;
+    }
+
+    /* 멤버 관리 */
+    if (t.dataset.gsMemberMute) {
+      const mid = t.dataset.gsMemberMute;
+      const res = store.muteGroupMember(gid, mid, true);
+      gsToastAndRender(res.ok ? '10분 동안 조용히 했어요' : '바꾸지 못했어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+    if (t.dataset.gsMemberWarn) {
+      const mid = t.dataset.gsMemberWarn;
+      const res = store.warnGroupMember(gid, mid, '운영진 경고');
+      gsToastAndRender(res.ok ? '경고를 남겼어요' : '남기지 못했어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+    if (t.dataset.gsMemberKick) {
+      const mid = t.dataset.gsMemberKick;
+      const member = store.getGroupRoster(gid, { viewerRole: 'owner' }).members.find((m) => m.id === mid);
+      askConfirm(`${member ? member.name : '이 멤버'}님을 강퇴할까요?`, '모임에서 나가고 이 모임의 글·대화가 보이지 않아요.', '강퇴', () => {
+        const res = store.kickGroupMember(gid, mid);
+        gsToastAndRender(res.ok ? '강퇴했어요' : '모임장·운영진은 강퇴할 수 없어요', res.ok ? 'success' : 'warning');
+      });
+      return;
+    }
+
+    /* 운영진 */
+    if (t.dataset.gsStaffOn || t.dataset.gsStaffOff) {
+      const mid = t.dataset.gsStaffOn || t.dataset.gsStaffOff;
+      const on = !!t.dataset.gsStaffOn;
+      const res = store.setGroupDeputy(gid, mid, on);
+      if (!res.ok) {
+        showToast(res.reason === 'too_many' ? '운영진은 최대 3명이에요' : '바꾸지 못했어요', 'warning');
+        return;
+      }
+      gsToastAndRender(on ? '운영진으로 임명했어요' : '운영진에서 해임했어요', 'success');
+      return;
+    }
+
+    /* 위험 영역 */
+    if (t.dataset.gsTransfer) {
+      const mid = t.dataset.gsTransfer;
+      const member = store.getGroupRoster(gid, { viewerRole: 'owner' }).members.find((m) => m.id === mid);
+      askConfirm('모임장을 넘길까요?',
+        `${member ? member.name : '이 멤버'}님이 새 모임장이 되고, 나는 운영진이 돼요. 되돌리려면 새 모임장이 다시 넘겨야 해요.`,
+        '넘기기', () => {
+          const res = store.transferGroupOwnership(gid, mid);
+          if (!res.ok) { showToast('넘기지 못했어요', 'warning'); return; }
+          renderGroupHeader(store.getGroup(gid));
+          gsToastAndRender('모임장을 넘겼어요', 'success');
+        });
+      return;
+    }
+    if (t.dataset.gsArchive) {
+      const on = !grp.archived;
+      askConfirm(on ? '모임을 보관할까요?' : '모임 보관을 풀까요?',
+        on ? '새 글·일정이 멈추고 읽기만 돼요. 언제든 풀 수 있어요.' : '다시 글·일정을 쓸 수 있어요.',
+        on ? '보관' : '풀기', () => {
+          const res = store.archiveGroup(gid, on);
+          gsToastAndRender(res.ok ? (on ? '모임을 보관했어요' : '모임 보관을 풀었어요') : '바꾸지 못했어요',
+            res.ok ? 'success' : 'warning');
+        });
+      return;
+    }
+    if (t.dataset.gsDelete) {
+      askConfirm('모임을 삭제할까요?',
+        `'${grp.name}'의 글·사진·공지·일정·대화가 모두 지워지고 되돌릴 수 없어요.`, '계속', () => {
+          askConfirm('정말 삭제할까요?',
+            '두 번 확인했어요. 멤버에게는 모임이 사라졌다는 알림이 남아요.', '모임 삭제', () => {
+              const name = grp.name;
+              const res = store.deleteGroupWithNotice(gid);
+              if (!res.ok) { showToast('삭제하지 못했어요', 'warning'); return; }
+              ui.gsGroupId = null;
+              closeGroupSettings();
+              exitGroupSpace();
+              renderGallery();
+              updateBadges();
+              showToast(`'${name}' 모임을 삭제했어요`, 'info');
+            });
+        });
+      return;
+    }
+
+    /* 나가기 */
+    if (t.dataset.gsLeave) {
+      if (store.roleOf(gid) === 'owner') { showToast('모임장은 탈퇴할 수 없어요 · 먼저 위임해 주세요', 'warning'); return; }
+      openGroupLeaveSheet(gid);
+      return;
+    }
+
+    /* 가입·공개 */
+    if (t.dataset.gsJoin) {
+      const res = store.updateGroupJoinSettings(gid, { joinMode: t.dataset.gsJoin });
+      if (!res.ok) {
+        showToast(res.reason === 'questions' ? '승인제는 가입 질문이 하나 이상 필요해요' : '바꾸지 못했어요', 'warning');
+        return;
+      }
+      renderGroupSettings();
+      return;
+    }
+    if (t.dataset.gsQdel) {
+      const qs = store.getGroupJoinQuestions(gid).slice();
+      qs.splice(Number(t.dataset.gsQdel), 1);
+      const res = store.updateGroupJoinSettings(gid, { questions: qs });
+      if (!res.ok) { showToast('질문은 0~3개까지예요', 'warning'); return; }
+      renderGroupSettings();
+      return;
+    }
+    if (t.dataset.gsListvis) {
+      const cur = store.getGroupSettings(gid).memberListVisibility;
+      const res = store.updateGroupJoinSettings(gid, { memberListVisibility: cur === 'staff' ? 'members' : 'staff' });
+      gsToastAndRender(res.ok ? (cur === 'staff' ? '멤버도 명단을 봐요' : '운영진만 명단을 봐요') : '바꾸지 못했어요',
+        res.ok ? 'success' : 'warning');
+      return;
+    }
+
+    /* 말머리 태그 */
+    if (t.dataset.gsTagdel) {
+      const res = store.deleteGroupCustomTag(gid, t.dataset.gsTagdel);
+      gsToastAndRender(res.ok ? '말머리를 삭제했어요' : '모임장만 지울 수 있어요', res.ok ? 'success' : 'warning');
+      return;
+    }
+
+    /* ?dev=1 역할 보기 */
+    if (t.dataset.gsRole) {
+      const preview = store.getRolePreview();
+      const nowRole = store.roleOf(gid);
+      if (preview && preview.groupId === gid && preview.role === t.dataset.gsRole) store.clearRolePreview();
+      else store.setRolePreview(gid, t.dataset.gsRole);
+      renderGroupHeader(grp);
+      renderGroupSettings();
+      return;
+    }
+
+    /* 차단 */
+    if (t.dataset.gsBlock) {
+      const mid = t.dataset.gsBlock;
+      if (!Array.isArray(store.state.blockedMemberIds)) store.state.blockedMemberIds = [];
+      const arr = store.state.blockedMemberIds;
+      const i = arr.indexOf(mid);
+      if (i >= 0) arr.splice(i, 1); else arr.push(mid);
+      store.saveState();
+      gsToastAndRender(i >= 0 ? '차단을 풀었어요' : '차단했어요', 'success');
+    }
+  }
+
+  /** 게시판 글쓰기·일정 만들기에서 쓰는 공용 확인 — 보관된 모임은 막는다. */
+  function groupArchivedBlocked(groupId) {
+    const g = store.getGroup(groupId);
+    if (g && g.archived) { showToast('보관된 모임이에요 · 모임장이 보관을 풀면 다시 쓸 수 있어요', 'warning'); return true; }
+    return false;
+  }
+
+  /* 탈퇴 확인 시트 — 글을 남길지/지울지 고른 뒤 나간다. */
+  function openGroupLeaveSheet(groupId) {
+    const grp = store.getGroup(groupId);
+    if (!grp) return;
+    ui.leaveGroupId = groupId;
+    const body = $('#group-leave-body');
+    if (body) {
+      body.innerHTML = `
+        <p class="gs-leave-desc">'${gsEsc(grp.name)}'에서 나가면 이 모임의 피드·채팅이 보이지 않아요.</p>
+        <div class="settings-choice-group" role="radiogroup" aria-label="내 글 처리">
+          <button class="settings-choice is-on" data-leave-keep="keep" role="radio" aria-checked="true" type="button">
+            <span class="settings-choice-label">내 글 남기기</span>
+            <span class="settings-choice-check" aria-hidden="true" data-oog-icon="check"></span>
+          </button>
+          <button class="settings-choice" data-leave-keep="delete" role="radio" aria-checked="false" type="button">
+            <span class="settings-choice-label">내 글 지우기</span>
+            <span class="settings-choice-check" aria-hidden="true" data-oog-icon="check"></span>
+          </button>
         </div>
-        <div class="drawer-toggle-row">
-          <span class="drawer-toggle-text">
-            <span class="drawer-toggle-title">모임 알림 받기</span>
-            <span class="drawer-toggle-desc">새 공지·일정·단체 채팅 알림</span>
-          </span>
-          <button class="switch-toggle ${notify.enabled ? 'on' : ''}" data-drawer-notify="1" role="switch"
-                  aria-checked="${notify.enabled}" type="button" aria-label="모임 알림 받기">
-            <span class="switch-knob" aria-hidden="true"></span></button>
-        </div>
-      </section>`;
+        <button class="btn-primary gs-save is-danger" type="button" data-leave-confirm="1">모임 나가기</button>`;
+    }
+    ui.leaveKeepPosts = true;
+    openModal($('#group-leave-modal'));
   }
 
   /* ==========================================================================
@@ -5986,7 +6796,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v35.3';
+  const APP_VERSION = 'v36.0';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -6200,7 +7010,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function noticeRoleLabel(role) {
-    return role === 'deputy' ? '부방장' : (role === 'leader' ? '모임장' : '멤버');
+    return role === 'deputy' ? '운영진' : (role === 'leader' ? '모임장' : '멤버');
   }
 
   function renderNoticeSheet() {
@@ -6250,7 +7060,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button type="submit" class="btn-primary">공지 올리기</button>
           </div>
         </form>`
-        : '<p class="notice-lock">운영자만 작성할 수 있어요 · 모임장이 삼선바 그룹 설정에서 멤버 작성을 허용하면 글을 쓸 수 있어요.</p>';
+        : '<p class="notice-lock">운영자만 작성할 수 있어요 · 모임장이 삼선바 모임 설정에서 멤버 작성을 허용하면 글을 쓸 수 있어요.</p>';
     }
   }
 
@@ -6474,7 +7284,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('가입한 모임에만 일정을 올릴 수 있어요', 'warning');
       return;
     }
-    /* v35.2 — 새 일정도 게시판 작성 권한을 따른다(모임장·부방장, 허락된 모임의 멤버).
+    /* v35.2 — 새 일정도 게시판 작성 권한을 따른다(모임장·운영진, 허락된 모임의 멤버).
        이미 만든 일정의 수정은 만든 사람 몫이라 그대로 둔다. */
     if (!eventId && !store.getGroupBoardPolicy(grp.id).canWrite) {
       showToast('운영자만 일정을 만들 수 있어요', 'warning');
@@ -6573,7 +7383,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${profileAttrs(author.id, author.nickname)} aria-label="${escapeHtml(post.authorName)} 프로필 열기">${avatarInnerHTML(author)}</button>
         <div class="post-detail-who">
           <div class="post-detail-name">
-            <button class="post-detail-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(post.authorName)}</button>
+            <button class="post-detail-author" type="button" ${profileAttrs(author.id, author.nickname)}>${escapeHtml(post.authorName)}</button>${authorRoleBadge(post.groupId, post.authorId)}
             ${post.authorId === store.currentUser.id ? '<span class="me-badge">나</span>' : ''}
           </div>
           <div class="post-detail-sub">
@@ -6760,7 +7570,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * Sprint 16 배선 — 갤러리 · 모임 뒤로가기 · 스토리 · 게시판 · 쪽지 · 나이 슬라이더
    * ---------------------------------------------------------------- */
   function bindGallery() {
-    /* H1 — 홈 배선은 bindHomeHub() 한 곳에 모았다(내 그룹 · 추천 · 전용 화면 둘). */
+    /* H1 — 홈 배선은 bindHomeHub() 한 곳에 모았다(내 모임 · 추천 · 전용 화면 둘). */
     bindHomeHub();
   }
   bindGallery();
@@ -6770,12 +7580,80 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.closest('[data-group-back]')) { exitGroupSpace(); }
   });
 
-  /* Sprint 18 — 모임 사이드바 열기 · 닫기 */
-  el.groupDrawerBtn && el.groupDrawerBtn.addEventListener('click', () => openDrawer('group'));
-  el.boardDrawerBtn && el.boardDrawerBtn.addEventListener('click', () => openDrawer('group'));
-  el.groupDrawer && el.groupDrawer.addEventListener('click', (e) => {
-    if (e.target.closest('[data-drawer-close]')) closeDrawer();
-  });
+  /* v36.0 — 모임 헤더 ⋯ 하나가 모임 설정 한 화면을 연다. */
+  const groupSettingsBtnNode = $('#btn-group-settings');
+  if (groupSettingsBtnNode) groupSettingsBtnNode.addEventListener('click', () => openGroupSettings('main'));
+  const groupSettingsBackNode = $('#btn-group-settings-back');
+  if (groupSettingsBackNode) groupSettingsBackNode.addEventListener('click', groupSettingsBack);
+  const groupSettingsScreenNode = $('#group-settings-screen');
+  if (groupSettingsScreenNode) groupSettingsScreenNode.addEventListener('click', gsHandleClick);
+  const groupSettingsFormNode = $('#group-settings-screen');
+  if (groupSettingsFormNode) {
+    groupSettingsFormNode.addEventListener('submit', (e) => {
+      const tagForm = e.target.closest('[data-gs-tagform]');
+      if (tagForm) {
+        e.preventDefault();
+        const input = $('#gs-tag-new');
+        const res = store.addGroupCustomTag(groupSettingsGroupId(), input ? input.value : '');
+        if (!res.ok) {
+          const msg = { empty: '말머리를 적어 주세요', duplicate: '이미 있는 말머리예요', too_long: '말머리는 10자까지예요', too_many: '말머리는 12개까지예요', permission: '모임장만 만들 수 있어요' };
+          showToast(msg[res.reason] || '추가하지 못했어요', 'warning');
+          return;
+        }
+        renderGroupSettings();
+        showToast(`'#${res.tag}' 말머리를 추가했어요`);
+        return;
+      }
+      const form = e.target.closest('[data-gs-qform]');
+      if (!form) return;
+      e.preventDefault();
+      const gid = groupSettingsGroupId();
+      const input = $('#gs-question-new');
+      const text = input ? input.value.trim() : '';
+      if (!text) { showToast('질문을 적어 주세요', 'warning'); return; }
+      const qs = store.getGroupJoinQuestions(gid).slice();
+      if (qs.length >= 3) { showToast('가입 질문은 3개까지예요', 'warning'); return; }
+      qs.push(text);
+      const res = store.updateGroupJoinSettings(gid, { questions: qs });
+      if (!res.ok) { showToast('질문을 넣지 못했어요', 'warning'); return; }
+      renderGroupSettings();
+    });
+  }
+  /* 탈퇴 확인 시트 — 글 남기기/지우기 + 나가기 */
+  const leaveModalNode = $('#group-leave-modal');
+  const leaveCloseNode = $('#btn-close-group-leave');
+  if (leaveCloseNode) leaveCloseNode.addEventListener('click', () => closeModal(leaveModalNode));
+  if (leaveModalNode) {
+    leaveModalNode.addEventListener('click', (e) => {
+      const keepBtn = e.target.closest('[data-leave-keep]');
+      if (keepBtn) {
+        ui.leaveKeepPosts = keepBtn.dataset.leaveKeep !== 'delete';
+        leaveModalNode.querySelectorAll('[data-leave-keep]').forEach((b) => {
+          const on = b === keepBtn;
+          b.classList.toggle('is-on', on);
+          b.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+        return;
+      }
+      const okBtn = e.target.closest('[data-leave-confirm]');
+      if (okBtn) {
+        const gid = ui.leaveGroupId;
+        const grp = gid ? store.getGroup(gid) : null;
+        const res = store.leaveGroup(gid, { keepPosts: ui.leaveKeepPosts !== false });
+        closeModal(leaveModalNode);
+        if (!res.ok) {
+          showToast(res.reason === 'owner' ? '모임장은 탈퇴할 수 없어요 · 먼저 위임해 주세요' : '나가지 못했어요', 'warning');
+          return;
+        }
+        ui.leaveGroupId = null;
+        closeGroupSettings();
+        exitGroupSpace();
+        renderGallery();
+        updateBadges();
+        showToast(grp ? `'${grp.name}'에서 나왔어요` : '모임에서 나왔어요', 'info');
+      }
+    });
+  }
 
   /* v35.3 (설정 S1) — 설정은 전체 화면 페이지. 톱니 두 곳(내 프로필 탭 헤더 · 내정보 탭)이 같은 페이지를 연다. */
   el.myProfileMenu && el.myProfileMenu.addEventListener('click', openSettingsPage);
@@ -6809,93 +7687,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btn = e.target.closest('[data-theme-mode]');
     if (!btn) return;
     setThemeMode(btn.dataset.themeMode);
-  });
-
-  /* 모임 사이드바 안의 동작들 */
-  el.groupDrawerBody && el.groupDrawerBody.addEventListener('click', (e) => {
-    const gid = ui.groupSpaceId || store.getHomeGroupId();
-    const grp = gid ? store.getGroup(gid) : null;
-    if (!grp) return;
-    const t = e.target.closest('button');
-    if (!t) return;
-    const rerender = () => renderGroupDrawer(store.getGroup(grp.id) || grp);
-
-    if (t.dataset.drawerMembers) { closeDrawer({ silent: true }); openGroupMembers(grp.id); return; }
-    if (t.dataset.drawerChat) { closeDrawer({ silent: true }); goMemberChat(grp.id, t.dataset.drawerChat); return; }
-    if (t.dataset.drawerDeputy) {
-      const on = !store.isGroupDeputy(grp.id, t.dataset.drawerDeputy);
-      const res = store.setGroupDeputy(grp.id, t.dataset.drawerDeputy, on);
-      if (!res.ok) { showToast(res.reason === 'limit' ? '부방장은 최대 5명이에요' : '부방장을 바꾸지 못했어요', 'warning'); return; }
-      showToast(on ? '부방장으로 지정했어요' : '부방장에서 내렸어요');
-      rerender();
-      return;
-    }
-    if (t.dataset.drawerJoin) {
-      const res = store.updateGroupJoinPolicy(grp.id, { joinMode: t.dataset.drawerJoin });
-      if (!res.ok) { showToast('모임장만 바꿀 수 있어요', 'warning'); return; }
-      showToast(t.dataset.drawerJoin === 'open' ? '누구나 자유롭게 가입하는 모임이에요' : '소개서를 보고 승인하는 모임이에요');
-      rerender();
-      return;
-    }
-    if (t.dataset.drawerDm) {
-      const cur = store.getGroupDmPolicy(grp.id).enabled;
-      const res = store.updateGroupDmPolicy(grp.id, !cur);
-      if (!res.ok) { showToast('모임장만 바꿀 수 있어요', 'warning'); return; }
-      showToast(cur ? '모임 내 1:1 대화를 껐어요' : '모임 내 1:1 대화를 허용했어요');
-      rerender();
-      return;
-    }
-    if (t.dataset.drawerDeputyMod) {
-      const cur = store.getDeputyPermissions(grp.id).deputyCanModerate;
-      const res = store.setDeputyModeratePermission(grp.id, !cur);
-      if (!res.ok) { showToast('모임장만 바꿀 수 있어요', 'warning'); return; }
-      showToast(cur ? '승인·강퇴는 모임장만 하게 바꿨어요' : '부방장도 승인·강퇴를 맡을 수 있어요');
-      rerender();
-      return;
-    }
-    if (t.dataset.drawerBoardWrite) {
-      const cur = store.getGroupBoardPolicy(grp.id).memberCanWrite;
-      const res = store.updateGroupBoardPolicy(grp.id, !cur);
-      if (!res.ok) { showToast('모임장만 바꿀 수 있어요', 'warning'); return; }
-      showToast(cur ? '게시판은 모임장·부방장만 쓰게 바꿨어요' : '이제 멤버도 공지·일정을 쓸 수 있어요');
-      rerender();
-      if (ui.activeTab === 'tab-board' || ui.activeTab === 'tab-groupinfo') renderBoard();
-      return;
-    }
-    if (t.dataset.drawerNotify) {
-      const cur = store.getGroupNotifySetting(grp.id).enabled;
-      const res = store.updateGroupNotifySetting(grp.id, !cur);
-      if (!res.ok) { showToast('모임 알림을 바꾸지 못했어요', 'warning'); return; }
-      showToast(cur ? '이 모임 알림을 꺼뒀어요' : '이 모임 알림을 받아요');
-      rerender();
-      return;
-    }
-    if (t.dataset.drawerApplications) { closeDrawer({ silent: true }); openGroupDetail(grp.id); return; }
-    if (t.dataset.drawerCover) { closeDrawer({ silent: true }); openCoverPicker(grp.id); return; }
-    if (t.dataset.drawerInfo) { closeDrawer({ silent: true }); openGroupDetail(grp.id); return; }
-    if (t.dataset.drawerLeave) {
-      askConfirm('모임을 나갈까요?', `'${grp.name}' 피드와 대화가 더 이상 보이지 않아요.`, '나가기', () => {
-        const res = store.leaveGroup(grp.id);
-        if (!res.ok) { showToast('모임을 나가지 못했어요', 'warning'); return; }
-        closeDrawer({ silent: true });
-        exitGroupSpace();
-        renderGallery();
-        updateBadges();
-        showToast(`'${grp.name}'에서 나왔어요`, 'info');
-      });
-      return;
-    }
-    if (t.dataset.drawerDelete) {
-      askConfirm('모임을 삭제할까요?', `'${grp.name}'의 글·사진·공지·일정·대화가 모두 지워지고 되돌릴 수 없어요.`, '삭제', () => {
-        const res = store.deleteGroup(grp.id);
-        if (!res.ok) { showToast('모임을 삭제하지 못했어요', 'warning'); return; }
-        closeDrawer({ silent: true });
-        exitGroupSpace();
-        renderGallery();
-        updateBadges();
-        showToast('모임을 삭제했어요', 'info');
-      });
-    }
   });
 
   /* 스토리 바 */
@@ -6990,8 +7781,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ginfoMembers) { openGroupMembers(ginfoMembers.dataset.ginfoMembers || ui.groupSpaceId); return; }
     const ginfoEdit = e.target.closest('[data-ginfo-edit]');
     if (ginfoEdit) { openGroupDetail(ginfoEdit.dataset.ginfoEdit || ui.groupSpaceId); return; }
-    const ginfoSettings = e.target.closest('[data-ginfo-settings]');
-    if (ginfoSettings) { openDrawer('group'); return; }
     const ginfoMember = e.target.closest('[data-ginfo-member]');
     if (ginfoMember && ui.groupSpaceId) {
       const dm = store.getGroupDmPolicy(ui.groupSpaceId);
@@ -7006,11 +7795,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const azitEdit = e.target.closest('[data-group-azit-edit]');
-    if (azitEdit) {
-      e.preventDefault();
-      openGroupAzitEditor(azitEdit.dataset.groupAzitEdit);
-    }
   });
 
   /* v35.2 — 활동 아지트 바꾸기 시트 */
@@ -7067,10 +7851,6 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#btn-cover-reset') && $('#btn-cover-reset').addEventListener('click', () => {
     const res = store.clearGroupCover(ui.coverGroupId);
     if (res.ok) { ui.coverDraft = (res.cover.photos || []).slice(0, 2); renderCoverGrid(); renderGallery(); }
-  });
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-cover-open]');
-    if (btn) openCoverPicker(btn.dataset.coverOpen);
   });
 
   /* ==========================================================================
@@ -7490,25 +8270,6 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 전체 멤버 시트 */
   if (el.membersBody) {
     el.membersBody.addEventListener('click', (e) => {
-      const deputyBtn = e.target.closest('[data-member-deputy]');
-      if (deputyBtn) {
-        const memberId = deputyBtn.dataset.memberDeputy;
-        const on = !store.isGroupDeputy(ui.membersGroupId, memberId);
-        const res = store.setGroupDeputy(ui.membersGroupId, memberId, on);
-        if (!res.ok) {
-          const messages = { permission: '모임장만 부방장을 지정할 수 있어요', leader: '모임장은 부방장이 될 수 없어요', too_many: '부방장은 최대 5명까지 지정할 수 있어요' };
-          showToast(messages[res.reason] || '부방장을 바꾸지 못했어요', 'warning');
-          return;
-        }
-        renderMembersSheet();
-        if (el.groupModal && el.groupModal.classList.contains('active')) {
-          renderGroupDetail(store.getGroup(ui.membersGroupId));
-        }
-        showToast(res.designated
-          ? `${res.member.name}님을 부방장으로 지정했어요 · 이제 공지를 쓸 수 있어요`
-          : `${res.member.name}님의 부방장을 해제했어요`, 'info');
-        return;
-      }
       if (e.target.closest('[data-member-chat-locked]')) {
         showToast('이 모임은 모임장이 1:1 대화를 꺼두었어요 · 모임 전체방을 이용해 주세요', 'info');
         return;
@@ -7595,7 +8356,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = store.createGroupNotice(form.dataset.noticeForm, area ? area.value : '', { pinned: !!(pin && pin.checked) });
       if (!res.ok) {
         const messages = {
-          permission: '모임장과 부방장만 공지를 쓸 수 있어요',
+          permission: '모임장과 운영진만 공지를 쓸 수 있어요',
           short: '공지를 2자 이상 적어주세요',
           long: '공지는 120자까지 가능해요'
         };
@@ -9646,7 +10407,6 @@ document.addEventListener('DOMContentLoaded', () => {
       <section class="sheet-block" data-sheet-block="azit">
         <div class="sheet-section-head">
           <h4 class="sheet-section-title">활동 아지트</h4>
-          ${isLeader ? `<button class="text-btn" data-group-azit-edit="${grp.id}" type="button">아지트 바꾸기</button>` : ''}
         </div>
         <div class="ginfo-azit-list sheet-azit-list">
           ${azits.length ? azits.map((a) => `
@@ -9743,77 +10503,12 @@ document.addEventListener('DOMContentLoaded', () => {
       </section>`;
   }
 
-  /* Sprint 15 — 모임 운영: 공지 권한 · 부방장 · 모임 내 1:1 대화 허용
-     H5(11/21 밤) — 이 설정은 **운영진(모임장·부방장)의 것**이다. 비멤버와 일반 멤버에게는
-     그리지 않는다. 부방장은 스위치 대신 상태 알약을 본다(바꾸는 건 모임장만).
-     설명도 두 줄 → 한 줄로 줄여 제목과 설정만 읽히게 했다. */
-  function renderGroupOpsBlock(grp) {
-    const perms = store.getDeputyPermissions(grp.id);
-    const isLeader = perms.isLeader;
-    const isDeputy = perms.isDeputy;
-    if (!isLeader && !isDeputy) return '';
-    const perm = store.getGroupNoticePermission(grp.id);
-    const deputies = store.getGroupDeputies(grp.id);
-    const dm = store.getGroupDmPolicy(grp.id);
-    return `
-      <section class="sheet-block group-ops" data-sheet-block="ops">
-        <div class="sheet-section-head">
-          <h4 class="sheet-section-title">모임 운영</h4>
-          ${isLeader ? '<span class="leader-badge">모임장</span>'
-            : `<span class="ops-role">${escapeHtml(perm.label)}</span>`}
-        </div>
-        <div class="ops-row">
-          <span class="ops-label">공지·일정 작성</span>
-          <span class="ops-value">${perm.canManage ? '가능' : '모임장만'}</span>
-        </div>
-        <div class="ops-row">
-          <span class="ops-label">부방장</span>
-          <span class="ops-value">${deputies.length
-            ? deputies.map((d) => `${escapeHtml(d.name)}${d.isMe ? ' (나)' : ''}`).join(', ')
-            : '아직 없음'}</span>
-        </div>
-        ${isLeader
-          ? `<button class="btn-secondary ops-deputy-btn" data-open-members="${grp.id}" type="button">멤버에서 부방장 지정</button>`
-          : ''}
-        <div class="ops-toggle-row">
-          <span class="ops-toggle-text">
-            <span class="ops-toggle-title">부방장 권한 위임</span>
-            <span class="ops-toggle-desc">멤버 승인·강퇴 허용</span>
-          </span>
-          ${isLeader
-            ? `<button class="switch-toggle ${perms.deputyCanModerate ? 'on' : ''}" data-deputy-moderate-toggle="${grp.id}"
-                       role="switch" aria-checked="${perms.deputyCanModerate}" type="button"
-                       aria-label="부방장에게 멤버 승인·강퇴 권한 주기"><span class="switch-knob" aria-hidden="true"></span></button>`
-            : `<span class="ops-state ${perms.deputyCanModerate ? 'on' : 'off'}">${perms.deputyCanModerate ? '함께 관리' : '모임장만'}</span>`}
-        </div>
-        <div class="ops-toggle-row">
-          <span class="ops-toggle-text">
-            <span class="ops-toggle-title">1:1 대화</span>
-            <span class="ops-toggle-desc">멤버끼리 DM 허용</span>
-          </span>
-          ${isLeader
-            ? `<button class="switch-toggle ${dm.enabled ? 'on' : ''}" data-group-dm-toggle="${grp.id}"
-                       role="switch" aria-checked="${dm.enabled}" type="button"
-                       aria-label="모임 내 1:1 대화 허용"><span class="switch-knob" aria-hidden="true"></span></button>`
-            : `<span class="ops-state ${dm.enabled ? 'on' : 'off'}">${dm.enabled ? '허용' : '꺼둠'}</span>`}
-        </div>
-        <div class="ops-toggle-row">
-          <span class="ops-toggle-text">
-            <span class="ops-toggle-title">가입 카드 표지</span>
-            <span class="ops-toggle-desc">카드에 보일 사진 선택</span>
-          </span>
-          ${isLeader
-            ? `<button class="btn-secondary ops-cover-btn" data-cover-open="${grp.id}" type="button">표지 고르기</button>`
-            : `<span class="ops-state ${(store.getGroupCover(grp.id) || {}).custom ? 'on' : 'off'}">${(store.getGroupCover(grp.id) || {}).custom ? '모임장이 고름' : '최근 사진'}</span>`}
-        </div>
-      </section>`;
-  }
 
   /* H5(11/21 밤) — 비멤버(가입 전) 모임 상세.
      네이버 카페·당근 모임의 가입 화면처럼 **가입을 정하는 데 필요한 것만** 남긴다:
        ① 대표 이미지 ② 모임명·아지트·멤버 수 ③ 한 줄 소개 ④ 취미 태그
        ⑤ 가입 안내(가입 방식 · 나이 조건 · 활동 아지트 · 가입 질문 수) ⑥ 가입 버튼
-     모임 운영(공지 권한·부방장·1:1 허용)·말머리 관리·멤버 목록·피드 미리보기처럼
+     모임 운영(공지 권한·운영진·1:1 허용)·말머리 관리·멤버 목록·피드 미리보기처럼
      모임 안 사람에게나 쓸모 있는 것은 그리지 않는다. */
   function renderGuestGroupDetail(grp) {
     const vis = groupCoverVisual(grp);
@@ -9890,12 +10585,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    /* v36.0 — 멤버에게 보이는 모임 상세는 **보기만** 한다(일정·아지트·멤버·규칙).
+       운영·관리 항목(운영 구획·가입 정책·신청 목록·말머리·피드 미리보기)은 모두
+       모임 설정 한 화면으로 옮겼다 — 같은 일을 두 곳에서 하지 않는다. */
     el.groupModalBody.innerHTML = `
-      ${isLeader ? `
-      <div class="admin-mode-bar">
-        <span class="admin-mode-badge">관리자 모드</span>
-        <span class="admin-pending-count">신청 대기 ${pending.length}명</span>
-      </div>` : ''}
       <div class="sheet-group-header">
         <div class="sheet-emoji-badge">${ic(grp.icon)}</div>
         <span class="group-category-tag">
@@ -9910,72 +10603,13 @@ document.addEventListener('DOMContentLoaded', () => {
         <p class="sheet-desc">${escapeHtml(grp.description)}</p>
       </div>
 
-      <!-- Sprint 13 — 상세는 구획으로: 일정 · 멤버 · 규칙 · 가입 -->
       ${renderGroupScheduleBlock(grp)}
       ${renderGroupAzitBlock(grp)}
       ${renderGroupMemberBlock(grp)}
-      ${renderGroupOpsBlock(grp)}
 
       <div class="sheet-rule-card">
         <div class="rule-title"><span>모임 규칙 및 프라이버시</span></div>
         <p class="rule-desc">${escapeHtml(grp.rules)}</p>
-      </div>
-
-      ${isLeader ? renderJoinPolicySection(grp, isLeader) : ''}
-      ${isLeader ? renderApplicationList(grp) : ''}
-
-      <!-- ===== 말머리 태그 관리 ===== -->
-      <section class="tag-manager ${isLeader ? 'editable' : 'readonly'}" data-tag-manager="${grp.id}">
-        <div class="tag-manager-head">
-          <div>
-            <h4 class="tag-manager-title">말머리 태그</h4>
-            <p class="tag-manager-sub">${isLeader
-              ? '모임장만 만들고 지울 수 있어요. 멤버는 글 쓸 때 이 중에서 골라요.'
-              : '모임장이 관리하는 말머리입니다. 글 쓸 때 골라 쓸 수 있어요.'}</p>
-          </div>
-          ${isLeader ? '<span class="leader-badge">모임장</span>' : ''}
-        </div>
-
-        <div class="managed-tag-list">
-          ${grp.customTags.length
-            ? grp.customTags.map((t) => `
-                <span class="managed-tag">
-                  <span>#${escapeHtml(t)}</span>
-                  ${isLeader ? `<button class="tag-remove" data-remove-tag="${escapeHtml(t)}" aria-label="${escapeHtml(t)} 삭제">×</button>` : ''}
-                </span>`).join('')
-            : '<span class="tag-empty">아직 말머리가 없어요</span>'}
-        </div>
-
-        ${isLeader ? `
-          <form class="tag-add-form" data-tag-form="${grp.id}">
-            <input type="text" class="tag-add-input" maxlength="10" aria-label="새 말머리 태그" placeholder="새 말머리 (예: 새벽와드)">
-            <button type="submit" class="btn-tag-add">추가</button>
-          </form>
-          <p class="tag-manager-hint">이미 올린 글에 달린 태그는 글 기록으로 그대로 남습니다.</p>
-        ` : ''}
-      </section>
-
-      <div class="sheet-feed-preview">
-        <h4 class="sheet-section-title">이 모임의 프라이빗 피드</h4>
-        <div class="sheet-feed-preview-body">
-          ${joined
-            ? `<strong>${posts.length}개의 글</strong>이 모임원에게만 공개되고 있어요.`
-            : '가입 승인된 모임원에게만 사진과 글이 공개됩니다.'}
-        </div>
-        ${joined && posts.length ? `
-          <div class="sheet-thumbs">
-            ${posts.slice(0, 3).map((p) => `
-              <button class="sheet-thumb" data-open-feed="${grp.id}" aria-label="피드에서 보기">
-                ${p.photoUrl
-                  ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="게시물 사진" loading="lazy" decoding="async">`
-                  : `<span class="thumb-text">${escapeHtml((p.caption || '').slice(0, 30))}</span>`}
-              </button>`).join('')}
-          </div>` : ''}
-        ${joined ? '<button class="text-btn sheet-feed-link" data-open-feed="' + grp.id + '">피드에서 보기 →</button>' : ''}
-      </div>
-
-      <div class="sheet-actions">
-        ${renderJoinCta(grp)}
       </div>
     `;
   }
@@ -9996,64 +10630,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    /* 모임장 — 부방장에게 멤버 승인·강퇴 권한 주기 (Sprint 16) */
-    const deputyMod = e.target.closest('[data-deputy-moderate-toggle]');
-    if (deputyMod) {
-      const groupId = deputyMod.dataset.deputyModerateToggle;
-      const current = store.getDeputyPermissions(groupId).deputyCanModerate;
-      const res = store.setDeputyModeratePermission(groupId, !current);
-      if (!res.ok) {
-        showToast('모임장만 바꿀 수 있어요', 'warning');
-        return;
-      }
-      renderGroupDetail(res.groupId ? store.getGroup(res.groupId) : null);
-      showToast(res.deputyCanModerate
-        ? '부방장에게 멤버 승인·강퇴까지 맡겼어요'
-        : '부방장은 공지·일정만 쓸 수 있어요 · 승인·강퇴는 모임장만', 'info');
-      return;
-    }
-
-    /* 모임장 — 모임 내 1:1 대화 허용 ON/OFF */
-    const dmToggle = e.target.closest('[data-group-dm-toggle]');
-    if (dmToggle) {
-      const groupId = dmToggle.dataset.groupDmToggle;
-      const current = store.getGroupDmPolicy(groupId).enabled;
-      const res = store.updateGroupDmPolicy(groupId, !current);
-      if (!res.ok) {
-        showToast('모임장만 1:1 대화 허용을 바꿀 수 있어요', 'warning');
-        return;
-      }
-      renderGroupDetail(res.group);
-      showToast(res.enabled
-        ? '모임 내 1:1 대화를 허용했어요'
-        : '모임 내 1:1 대화를 꺼두었어요 · 지금 열려 있는 방은 그대로 남아요', 'info');
-      return;
-    }
-
-    /* 말머리 삭제 */
-    const removeBtn = e.target.closest('[data-remove-tag]');
-    if (removeBtn) {
-      const manager = removeBtn.closest('[data-tag-manager]');
-      const groupId = manager.dataset.tagManager;
-      const tag = removeBtn.dataset.removeTag;
-      const result = store.deleteGroupCustomTag(groupId, tag);
-      if (result.ok) {
-        renderGroupDetail(store.getGroup(groupId));
-        showToast(`'#${tag}' 말머리를 삭제했어요`, 'info');
-      } else if (result.reason === 'permission') {
-        showToast('모임장만 말머리를 삭제할 수 있어요', 'warning');
-      }
-      return;
-    }
-
-    /* 피드로 이동 */
-    const feedLink = e.target.closest('[data-open-feed]');
-    if (feedLink) {
-      const groupId = feedLink.dataset.openFeed;
-      closeModal(el.groupModal);
-      goGroupFeed(groupId, 'feed');
-      return;
-    }
 
     /* 가입 토글 (자유 가입 모임 / 탈퇴) */
     const joinBtn = e.target.closest('[data-modal-join]');
@@ -10094,129 +10670,8 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    /* 모임장 — 신청 수락 */
-    const approveBtn = e.target.closest('[data-approve-app]');
-    if (approveBtn) {
-      const res = store.approveApplication(approveBtn.dataset.approveApp);
-      if (!res.ok) {
-        showToast(res.reason === 'permission' ? '모임장만 수락할 수 있어요' : '이미 처리된 신청서예요', 'warning');
-        return;
-      }
-      store.apiCall('group.decide', { applicationId: res.application.id, decision: 'approve' }).then((env) => {
-        if (env.ok) return;
-        renderGroupDetail(store.getGroup(res.application.groupId));
-        updateBadges();
-        showToast('수락을 저장하지 못했어요 · 다시 시도해 주세요', 'error');
-      });
-      renderGroupDetail(res.group);
-      renderExplore({ preserve: true });
-      updateBadges();
-      showToast(`${res.application.applicantName}님을 멤버로 수락했어요 · 승인 환영 알림을 보냈어요`);
-      if (navigator.vibrate) navigator.vibrate(12);
-      return;
-    }
-
-    /* 모임장 — 신청 거절 */
-    const rejectBtn = e.target.closest('[data-reject-app]');
-    if (rejectBtn) {
-      const res = store.rejectApplication(rejectBtn.dataset.rejectApp);
-      if (!res.ok) {
-        showToast(res.reason === 'permission' ? '모임장만 거절할 수 있어요' : '이미 처리된 신청서예요', 'warning');
-        return;
-      }
-      store.apiCall('group.decide', { applicationId: res.application.id, decision: 'reject' }).then((env) => {
-        if (env.ok) return;
-        renderGroupDetail(store.getGroup(res.application.groupId));
-        updateBadges();
-        showToast('거절을 저장하지 못했어요 · 다시 시도해 주세요', 'error');
-      });
-      renderGroupDetail(res.group);
-      renderExplore({ preserve: true });
-      updateBadges();
-      showToast(`${res.application.applicantName}님의 신청을 정중히 거절했어요`, 'info');
-      return;
-    }
-
-    /* 모임장 — 가입 방식 변경 */
-    const modeBtn = e.target.closest('[data-policy-mode]');
-    if (modeBtn) {
-      const groupId = modeBtn.closest('[data-join-policy]').dataset.joinPolicy;
-      const res = store.updateGroupJoinPolicy(groupId, { joinMode: modeBtn.dataset.policyMode });
-      if (!res.ok) {
-        showToast(res.reason === 'questions' ? '승인제로 바꾸려면 가입 질문이 하나는 필요해요' : '가입 방식을 바꾸지 못했어요', 'warning');
-        return;
-      }
-      renderGroupDetail(res.group);
-      renderExplore({ preserve: true });
-      const stillPending = store.getPendingApplications(groupId).length;
-      if (res.group.joinMode === 'open') {
-        showToast(stillPending
-          ? `가입 방식을 자유 가입으로 바꿨어요 · 대기 중인 신청서 ${stillPending}건은 직접 처리해 주세요`
-          : '가입 방식을 자유 가입으로 바꿨어요 · 누구나 바로 참여해요');
-      } else {
-        showToast('가입 방식을 승인제로 바꿨어요 · 소개서를 보고 직접 고를게요');
-      }
-      return;
-    }
-
-    /* 모임장 — 나이 제한 변경 */
-    /* H4 — 나이 제한은 칩이 아니라 슬라이더(data-age-slider)로 바꾼다. 저장은 commitAgeSlider 가 맡는다. */
-
-    /* 모임장 — 가입 질문 삭제 */
-    const qDel = e.target.closest('[data-policy-qdel]');
-    if (qDel) {
-      const groupId = qDel.closest('[data-join-policy]').dataset.joinPolicy;
-      const questions = store.getGroupJoinQuestions(groupId).slice();
-      questions.splice(Number(qDel.dataset.policyQdel), 1);
-      const res = store.updateGroupJoinPolicy(groupId, { joinQuestions: questions });
-      if (!res.ok) {
-        showToast('질문은 최소 하나는 있어야 해요', 'warning');
-        return;
-      }
-      renderGroupDetail(res.group);
-      showToast('가입 질문을 삭제했어요', 'info');
-      return;
-    }
   });
 
-  el.groupModalBody && el.groupModalBody.addEventListener('submit', (e) => {
-    const policyForm = e.target.closest('[data-policy-qform]');
-    if (policyForm) {
-      e.preventDefault();
-      const groupId = policyForm.closest('[data-join-policy]').dataset.joinPolicy;
-      const input = policyForm.querySelector('.policy-question-input');
-      const questions = store.getGroupJoinQuestions(groupId).concat(String(input.value || '').trim()).filter(Boolean);
-      const res = store.updateGroupJoinPolicy(groupId, { joinQuestions: questions });
-      if (!res.ok) {
-        showToast(res.reason === 'question_long' ? '질문은 60자까지 가능해요' : '질문을 추가하지 못했어요', 'warning');
-        return;
-      }
-      renderGroupDetail(res.group);
-      showToast('가입 질문을 추가했어요');
-      return;
-    }
-    const form = e.target.closest('[data-tag-form]');
-    if (!form) return;
-    e.preventDefault();
-    const groupId = form.dataset.tagForm;
-    const input = form.querySelector('.tag-add-input');
-    const result = store.addGroupCustomTag(groupId, input.value);
-
-    if (result.ok) {
-      renderGroupDetail(store.getGroup(groupId));
-      showToast(`'#${result.tag}' 말머리를 추가했어요`);
-    } else {
-      const messages = {
-        empty: '태그 이름을 입력해 주세요',
-        duplicate: '이미 있는 말머리예요',
-        too_long: '말머리는 10자까지 가능해요',
-        too_many: '말머리는 최대 12개까지 만들 수 있어요',
-        permission: '모임장만 말머리를 만들 수 있어요'
-      };
-      showToast(messages[result.reason] || '추가하지 못했어요', 'warning');
-      input.focus();
-    }
-  });
 
   /* ==========================================================================
    * 4. 프라이빗 피드 (인스타그램형)
@@ -10720,7 +11175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 15 — 보고 있던 모임을 알아서 골라 둔다.
        v33.7 — 모임 공간 안에서 열면 그 모임으로 **고정**된다(모임 고르기 없음).
        v33.8 (#22181) — 모임 없이도 쓸 수 있는 '자유 피드' 글.
-       v34.0 (#22322) — 홈에서는 2단계에서 올릴 곳을 고른다(그룹 없이 올리기 토글). */
+       v34.0 (#22322) — 홈에서는 2단계에서 올릴 곳을 고른다(모임 없이 올리기 토글). */
     const inGroup = isGroupMode();
     const pick = (id) => {
       const g = id ? store.getGroup(id) : null;
@@ -10787,7 +11242,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const c = ui.composer || {};
     const free = c.noGroup === true || c.groupId == null;
     /* 추천 피드 체크는 **모임에 올릴 때만** 의미가 있다.
-       · 2단계에서 아직 모임을 고르지 않았거나 '그룹 없이 올리기'가 켜져 있으면 숨는다
+       · 2단계에서 아직 모임을 고르지 않았거나 '모임 없이 올리기'가 켜져 있으면 숨는다
          (자유 피드는 무조건 홈에 노출 — 그 사실은 위쪽 안내 줄이 말한다).
        · 1단계(모임 공간·수정)에서는 모임이 정해져 있으므로 그대로 보인다. */
     const show = !free;
@@ -10817,7 +11272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderComposerPhotos();
   }
 
-  /** 2단계 — 올릴 곳. '그룹 없이 올리기'가 켜지면 모임 목록을 숨긴다.
+  /** 2단계 — 올릴 곳. '모임 없이 올리기'가 켜지면 모임 목록을 숨긴다.
    *  목록의 모임 대표 이미지는 **원형**(#22335 "그룹은 원형으로 보이게해") —
    *  사진이 있으면 그 사진, 없으면 취미 대분류 색 + 아이콘. */
   function renderComposerGroups() {
@@ -10906,7 +11361,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.publishBtn.classList.toggle('ready', ok);
   }
 
-  /** 올릴 모임 — 홈 2단계에서 '그룹 없이 올리기'가 켜져 있으면 null(자유 피드). */
+  /** 올릴 모임 — 홈 2단계에서 '모임 없이 올리기'가 켜져 있으면 null(자유 피드). */
   function composerTargetGroupId() {
     const c = ui.composer;
     if (!c) return null;
@@ -11522,7 +11977,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openChatRoom(roomId) {
-    if (ui.drawerOpen) closeDrawer({ silent: true });
     const room = roomId ? store.getChatRoom(roomId) : null;
     if (!room || !el.chatRoomModal) return;
     ui.openRoomId = room.id;
@@ -12633,7 +13087,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const option = store.getGroupAgeLimit(groupId);
     showToast(option.id === 'all' ? '나이 제한을 없앴어요' : `나이 제한을 ${ageSliderLabel(min, max)} 로 바꿨어요`);
-    if (host === 'drawer') renderExplore({ preserve: true });
+    if (host === 'gs') { renderGroupSettings(); renderExplore({ preserve: true }); }
+    else if (host === 'drawer') renderExplore({ preserve: true });
     else { renderGroupDetail(res.group); renderExplore({ preserve: true }); }
   }
 
@@ -13859,7 +14314,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderExplore();
     renderFeed();
     updateBadges();
-    /* H1 — 만든 모임은 홈 '내 그룹' 줄 첫 자리와 '내 그룹 전체'에 바로 보인다. */
+    /* H1 — 만든 모임은 홈 '내 모임' 줄 첫 자리와 '내 모임 전체'에 바로 보인다. */
     switchTab('tab-home');
     closeSubscreens();
     renderGallery();
@@ -14221,8 +14676,17 @@ document.addEventListener('DOMContentLoaded', () => {
       switchTab('tab-explore');
       return;
     }
-    /* 가입 신청 도착 · 결과 → 그 모임(모임장이면 관리자 모드)으로 */
-    if ((entry.kind === 'join_request' || entry.kind === 'join_result' || entry.kind === 'group')
+    /* 가입 신청 도착 → 그 모임의 '가입 신청함'(모임 설정). 결과·모임 알림은 모임 정보로. */
+    if (entry.kind === 'join_request' && entry.groupId && store.getGroup(entry.groupId)) {
+      if (store.can(entry.groupId, 'approve_applications')) {
+        ui.gsGroupId = entry.groupId;
+        openGroupSettings('apps');
+      } else {
+        openGroupDetail(entry.groupId);
+      }
+      return;
+    }
+    if ((entry.kind === 'join_result' || entry.kind === 'group')
         && entry.groupId && store.getGroup(entry.groupId)) {
       openGroupDetail(entry.groupId);
       return;
@@ -15164,104 +15628,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .join('');
   }
 
-  function renderJoinPolicySection(grp, isLeader) {
-    const mode = store.getGroupJoinMode(grp);
-    const age = store.getGroupAgeLimit(grp.id);
-    const ageRange = store.getGroupAgeRange(grp);
-    const questions = store.getGroupJoinQuestions(grp.id);
-
-    const questionList = questions.length
-      ? `<ul class="policy-question-list">
-           ${questions.map((q, i) => `
-             <li class="policy-question-item">
-               <span class="policy-question-text">Q${i + 1}. ${escapeHtml(q)}</span>
-               ${isLeader ? `<button class="policy-question-del" data-policy-qdel="${i}" type="button" aria-label="질문 삭제">×</button>` : ''}
-             </li>`).join('')}
-         </ul>`
-      : '<p class="policy-note">가입 질문 없이 바로 참여할 수 있어요.</p>';
-
-    const editor = isLeader ? `
-      <div class="policy-editor">
-        <div class="policy-editor-row">
-          <span class="policy-editor-label">가입 방식</span>
-          <div class="policy-options">
-            <button class="policy-option ${mode === 'open' ? 'active' : ''}" data-policy-mode="open" type="button">${ic('leaf')} 자유 가입</button>
-            <button class="policy-option ${mode === 'approval' ? 'active' : ''}" data-policy-mode="approval" type="button">승인제</button>
-          </div>
-        </div>
-        <div class="policy-editor-row column">
-          <span class="policy-editor-label">나이 제한</span>
-          ${ageSliderHTML({ host: 'policy', groupId: grp.id, min: ageRange.min, max: ageRange.max })}
-        </div>
-        <div class="policy-editor-row column">
-          <span class="policy-editor-label">가입 질문 (${questions.length}/2)</span>
-          ${questionList}
-          ${questions.length < 2 ? `
-            <form class="policy-question-form" data-policy-qform="1">
-              <input type="text" class="policy-question-input" maxlength="60" aria-label="새 가입 질문" placeholder="새 가입 질문">
-              <button type="submit" class="policy-question-add">추가</button>
-            </form>` : ''}
-          <p class="policy-hint">신청자는 모든 질문에 답해야 신청서를 낼 수 있어요.</p>
-        </div>
-      </div>` : `
-      <div class="policy-readonly">
-        <p class="policy-note">${mode === 'approval'
-          ? '모임장이 소개서를 읽고 수락하면 멤버가 돼요. 나이 제한을 확인해 주세요.'
-          : '누구나 바로 참여할 수 있는 모임이에요.'}</p>
-        ${questionList}
-      </div>`;
-
-    return `
-      <section class="join-policy-card" data-join-policy="${grp.id}">
-        <div class="join-policy-head">
-          <h4 class="join-policy-title">가입 안내</h4>
-          <div class="join-policy-badges">${policyBadgesHTML(grp.id)}</div>
-        </div>
-        ${editor}
-      </section>`;
-  }
-
-  function renderApplicationList(grp) {
-    const pending = store.getPendingApplications(grp.id);
-    if (!pending.length) {
-      return `<section class="apply-section">
-        <h4 class="sheet-section-title">신청 대기 (0명)</h4>
-        <p class="apply-empty">지금은 기다리는 신청서가 없어요. 설정을 승인제로 두면 이곳에 쌓여요.</p>
-      </section>`;
-    }
-    return `
-      <section class="apply-section">
-        <h4 class="sheet-section-title">신청 대기 (${pending.length}명)</h4>
-        <div class="apply-list">
-          ${pending.map((a) => `
-            <article class="apply-card" data-apply-card="${a.id}">
-              <div class="apply-head">
-                <span class="apply-avatar" style="background:${a.applicantGradient}">${escapeHtml(a.applicantAvatarText || a.applicantName.charAt(0))}</span>
-                <div class="apply-main">
-                  <div class="apply-name-row">
-                    <span class="apply-name">${escapeHtml(a.applicantName)}</span>
-                    <span class="apply-age">${a.applicantAge}세</span>
-                  </div>
-                  <span class="apply-meta">${escapeHtml(a.applicantHobby || '')}</span>
-                </div>
-                <span class="apply-time">${timeAgo(a.createdAt)}</span>
-              </div>
-              <div class="apply-answers">
-                ${(a.answers || []).map((ans) => `
-                  <div class="apply-answer">
-                    <span class="apply-q">Q. ${escapeHtml(ans.question)}</span>
-                    <p class="apply-a">${escapeHtml(ans.answer)}</p>
-                  </div>`).join('')}
-              </div>
-              <div class="apply-actions">
-                <button class="apply-btn accept" data-approve-app="${a.id}" type="button">${ic('check')} 수락</button>
-                <button class="apply-btn reject" data-reject-app="${a.id}" type="button">거절</button>
-              </div>
-            </article>`).join('')}
-        </div>
-      </section>`;
-  }
-
   function renderJoinCta(grp) {
     const joinState = store.getJoinState(grp.id);
     const mode = store.getGroupJoinMode(grp);
@@ -15421,7 +15787,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('#btn-close-apply') && $('#btn-close-apply').addEventListener('click', () => closeModal(el.groupApplyModal));
 
-  /* 내 가입 신청 현황 — v35.3 S2 부터는 같은 목록을 내 그룹 화면의 '신청 현황' 탭에도 그린다. */
+  /* 내 가입 신청 현황 — v35.3 S2 부터는 같은 목록을 내 모임 화면의 '신청 현황' 탭에도 그린다. */
   function myApplicationsHTML() {
     const apps = store.getMyApplications();
     if (!apps.length) {
@@ -15462,7 +15828,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.myGroupsAppsList.innerHTML = myApplicationsHTML();
   }
 
-  /** 신청 취소 — 시트와 내 그룹 화면의 신청 현황 탭을 함께 맞춘다. */
+  /** 신청 취소 — 시트와 내 모임 화면의 신청 현황 탭을 함께 맞춘다. */
   function cancelMyApplication(id) {
     const res = store.cancelApplication(id);
     if (!res.ok) {
@@ -15492,7 +15858,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderProfileStats() {
     if (!el.statPosts) return;
     /* Sprint 34 — 모임 안 내정보의 세 숫자도 v34.4 와 같은 뜻으로 맞춘다:
-       게시물 · 다녀온 모임 · 내 그룹(옛 '받은 좋아요·내 댓글'은 내 프로필 탭에 없다). */
+       게시물 · 다녀온 모임 · 내 모임(옛 '받은 좋아요·내 댓글'은 내 프로필 탭에 없다). */
     const me = store.currentUser;
     const mine = store.state.feedPosts.filter((p) => p.authorId === me.id);
     const past = store.getPastMeetingPrivacy ? store.getPastMeetingPrivacy() : { total: 0 };
@@ -15500,11 +15866,11 @@ document.addEventListener('DOMContentLoaded', () => {
     el.statPosts.textContent = String(mine.length);
     el.statLikes.textContent = String(past.total);
     el.statComments.textContent = String(groups);
-    const labels = ['게시물', '다녀온 모임', '내 그룹'];
+    const labels = ['게시물', '다녀온 모임', '내 모임'];
     const cells = document.querySelectorAll('#tab-profile .profile-stats .stat-cell span');
     cells.forEach((n, i) => { if (labels[i]) n.textContent = labels[i]; });
     if (el.statLikes) el.statLikes.setAttribute('aria-label', `다녀온 모임 ${past.total}개`);
-    if (el.statComments) el.statComments.setAttribute('aria-label', `내 그룹 ${groups}개`);
+    if (el.statComments) el.statComments.setAttribute('aria-label', `내 모임 ${groups}개`);
   }
 
   /* ==========================================================================
@@ -15840,7 +16206,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * ------------------------------------------------------------------------
    *  대상: 풀스크린 페이지(.modal-overlay.is-page) · 전용 화면(.subscreen) · 모임 공간(#group-space)
    *  판별: 왼쪽 가장자리(x<=44)에서 시작하거나, 가로로 충분히 밀었을 때(dx>64 & dx>dy*1.5)
-   *  충돌 방지: 가로로 넘치는 레일(내 그룹 원형 줄·스토리·칩 목록) 안에서 시작한 손은 건너뜀.
+   *  충돌 방지: 가로로 넘치는 레일(내 모임 원형 줄·스토리·칩 목록) 안에서 시작한 손은 건너뜀.
    *  놓을 때 dx>64 이면 닫고, 아니면 제자리로 돌아간다.
    * ======================================================================== */
   const SWIPE_EDGE = 44;
@@ -15981,14 +16347,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     /* 0) 사이드바가 열려 있으면 그것부터 닫는다 */
-    if (ui.drawerOpen) { closeDrawer(); return; }
+    if (ui.gsView && ui.gsView !== 'main' && $('#group-settings-screen') && !$('#group-settings-screen').hidden) {
+      groupSettingsBack(); return;
+    }
     /* 1) 떠 있는 모달/시트가 있으면 그것만 닫는다 (대화방 위의 프로필 시트 등) */
     const openSheet = document.querySelector('.modal-overlay.active');
     if (openSheet) {
       closeModal(openSheet);
       return;
     }
-    /* 1-b) H1 — 모달이 없을 때 전용 화면(내 그룹 전체·모임 찾기·설정)을 뒤로 한 번으로 닫는다.
+    /* 1-b) H1 — 모달이 없을 때 전용 화면(내 모임 전체·모임 찾기·설정)을 뒤로 한 번으로 닫는다.
        설정의 알림 하위 화면에서는 먼저 설정 첫 화면으로 돌아간다. */
     if (isSettingsOpen() && settingsView === 'notif') { showSettingsMain(); return; }
     if (subscreenOpen()) { closeSubscreens(); return; }
@@ -16378,7 +16746,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 로고 → 처음 화면. 모임 안·다른 탭 어디에 있든 갤러리 홈 맨 위로. */
   function goHomeTop() {
-    closeDrawer({ silent: true });
     if (ui.groupSpaceId) { ui.groupSpaceId = null; syncNavMode(); }
     switchTab('tab-home');
     if (el.main) el.main.scrollTop = 0;
@@ -16462,10 +16829,10 @@ document.addEventListener('DOMContentLoaded', () => {
         : '1:1 대화방에서 공개한 상대만 볼 수 있어요';
     }
     if (el.myProfileStats) {
-      /* v34.4 (#22760 · IMG_4583) — 인스타그램처럼 세 칸: 게시물 · 다녀온 모임 · 내 그룹.
+      /* v34.4 (#22760 · IMG_4583) — 인스타그램처럼 세 칸: 게시물 · 다녀온 모임 · 내 모임.
          · 게시물은 보기 전용(아래에 내 피드가 이미 보인다).
          · 다녀온 모임은 본인 전체 개수 — 누르면 목록과 공개/비공개 설정.
-         · 내 그룹도 눌러서 모임 목록을 본다. */
+         · 내 모임도 눌러서 모임 목록을 본다. */
       const posts = store.getPersonPostCount();
       const past = store.getPastMeetingPrivacy();
       const groups = store.getJoinedGroups().length;
@@ -16474,7 +16841,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <button class="myprofile-stat is-tap" data-my-schedule="past" type="button"
                 aria-label="다녀온 모임 ${past.total}개 보기"><strong>${past.total}</strong><span>다녀온 모임</span></button>
         <button class="myprofile-stat is-tap" data-my-groups="1" type="button"
-                aria-label="내 그룹 ${groups}개 보기"><strong>${groups}</strong><span>내 그룹</span></button>`;
+                aria-label="내 모임 ${groups}개 보기"><strong>${groups}</strong><span>내 모임</span></button>`;
     }
     renderMyNextEvent();
     renderMyProfileStatusRow();
@@ -16653,7 +17020,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * v34.4 (#22760) — 모임 목록 시트. 내 그룹과 타인의 그룹을 같은 시트로 보여 준다.
+   * v34.4 (#22760) — 모임 목록 시트. 내 모임과 타인의 모임을 같은 시트로 보여 준다.
    *  · 내 모임: 누르면 그 모임으로 들어가고, 타인 모임: 누르면 모임 상세(가입 화면)가 열린다.
    */
   function openProfileGroupsSheet(personId) {
@@ -16662,7 +17029,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const person = isMe ? (store.currentUser || {}) : (store.getPersonProfile(personId) || {});
     const groups = store.getPersonGroups(isMe ? meId : personId);
     const name = person.nickname || '이용자';
-    if (el.profileGroupsTitle) el.profileGroupsTitle.textContent = isMe ? '내 그룹' : `${name}님의 그룹`;
+    if (el.profileGroupsTitle) el.profileGroupsTitle.textContent = isMe ? '내 모임' : `${name}님의 그룹`;
     if (el.profileGroupsSub) {
       el.profileGroupsSub.textContent = groups.length
         ? `${isMe ? '내가' : `${name}님이`} 들어 있는 모임 ${groups.length}개`
@@ -17307,9 +17674,9 @@ document.addEventListener('DOMContentLoaded', () => {
   /* v34.3 — 공개 사진은 위 한 줄(1 + 3 원형)에서만 더한다. 예전 '사진 추가' 버튼은 걷어냈다. */
   $('#btn-album-secret-add') && $('#btn-album-secret-add').addEventListener('click', () => openAlbumPicker('secret', false));
 
-  /* v34.4 (#22760) — 통계의 '다녀온 모임'(목록·공개 설정) · '내 그룹'(모임 목록)
-     v35.3 S2 — '내 그룹'은 설정에서 옮겨 온 '가입한 모임 / 신청 현황' 탭 2개가 있는
-     내 그룹 전체 화면(#my-groups-screen)을 연다(홈의 [전체 보기]와 같은 화면). */
+  /* v34.4 (#22760) — 통계의 '다녀온 모임'(목록·공개 설정) · '내 모임'(모임 목록)
+     v35.3 S2 — '내 모임'은 설정에서 옮겨 온 '가입한 모임 / 신청 현황' 탭 2개가 있는
+     내 모임 전체 화면(#my-groups-screen)을 연다(홈의 [전체 보기]와 같은 화면). */
   el.myProfileStats && el.myProfileStats.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-my-schedule]');
     if (btn) { openMyScheduleSheet(btn.dataset.mySchedule); return; }
@@ -17406,7 +17773,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   $('#btn-my-schedule-close') && $('#btn-my-schedule-close').addEventListener('click', () => closeModal(el.myScheduleModal));
 
-  /* v34.4 — 모임 목록 시트(내 그룹 · 타인 모임) / 타인 다녀온 모임 시트 */
+  /* v34.4 — 모임 목록 시트(내 모임 · 타인 모임) / 타인 다녀온 모임 시트 */
   el.profileGroupsList && el.profileGroupsList.addEventListener('click', (e) => {
     const row = e.target.closest('[data-profile-group]');
     if (!row) return;
@@ -17825,7 +18192,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setHomeView: (v) => { ui.homeView = v; renderHomeFeed(homeGroup()); },
     setHomeTag: (t) => { ui.homeTag = t || null; renderHomeFeed(homeGroup()); },
     openGroupChat, closeGroupChat, renderGroupChatMessages, sendGroupChatMessage,
-    /* Sprint 15 — 공지 · 일정 상세 · 부방장 · 모임 내 1:1 · 돋보기 · 내 피드 */
+    /* Sprint 15 — 공지 · 일정 상세 · 운영진 · 모임 내 1:1 · 돋보기 · 내 피드 */
     openNoticeSheet, renderNoticeSheet, openEventDetail, renderEventDetail,
     openGroupMembers: (gid) => openGroupMembers(gid),
     renderProfileMyFeed,
@@ -17867,7 +18234,7 @@ document.addEventListener('DOMContentLoaded', () => {
       groupSpaceId: ui.groupSpaceId, groupMode: isGroupMode(), tab: ui.activeTab,
       returnTab: ui.groupReturnTab, boardView: ui.boardView
     }),
-    /* v35.2 — 모임 하단 4탭 · 모임 홈/정보 · 게시판 권한 · 그룹 설정 */
+    /* v35.2 — 모임 하단 4탭 · 모임 홈/정보 · 게시판 권한 · 모임 설정 */
     renderGroupInfo, goGroupTopTab,
     setBoardView, getBoardView: () => ui.boardView,
     getBoardPolicy: (gid) => store.getGroupBoardPolicy(gid || ui.groupSpaceId),
@@ -17915,8 +18282,8 @@ document.addEventListener('DOMContentLoaded', () => {
       hidden: !!(el.albumViewer && el.albumViewer.hidden)
     }),
     /* Sprint 18 — 모임 사이드바(멤버·모임 설정) */
-    openDrawer, closeDrawer, renderGroupDrawer,
-    getDrawerState: () => ({ open: ui.drawerOpen }),
+    openGroupSettings, closeGroupSettings, renderGroupSettings,
+    getGroupSettingsView: () => ({ view: ui.gsView, groupId: ui.gsGroupId }),
     /* v35.3 (설정 S1·S2) — 전체 화면 설정 페이지 · 알림/화면 모드 하위 페이지 */
     openSettingsPage, openSettingsNotif, openSettingsTheme, settingsBack, renderSettingsPage,
     setThemeMode: (mode) => setThemeMode(mode),
@@ -17957,7 +18324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }),
     /* Sprint 21 — 점토 아이콘 · 취미 분류 · 추천 모임 · 스포트라이트 가이드 */
     renderHomeRecommend,
-    /* Sprint 32.5 — 홈 네이버 카페형(내 그룹 레일·아지트·추천 일정/피드) · 만들기 마법사 */
+    /* Sprint 32.5 — 홈 네이버 카페형(내 모임 레일·아지트·추천 일정/피드) · 만들기 마법사 */
     renderHomeHub, renderMyGroups, renderHomeSuggestEvents, renderHomeSuggestFeed,
     getMyGroupsRail: () => (el.myGroupsRail ? el.myGroupsRail.querySelectorAll('[data-my-group]').length : 0),
     getHomeSuggest: () => ({
@@ -17966,7 +18333,7 @@ document.addEventListener('DOMContentLoaded', () => {
       })),
       feed: store.getRecommendedFeed({ limit: 6 }).map((it) => ({ id: it.post.id, group: it.groupName }))
     }),
-    /* H1 — 내 그룹 전체 화면 · 모임 찾기 전용 화면 */
+    /* H1 — 내 모임 전체 화면 · 모임 찾기 전용 화면 */
     openMyGroupsScreen, renderMyGroupsScreen, renderMyGroupsWeek,
     openFindScreen, renderFindScreen, closeSubscreens,
     getH1State: () => ({

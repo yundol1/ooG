@@ -119,7 +119,7 @@
          모임 공간에 들어오면 글로벌 ooG 헤더 대신 이 헤더가 선다.
            <  뒤로가기 — 모임을 빠져나와 직전 화면(홈/탐색 등)으로
            모임 이름 · 멤버 N명
-           삼선바  그룹 설정창(드로어) 열기 — 게시판 작성 허용·모임 정보·알림·나가기
+           삼선바  모임 설정창(드로어) 열기 — 게시판 작성 허용·모임 정보·알림·나가기
          상단의 '피드 | 채팅 | 일정' 탭과 어두운 대표 이미지 배너는 v35.2 에서 걷어냈다
          (하단 4탭 첫 칸의 원형 대표 이미지와 겹치지 않게). -->
     <header class="group-header" id="group-header" hidden>
@@ -131,9 +131,11 @@
         <h1 class="group-header-name" id="group-space-name">모임</h1>
         <p class="group-header-meta" id="group-space-meta"></p>
       </div>
-      <button class="group-header-act" id="btn-group-drawer" type="button"
-              aria-label="그룹 설정 열기" aria-controls="group-drawer" aria-expanded="false">
-        <span class="oo-icon-20" aria-hidden="true" data-oog-icon="menuLines"></span>
+      <!-- v36.0 — 오른쪽 ⋯ 하나가 '모임 설정' 한 화면(#group-settings-screen)을 연다.
+           예전 삼선바 드로어는 없앴다(중복 진입점 정리). -->
+      <button class="group-header-act" id="btn-group-settings" type="button"
+              aria-label="모임 설정" aria-controls="group-settings-screen" aria-expanded="false">
+        <span class="oo-icon-20" aria-hidden="true" data-oog-icon="more"></span>
       </button>
     </header>
 
@@ -164,10 +166,10 @@
              (모임 찾기는 홈에서 빠져 전용 화면 #find-screen 으로 갔다.) -->
         <div class="group-gallery" id="group-gallery">
 
-          <!-- ① 내 그룹 — [내 그룹 전체] · 가입한 모임(대표 이미지 원형·2줄 이름·새 글 점) · [+ 새 모임] -->
+          <!-- ① 내 모임 — [내 모임 전체] · 가입한 모임(대표 이미지 원형·2줄 이름·새 글 점) · [+ 새 모임] -->
           <section class="my-groups" id="my-groups" aria-labelledby="my-groups-title">
             <div class="my-groups-head">
-              <h2 class="my-groups-title" id="my-groups-title">내 그룹</h2>
+              <h2 class="my-groups-title" id="my-groups-title">내 모임</h2>
               <span class="my-groups-sub" id="my-groups-sub"></span>
               <button class="my-groups-more" id="btn-my-groups-more" type="button">전체 보기
                 <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronRight"></span>
@@ -176,18 +178,18 @@
             <div class="my-groups-rail" id="my-groups-rail" aria-live="polite"><!-- JS --></div>
           </section>
 
-          <!-- ② 추천 그룹 — 가입하지 않은 모임만 · 칩 3개 · 2열 이미지 카드(박스 없이) -->
+          <!-- ② 추천 모임 — 가입하지 않은 모임만 · 칩 3개 · 2열 이미지 카드(박스 없이) -->
           <section class="home-recommend" id="home-recommend" aria-labelledby="home-recommend-title" hidden>
             <div class="home-recommend-head">
               <div class="home-recommend-head-text">
-                <h3 class="home-recommend-title" id="home-recommend-title">추천 그룹</h3>
+                <h3 class="home-recommend-title" id="home-recommend-title">추천 모임</h3>
                 <p class="home-recommend-sub" id="home-recommend-sub"></p>
               </div>
               <button class="home-recommend-more" id="btn-home-recommend-more" type="button">더 보기
                 <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronRight"></span>
               </button>
             </div>
-            <div class="home-recommend-chips" id="home-recommend-chips" role="group" aria-label="추천 그룹 순서"><!-- JS --></div>
+            <div class="home-recommend-chips" id="home-recommend-chips" role="group" aria-label="추천 모임 순서"><!-- JS --></div>
             <div class="home-recommend-grid" id="home-recommend-grid" aria-live="polite"><!-- JS --></div>
           </section>
 
@@ -244,22 +246,22 @@
         </div>
       </section>
 
-      <!-- ========== 0-H1-A. 내 그룹 전체 화면 (H1) ==========
-           '내 그룹' 첫 칸과 '전체 보기'로 들어간다. 맨 위가 내 일정,
+      <!-- ========== 0-H1-A. 내 모임 전체 화면 (H1) ==========
+           '내 모임' 첫 칸과 '전체 보기'로 들어간다. 맨 위가 내 일정,
            아래가 가입한 모임 목록이다(홈에 있던 2열 갤러리와 이번 주 일정이 여기로 왔다).
            v35.3 S2 — 상단에 탭 2개(가입한 모임 / 신청 현황). 설정에서 빠진
            '가입한 소모임 관리'·'내 모임 가입 신청'의 새 자리다. -->
-      <section class="subscreen" id="my-groups-screen" hidden aria-label="내 그룹 전체">
+      <section class="subscreen" id="my-groups-screen" hidden aria-label="내 모임 전체">
         <header class="subscreen-head">
           <button class="subscreen-back" id="btn-mygroups-back" type="button" aria-label="뒤로 가기">
             <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
           </button>
-          <h2 class="subscreen-title" id="mygroups-title">내 그룹</h2>
+          <h2 class="subscreen-title" id="mygroups-title">내 모임</h2>
           <button class="subscreen-act" id="btn-mygroups-new" type="button">
             <span class="oo-icon-17" aria-hidden="true" data-oog-icon="plus"></span>새 모임
           </button>
         </header>
-        <div class="subscreen-tabs" id="mygroups-tabs" role="tablist" aria-label="내 그룹 보기">
+        <div class="subscreen-tabs" id="mygroups-tabs" role="tablist" aria-label="내 모임 보기">
           <button class="subscreen-tab is-active" id="mygroups-tab-joined" type="button" role="tab"
                   data-mygroups-tab="joined" aria-selected="true" aria-controls="mygroups-panel-joined">
             가입한 모임 <span class="subscreen-tab-count" id="mygroups-count">0</span>
@@ -294,7 +296,7 @@
 
       <!-- ========== 0-H1-B. 모임 찾기 전용 화면 (H1) ==========
            홈에서 모임 찾기·모임 둘러보기를 빼고 여기로 모았다.
-           헤더 검색 아이콘과 추천 그룹 '더 보기'로 들어온다. -->
+           헤더 검색 아이콘과 추천 모임 '더 보기'로 들어온다. -->
       <section class="subscreen" id="find-screen" hidden aria-label="모임 찾기">
         <header class="subscreen-head find-head">
           <button class="subscreen-back" id="btn-find-back" type="button" aria-label="홈으로 돌아가기">
@@ -321,7 +323,7 @@
           </div>
           <div class="find-cats" id="find-cats" role="group" aria-label="취미 대분류"><!-- JS --></div>
           <div class="find-sorts" id="find-sorts" role="group" aria-label="모임 정렬"><!-- JS --></div>
-          <!-- v34.1 (#22485) — 추천 그룹 '더 보기'로 왔을 때 추천 일정도 함께 보이게. -->
+          <!-- v34.1 (#22485) — 추천 모임 '더 보기'로 왔을 때 추천 일정도 함께 보이게. -->
           <section class="find-events" id="find-events" aria-labelledby="find-events-title" hidden>
             <div class="find-events-head">
               <h3 class="find-events-title" id="find-events-title">추천 일정</h3>
@@ -570,7 +572,7 @@
         <div class="profile-stats">
           <div class="stat-cell"><strong id="stat-posts">0</strong><span>게시물</span></div>
           <div class="stat-cell"><strong id="stat-likes">0</strong><span>다녀온 모임</span></div>
-          <div class="stat-cell"><strong id="stat-comments">0</strong><span>내 그룹</span></div>
+          <div class="stat-cell"><strong id="stat-comments">0</strong><span>내 모임</span></div>
         </div>
 
         <!-- ===== Sprint 15 — 내정보: 내가 올린 피드 (인스타 프로필 피드) ===== -->
@@ -623,7 +625,7 @@
              본문 첫 줄에 따로 내려와 있던 아이디는 없앤다(같은 말을 두 번 하지 않는다). -->
         <div class="myprofile-head" id="myprofile-head">
           <!-- v34.4 (#22760 · IMG_4583) — 인스타그램 프로필 배치:
-               왼쪽 큰 1번 사진 · 오른쪽 위 닉네임 + 바로 아래 3열 통계(게시물 · 다녀온 모임 · 내 그룹).
+               왼쪽 큰 1번 사진 · 오른쪽 위 닉네임 + 바로 아래 3열 통계(게시물 · 다녀온 모임 · 내 모임).
                통계 바로 아래로 공개 사진 2~4번 + 비밀앨범 원형이 내려온다. -->
           <div class="mp-top">
             <button class="myprofile-avatar" id="myprofile-avatar" type="button" aria-label="대표 사진 — 공개 사진 1번 크게 보기">
@@ -856,17 +858,17 @@
         <section class="composer-step" id="composer-step2" hidden aria-label="올릴 곳 고르기">
           <div class="composer-dest-head">
             <h4 class="composer-dest-title">어디에 올릴까요?</h4>
-            <p class="composer-dest-sub" id="composer-dest-sub">모임을 고르거나, 그룹 없이 홈 피드에 올려요.</p>
+            <p class="composer-dest-sub" id="composer-dest-sub">모임을 고르거나, 모임 없이 홈 피드에 올려요.</p>
           </div>
 
-          <!-- 그룹 없이 올리기 토글 — 켜면 아래 모임 목록이 숨는다 -->
+          <!-- 모임 없이 올리기 토글 — 켜면 아래 모임 목록이 숨는다 -->
           <div class="composer-toggle-row">
             <div class="composer-toggle-text">
-              <strong class="composer-toggle-title">그룹 없이 올리기</strong>
+              <strong class="composer-toggle-title">모임 없이 올리기</strong>
               <span class="composer-toggle-desc" id="composer-toggle-desc">홈 피드에 바로 올라가요</span>
             </div>
             <button class="switch-toggle" id="composer-nogroup-toggle" type="button" role="switch"
-                    aria-checked="false" aria-label="그룹 없이 올리기">
+                    aria-checked="false" aria-label="모임 없이 올리기">
               <span class="switch-knob"></span>
             </button>
           </div>
@@ -875,7 +877,7 @@
           <p class="composer-free-note" id="composer-free-note" hidden>홈 피드에 바로 올라가요</p>
 
           <div class="composer-group-list" id="composer-group-list"><!-- JS --></div>
-          <p class="composer-groups-empty" id="composer-groups-empty" hidden>아직 가입한 모임이 없어요 · 그룹 없이 올리면 홈 피드에 보여요</p>
+          <p class="composer-groups-empty" id="composer-groups-empty" hidden>아직 가입한 모임이 없어요 · 모임 없이 올리면 홈 피드에 보여요</p>
         </section>
 
         </div>
@@ -1171,13 +1173,13 @@
       </div>
     </div>
 
-    <!-- ==================== 모달 6-b. 내 그룹 / 타인 그룹 목록 (v34.4) ==================== -->
+    <!-- ==================== 모달 6-b. 내 모임 / 타인 그룹 목록 (v34.4) ==================== -->
     <div class="modal-overlay" id="profile-groups-modal" role="dialog" aria-modal="true" aria-label="모임 목록">
       <div class="modal-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>
         <div class="composer-header">
           <button class="text-btn ghost" id="btn-profile-groups-close">닫기</button>
-          <h3 class="composer-title" id="profile-groups-title">내 그룹</h3>
+          <h3 class="composer-title" id="profile-groups-title">내 모임</h3>
           <span class="my-secret-head-space" aria-hidden="true"></span>
         </div>
         <div class="composer-body">
@@ -1204,10 +1206,10 @@
     </div>
 
     <!-- ==================== 모달 8. 새 소모임 만들기 ==================== -->
-    <!-- ==================== 모달 8. 새 그룹 만들기 — 한 단계씩 (Sprint 32.5) ====================
+    <!-- ==================== 모달 8. 새 모임 만들기 — 한 단계씩 (Sprint 32.5) ====================
          11/21 16:41 루키 님(#21060): "모임 만들기를 한 단계씩 묻는 방식으로, 대표 이미지와
          '아지트'를 고르게 해줘." → 이름 → 대표 이미지 → 아지트 → 취미 → 운영 5단계. -->
-    <div class="modal-overlay" id="group-create-modal" role="dialog" aria-modal="true" aria-label="새 그룹 만들기">
+    <div class="modal-overlay" id="group-create-modal" role="dialog" aria-modal="true" aria-label="새 모임 만들기">
       <div class="modal-sheet group-wizard" tabindex="-1">
         <div class="sheet-grabber"></div>
         <div class="composer-header wizard-header">
@@ -1751,7 +1753,7 @@
     </div>
 
     <!-- ==================== 모달 18. 모임 공지 (Sprint 15) ==================== -->
-    <!-- v35.2 — 그룹 설정 › 모임 정보·아지트 수정: 모임장이 활동 아지트(1~3곳)를 바꾼다. -->
+    <!-- v35.2 — 모임 설정 › 모임 정보·아지트 수정: 모임장이 활동 아지트(1~3곳)를 바꾼다. -->
     <div class="modal-overlay" id="group-azit-modal" role="dialog" aria-modal="true" aria-label="활동 아지트 바꾸기">
       <div class="modal-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>
@@ -2036,22 +2038,28 @@
 
     <input type="file" id="profile-photo-input" accept="image/*" hidden>
 
-    <!-- ==================== Sprint 18 — 모임 사이드바(멤버 · 모임 설정) ==================== -->
-    <div class="drawer-layer" id="group-drawer" hidden>
-      <div class="drawer-scrim" data-drawer-close="1"></div>
-      <aside class="drawer drawer-group" role="dialog" aria-modal="true" aria-label="모임 메뉴" tabindex="-1">
-        <header class="drawer-head">
-          <span class="drawer-avatar" id="group-drawer-avatar" aria-hidden="true">·</span>
-          <div class="drawer-head-text">
-            <h2 class="drawer-title" id="group-drawer-name">모임</h2>
-            <p class="drawer-sub" id="group-drawer-meta"></p>
-          </div>
-          <button class="drawer-close" data-drawer-close="1" type="button" aria-label="사이드바 닫기">&times;</button>
-        </header>
-        <div class="drawer-body" id="group-drawer-body"><!-- JS --></div>
-      </aside>
-    </div>
+    <!-- ==================== v36.0 — 모임 설정 (역할별 한 화면) ====================
+         진입점은 모임 헤더 오른쪽 ⋯ 하나. 한 화면 안에서 역할(모임장·운영진·멤버)에 따라
+         보이는 섹션이 달라지고, 권한 없는 항목은 아예 그리지 않는다(store.can). -->
+    <section class="subscreen" id="group-settings-screen" hidden aria-label="모임 설정">
+      <header class="subscreen-head">
+        <button class="subscreen-back" id="btn-group-settings-back" type="button" aria-label="뒤로 가기">
+          <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
+        </button>
+        <h1 class="subscreen-title" id="group-settings-title">모임 설정</h1>
+      </header>
+      <div class="subscreen-body" id="group-settings-body"><!-- JS --></div>
+    </section>
 
+    <!-- 모임 나가기 확인 — 글 남기기/지우기 고른 뒤 나간다 -->
+    <div class="modal-overlay" id="group-leave-modal" role="dialog" aria-modal="true" aria-label="모임 나가기">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-group-leave" aria-label="닫기">&times;</button>
+        <h2 class="sheet-title">모임 나가기</h2>
+        <div id="group-leave-body"><!-- JS --></div>
+      </div>
+    </div>
 
     <!-- ==================== 토스트 알림 ==================== -->
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

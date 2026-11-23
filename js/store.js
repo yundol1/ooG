@@ -92,11 +92,11 @@
  *   주간 알림 요약·활동 월간 리포트는 **사용자 지시로 제거**했다(다시 만들지 않는다).
  *
  * · Sprint 15 — 인스타그램형 4탭 (피드 · 탐색 · 디엠 · 내정보)
- *   store.getGroupNotices(groupId);               // 모임 공지(고정 우선) — 작성·고정은 모임장+부방장
+ *   store.getGroupNotices(groupId);               // 모임 공지(고정 우선) — 작성·고정은 모임장+운영진
  *   store.getGroupNoticePermission(groupId);      // { role:'leader'|'deputy'|'member', canManage }
- *   store.createGroupNotice(groupId, '공지 문구');  // 모임장·부방장만
+ *   store.createGroupNotice(groupId, '공지 문구');  // 모임장·운영진만
  *   store.setGroupNoticePinned(noticeId, true);   // 공지 고정/해제
- *   store.setGroupDeputy(groupId, memberId, true);// 모임장이 부방장 지정/해제
+ *   store.setGroupDeputy(groupId, memberId, true);// 모임장이 운영진 지정/해제
  *   store.getGroupDmPolicy(groupId);              // { enabled } 모임 내 1:1 대화 허용 여부
  *   store.updateGroupDmPolicy(groupId, false);    // 모임장만 ON/OFF
  *   store.getGroupBoardPolicy(groupId);           // { canWrite, memberCanWrite } 게시판 작성 권한
@@ -125,6 +125,42 @@
 
 const STORAGE_KEY = 'oog_app_state_v16';
 const STORAGE_SCHEMA_VERSION = 17;
+/* v36.0 — 한 모임의 운영진은 모임장 포함 최대 3명까지 임명한다. */
+const GROUP_STAFF_MAX = 3;
+
+/* v36.0 — 모임 역할별 권한표. can(groupId, action) 이 이 표 하나만 본다.
+   owner(모임장) ⊃ staff(운영진) ⊃ member(멤버) 순으로 넓어지고, guest 는 아무것도 못 한다. */
+const GROUP_ACTION_ROLES = {
+  /* 멤버라면 누구나 */
+  view_group_info: ['member', 'staff', 'owner'],
+  view_feed: ['member', 'staff', 'owner'],
+  view_member_list: ['member', 'staff', 'owner'],
+  write_post: ['member', 'staff', 'owner'],
+  write_comment: ['member', 'staff', 'owner'],
+  report: ['member', 'staff', 'owner'],
+  block_member: ['member', 'staff', 'owner'],
+  leave_group: ['member', 'staff', 'owner'],
+  /* 운영진 이상 */
+  write_notice: ['staff', 'owner'],
+  manage_board: ['staff', 'owner'],
+  manage_posts: ['staff', 'owner'],
+  manage_events: ['staff', 'owner'],
+  approve_guests: ['staff', 'owner'],
+  approve_applications: ['staff', 'owner'],
+  handle_reports: ['staff', 'owner'],
+  mute_member: ['staff', 'owner'],
+  warn_member: ['staff', 'owner'],
+  kick_member: ['staff', 'owner'],
+  view_modlog: ['staff', 'owner'],
+  /* 모임장만 */
+  edit_group: ['owner'],
+  edit_join_policy: ['owner'],
+  edit_defaults: ['owner'],
+  manage_staff: ['owner'],
+  transfer_ownership: ['owner'],
+  archive_group: ['owner'],
+  delete_group: ['owner']
+};
 /* v33.7 — 한 글에 붙일 수 있는 사진 수(인스타그램과 같은 10장). */
 const MAX_POST_IMAGES = 10;
 /* v33.7 — 글 사진으로 받는 앱 안 상대 경로(예시 사진 폴더 · 아이콘 폴더). */
@@ -165,11 +201,11 @@ const GROUP_EVENT_RSVPS = [
   { id: 'no', label: '불참', icon: 'closeCircle', tone: 'no' }
 ];
 
-/* Sprint 15 — 모임 공지(고정) · 부방장 · 모임 내 1:1 대화 정책.
-   11/15 16:00 사용자: "공지는 모임장 또는 모임장이 지정한 자(부방장 개념)",
+/* Sprint 15 — 모임 공지(고정) · 운영진 · 모임 내 1:1 대화 정책.
+   11/15 16:00 사용자: "공지는 모임장 또는 모임장이 지정한 자(운영진 개념)",
    "디엠(전체방) 및 모임내 개인적인 1:1대화 이때는 모임장이 1:1대화 기능을 on/off할 수 있음".
-   · 공지 작성·수정·고정은 **모임장 + 모임장이 지정한 부방장**만 할 수 있다.
-   · 부방장은 저장 상태(groups[].deputyIds)에 남고, 공지가 누가 쓴 것인지(authorRole)도 함께 남긴다. */
+   · 공지 작성·수정·고정은 **모임장 + 모임장이 지정한 운영진**만 할 수 있다.
+   · 운영진은 저장 상태(groups[].deputyIds)에 남고, 공지가 누가 쓴 것인지(authorRole)도 함께 남긴다. */
 const GROUP_NOTICE_SEED = [
   {
     id: 'ntc_cf_1',
@@ -219,7 +255,7 @@ const GROUP_NOTICE_SEED = [
   }
 ];
 
-/* 부방장 시드 — 모임장이 지정한 사람만 공지를 쓸 수 있다. */
+/* 운영진 시드 — 모임장이 지정한 사람만 공지를 쓸 수 있다. */
 const GROUP_DEPUTY_SEED = {
   grp_crossfit_1: ['user_kettle'],
   grp_climbing_1: ['match_junseo']
@@ -2081,7 +2117,7 @@ const defaultInitialState = {
   galleryPrefs: { sort: 'recent' },
 
   /* ---------------- Sprint 32.5 — 마지막으로 모임을 열어 본 시각 -------------
-   * 홈 '내 그룹' 원형 아이콘의 빨간 점(새 글·일정·채팅)을 판단한다.
+   * 홈 '내 모임' 원형 아이콘의 빨간 점(새 글·일정·채팅)을 판단한다.
    * { [groupId]: ISO } — 없으면 한 번도 들어가지 않은 모임(새 소식이 있으면 점).
    * ------------------------------------------------------------------------- */
   groupVisits: {},
@@ -4086,7 +4122,7 @@ defaultInitialState.groups.forEach((g) => {
   g.ageLimit = seed.ageLimit || 'all';
   g.joinQuestions = seed.joinQuestions
     || (g.joinMode === 'approval' ? ['취미 구력이나 선호 요일을 적어주세요!'] : []);
-  /* Sprint 15 — 부방장 · 모임 내 1:1 대화 허용 여부 */
+  /* Sprint 15 — 운영진 · 모임 내 1:1 대화 허용 여부 */
   g.deputyIds = (GROUP_DEPUTY_SEED[g.id] || []).slice();
   g.dmEnabled = GROUP_DM_SEED[g.id] === false ? false : true;
   /* v35.2 — 게시판 멤버 작성 허용(기본 꺼짐) · 모임 알림 받기(기본 켜짐). */
@@ -4435,6 +4471,8 @@ function sampleGroups(regionId, areaId) {
     location: area, regionId, sample: true, ageLimit: 'all', joinMode: 'approval',
     deputyIds: [], dmEnabled: true, deputyCanModerate: false, members: [],
     defaultGuestOpen: false, defaultRecommendOptIn: false, coverImage: null,
+    /* v36.0 — 모임 설정 기본값(추천 노출 두 가지는 기본 꺼짐). */
+    settings: { listedInSearch: true, memberListVisibility: 'members', defaultGuestEvents: false, defaultFeedRecommend: false },
     joinQuestions: ['이 취미는 얼마나 해보셨어요? 편한 요일도 알려주세요']
   };
   return [
@@ -4453,8 +4491,8 @@ function sampleGroups(regionId, areaId) {
       joinPolicy: ['토 08:00 정기런'], joinMode: 'open', joinQuestions: [],
       createdAt: ago(42 * 24 * HOUR),
       members: [
-        { id: 'sample_p_haru', name: '하루', avatarText: '하', photoUrl: EXAMPLE_AVATARS.haru, gradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', hobbies: ['크로스핏'], joinedAt: ago(21 * 24 * HOUR) },
-        { id: 'sample_p_danchu', name: '단추', avatarText: '단', photoUrl: EXAMPLE_AVATARS.danchu, gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', hobbies: ['보드게임'], joinedAt: ago(9 * 24 * HOUR) }
+        { id: 'sample_p_haru', name: '하루', role: 'staff', avatarText: '하', photoUrl: EXAMPLE_AVATARS.haru, gradient: 'linear-gradient(135deg, #0FB57E 0%, #06AE7E 100%)', hobbies: ['크로스핏'], joinedAt: ago(21 * 24 * HOUR) },
+        { id: 'sample_p_danchu', name: '단추', role: 'member', avatarText: '단', photoUrl: EXAMPLE_AVATARS.danchu, gradient: 'linear-gradient(135deg, #DDCFFC 0%, #AA83E7 100%)', hobbies: ['보드게임'], joinedAt: ago(9 * 24 * HOUR) }
       ]
     },
     {
@@ -5341,7 +5379,7 @@ class Store {
       merged.settings.darkMode = typeof merged.settings.darkMode === 'boolean' ? merged.settings.darkMode : null;
       merged.homePrefs = { ...defaultInitialState.homePrefs, ...(parsed.homePrefs || {}) };
       merged.galleryPrefs = { ...defaultInitialState.galleryPrefs, ...(parsed.galleryPrefs || {}) };
-      /* Sprint 32.5 — 마지막으로 연 모임 시각(내 그룹 빨간 점) */
+      /* Sprint 32.5 — 마지막으로 연 모임 시각(내 모임 빨간 점) */
       merged.groupVisits = (parsed.groupVisits && typeof parsed.groupVisits === 'object' && !Array.isArray(parsed.groupVisits))
         ? parsed.groupVisits : {};
       merged.ageRangeBounds = { min: 0, max: 99 };
@@ -5376,7 +5414,7 @@ class Store {
       const storedPrefs = parsed.explorePrefs && typeof parsed.explorePrefs === 'object' ? parsed.explorePrefs : {};
       merged.explorePrefs = Store.normalizeExplorePrefs(storedPrefs, merged);
 
-      /* 모임마다 설정 기본값을 갖춘다(가입 방식·나이 제한·부방장·1:1 허용). */
+      /* 모임마다 설정 기본값을 갖춘다(가입 방식·나이 제한·운영진·1:1 허용). */
       merged.groups = merged.groups.map((g) => ({
         ...g,
         joinMode: g.joinMode || (g.privacyType === 'open' ? 'open' : 'approval'),
@@ -5588,13 +5626,111 @@ class Store {
     return this.state.currentUser.joinedGroupIds.includes(groupId);
   }
 
-  /**
-   * 모임장 권한 판별 — 현재 로그인 유저가 해당 모임의 leaderId 인지 확인.
-   * 말머리 태그 관리, 모임 설정 변경 등 모임장 전용 UI의 유일한 기준.
-   */
-  isGroupLeader(groupId) {
+  /* ==========================================================================
+   * v36.0 — 모임 역할(모임장·운영진·멤버)과 권한 검사 한 곳
+   * --------------------------------------------------------------------------
+   *  · 역할은 셋뿐이다: owner(모임장) · staff(운영진) · member(멤버).
+   *    가입하지 않았으면 guest.
+   *  · 화면도 액션 함수도 **can(groupId, action)** 하나만 본다. 화면에서 숨긴 일을
+   *    store 액션이 다시 검사하므로, 화면을 거치지 않은 호출도 같은 선에서 막힌다.
+   *  · 모임장은 탈퇴할 수 없고(위임 먼저), 운영진은 모임장·다른 운영진을 건드릴 수 없다.
+   * ========================================================================== */
+  /** 현재 로그인 유저가 그 모임의 멤버인가(모임장 포함). */
+  isGroupMember(groupId, memberId) {
     const group = this.getGroup(groupId);
-    return !!group && group.leaderId === this.state.currentUser.id;
+    if (!group) return false;
+    const who = memberId || (this.state.currentUser && this.state.currentUser.id);
+    if (!who) return false;
+    if (group.leaderId === who) return true;
+    if (Array.isArray(group.deputyIds) && group.deputyIds.indexOf(who) >= 0) return true;
+    if (who === this.state.currentUser.id && this.isGroupJoined(groupId)) return true;
+    return (group.members || []).some((m) => m.id === who);
+  }
+
+  /**
+   * 역할 판별 — 'owner' | 'staff' | 'member' | 'guest'.
+   * memberId 를 주지 않으면 '나'로 본다.
+   */
+  roleOf(groupId, memberId) {
+    const group = this.getGroup(groupId);
+    if (!group) return 'guest';
+    const me = this.state.currentUser;
+    const who = memberId || (me && me.id);
+    if (!who) return 'guest';
+    /* ?dev=1 역할 보기 — 그 모임에서 나를 지정한 역할로 본다(세션 한정, 저장 안 함). */
+    if (this.rolePreview && this.rolePreview.groupId === groupId
+        && me && who === me.id && this.rolePreview.role) {
+      return this.rolePreview.role;
+    }
+    if (!this.isGroupMember(groupId, who)) return 'guest';
+    if (group.leaderId === who) return 'owner';
+    if (Array.isArray(group.deputyIds) && group.deputyIds.indexOf(who) >= 0) return 'staff';
+    const entry = (group.members || []).find((m) => m.id === who);
+    if (entry && entry.role === 'owner') return 'owner';
+    if (entry && entry.role === 'staff') return 'staff';
+    return 'member';
+  }
+
+  /** 역할 이름 — 화면 문구는 이 세 단어만 쓴다. */
+  roleLabel(role) {
+    if (role === 'owner') return '모임장';
+    if (role === 'staff') return '운영진';
+    if (role === 'member') return '멤버';
+    return '비멤버';
+  }
+
+  /**
+   * 권한 검사 — 화면과 액션이 함께 보는 유일한 함수.
+   * @param {string} groupId
+   * @param {string} action GROUP_ACTION_ROLES 의 키
+   * @param {string} [memberId] 없으면 나
+   */
+  can(groupId, action, memberId) {
+    const allowed = GROUP_ACTION_ROLES[action];
+    if (!allowed) return false;
+    return allowed.indexOf(this.roleOf(groupId, memberId)) >= 0;
+  }
+
+  /** 운영진이 손댈 수 있는 대상인가 — 대상은 멤버만(모임장·운영진·나 자신은 불가). */
+  canManageMember(groupId, targetId) {
+    if (!this.can(groupId, 'mute_member')) return false;
+    const me = this.state.currentUser && this.state.currentUser.id;
+    if (!targetId || targetId === me) return false;
+    return this.roleOf(groupId, targetId) === 'member';
+  }
+
+  /** 모임장 권한 판별 — 예전 이름. 역할 판별로 위임한다. */
+  isGroupLeader(groupId) {
+    return this.roleOf(groupId) === 'owner';
+  }
+
+  /** ?dev=1 역할 보기 전환 — 세션에서만 쓰고 저장하지 않는다. */
+  setRolePreview(groupId, role) {
+    if (['owner', 'staff', 'member'].indexOf(role) < 0) {
+      this.rolePreview = null;
+      return { ok: true, preview: null };
+    }
+    this.rolePreview = { groupId, role };
+    return { ok: true, preview: this.rolePreview };
+  }
+
+  clearRolePreview() {
+    this.rolePreview = null;
+  }
+
+  getRolePreview() {
+    return this.rolePreview || null;
+  }
+
+  /** 역할별 멤버 수 — 멤버 관리 머리말. */
+  getGroupRoleCounts(groupId) {
+    const roster = this.getGroupRoster(groupId);
+    const counts = { owner: 0, staff: 0, member: 0 };
+    roster.members.forEach((m) => {
+      const role = this.roleOf(groupId, m.id);
+      if (counts[role] != null) counts[role] += 1;
+    });
+    return counts;
   }
 
   /**
@@ -5607,7 +5743,8 @@ class Store {
    */
   getPosts(filterType = 'my', groupId = null) {
     const joined = this.state.currentUser.joinedGroupIds;
-    let posts = this.state.feedPosts.slice();
+    const blocked = this.state.blockedMemberIds || [];
+    let posts = this.state.feedPosts.filter((p) => blocked.indexOf(p.authorId) < 0);
 
     if (filterType === 'my') {
       posts = posts.filter((p) => joined.includes(p.groupId));
@@ -5620,7 +5757,7 @@ class Store {
       });
     } else {
       posts = posts.filter((p) => {
-        /* v33.8 — 그룹 없이 올린 자유 피드 글은 홈 피드에 공개되는 글이므로 함께 보인다. */
+        /* v33.8 — 모임 없이 올린 자유 피드 글은 홈 피드에 공개되는 글이므로 함께 보인다. */
         if (!p.groupId) return true;
         const g = this.getGroup(p.groupId);
         return g && (joined.includes(g.id) || g.privacyType === 'open');
@@ -5680,25 +5817,46 @@ class Store {
    * 내 가입 목록·멤버 수·홈 모임에서 빠지고, 그 모임의 단체방은 목록에서 사라진다.
    * 모임장은 나갈 수 없다(모임을 지우는 deleteGroup 을 쓴다).
    */
-  leaveGroup(groupId) {
+  leaveGroup(groupId, options) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
     if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
-    if (group.leaderId === this.currentUser.id) return { ok: false, reason: 'leader' };
+    /* v36.0 — 모임장은 탈퇴할 수 없다. 먼저 위임해야 한다. */
+    if (this.roleOf(groupId) === 'owner') {
+      return { ok: false, reason: 'owner', message: '모임장은 탈퇴할 수 없어요. 먼저 모임장을 다른 멤버에게 넘겨 주세요.' };
+    }
+    if (!this.can(groupId, 'leave_group')) return { ok: false, reason: 'permission' };
+    const keepPosts = !options || options.keepPosts !== false;
+    const me = this.currentUser;
+    if (!keepPosts) {
+      this.state.feedPosts = (this.state.feedPosts || []).filter((p) => !(p.groupId === groupId && p.authorId === me.id));
+    }
     this.state.currentUser.joinedGroupIds = this.state.currentUser.joinedGroupIds.filter((id) => id !== groupId);
+    group.members = (group.members || []).filter((m) => m.id !== me.id);
+    if (Array.isArray(group.deputyIds)) group.deputyIds = group.deputyIds.filter((id) => id !== me.id);
     group.memberCount = Math.max(1, (group.memberCount || 1) - 1);
+    if (this.state.groupMembership && this.state.groupMembership[groupId]) {
+      delete this.state.groupMembership[groupId][me.id];
+    }
     if (this.state.homePrefs && this.state.homePrefs.groupId === groupId) {
       this.state.homePrefs.groupId = this.state.currentUser.joinedGroupIds[0] || null;
     }
+    this.logGroupMod(groupId, 'leave', { targetId: me.id, targetName: me.nickname });
     this.saveState();
-    return { ok: true, groupId, nextGroupId: this.state.homePrefs ? this.state.homePrefs.groupId : null };
+    return {
+      ok: true, groupId, keepPosts,
+      removedPosts: keepPosts ? 0 : 'my_posts',
+      nextGroupId: this.state.homePrefs ? this.state.homePrefs.groupId : null
+    };
   }
 
   /** 모임장이 모임을 지운다 — 모임·그 모임의 글·공지·일정·단체방·스토리까지 함께 정리한다. */
   deleteGroup(groupId) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
-    if (group.leaderId !== this.currentUser.id) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'delete_group') && group.leaderId !== this.currentUser.id) {
+      return { ok: false, reason: 'permission' };
+    }
     this.state.groups = this.state.groups.filter((g) => g.id !== groupId);
     this.state.currentUser.joinedGroupIds = this.state.currentUser.joinedGroupIds.filter((id) => id !== groupId);
     this.state.feedPosts = (this.state.feedPosts || []).filter((p) => p.groupId !== groupId);
@@ -5706,6 +5864,10 @@ class Store {
     this.state.groupEvents = (this.state.groupEvents || []).filter((e) => e.groupId !== groupId);
     this.state.groupChats = (this.state.groupChats || []).filter((c) => c.groupId !== groupId);
     this.state.stories = (this.state.stories || []).filter((s) => s.groupId !== groupId);
+    if (this.state.groupMembership) delete this.state.groupMembership[groupId];
+    if (Array.isArray(this.state.groupReports)) {
+      this.state.groupReports = this.state.groupReports.filter((r) => r.groupId !== groupId);
+    }
     if (this.state.homePrefs && this.state.homePrefs.groupId === groupId) {
       this.state.homePrefs.groupId = this.state.currentUser.joinedGroupIds[0] || null;
     }
@@ -5953,7 +6115,7 @@ class Store {
          H3(11/21) — **모임 기본값을 따르지 않는다.** 글을 쓸 때마다 기본은 꺼짐(false)이고,
          '추천 피드에 노출해도 괜찮아요'를 체크한 글만 홈 추천 피드에 오른다. */
       recommendOptIn: freePost ? true : data.recommendOptIn === true,
-      /* 그룹 없이 올린 글은 홈 피드에 무조건 — 화면·감사가 읽는 이름 그대로 남긴다. */
+      /* 모임 없이 올린 글은 홈 피드에 무조건 — 화면·감사가 읽는 이름 그대로 남긴다. */
       showInHomeFeed: freePost ? true : data.recommendOptIn === true,
       createdAt: new Date().toISOString()
     };
@@ -7110,7 +7272,7 @@ class Store {
     return (Array.isArray(ev.guestRequests) ? ev.guestRequests : []).map((r) => ({ ...r }));
   }
 
-  /** 이 일정의 게스트 신청을 내가 처리할 수 있나 — 모임장 · (허용된) 부방장 · 일정 만든 사람. */
+  /** 이 일정의 게스트 신청을 내가 처리할 수 있나 — 모임장 · (허용된) 운영진 · 일정 만든 사람. */
   canReviewGuestRequests(eventId) {
     const ev = this.getGroupEvent(eventId);
     if (!ev) return false;
@@ -7294,7 +7456,7 @@ class Store {
     const o = options || {};
     const limit = o.limit == null ? 6 : Math.max(1, Number(o.limit));
     return (this.state.feedPosts || [])
-      /* v33.8 — 자유 피드(그룹 없이 올린 글)는 showInHomeFeed 로도 받아 준다(무조건 노출). */
+      /* v33.8 — 자유 피드(모임 없이 올린 글)는 showInHomeFeed 로도 받아 준다(무조건 노출). */
       .filter((p) => p && (p.recommendOptIn === true || p.showInHomeFeed === true))
       .map((p) => {
         const grp = this.getGroup(p.groupId);
@@ -8402,7 +8564,7 @@ class Store {
    */
   getRecommendedGroups(options = {}) {
     const limit = options.limit == null ? 4 : options.limit;
-    /* H1 — 홈 추천 그룹 칩 3개: 가까운 순(near) · 인기(popular) · 새로 생긴(new). */
+    /* H1 — 홈 추천 모임 칩 3개: 가까운 순(near) · 인기(popular) · 새로 생긴(new). */
     const sort = ['near', 'popular', 'new'].includes(options.sort) ? options.sort : 'recommend';
     const mine = this.getTasteHobbyIds();
     const myCats = mine.map((id) => this.getHobbyTone(id));
@@ -10336,6 +10498,449 @@ class Store {
    * @param {string} groupId
    * @param {{joinMode?:'open'|'approval', ageLimit?:string, ageMin?:number, ageMax?:number, joinQuestions?:string[]}} patch
    */
+  /* ==========================================================================
+   * v36.0 — 모임 설정: 모임 공통 설정 · 멤버 개인 설정 · 운영 도구 기록
+   * ====================================================================== */
+  /** 모임 설정의 기본값 — 저장된 값이 없으면 이 값으로 읽는다(둘 다 기본 꺼짐). */
+  groupSettingsDefaults() {
+    return {
+      joinMode: 'open',
+      questions: [],
+      listedInSearch: true,
+      memberListVisibility: 'members',
+      defaultGuestEvents: false,
+      defaultFeedRecommend: false
+    };
+  }
+
+  /** 모임 설정 한 묶음 — 저장값 + 예전 필드(joinMode·defaultGuestOpen)를 함께 해석한다. */
+  getGroupSettings(groupId) {
+    const g = this.getGroup(groupId);
+    if (!g) return this.groupSettingsDefaults();
+    const s = (g.settings && typeof g.settings === 'object') ? g.settings : {};
+    const base = this.groupSettingsDefaults();
+    return {
+      joinMode: this.getGroupJoinMode(g),
+      questions: this.getGroupJoinQuestions(groupId),
+      listedInSearch: s.listedInSearch !== false,
+      memberListVisibility: s.memberListVisibility === 'staff' ? 'staff' : base.memberListVisibility,
+      defaultGuestEvents: s.defaultGuestEvents === true || g.defaultGuestOpen === true,
+      defaultFeedRecommend: s.defaultFeedRecommend === true || g.defaultRecommendOptIn === true
+    };
+  }
+
+  /** 가입·공개 설정 — 모임장만. 가입 질문은 0~3개. */
+  updateGroupJoinSettings(groupId, patch) {
+    if (!this.can(groupId, 'edit_join_policy')) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    const d = patch || {};
+    const qs = Array.isArray(d.questions)
+      ? d.questions.map((q) => String(q || '').trim()).filter(Boolean)
+      : null;
+    if (qs && qs.length > 3) return { ok: false, reason: 'too_many_questions' };
+    if (qs && qs.some((q) => q.length > 60)) return { ok: false, reason: 'question_long' };
+    /* 승인제는 질문이 하나 이상 있어야 신청서를 받을 수 있다. */
+    const nextMode = d.joinMode === 'open' || d.joinMode === 'approval' ? d.joinMode : this.getGroupJoinMode(g);
+    if (nextMode === 'approval' && qs && qs.length === 0) return { ok: false, reason: 'questions' };
+    if (qs) g.joinQuestions = qs;
+    const modePatch = {};
+    if (d.joinMode) modePatch.joinMode = nextMode;
+    const res = this.updateGroupJoinPolicy(groupId, Object.assign({}, modePatch, qs ? { joinQuestions: qs } : {}));
+    if (!res.ok) return res;
+    if (!g.settings) g.settings = {};
+    if (d.listedInSearch !== undefined) g.settings.listedInSearch = d.listedInSearch !== false;
+    if (d.memberListVisibility !== undefined) {
+      g.settings.memberListVisibility = d.memberListVisibility === 'staff' ? 'staff' : 'members';
+    }
+    if (qs) g.settings.questions = qs.slice();
+    this.logGroupMod(groupId, 'join_policy');
+    this.saveState();
+    return { ok: true, group: g, settings: this.getGroupSettings(groupId) };
+  }
+
+  /** 추천 노출 기본값 — 일정 게스트 참여·피드 추천 노출, 둘 다 기본 꺼짐. */
+  updateGroupDefaultSettings(groupId, patch) {
+    if (!this.can(groupId, 'edit_defaults')) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    const d = patch || {};
+    if (!g.settings) g.settings = {};
+    if (d.defaultGuestEvents !== undefined) {
+      g.settings.defaultGuestEvents = !!d.defaultGuestEvents;
+      g.defaultGuestOpen = !!d.defaultGuestEvents;
+    }
+    if (d.defaultFeedRecommend !== undefined) {
+      g.settings.defaultFeedRecommend = !!d.defaultFeedRecommend;
+      g.defaultRecommendOptIn = !!d.defaultFeedRecommend;
+    }
+    this.logGroupMod(groupId, 'defaults');
+    this.saveState();
+    return { ok: true, settings: this.getGroupSettings(groupId) };
+  }
+
+  /* -------------------------------------------------- 모임 안의 내 설정 */
+  /** 모임별 내 멤버십 설정 — 닉네임·소개·사진 공개·명단 숨김·고정·음소거·알림. */
+  getGroupMembership(groupId, memberId) {
+    const me = this.state.currentUser || {};
+    const who = memberId || me.id;
+    const map = (this.state.groupMembership && this.state.groupMembership[groupId]) || {};
+    const raw = map[who] || {};
+    const g = this.getGroup(groupId);
+    const groupNotifyOff = !!(g && g.notifyEnabled === false);
+    return {
+      groupId,
+      memberId: who,
+      nickname: String(raw.nickname || ''),
+      bio: String(raw.bio || ''),
+      photoVisible: raw.photoVisible === true,
+      hiddenInList: raw.hiddenInList === true,
+      pinned: raw.pinned === true,
+      muted: raw.muted === true,
+      notifyMode: raw.notifyMode || (groupNotifyOff ? 'off' : 'all'),
+      notifyEvents: raw.notifyEvents !== false
+    };
+  }
+
+  /** 내 멤버십 설정 저장 — 나만 바꿀 수 있고, 가입한 모임에만 쓴다. */
+  updateGroupMembership(groupId, patch) {
+    if (!this.isGroupMember(groupId)) return { ok: false, reason: 'not_member' };
+    if (!this.state.groupMembership) this.state.groupMembership = {};
+    const me = this.state.currentUser;
+    const cur = this.getGroupMembership(groupId, me.id);
+    const d = patch || {};
+    const next = {
+      nickname: d.nickname === undefined ? cur.nickname : String(d.nickname || '').trim().slice(0, 12),
+      bio: d.bio === undefined ? cur.bio : String(d.bio || '').trim().slice(0, 60),
+      photoVisible: d.photoVisible === undefined ? cur.photoVisible : !!d.photoVisible,
+      hiddenInList: d.hiddenInList === undefined ? cur.hiddenInList : !!d.hiddenInList,
+      pinned: d.pinned === undefined ? cur.pinned : !!d.pinned,
+      muted: d.muted === undefined ? cur.muted : !!d.muted,
+      notifyMode: ['all', 'mentions', 'off'].indexOf(d.notifyMode) >= 0 ? d.notifyMode : cur.notifyMode,
+      notifyEvents: d.notifyEvents === undefined ? cur.notifyEvents : !!d.notifyEvents
+    };
+    if (!this.state.groupMembership[groupId]) this.state.groupMembership[groupId] = {};
+    this.state.groupMembership[groupId][me.id] = next;
+    /* 알림은 예전 스위치(group.notifyEnabled)도 같은 답을 갖게 맞춘다. */
+    const g = this.getGroup(groupId);
+    if (g && d.notifyMode !== undefined) g.notifyEnabled = next.notifyMode !== 'off';
+    this.saveState();
+    return { ok: true, membership: this.getGroupMembership(groupId, me.id), settings: this.getGroupSettings(groupId) };
+  }
+
+  /** 모임별 프로필 — 이 모임에서만 쓰는 이름·소개·사진 공개. */
+  getGroupProfile(groupId) {
+    const m = this.getGroupMembership(groupId);
+    return { nickname: m.nickname, bio: m.bio, photoVisible: m.photoVisible };
+  }
+
+  updateGroupProfile(groupId, patch) {
+    const d = patch || {};
+    if (d.nickname !== undefined) {
+      const nick = String(d.nickname || '').trim();
+      if (nick && (nick.length < 1 || nick.length > 12)) return { ok: false, reason: 'nickname' };
+    }
+    const res = this.updateGroupMembership(groupId, {
+      nickname: d.nickname, bio: d.bio, photoVisible: d.photoVisible
+    });
+    return res;
+  }
+
+  /* -------------------------------------------------- 내 활동 */
+  /** 이 모임 안의 내 글·댓글·참여 일정 — '내 활동' 화면의 재료. */
+  getMyGroupActivity(groupId) {
+    const me = this.state.currentUser || {};
+    const posts = (this.state.feedPosts || []).filter((p) => p.groupId === groupId && p.authorId === me.id);
+    const comments = [];
+    posts.forEach((p) => {
+      (p.comments || []).forEach((c) => {
+        if (c.authorId === me.id) comments.push({ id: c.id, postId: p.id, text: c.text, at: c.at || c.createdAt });
+      });
+    });
+    const events = this.getGroupEvents(groupId).filter((e) => {
+      const sum = this.getGroupEventSummary(e.id);
+      return sum && sum.myRsvp === 'yes';
+    });
+    return { posts, comments, events };
+  }
+
+  /* -------------------------------------------------- 운영 기록 */
+  /** 운영 기록 한 줄 — 관리 행동이 일어날 때마다 자동으로 쌓인다. */
+  logGroupMod(groupId, action, meta) {
+    const me = this.state.currentUser || {};
+    if (!Array.isArray(this.state.groupModLog)) this.state.groupModLog = [];
+    const m = meta || {};
+    this.state.groupModLog.push({
+      id: `mod_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
+      groupId,
+      action,
+      actorId: me.id || null,
+      actorName: me.nickname || '나',
+      targetId: m.targetId || null,
+      targetName: m.targetName || '',
+      note: m.note || '',
+      at: new Date().toISOString()
+    });
+    return this.state.groupModLog[this.state.groupModLog.length - 1];
+  }
+
+  /** 운영 기록 — 운영진 이상만 읽는다(읽기 전용). */
+  getGroupModLog(groupId) {
+    if (!this.can(groupId, 'view_modlog')) return [];
+    return (this.state.groupModLog || [])
+      .filter((r) => r.groupId === groupId)
+      .slice()
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      .slice(0, 50);
+  }
+
+  /* -------------------------------------------------- 신고 접수함 */
+  /** 신고하기 — 글·댓글·멤버·모임을 신고한다. 운영진의 접수함에 쌓인다. */
+  reportGroupTarget(groupId, payload) {
+    if (!this.can(groupId, 'report')) return { ok: false, reason: 'permission' };
+    const d = payload || {};
+    const reason = String(d.reason || '').trim().slice(0, 200);
+    if (!reason) return { ok: false, reason: 'reason' };
+    if (!Array.isArray(this.state.groupReports)) this.state.groupReports = [];
+    const me = this.state.currentUser || {};
+    const report = {
+      id: `rep_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
+      groupId,
+      targetType: d.targetType || 'group',
+      targetId: d.targetId || null,
+      targetName: d.targetName || '',
+      reason,
+      reporterId: me.id || null,
+      reporterName: me.nickname || '나',
+      status: 'pending',
+      at: new Date().toISOString()
+    };
+    this.state.groupReports.push(report);
+    this.saveState();
+    return { ok: true, report };
+  }
+
+  getGroupReports(groupId, status) {
+    if (!this.can(groupId, 'handle_reports')) return [];
+    return (this.state.groupReports || [])
+      .filter((r) => r.groupId === groupId)
+      .filter((r) => (status ? r.status === status : true))
+      .slice()
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  }
+
+  /** 신고 처리(handled) / 무시(ignored) — 운영진 이상. */
+  resolveGroupReport(groupId, reportId, action) {
+    if (!this.can(groupId, 'handle_reports')) return { ok: false, reason: 'permission' };
+    const report = (this.state.groupReports || []).find((r) => r.id === reportId && r.groupId === groupId);
+    if (!report) return { ok: false, reason: 'not_found' };
+    if (report.status !== 'pending') return { ok: false, reason: 'already' };
+    report.status = action === 'ignore' ? 'ignored' : 'handled';
+    report.resolvedAt = new Date().toISOString();
+    this.logGroupMod(groupId, action === 'ignore' ? 'report_ignore' : 'report_handle',
+      { targetId: report.targetId, targetName: report.targetName || report.targetType, note: report.reason });
+    this.saveState();
+    return { ok: true, report };
+  }
+
+  /* -------------------------------------------------- 멤버 관리 */
+  /** 운영진이 멤버를 관리한다 — 대상은 멤버만(모임장·운영진은 대상이 될 수 없다). */
+  muteGroupMember(groupId, memberId, on) {
+    if (!this.canManageMember(groupId, memberId)) return { ok: false, reason: 'permission' };
+    if (!this.state.groupMemberState) this.state.groupMemberState = {};
+    const key = `${groupId}:${memberId}`;
+    this.state.groupMemberState[key] = Object.assign({}, this.state.groupMemberState[key], { muted: !!on });
+    const member = this.getGroupRoster(groupId, { viewerRole: 'owner' }).members.find((m) => m.id === memberId);
+    this.logGroupMod(groupId, on ? 'mute' : 'unmute', { targetId: memberId, targetName: member ? member.name : '' });
+    this.saveState();
+    return { ok: true, memberId, muted: !!on };
+  }
+
+  warnGroupMember(groupId, memberId, note) {
+    if (!this.canManageMember(groupId, memberId)) return { ok: false, reason: 'permission' };
+    const member = this.getGroupRoster(groupId, { viewerRole: 'owner' }).members.find((m) => m.id === memberId);
+    const entry = this.logGroupMod(groupId, 'warn', {
+      targetId: memberId, targetName: member ? member.name : '', note: String(note || '').slice(0, 120)
+    });
+    this.saveState();
+    return { ok: true, warning: entry };
+  }
+
+  /** 강퇴 — 멤버만. 모임장·운영진은 먼저 해임해야 한다. */
+  kickGroupMember(groupId, memberId) {
+    if (!this.canManageMember(groupId, memberId)) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    const member = this.getGroupRoster(groupId, { viewerRole: 'owner' }).members.find((m) => m.id === memberId);
+    g.members = (g.members || []).filter((m) => m.id !== memberId);
+    g.memberCount = Math.max(1, (g.memberCount || 1) - 1);
+    if (Array.isArray(g.deputyIds)) g.deputyIds = g.deputyIds.filter((id) => id !== memberId);
+    if (memberId === (this.state.currentUser || {}).id) {
+      this.state.currentUser.joinedGroupIds = this.state.currentUser.joinedGroupIds.filter((id) => id !== groupId);
+    }
+    this.logGroupMod(groupId, 'kick', { targetId: memberId, targetName: member ? member.name : '' });
+    this.saveState();
+    return { ok: true, memberId, member };
+  }
+
+  /* -------------------------------------------------- 모임 정보 수정 */
+  /** 모임 정보 수정 — 이름·한 줄 소개·대표 이미지·취미·활동 지역·아지트(1~3)·규칙. */
+  updateGroupInfo(groupId, patch) {
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    const d = patch || {};
+    if (d.name !== undefined) {
+      const name = String(d.name || '').trim();
+      if (name.length < 2 || name.length > 24) return { ok: false, reason: 'name' };
+      g.name = name;
+    }
+    if (d.description !== undefined) g.description = String(d.description || '').trim().slice(0, 120);
+    if (d.rules !== undefined) g.rules = String(d.rules || '').trim().slice(0, 400);
+    if (d.categoryId !== undefined) {
+      const chip = this.getHobbyChip ? this.getHobbyChip(d.categoryId) : null;
+      if (chip) { g.hobbyId = chip.id; g.categoryName = chip.name; g.category = g.category || chip.id; }
+    }
+    if (d.regionId !== undefined || d.location !== undefined) {
+      if (d.location !== undefined) g.location = String(d.location || '').trim().slice(0, 30);
+      if (d.regionId !== undefined) g.regionId = d.regionId;
+    }
+    if (Array.isArray(d.azitIds)) {
+      const az = this.updateGroupHangouts(groupId, d.azitIds);
+      if (!az.ok) return az;
+    }
+    if (d.coverPhotoUrl !== undefined) {
+      g.photoUrl = d.coverPhotoUrl || null;
+      if (g.photoUrl) {
+        g.coverImage = Object.assign({}, g.coverImage, { circle: g.photoUrl, card: g.photoUrl });
+      }
+    }
+    this.logGroupMod(groupId, 'group_edit', { note: '모임 정보를 고쳤어요' });
+    this.saveState();
+    return { ok: true, group: g };
+  }
+
+  /* -------------------------------------------------- 위험 영역 */
+  /** 모임장 위임 — 받는 사람은 멤버. 넘긴 사람은 운영진(자리 있으면) 또는 멤버가 된다. */
+  transferGroupOwnership(groupId, memberId) {
+    if (!this.can(groupId, 'transfer_ownership')) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    if (!memberId || memberId === g.leaderId) return { ok: false, reason: 'self' };
+    if (this.roleOf(groupId, memberId) !== 'member') return { ok: false, reason: 'role' };
+    const me = this.state.currentUser;
+    const next = this.getGroupRoster(groupId, { viewerRole: 'owner' }).members.find((m) => m.id === memberId);
+    if (!next) return { ok: false, reason: 'not_found' };
+    const prevLeaderId = g.leaderId;
+    const prevLeaderName = g.leaderName;
+    if (!Array.isArray(g.deputyIds)) g.deputyIds = [];
+    const prevEntry = (g.members || []).find((m) => m.id === prevLeaderId);
+    if (prevEntry) {
+      if (g.deputyIds.length < GROUP_STAFF_MAX) { g.deputyIds.push(prevLeaderId); prevEntry.role = 'staff'; }
+      else prevEntry.role = 'member';
+    }
+    const entry = (g.members || []).find((m) => m.id === memberId);
+    if (entry) entry.role = 'owner';
+    g.leaderId = memberId;
+    g.leaderName = next.name;
+    this.logGroupMod(groupId, 'transfer', { targetId: memberId, targetName: next.name });
+    this.saveState();
+    return { ok: true, groupId, leaderId: memberId, leaderName: next.name, prevLeaderId, prevLeaderName, group: g };
+  }
+
+  /** 모임 보관(일시 중지) — 새 글·일정은 막고 읽기만. 모임장만. */
+  archiveGroup(groupId, on) {
+    if (!this.can(groupId, 'archive_group')) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    g.archived = on !== false;
+    this.logGroupMod(groupId, g.archived ? 'archive' : 'unarchive');
+    this.saveState();
+    return { ok: true, archived: g.archived, group: g };
+  }
+
+  /** 모임 삭제 — 확인 두 번은 화면이 한다. 멤버에게는 남길 알림을 기록한다(로컬). */
+  deleteGroupWithNotice(groupId) {
+    if (!this.can(groupId, 'delete_group')) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    const me = this.state.currentUser || {};
+    const members = (g.members || []).filter((m) => m.id !== me.id);
+    if (!Array.isArray(this.state.groupDeleteNotices)) this.state.groupDeleteNotices = [];
+    members.forEach((m) => {
+      this.state.groupDeleteNotices.push({
+        groupId, groupName: g.name, memberId: m.id, memberName: m.name,
+        text: `'${g.name}' 모임이 삭제됐어요`, at: new Date().toISOString(), read: false
+      });
+    });
+    const res = this.deleteGroup(groupId);
+    if (res.ok) res.notified = members.length;
+    return res;
+  }
+
+  /* -------------------------------------------------- 게스트(일정만) */
+  /** 이 일정에 승인된 게스트인가 — 게스트는 그 일정과 일정 채팅만 볼 수 있다. */
+  isApprovedEventGuest(eventId, memberId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return false;
+    const me = this.state.currentUser || {};
+    const who = memberId || me.id;
+    return (Array.isArray(ev.guestRequests) ? ev.guestRequests : [])
+      .some((r) => r.memberId === who && r.status === 'approved');
+  }
+
+  /**
+   * 그 모임에서 내가 무엇을 볼 수 있는가 — 게스트는 일정·일정 채팅만,
+   * 멤버는 피드·멤버 목록까지. 화면은 이 답만 본다.
+   */
+  getGroupAccess(groupId) {
+    const role = this.roleOf(groupId);
+    const events = role === 'guest'
+      ? this.getGroupEvents(groupId).filter((e) => this.isApprovedEventGuest(e.id))
+      : [];
+    return {
+      groupId,
+      role,
+      feed: this.can(groupId, 'view_feed'),
+      memberList: this.can(groupId, 'view_member_list'),
+      events: role === 'guest' ? events.map((e) => e.id) : [],
+      eventChat: role === 'guest' ? events.map((e) => e.id) : []
+    };
+  }
+
+  /* -------------------------------------------------- 게시물·댓글 관리 */
+  /** 운영진의 글 숨김·삭제 — 글쓴이가 아니어도 모임 운영 권한으로 처리한다. */
+  moderateGroupPost(postId, action) {
+    const post = this.getPost(postId);
+    if (!post || !post.groupId) return { ok: false, reason: 'not_found' };
+    if (!this.can(post.groupId, 'manage_posts')) return { ok: false, reason: 'permission' };
+    if (action === 'delete') {
+      this.state.feedPosts = this.state.feedPosts.filter((p) => p.id !== postId);
+      this.logGroupMod(post.groupId, 'post_delete', { targetId: postId, targetName: (post.caption || '').slice(0, 20) });
+      this.saveState();
+      return { ok: true, action: 'delete', post };
+    }
+    post.hidden = !post.hidden;
+    post.hiddenBy = post.hidden ? this.currentUser.id : null;
+    this.logGroupMod(post.groupId, post.hidden ? 'post_hide' : 'post_show',
+      { targetId: postId, targetName: (post.caption || '').slice(0, 20) });
+    this.saveState();
+    return { ok: true, action: post.hidden ? 'hide' : 'show', post };
+  }
+
+  /** 운영진의 댓글 삭제 — 글쓴이가 아니어도 처리한다. */
+  moderateGroupComment(postId, commentId) {
+    const post = this.getPost(postId);
+    if (!post || !post.groupId) return { ok: false, reason: 'not_found' };
+    if (!this.can(post.groupId, 'manage_posts')) return { ok: false, reason: 'permission' };
+    const idx = (post.comments || []).findIndex((c) => c.id === commentId);
+    if (idx < 0) return { ok: false, reason: 'not_found' };
+    const [removed] = post.comments.splice(idx, 1);
+    this.logGroupMod(post.groupId, 'comment_delete', { targetId: commentId, targetName: (removed.text || '').slice(0, 20) });
+    this.saveState();
+    return { ok: true, comment: removed };
+  }
+
   updateGroupJoinPolicy(groupId, patch) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
@@ -10755,24 +11360,49 @@ class Store {
 
   /** 홈 상단 모임 스위처에 쓸 목록 — 모임 + 다음 일정 + 단체 채팅 미리보기 + 사진 수. */
   getHomeGroups() {
-    return this.getJoinedGroups().map((group) => ({
+    const list = this.getJoinedGroups().map((group) => ({
       group,
       id: group.id,
+      /* v36.0 — '모임 상단 고정'을 켠 모임이 내 모임 줄의 앞에 온다. */
+      pinned: this.getGroupMembership(group.id).pinned,
       isHome: group.id === this.getHomeGroupId(),
       postCount: (this.state.feedPosts || []).filter((p) => p.groupId === group.id).length,
       photoCount: this.getGroupPhotoPosts(group.id).filter((p) => p.photoUrl).length,
       nextEvent: this.getNextGroupEvent(group.id),
       chat: this.getGroupChatPreview(group.id)
     }));
+    /* 고정을 켠 모임만 앞으로 — 나머지 순서는 그대로(안정 정렬). */
+    return list.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
   }
 
   /** 모임의 사진·글 — 홈 사진 피드(그리드)의 재료. 말머리(tag)로 걸러 볼 수 있다. */
   getGroupPhotoPosts(groupId, tag = null) {
+    const seeHidden = this.roleOf(groupId) !== 'member';
+    const blocked = this.state.blockedMemberIds || [];
     return (this.state.feedPosts || [])
       .filter((p) => p.groupId === groupId)
+      .filter((p) => blocked.indexOf(p.authorId) < 0)
+      .filter((p) => seeHidden || !p.hidden)
       .filter((p) => (tag ? p.tag === tag : true))
       .slice()
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map((p) => this.applyGroupIdentity(p));
+  }
+
+  /**
+   * 모임 안에서 보이는 내 이름 — 모임별 닉네임을 쓰면 글·댓글에도 그 이름이 붙는다.
+   * (저장된 글은 건드리지 않고 읽을 때만 바꿔 끼운다.)
+   */
+  applyGroupIdentity(post) {
+    if (!post || !post.groupId) return post;
+    const me = this.currentUser;
+    if (!me || post.authorId !== me.id) return post;
+    const prof = this.getGroupProfile(post.groupId);
+    if (!prof.nickname) return post;
+    return Object.assign({}, post, {
+      authorName: prof.nickname,
+      authorAvatarText: prof.nickname.charAt(0)
+    });
   }
 
   /** 홈 사진 피드 상단의 말머리 칩 — 그 모임 글에 실제로 붙은 말머리만(건수 포함, 많은 순). */
@@ -11361,7 +11991,7 @@ class Store {
   /** 술모임·번개 만들기 — 제목 2~30자, 종류는 4종, 시각은 지금 이후. */
   createGroupEvent(groupId, payload = {}) {
     if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
-    /* v35.2 — 공지와 같은 게시판 권한을 따른다. 모임장·부방장, 그리고 허락된 모임의 멤버. */
+    /* v35.2 — 공지와 같은 게시판 권한을 따른다. 모임장·운영진, 그리고 허락된 모임의 멤버. */
     if (!this.getGroupBoardPolicy(groupId).canWrite) return { ok: false, reason: 'permission' };
     const title = String(payload.title == null ? '' : payload.title).trim();
     if (title.length < 2) return { ok: false, reason: 'title_short' };
@@ -11399,6 +12029,19 @@ class Store {
   }
 
   /** 일정 수정 — 만든 사람만. 게스트 참여 가능 여부도 여기서 바꿔진다. */
+  /** 일정 취소 — 만든 사람 또는 모임 운영 권한(운영진·모임장). 목록에는 '취소됨'으로 남긴다. */
+  cancelGroupEvent(eventId) {
+    const ev = this.getGroupEvent(eventId);
+    if (!ev) return { ok: false, reason: 'not_found' };
+    const mine = ev.createdBy === this.currentUser.id;
+    if (!mine && !this.can(ev.groupId, 'manage_events')) return { ok: false, reason: 'permission' };
+    ev.cancelled = true;
+    ev.cancelledAt = new Date().toISOString();
+    this.logGroupMod(ev.groupId, 'event_cancel', { targetId: ev.id, targetName: ev.title });
+    this.saveState();
+    return { ok: true, event: ev };
+  }
+
   updateGroupEvent(eventId, payload = {}) {
     const ev = this.getGroupEvent(eventId);
     if (!ev) return { ok: false, reason: 'not_found' };
@@ -11427,12 +12070,16 @@ class Store {
    * 모임장(나) 한 명에서 시작하고, 승인된 가입 신청·실제 글 작성자만 명단에 오른다.
    * @returns {{total:number, members:Array}}
    */
-  getGroupRoster(groupId) {
+  getGroupRoster(groupId, options) {
     const group = this.getGroup(groupId);
     if (!group) return { total: 0, members: [] };
     const me = this.currentUser;
     const members = [];
     const seen = new Set();
+    /* 멤버 목록 공개 범위 — 'staff'면 모임장·운영진에게만 보인다. */
+    const settings = this.getGroupSettings(groupId);
+    const viewerRole = (options && options.viewerRole) || this.roleOf(groupId);
+    const canList = viewerRole !== 'member' || settings && settings.memberListVisibility !== 'staff';
     const push = (entry) => {
       const name = String(entry.name || '').trim();
       if (!name || seen.has(name)) return false;
@@ -11448,17 +12095,23 @@ class Store {
     const hobbyList = (hobbyNames) => (hobbyNames || []).slice(0, 2)
       .map((name) => ({ name, icon: 'dot' }));
 
+    /* 이 모임에서만 쓰는 내 프로필(닉네임·사진 공개) — 명단·글에 그대로 반영된다. */
+    const myProfile = this.getGroupProfile(groupId);
+    const myName = myProfile.nickname || me.nickname;
+    const myPhoto = myProfile.photoVisible ? (me.photoUrl || null) : null;
+    const roleOfEntry = (id) => this.roleOf(groupId, id);
     /* 1) 모임장 */
     const leaderIsMe = group.leaderId === me.id;
     const avatarOf = (personId) => EXAMPLE_PERSON_AVATARS[personId] || null;
     push({
       id: group.leaderId || 'leader',
-      name: leaderIsMe ? me.nickname : (group.leaderName || '모임장'),
+      name: leaderIsMe ? myName : (group.leaderName || '모임장'),
       role: 'leader',
+      groupRole: 'owner',
       isLeader: true,
       isMe: leaderIsMe,
-      avatarText: leaderIsMe ? (me.avatarText || me.nickname.charAt(0)) : (group.leaderName || '그').charAt(0),
-      photoUrl: leaderIsMe ? (me.photoUrl || null) : avatarOf(group.leaderId),
+      avatarText: leaderIsMe ? (myName.charAt(0) || me.avatarText) : (group.leaderName || '그').charAt(0),
+      photoUrl: leaderIsMe ? myPhoto : avatarOf(group.leaderId),
       gradient: leaderIsMe ? me.avatarGradient : GROUP_ROSTER_GRADIENTS[0],
       hobbies: leaderIsMe ? hobbyList(me.hobbies) : [],
       joinedAt: group.createdAt || null,
@@ -11466,14 +12119,16 @@ class Store {
     });
     /* 2) 승인되어 실제로 들어온 멤버 */
     (group.members || []).forEach((m) => {
+      const isMe = m.id === me.id;
       push({
         id: m.id,
-        name: m.name,
-        role: 'member',
+        name: isMe ? myName : m.name,
+        role: isMe ? 'me' : 'member',
+        groupRole: roleOfEntry(m.id),
         isLeader: false,
-        isMe: m.id === me.id,
+        isMe,
         avatarText: m.avatarText || String(m.name).charAt(0),
-        photoUrl: m.photoUrl || avatarOf(m.id),
+        photoUrl: isMe ? myPhoto : (m.photoUrl || avatarOf(m.id)),
         gradient: m.gradient || GROUP_ROSTER_GRADIENTS[members.length % GROUP_ROSTER_GRADIENTS.length],
         hobbies: hobbyList(m.hobbies),
         joinedAt: m.joinedAt || null,
@@ -11482,14 +12137,16 @@ class Store {
     });
     /* 3) 이 모임에 실제로 글을 쓴 사람 */
     (this.state.feedPosts || []).filter((p) => p.groupId === groupId).forEach((p) => {
+      const isMe = p.authorId === me.id;
       push({
         id: p.authorId || `author_${p.id}`,
-        name: p.authorName,
-        role: p.authorId === me.id ? 'me' : 'member',
+        name: isMe ? myName : p.authorName,
+        role: isMe ? 'me' : 'member',
+        groupRole: p.authorId ? roleOfEntry(p.authorId) : 'member',
         isLeader: false,
-        isMe: p.authorId === me.id,
+        isMe,
         avatarText: p.authorAvatarText || String(p.authorName || '').charAt(0),
-        photoUrl: avatarOf(p.authorId),
+        photoUrl: isMe ? myPhoto : avatarOf(p.authorId),
         gradient: p.authorGradient || GROUP_ROSTER_GRADIENTS[members.length % GROUP_ROSTER_GRADIENTS.length],
         hobbies: [],
         joinedAt: null,
@@ -11500,18 +12157,37 @@ class Store {
     if (this.isGroupJoined(groupId)) {
       push({
         id: me.id,
-        name: me.nickname,
+        name: myName,
         role: leaderIsMe ? 'leader' : 'me',
+        groupRole: roleOfEntry(me.id),
         isLeader: leaderIsMe,
         isMe: true,
-        avatarText: me.avatarText || me.nickname.charAt(0),
+        avatarText: (myName || '').charAt(0) || me.avatarText,
+        photoUrl: myPhoto,
         gradient: me.avatarGradient,
         hobbies: hobbyList(me.hobbies),
         joinedAt: null,
         joinedLabel: ''
       });
     }
-    return { total: members.length, members };
+    /* 5) '멤버 목록에서 숨기기'를 켠 사람은 멤버에게 보이지 않는다(운영진 이상은 본다).
+          공개 범위가 '운영진만'이면 멤버에게는 명단 자체를 주지 않는다. */
+    let visible = members;
+    if (viewerRole === 'member') {
+      visible = settings.memberListVisibility === 'staff' ? [] : members.filter((m) => {
+        const pref = this.getGroupMembership(groupId, m.id);
+        return !pref.hiddenInList;
+      });
+    } else if (viewerRole === 'guest') {
+      /* 게스트(비멤버)는 멤버 목록을 볼 수 없다 — 일정과 그 일정 채팅만. */
+      visible = [];
+    }
+    return {
+      total: visible.length,
+      members: visible,
+      hiddenByPolicy: viewerRole === 'guest'
+        || (viewerRole === 'member' && settings.memberListVisibility === 'staff')
+    };
   }
 
   /** 멤버 → 1:1 대화방 — 이미 있으면 그 방, 없으면 만든다(프로필에서 말 걸기).
@@ -11560,7 +12236,7 @@ class Store {
    * Sprint 15 — 인스타그램형 4탭: 피드(공지·일정·스크롤 피드) · 돋보기 · 디엠 · 내정보
    * ------------------------------------------------------------------------
    * 11/15 16:00~16:09 사용자 지시를 그대로 옮긴 구획이다.
-   *   15-1 공지(모임장+부방장)   15-2 부방장 지정
+   *   15-1 공지(모임장+운영진)   15-2 운영진 지정
    *   15-3 모임 내 1:1 대화 ON/OFF  15-4 돋보기(타 모임) 노출 동의
    *   15-5 내 피드(내정보)        15-6 일정 정원 초과 → 자동 대기
    * ======================================================================== */
@@ -11587,27 +12263,26 @@ class Store {
     return (this.state.groupNotices || []).find((n) => n.id === noticeId) || null;
   }
 
-  /** 공지 작성·수정·고정 권한 — 모임장과 모임장이 지정한 부방장만. */
+  /** 공지 작성·수정·고정 권한 — 모임장과 모임장이 지정한 운영진만. */
   getGroupNoticePermission(groupId) {
-    if (!this.isGroupJoined(groupId)) {
+    const role = this.roleOf(groupId);
+    if (role === 'guest') {
       return { ok: false, role: 'guest', label: '비멤버', canManage: false, canWrite: false, reason: 'not_member' };
     }
     const board = this.getGroupBoardPolicy(groupId);
-    if (this.isGroupLeader(groupId)) {
-      return { ok: true, role: 'leader', label: '모임장', canManage: true, canWrite: true, board };
-    }
-    if (this.isGroupDeputy(groupId, this.currentUser.id)) {
-      return { ok: true, role: 'deputy', label: '부방장', canManage: true, canWrite: true, board };
-    }
-    /* v35.2 — 모임장이 '게시판 멤버 작성 허용'을 켜면 일반 멤버도 공지를 쓸 수 있다. */
+    const canManage = this.can(groupId, 'write_notice');
     return {
-      ok: true, role: 'member', label: '멤버', canManage: false,
-      canWrite: board.canWrite, board,
-      reason: board.canWrite ? undefined : 'permission'
+      ok: true,
+      role,
+      label: this.roleLabel(role),
+      canManage,
+      canWrite: canManage ? true : board.canWrite,
+      board,
+      reason: canManage || board.canWrite ? undefined : 'permission'
     };
   }
 
-  /** 공지 쓰기 — 2~120자. 모임장·부방장, 그리고 모임장이 허락한 모임에서는 멤버도. */
+  /** 공지 쓰기 — 2~120자. 모임장·운영진, 그리고 모임장이 허락한 모임에서는 멤버도. */
   createGroupNotice(groupId, text, options = {}) {
     const perm = this.getGroupNoticePermission(groupId);
     if (!perm.canWrite) return { ok: false, reason: perm.reason || 'permission', permission: perm };
@@ -11635,7 +12310,7 @@ class Store {
     const notice = this.getGroupNotice(noticeId);
     if (!notice) return { ok: false, reason: 'not_found' };
     const perm = this.getGroupNoticePermission(notice.groupId);
-    /* v35.2 — 모임장·부방장, 또는 자기가 쓴 공지. */
+    /* v35.2 — 모임장·운영진, 또는 자기가 쓴 공지. */
     const mine = notice.authorId && notice.authorId === this.currentUser.id;
     if (!perm.canManage && !(mine && perm.canWrite)) return { ok: false, reason: 'permission', permission: perm };
     const body = String(text == null ? '' : text).trim();
@@ -11669,13 +12344,11 @@ class Store {
     return { ok: true, notice };
   }
 
-  /* ------------------------------------------------ 15-2. 부방장 */
+  /* ------------------------------------------------ 15-2. 운영진 */
   /* H5 — memberId 를 주지 않으면 '나'로 본다. getDeputyPermissions 가 인자 없이 부르는데
-     기본값이 없어서 부방장이 늘 false 로 읽히던 버그를 함께 고쳤다. */
+     기본값이 없어서 운영진이 늘 false 로 읽히던 버그를 함께 고쳤다. */
   isGroupDeputy(groupId, memberId) {
-    const g = this.getGroup(groupId);
-    const who = memberId || (this.state.currentUser && this.state.currentUser.id);
-    return !!(g && Array.isArray(g.deputyIds) && who && g.deputyIds.includes(who));
+    return this.roleOf(groupId, memberId) === 'staff';
   }
 
   getGroupDeputies(groupId) {
@@ -11689,23 +12362,33 @@ class Store {
                     gradient: m.gradient, isMe: !!m.isMe }));
   }
 
-  /** 모임장이 멤버를 부방장으로 지정/해제 — 최대 5명, 모임장 본인은 대상이 아니다. */
+  /** 모임장이 멤버를 운영진으로 임명/해임 — 최대 3명, 모임장 본인은 대상이 아니다. */
   setGroupDeputy(groupId, memberId, on = true) {
-    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    if (!this.can(groupId, 'manage_staff')) return { ok: false, reason: 'permission' };
     const g = this.getGroup(groupId);
     if (!g) return { ok: false, reason: 'not_found' };
     if (memberId === g.leaderId) return { ok: false, reason: 'leader' };
     const member = this.getGroupRoster(groupId).members.find((m) => m.id === memberId);
     if (!member) return { ok: false, reason: 'not_found' };
+    /* v36.0 — 운영진은 이 모임의 실제 멤버 중에서만 임명한다(글만 쓴 사람은 대상이 아니다). */
+    const realMember = (g.members || []).some((m) => m.id === memberId)
+      || (this.isGroupJoined(groupId) && memberId === this.state.currentUser.id);
+    if (!realMember) return { ok: false, reason: 'not_member' };
     const ids = Array.isArray(g.deputyIds) ? g.deputyIds.slice() : [];
     const has = ids.includes(memberId);
     if (on && !has) {
-      if (ids.length >= 5) return { ok: false, reason: 'too_many' };
+      if (ids.length >= GROUP_STAFF_MAX) return { ok: false, reason: 'too_many' };
       ids.push(memberId);
     } else if (!on && has) {
       ids.splice(ids.indexOf(memberId), 1);
     }
     g.deputyIds = ids;
+    /* 멤버십에도 역할을 적는다 — 명단이 role 을 읽어도 같은 답이 나온다. */
+    const entry = (g.members || []).find((m) => m.id === memberId);
+    if (entry) entry.role = has ? 'member' : 'staff';
+    if (!has) {
+      this.logGroupMod(groupId, on ? 'staff_add' : 'staff_remove', { targetId: memberId, targetName: member.name });
+    }
     this.saveState();
     return {
       ok: true,
@@ -11747,17 +12430,19 @@ class Store {
 
   /* ------------------------------------ v35.2. 모임 게시판 작성 권한 */
   /**
-   * 게시판(공지·일정) 작성 권한 — 모임장·부방장은 늘 쓸 수 있고,
+   * 게시판(공지·일정) 작성 권한 — 모임장·운영진은 늘 쓸 수 있고,
    * 일반 멤버는 모임장이 `memberBoardWrite` 를 켰을 때만 쓸 수 있다.
    * @returns {{groupId:string, exists:boolean, isLeader:boolean, isDeputy:boolean,
    *            isMember:boolean, memberCanWrite:boolean, canWrite:boolean, role:string}}
    */
   getGroupBoardPolicy(groupId) {
     const g = this.getGroup(groupId);
-    const isMember = this.isGroupJoined(groupId);
-    const isLeader = !!g && this.isGroupLeader(groupId);
-    const isDeputy = !!g && isMember && this.isGroupDeputy(groupId, this.currentUser && this.currentUser.id);
+    const role = this.roleOf(groupId);
+    const isMember = role !== 'guest';
+    const isLeader = role === 'owner';
+    const isDeputy = role === 'staff';
     const memberCanWrite = !!g && g.memberBoardWrite === true;
+    const staffCanWrite = this.can(groupId, 'manage_board');
     return {
       groupId,
       exists: !!g,
@@ -11765,8 +12450,9 @@ class Store {
       isDeputy,
       isMember,
       memberCanWrite,
-      canWrite: !!g && (isLeader || isDeputy || (isMember && memberCanWrite)),
-      role: isLeader ? 'leader' : (isDeputy ? 'deputy' : (isMember ? 'member' : 'guest'))
+      /* 멤버가 쓸 수 있는지는 모임장이 정한 값 하나로만 열린다. */
+      canWrite: staffCanWrite || (isMember && memberCanWrite),
+      role
     };
   }
 
@@ -11783,22 +12469,33 @@ class Store {
   /* ------------------------------------ v35.2. 모임 알림 설정 (모임마다) */
   getGroupNotifySetting(groupId) {
     const g = this.getGroup(groupId);
+    const m = this.getGroupMembership(groupId);
     return {
       groupId,
       exists: !!g,
       isMember: this.isGroupJoined(groupId),
-      enabled: !!g && g.notifyEnabled !== false
+      /* v36.0 — 전체 / 멘션·공지만 / 끔 + 일정 알림 별도 스위치 */
+      mode: m.notifyMode,
+      events: m.notifyEvents,
+      muted: m.muted,
+      enabled: !!g && m.notifyMode !== 'off' && g.notifyEnabled !== false
     };
   }
 
   /** 모임 알림 받기 ON/OFF — 그 모임에 속한 사람이면 누구나 바꿀 수 있다(나에게 오는 알림). */
-  updateGroupNotifySetting(groupId, enabled) {
+  updateGroupNotifySetting(groupId, value) {
     if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
     const g = this.getGroup(groupId);
     if (!g) return { ok: false, reason: 'not_found' };
-    g.notifyEnabled = !!enabled;
+    /* 예전 호출은 true/false 하나만 넘겼다 — 새 모드 호출도 함께 받는다. */
+    const patch = typeof value === 'object' && value !== null ? Object.assign({}, value) : { mode: value ? 'all' : 'off' };
+    if (patch.mode === undefined && 'enabled' in patch) patch.mode = patch.enabled ? 'all' : 'off';
+    if (patch.notifyMode === undefined && patch.mode !== undefined) patch.notifyMode = patch.mode;
+    const res = this.updateGroupMembership(groupId, patch);
+    if (!res.ok) return res;
+    g.notifyEnabled = res.membership.notifyMode !== 'off';
     this.saveState();
-    return { ok: true, enabled: g.notifyEnabled, setting: this.getGroupNotifySetting(groupId) };
+    return { ok: true, enabled: g.notifyEnabled, mode: res.membership.notifyMode, setting: this.getGroupNotifySetting(groupId) };
   }
 
   /** 이 1:1 방이 어느 모임에서 열렸는지 — 방에 groupId 가 없으면 상대 이름으로 되찾는다. */
@@ -11823,7 +12520,7 @@ class Store {
         const g = this.getGroup(p.groupId);
         return {
           ...p,
-          /* v33.8 — 그룹 없이 올린 글은 '자유 피드'로 보여 준다. */
+          /* v33.8 — 모임 없이 올린 글은 '자유 피드'로 보여 준다. */
           groupName: g ? g.name : (p.groupId ? '' : '자유 피드'),
           groupIcon: g ? g.icon : (p.groupId ? '' : 'globe'),
           commentCount: (p.comments || []).length,
@@ -11865,9 +12562,9 @@ class Store {
    * 갤러리 카드 하나에 필요한 것만 한 번에 모아 준다(모임·표지·사진·스토리·약속).
    * ======================================================================== */
   /* ==========================================================================
-   * Sprint 32.5 — 내 그룹 빨간 점(새 소식) · 모임을 열어 본 시각
+   * Sprint 32.5 — 내 모임 빨간 점(새 소식) · 모임을 열어 본 시각
    * ------------------------------------------------------------------------
-   *  · '내 그룹' 원형 아이콘 위의 점은 **마지막으로 방문한 뒤** 새 글·스토리·
+   *  · '내 모임' 원형 아이콘 위의 점은 **마지막으로 방문한 뒤** 새 글·스토리·
    *    일정·채팅이 생겼을 때만 붙는다(네이버 카페 '내 카페' 의 빨간 점과 같은 뜻).
    *  · 한 번도 들어가지 않은 모임은 소식이 있으면 점이 붙는다.
    * ========================================================================== */
@@ -12073,32 +12770,34 @@ class Store {
   }
 
   /* ==========================================================================
-   * 16-C. 부방장 권한 — 공지·일정은 늘, 멤버 승인·강퇴는 모임장이 켤 때만
+   * 16-C. 운영진 권한 — 공지·일정은 늘, 멤버 승인·강퇴는 모임장이 켤 때만
    * -------------------------------------------------------------------------
    * 11/15 18:36 사용자 답: "공지·일정 만들기·멤버 승인/강퇴 모두 지원하되,
    * 멤버 승인·강퇴 권한은 모임장이 선택(부여/해제)할 수 있게".
    * ======================================================================== */
   getDeputyPermissions(groupId) {
     const group = this.getGroup(groupId);
-    const isLeader = this.isGroupLeader(groupId);
-    const isDeputy = this.isGroupDeputy(groupId);
+    const role = this.roleOf(groupId);
+    const isLeader = role === 'owner';
+    const isDeputy = role === 'staff';
     const grant = !!(group && group.deputyCanModerate === true);
     return {
       groupId,
+      role,
       isLeader,
       isDeputy,
       deputyCanModerate: grant,
-      /* 공지·일정 작성: 모임장 + 부방장 */
-      canManageNotices: isLeader || isDeputy,
-      canManageEvents: isLeader || isDeputy,
-      /* 멤버 승인·강퇴: 모임장, 또는 모임장이 권한을 켠 부방장 */
-      canModerateMembers: isLeader || (isDeputy && grant),
+      /* 공지·일정 작성: 운영진·모임장 */
+      canManageNotices: this.can(groupId, 'write_notice'),
+      canManageEvents: this.can(groupId, 'manage_events'),
+      /* 멤버 관리: can() 한 곳의 답을 쓴다 */
+      canModerateMembers: this.can(groupId, 'kick_member'),
       /* 이 스위치는 모임장만 바꿀 수 있다 */
-      canToggleModerate: isLeader
+      canToggleModerate: this.can(groupId, 'manage_staff')
     };
   }
 
-  /** 부방장에게 '멤버 승인·강퇴'까지 맡길지 — 모임장만 바꿀 수 있다. */
+  /** 운영진에게 '멤버 승인·강퇴'까지 맡길지 — 모임장만 바꿀 수 있다. */
   setDeputyModeratePermission(groupId, on) {
     const group = this.getGroup(groupId);
     if (!group) return { ok: false, reason: 'not_found' };
