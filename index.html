@@ -1620,6 +1620,18 @@
     </div>
 
     <!-- ==================== 모달 18. 모임 공지 (Sprint 15) ==================== -->
+    <!-- v35.2 — 그룹 설정 › 모임 정보·아지트 수정: 모임장이 활동 아지트(1~3곳)를 바꾼다. -->
+    <div class="modal-overlay" id="group-azit-modal" role="dialog" aria-modal="true" aria-label="활동 아지트 바꾸기">
+      <div class="modal-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-group-azit" aria-label="닫기">&times;</button>
+        <h2 class="sheet-title">활동 아지트 바꾸기</h2>
+        <p class="joined-sub">모임이 만나는 곳 1~3곳 · 정확한 주소는 저장하지 않아요</p>
+        <div class="azit-edit-list" id="group-azit-list" role="group" aria-label="아지트 고르기"><!-- JS --></div>
+        <button class="btn-primary azit-edit-save" id="btn-group-azit-save" type="button">저장</button>
+      </div>
+    </div>
+
     <div class="modal-overlay" id="notice-modal" role="dialog" aria-modal="true" aria-label="모임 공지">
       <div class="modal-sheet notice-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>

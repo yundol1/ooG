@@ -200,6 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* Sprint 18 — 사이드바(Drawer): 모임 멤버·설정 / 내정보 설정 */
     drawerOpen: null,            // null | 'group' | 'profile'
+    azitEditGroupId: null,       // v35.2 — 활동 아지트 바꾸는 모임
+    azitEditDraft: [],           //          고른 아지트 id(1~3)
     drawerMemberId: null         // 모임 사이드바에서 펼쳐 둔 멤버
   };
 
@@ -524,6 +526,9 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 15 — 공지 바 · 일정 상세 · 내 피드 */
     homePinned: $('#home-pinned'),
     homeNoticeBar: $('#home-notice-bar'),
+    groupAzitModal: $('#group-azit-modal'),
+    groupAzitList: $('#group-azit-list'),
+    btnGroupAzitSave: $('#btn-group-azit-save'),
     noticeModal: $('#notice-modal'),
     noticeList: $('#notice-list'),
     noticeEditor: $('#notice-editor'),
@@ -6919,7 +6924,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatMember = e.target.closest('[data-group-chat-member]');
     if (chatMember && ui.groupSpaceId) {
       goMemberChat(ui.groupSpaceId, chatMember.dataset.groupChatMember);
+      return;
     }
+
+    const azitEdit = e.target.closest('[data-group-azit-edit]');
+    if (azitEdit) {
+      e.preventDefault();
+      openGroupAzitEditor(azitEdit.dataset.groupAzitEdit);
+    }
+  });
+
+  /* v35.2 — 활동 아지트 바꾸기 시트 */
+  const groupAzitClose = $('#btn-close-group-azit');
+  groupAzitClose && groupAzitClose.addEventListener('click', () => closeModal(el.groupAzitModal));
+  el.btnGroupAzitSave && el.btnGroupAzitSave.addEventListener('click', saveGroupAzits);
+  el.groupAzitList && el.groupAzitList.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-azit-edit]');
+    if (row) toggleGroupAzitDraft(row.dataset.azitEdit);
   });
   el.btnNoticeOpen && el.btnNoticeOpen.addEventListener('click', () => {
     if (ui.groupSpaceId) openNoticeSheet(ui.groupSpaceId);
@@ -9552,6 +9573,87 @@ document.addEventListener('DOMContentLoaded', () => {
       </section>`;
   }
 
+  /** v35.2 — 모임 상세의 '활동 아지트' 구획 — 모임장은 여기서 아지트를 바꾼다. */
+  function renderGroupAzitBlock(grp) {
+    const isLeader = store.isGroupLeader(grp.id);
+    const azits = store.getGroupHangouts(grp);
+    return `
+      <section class="sheet-block" data-sheet-block="azit">
+        <div class="sheet-section-head">
+          <h4 class="sheet-section-title">활동 아지트</h4>
+          ${isLeader ? `<button class="text-btn" data-group-azit-edit="${grp.id}" type="button">아지트 바꾸기</button>` : ''}
+        </div>
+        <div class="ginfo-azit-list sheet-azit-list">
+          ${azits.length ? azits.map((a) => `
+            <span class="ginfo-azit-row"><span class="ginfo-azit-icon" aria-hidden="true">${ic(a.icon || 'pin')}</span>
+              <span class="ginfo-azit-name">${escapeHtml(a.name)}</span>
+              <span class="ginfo-azit-area">${escapeHtml(a.areaName || '')}</span></span>`).join('')
+            : '<p class="board-empty">아직 아지트가 없어요.</p>'}
+        </div>
+      </section>`;
+  }
+
+  /** v35.2 — 활동 아지트 고르기 시트 — 모임장만. 1~3곳(누르면 켜고 끔). */
+  function openGroupAzitEditor(groupId) {
+    const grp = store.getGroup(groupId || ui.groupSpaceId);
+    if (!grp || !el.groupAzitModal) return;
+    if (!store.isGroupLeader(grp.id)) {
+      showToast('모임장만 아지트를 바꿀 수 있어요', 'warning');
+      return;
+    }
+    ui.azitEditGroupId = grp.id;
+    ui.azitEditDraft = store.getGroupHangouts(grp).map((a) => a.id);
+    renderGroupAzitList();
+    openModal(el.groupAzitModal);
+  }
+
+  function renderGroupAzitList() {
+    if (!el.groupAzitList) return;
+    const rows = store.getAzitChips(24);
+    el.groupAzitList.innerHTML = rows.map((a) => {
+      const on = ui.azitEditDraft.includes(a.id);
+      const order = ui.azitEditDraft.indexOf(a.id);
+      return `<button class="azit-edit-row ${on ? 'on' : ''}" data-azit-edit="${a.id}" type="button"
+                aria-pressed="${on}" aria-label="${escapeHtml(a.name)} ${on ? `${order + 1}번째로 고름` : '고르기'}">
+        <span class="azit-edit-name">${escapeHtml(a.name)}</span>
+        <span class="azit-edit-meta">${escapeHtml(a.areaName || '')}</span>
+        ${on ? `<span class="azit-edit-order">${order + 1}</span>` : ''}
+      </button>`;
+    }).join('');
+  }
+
+  function toggleGroupAzitDraft(azitId) {
+    if (!azitId) return;
+    const i = ui.azitEditDraft.indexOf(azitId);
+    if (i >= 0) ui.azitEditDraft.splice(i, 1);
+    else {
+      if (ui.azitEditDraft.length >= 3) {
+        showToast('아지트는 3곳까지 고를 수 있어요', 'info');
+        return;
+      }
+      ui.azitEditDraft.push(azitId);
+    }
+    renderGroupAzitList();
+  }
+
+  function saveGroupAzits() {
+    if (!ui.azitEditGroupId || !ui.azitEditDraft.length) {
+      showToast('아지트를 한 곳 이상 골라주세요', 'warning');
+      return;
+    }
+    const res = store.updateGroupHangouts(ui.azitEditGroupId, ui.azitEditDraft);
+    if (!res.ok) {
+      showToast(res.reason === 'permission' ? '모임장만 바꿀 수 있어요' : '아지트를 바꾸지 못했어요', 'warning');
+      return;
+    }
+    ui.azitEditGroupId = null;
+    closeModal(el.groupAzitModal);
+    if (ui.activeTab === 'tab-groupinfo') renderGroupInfo();
+    if (isGroupMode()) renderGroupHeader(homeGroup());
+    if (el.groupModal && el.groupModal.classList.contains('active')) renderGroupDetail(store.getGroup(res.group.id));
+    showToast('활동 아지트를 바꿨어요');
+  }
+
   /** Sprint 13 — 모임 상세의 '멤버' 구획 (모임장 · 글 쓴 사람 · 나) */
   function renderGroupMemberBlock(grp) {
     const info = store.getGroupMembers(grp.id);
@@ -9745,6 +9847,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       <!-- Sprint 13 — 상세는 구획으로: 일정 · 멤버 · 규칙 · 가입 -->
       ${renderGroupScheduleBlock(grp)}
+      ${renderGroupAzitBlock(grp)}
       ${renderGroupMemberBlock(grp)}
       ${renderGroupOpsBlock(grp)}
 

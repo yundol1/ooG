@@ -27456,3 +27456,34 @@ body.group-mode .push-permission-banner { display: none !important; }
 
 /* v35.2 — 그룹 설정창의 모임 그림은 앱의 다른 모임 표현과 같이 원형. */
 .drawer-group .drawer-avatar { border-radius: 50%; }
+
+/* v35.2 — 활동 아지트 바꾸기 시트 */
+.azit-edit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+  margin: 10px 0 14px;
+}
+.azit-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-2, 10px);
+  background: var(--bg-base);
+  text-align: left;
+}
+.azit-edit-row.on { border-color: var(--green-solid); background: var(--green-on); }
+.azit-edit-name { font-size: var(--fs-sub); font-weight: 650; color: var(--text-strong); }
+.azit-edit-meta { margin-left: auto; font-size: var(--fs-caption); color: var(--text-muted); }
+.azit-edit-order {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--green-solid); color: #fff; font-size: 11px; font-weight: 700;
+}
+.azit-edit-save { width: 100%; }
+.sheet-azit-list { gap: 6px; }

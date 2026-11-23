@@ -7049,6 +7049,38 @@ class Store {
     return out.slice(0, 3);
   }
 
+  /**
+   * v35.2 — 모임장이 활동 아지트를 바꾼다(1~3곳). 이름·종류만 저장하고 주소는 저장하지 않는다.
+   * @param {string} groupId
+   * @param {string[]} ids 아지트 id 목록(1~3)
+   */
+  updateGroupHangouts(groupId, ids) {
+    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    const list = [];
+    (Array.isArray(ids) ? ids : []).forEach((id) => {
+      const view = this.findAzit(id);
+      if (view && !list.some((x) => x.id === view.id)) list.push(view);
+    });
+    if (!list.length) return { ok: false, reason: 'hangout' };
+    if (list.length > 3) return { ok: false, reason: 'too_many_hangouts' };
+    g.hangouts = list.map((h) => ({ id: h.id, name: h.name, kind: h.kind }));
+    g.azitId = list[0].id;
+    g.azitName = list[0].name;
+    g.location = list[0].name.slice(0, 24);
+    const first = list[0];
+    if (first.sigunguId) {
+      const area = geoAreaView(first.sigunguId);
+      if (area) {
+        g.region = { sidoId: area.sidoId, sidoName: area.sidoName, sigunguId: area.sigunguId, sigunguName: area.name };
+      }
+    }
+    if (first.areaId) g.regionId = first.areaId;
+    this.saveState();
+    return { ok: true, group: g, hangouts: list };
+  }
+
   /** 모임의 지역(시·도/시·군·구) — 저장된 region → 첫 아지트 → 권역 순. */
   getGroupRegion(group) {
     if (!group) return null;
