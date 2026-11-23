@@ -6071,6 +6071,7 @@ class Store {
     if (!freePost) {
       if (!group) return null;
       if (!this.isGroupJoined(groupId)) return null;          // 가입한 모임에만 작성
+      if (group.archived) return null;                        // v36.0 — 보관된 모임은 새 글을 받지 않는다
     }
     /* Sprint 33 — 경계(`post.create`)가 같은 postId 로 다시 부르면 그 글을 돌려준다(중복 없음). */
     const wantedId = data && data.id;
@@ -11993,6 +11994,8 @@ class Store {
     if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
     /* v35.2 — 공지와 같은 게시판 권한을 따른다. 모임장·운영진, 그리고 허락된 모임의 멤버. */
     if (!this.getGroupBoardPolicy(groupId).canWrite) return { ok: false, reason: 'permission' };
+    const archivedGroup = this.getGroup(groupId);
+    if (archivedGroup && archivedGroup.archived) return { ok: false, reason: 'archived' };
     const title = String(payload.title == null ? '' : payload.title).trim();
     if (title.length < 2) return { ok: false, reason: 'title_short' };
     if (title.length > 30) return { ok: false, reason: 'title_long' };
@@ -12289,6 +12292,8 @@ class Store {
     const body = String(text == null ? '' : text).trim();
     if (body.length < 2) return { ok: false, reason: 'short' };
     if (body.length > 120) return { ok: false, reason: 'long' };
+    const grp = this.getGroup(groupId);
+    if (grp && grp.archived) return { ok: false, reason: 'archived' };
     if (!Array.isArray(this.state.groupNotices)) this.state.groupNotices = [];
     const me = this.currentUser;
     const notice = {
