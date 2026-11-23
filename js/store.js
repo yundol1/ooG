@@ -99,6 +99,10 @@
  *   store.setGroupDeputy(groupId, memberId, true);// 모임장이 부방장 지정/해제
  *   store.getGroupDmPolicy(groupId);              // { enabled } 모임 내 1:1 대화 허용 여부
  *   store.updateGroupDmPolicy(groupId, false);    // 모임장만 ON/OFF
+ *   store.getGroupBoardPolicy(groupId);           // { canWrite, memberCanWrite } 게시판 작성 권한
+ *   store.updateGroupBoardPolicy(groupId, true);  // 모임장만 — 멤버 게시판 작성 허용
+ *   store.getGroupNotifySetting(groupId);         // { enabled } 이 모임 알림 받기
+ *   store.updateGroupNotifySetting(groupId, false); // 멤버 누구나 — 나에게 오는 모임 알림
  *   store.getMyFeedPosts();                       // 내정보 탭 '내 피드'(내가 올린 글)
  *   store.setGroupEventRsvp(id, 'yes');           // 정원이 차면 자동으로 '대기'로 들어간다
  *
@@ -4091,6 +4095,9 @@ defaultInitialState.groups.forEach((g) => {
   /* Sprint 15 — 부방장 · 모임 내 1:1 대화 허용 여부 */
   g.deputyIds = (GROUP_DEPUTY_SEED[g.id] || []).slice();
   g.dmEnabled = GROUP_DM_SEED[g.id] === false ? false : true;
+  /* v35.2 — 게시판 멤버 작성 허용(기본 꺼짐) · 모임 알림 받기(기본 켜짐). */
+  if (g.memberBoardWrite !== true) g.memberBoardWrite = false;
+  if (g.notifyEnabled === undefined) g.notifyEnabled = true;
   if (!Array.isArray(g.members)) g.members = [];
 });
 
@@ -5385,6 +5392,9 @@ class Store {
           : ((g.joinMode || g.privacyType !== 'open') ? ['취미 구력이나 선호 요일을 적어주세요!'] : []),
         deputyIds: Array.isArray(g.deputyIds) ? g.deputyIds : [],
         dmEnabled: g.dmEnabled !== false,
+        /* v35.2 — 게시판 멤버 작성 허용(기본 꺼짐) · 모임 알림 받기(기본 켜짐) */
+        memberBoardWrite: g.memberBoardWrite === true,
+        notifyEnabled: g.notifyEnabled !== false,
         deputyCanModerate: g.deputyCanModerate === true,
         members: Array.isArray(g.members) ? g.members : []
       }));
@@ -8961,6 +8971,9 @@ class Store {
       customTags: ['공지', '번개', '오운완'],
       joinPolicy: [meetLabel],
       members: [],
+      /* v35.2 — 새 모임의 게시판은 모임장만 쓸 수 있고, 알림은 받는다. */
+      memberBoardWrite: false,
+      notifyEnabled: true,
       isMine: true,
       photoUrl,
       coverCircle,
@@ -11338,6 +11351,8 @@ class Store {
   /** 술모임·번개 만들기 — 제목 2~30자, 종류는 4종, 시각은 지금 이후. */
   createGroupEvent(groupId, payload = {}) {
     if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
+    /* v35.2 — 공지와 같은 게시판 권한을 따른다. 모임장·부방장, 그리고 허락된 모임의 멤버. */
+    if (!this.getGroupBoardPolicy(groupId).canWrite) return { ok: false, reason: 'permission' };
     const title = String(payload.title == null ? '' : payload.title).trim();
     if (title.length < 2) return { ok: false, reason: 'title_short' };
     if (title.length > 30) return { ok: false, reason: 'title_long' };
@@ -11565,21 +11580,27 @@ class Store {
   /** 공지 작성·수정·고정 권한 — 모임장과 모임장이 지정한 부방장만. */
   getGroupNoticePermission(groupId) {
     if (!this.isGroupJoined(groupId)) {
-      return { ok: false, role: 'guest', label: '비멤버', canManage: false, reason: 'not_member' };
+      return { ok: false, role: 'guest', label: '비멤버', canManage: false, canWrite: false, reason: 'not_member' };
     }
+    const board = this.getGroupBoardPolicy(groupId);
     if (this.isGroupLeader(groupId)) {
-      return { ok: true, role: 'leader', label: '모임장', canManage: true };
+      return { ok: true, role: 'leader', label: '모임장', canManage: true, canWrite: true, board };
     }
     if (this.isGroupDeputy(groupId, this.currentUser.id)) {
-      return { ok: true, role: 'deputy', label: '부방장', canManage: true };
+      return { ok: true, role: 'deputy', label: '부방장', canManage: true, canWrite: true, board };
     }
-    return { ok: true, role: 'member', label: '멤버', canManage: false, reason: 'permission' };
+    /* v35.2 — 모임장이 '게시판 멤버 작성 허용'을 켜면 일반 멤버도 공지를 쓸 수 있다. */
+    return {
+      ok: true, role: 'member', label: '멤버', canManage: false,
+      canWrite: board.canWrite, board,
+      reason: board.canWrite ? undefined : 'permission'
+    };
   }
 
-  /** 공지 쓰기 — 2~120자. 모임장·부방장만. */
+  /** 공지 쓰기 — 2~120자. 모임장·부방장, 그리고 모임장이 허락한 모임에서는 멤버도. */
   createGroupNotice(groupId, text, options = {}) {
     const perm = this.getGroupNoticePermission(groupId);
-    if (!perm.canManage) return { ok: false, reason: perm.reason || 'permission', permission: perm };
+    if (!perm.canWrite) return { ok: false, reason: perm.reason || 'permission', permission: perm };
     const body = String(text == null ? '' : text).trim();
     if (body.length < 2) return { ok: false, reason: 'short' };
     if (body.length > 120) return { ok: false, reason: 'long' };
@@ -11604,7 +11625,9 @@ class Store {
     const notice = this.getGroupNotice(noticeId);
     if (!notice) return { ok: false, reason: 'not_found' };
     const perm = this.getGroupNoticePermission(notice.groupId);
-    if (!perm.canManage) return { ok: false, reason: 'permission', permission: perm };
+    /* v35.2 — 모임장·부방장, 또는 자기가 쓴 공지. */
+    const mine = notice.authorId && notice.authorId === this.currentUser.id;
+    if (!perm.canManage && !(mine && perm.canWrite)) return { ok: false, reason: 'permission', permission: perm };
     const body = String(text == null ? '' : text).trim();
     if (body.length < 2) return { ok: false, reason: 'short' };
     if (body.length > 120) return { ok: false, reason: 'long' };
@@ -11629,7 +11652,8 @@ class Store {
     const notice = this.getGroupNotice(noticeId);
     if (!notice) return { ok: false, reason: 'not_found' };
     const perm = this.getGroupNoticePermission(notice.groupId);
-    if (!perm.canManage) return { ok: false, reason: 'permission', permission: perm };
+    const mine = notice.authorId && notice.authorId === this.currentUser.id;
+    if (!perm.canManage && !(mine && perm.canWrite)) return { ok: false, reason: 'permission', permission: perm };
     this.state.groupNotices = (this.state.groupNotices || []).filter((n) => n.id !== noticeId);
     this.saveState();
     return { ok: true, notice };
@@ -11709,6 +11733,62 @@ class Store {
       /* 이미 열려 있던 방은 지우지 않는다 — 정책만 알리고 기록은 남긴다. */
       openRooms: this.state.chatRooms.filter((r) => r.groupId === groupId).length
     };
+  }
+
+  /* ------------------------------------ v35.2. 모임 게시판 작성 권한 */
+  /**
+   * 게시판(공지·일정) 작성 권한 — 모임장·부방장은 늘 쓸 수 있고,
+   * 일반 멤버는 모임장이 `memberBoardWrite` 를 켰을 때만 쓸 수 있다.
+   * @returns {{groupId:string, exists:boolean, isLeader:boolean, isDeputy:boolean,
+   *            isMember:boolean, memberCanWrite:boolean, canWrite:boolean, role:string}}
+   */
+  getGroupBoardPolicy(groupId) {
+    const g = this.getGroup(groupId);
+    const isMember = this.isGroupJoined(groupId);
+    const isLeader = !!g && this.isGroupLeader(groupId);
+    const isDeputy = !!g && isMember && this.isGroupDeputy(groupId, this.currentUser && this.currentUser.id);
+    const memberCanWrite = !!g && g.memberBoardWrite === true;
+    return {
+      groupId,
+      exists: !!g,
+      isLeader,
+      isDeputy,
+      isMember,
+      memberCanWrite,
+      canWrite: !!g && (isLeader || isDeputy || (isMember && memberCanWrite)),
+      role: isLeader ? 'leader' : (isDeputy ? 'deputy' : (isMember ? 'member' : 'guest'))
+    };
+  }
+
+  /** 모임장만 — 게시판(공지·일정)의 멤버 작성 허용을 켜고 끈다. */
+  updateGroupBoardPolicy(groupId, enabled) {
+    if (!this.isGroupLeader(groupId)) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    g.memberBoardWrite = !!enabled;
+    this.saveState();
+    return { ok: true, memberCanWrite: g.memberBoardWrite, policy: this.getGroupBoardPolicy(groupId) };
+  }
+
+  /* ------------------------------------ v35.2. 모임 알림 설정 (모임마다) */
+  getGroupNotifySetting(groupId) {
+    const g = this.getGroup(groupId);
+    return {
+      groupId,
+      exists: !!g,
+      isMember: this.isGroupJoined(groupId),
+      enabled: !!g && g.notifyEnabled !== false
+    };
+  }
+
+  /** 모임 알림 받기 ON/OFF — 그 모임에 속한 사람이면 누구나 바꿀 수 있다(나에게 오는 알림). */
+  updateGroupNotifySetting(groupId, enabled) {
+    if (!this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    g.notifyEnabled = !!enabled;
+    this.saveState();
+    return { ok: true, enabled: g.notifyEnabled, setting: this.getGroupNotifySetting(groupId) };
   }
 
   /** 이 1:1 방이 어느 모임에서 열렸는지 — 방에 groupId 가 없으면 상대 이름으로 되찾는다. */

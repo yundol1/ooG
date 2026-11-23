@@ -114,14 +114,27 @@
       </div>
     </header>
 
-    <!-- ==================== 모임 안 상단 탭 3개 (Sprint 28.5) ====================
-         모임을 열었을 때만 보인다. 하단의 전역 4탭은 그대로 두고,
-         모임 안에서는 피드·채팅·일정을 위에서 고른다. -->
-    <nav class="group-top-tabs" id="group-top-tabs" role="tablist" aria-label="모임 안 화면" hidden>
-      <button class="group-top-tab active" data-gtab="feed" role="tab" aria-selected="true" aria-controls="tab-home" type="button">피드</button>
-      <button class="group-top-tab" data-gtab="chat" role="tab" aria-selected="false" aria-controls="tab-chat" type="button">채팅</button>
-      <button class="group-top-tab" data-gtab="schedule" role="tab" aria-selected="false" aria-controls="tab-board" type="button">일정</button>
-    </nav>
+    <!-- ==================== 모임 전용 헤더 (v35.2) ====================
+         모임 공간에 들어오면 글로벌 ooG 헤더 대신 이 헤더가 선다.
+           <  뒤로가기 — 모임을 빠져나와 직전 화면(홈/탐색 등)으로
+           모임 이름 · 멤버 N명
+           삼선바  그룹 설정창(드로어) 열기 — 게시판 작성 허용·모임 정보·알림·나가기
+         상단의 '피드 | 채팅 | 일정' 탭과 어두운 대표 이미지 배너는 v35.2 에서 걷어냈다
+         (하단 4탭 첫 칸의 원형 대표 이미지와 겹치지 않게). -->
+    <header class="group-header" id="group-header" hidden>
+      <button class="group-header-back" id="btn-group-back" data-group-back="1" type="button"
+              aria-label="모임 나가기 — 이전 화면으로 돌아가기">
+        <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
+      </button>
+      <div class="group-header-text">
+        <h1 class="group-header-name" id="group-space-name">모임</h1>
+        <p class="group-header-meta" id="group-space-meta"></p>
+      </div>
+      <button class="group-header-act" id="btn-group-drawer" type="button"
+              aria-label="그룹 설정 열기" aria-controls="group-drawer" aria-expanded="false">
+        <span class="oo-icon-20" aria-hidden="true" data-oog-icon="menuLines"></span>
+      </button>
+    </header>
 
     <!-- ==================== 푸시 알림 권한 안내 배너 (Sprint 4.5) ==================== -->
     <div class="push-permission-banner" id="push-permission-banner" hidden>
@@ -207,29 +220,12 @@
 
         </div>
 
-        <!-- (2) 모임 전용 공간 = 피드(24시간 스토리 + 인스타형 피드) -->
+        <!-- (2) 모임 전용 공간 — 2번 탭 '피드' (24시간 스토리 + 인스타형 피드)
+             v35.2 — 상단 헤더는 앱 셸의 #group-header 로 올렸다. 여기에는 피드만 둔다.
+             모임 소개·아지트·멤버는 1번 탭(#tab-groupinfo)으로 모았다. -->
         <div class="group-space" id="group-space">
-          <div class="group-topbar">
-            <button class="group-back" data-group-back="1" type="button" aria-label="내 모임 갤러리로 돌아가기">
-              <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
-            </button>
-            <div class="group-topbar-text">
-              <h2 class="group-topbar-name" id="group-space-name">모임</h2>
-              <p class="group-topbar-meta" id="group-space-meta"></p>
-            </div>
-            <button class="group-topbar-act group-topbar-menu" id="btn-group-drawer" type="button"
-                    aria-label="모임 메뉴 열기(멤버·설정)" aria-controls="group-drawer" aria-expanded="false">
-              <span class="oo-icon-20" aria-hidden="true" data-oog-icon="menu"></span>
-            </button>
-          </div>
-
           <!-- 인스타그램형 24시간 스토리 바 -->
           <div class="story-bar" id="story-bar" aria-label="모임 스토리"><!-- JS --></div>
-
-          <!-- v34.1 (#22485) — 채팅은 위 탭(피드 | 채팅 | 일정) 하나로 모았다.
-               '단체 채팅'·'사진 올리기'는 +버튼·채팅 탭과 겹치므로 걷어냈고,
-               여기에는 '멤버' 하나만 남긴다. -->
-          <div class="home-hero group-actions-row" id="home-hero"><!-- JS --></div>
 
           <!-- 본문 — 아래로 스크롤하며 보는 모임 피드 -->
           <section class="home-block home-feed-block" aria-labelledby="home-photos-title">
@@ -323,26 +319,27 @@
         </div>
       </section>
 
-      <!-- ========== 0-B. 모임게시판 — 공지 · 일정 · 자유/후기 글 (Sprint 16) ==========
-           11/15 19:05 사용자: "모임피드 상단에 공지 구역이 너무 커 모임게시판 탭을 넣고 거기에 넣자". -->
+      <!-- ========== 0-A2. 모임 홈/정보 — 모임 하단 1번 탭 (v35.2) ==========
+           원형 모임 대표 이미지를 누르면 나오는 화면. 모임 소개 · 아지트 · 멤버 · 활동 요약을
+           한곳에 모은다(전에 '멤버' 알약 칩·상세 시트로 흩어져 있던 정보). -->
+      <section class="tab-view" id="tab-groupinfo">
+        <div class="ginfo" id="group-info-body"><!-- JS --></div>
+      </section>
+
+      <!-- ========== 0-B. 모임게시판 — 공지 + 일정 (v35.2 · 모임 하단 3번 탭) ==========
+           v35.2 — 상단 헤더·탭은 앱 셸로 올리고, 여기에는 [전체 · 공지 · 일정] 필터와
+           작성 권한에 따라 열리고 닫히는 '공지 쓰기 / 일정 만들기'만 둔다. -->
       <section class="tab-view" id="tab-board">
-        <div class="board-topbar">
-          <button class="group-back" data-group-back="1" type="button" aria-label="내 모임 갤러리로 돌아가기">
-            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronLeft"></span>
-          </button>
-          <div class="group-topbar-text">
-            <h2 class="group-topbar-name" id="board-space-name">모임게시판</h2>
-            <p class="group-topbar-meta" id="board-space-meta">공지 · 일정 · 자유/후기 글</p>
+        <div class="board-head">
+          <div class="board-seg" id="board-seg" role="group" aria-label="게시판 보기"><!-- JS --></div>
+          <div class="board-write-row" id="board-write-row">
+            <button class="board-write-btn" id="btn-board-write" type="button">공지 쓰기</button>
+            <p class="board-write-note" id="board-write-note"></p>
           </div>
-          <button class="group-topbar-act" id="btn-board-drawer" type="button"
-                  aria-label="모임 메뉴 열기(멤버·설정)" aria-controls="group-drawer" aria-expanded="false">
-            <span class="oo-icon-20" aria-hidden="true" data-oog-icon="menu"></span>
-          </button>
-          <button class="group-topbar-act" id="btn-board-write" type="button">글쓰기</button>
         </div>
 
         <!-- 공지 (피드 상단에서 이곳으로 옮겼다) -->
-        <section class="board-block" aria-labelledby="board-notice-title">
+        <section class="board-block" data-board-section="notice" aria-labelledby="board-notice-title">
           <div class="board-block-head">
             <h3 class="board-block-title" id="board-notice-title">공지</h3>
             <button class="board-block-more" id="btn-notice-open" type="button">전체 보기 ›</button>
@@ -354,31 +351,16 @@
         </section>
 
         <!-- 일정 (다가오는 약속 · RSVP) -->
-        <div class="home-pinned" id="home-pinned">
-          <section class="home-event-strip" aria-labelledby="home-events-title">
-            <div class="home-event-strip-head">
-              <h3 class="home-event-strip-title" id="home-events-title">다가오는 일정</h3>
-              <button class="home-block-more" id="btn-home-event-new" type="button"><span aria-hidden="true" data-oog-icon="plus"></span> 일정 만들기</button>
-            </div>
-            <div class="home-events" id="home-events"><!-- JS --></div>
-          </section>
-        </div>
-
-        <!-- 자유/후기 게시판 -->
-        <section class="board-block" aria-labelledby="board-posts-title">
-          <div class="board-block-head">
-            <h3 class="board-block-title" id="board-posts-title">
-              자유·후기 게시판 <span class="section-count" id="board-post-count">0</span>
-            </h3>
-            <button class="board-block-more" id="btn-board-write-2" type="button"><span aria-hidden="true" data-oog-icon="plus"></span> 글쓰기</button>
+        <section class="board-block" data-board-section="event" aria-labelledby="home-events-title">
+          <div class="home-event-strip-head">
+            <h3 class="home-event-strip-title" id="home-events-title">일정</h3>
+            <button class="home-block-more" id="btn-home-event-new" type="button"><span aria-hidden="true" data-oog-icon="plus"></span> 일정 만들기</button>
           </div>
-          <!-- Sprint 17 — 게시판 탭에서 바로 사진 올리기 -->
-          <div class="board-photo-row">
-            <button class="board-photo-btn" id="btn-board-photo" type="button">사진 올리기</button>
-            <button class="board-photo-btn ghost" id="btn-board-review" type="button">후기 모아보기</button>
+          <div class="home-pinned" id="home-pinned">
+            <section class="home-event-strip">
+              <div class="home-events" id="home-events"><!-- JS --></div>
+            </section>
           </div>
-          <div class="board-filter-chips" id="board-filter-chips" role="group" aria-label="게시판 말머리"><!-- JS --></div>
-          <div class="board-post-list" id="board-posts" aria-live="polite"><!-- JS --></div>
         </section>
       </section>
 
@@ -492,6 +474,16 @@
         </div>
         <!-- Sprint 17 — 쪽지를 보낸 직후 상대 프로필로 바로 이동 -->
         <div class="dm-sent-banner" id="dm-sent-banner" hidden></div>
+
+        <!-- v35.2 — 모임 안 채팅방 탭: 단체방 + 멤버 1:1을 한 화면에서 오간다. -->
+        <section class="chat-members" id="group-chat-members" aria-labelledby="group-chat-members-title" hidden>
+          <div class="chat-section-head">
+            <h3 class="chat-section-title" id="group-chat-members-title">모임 멤버와 1:1</h3>
+            <span class="chat-section-sub" id="group-chat-members-sub"></span>
+          </div>
+          <div class="group-chat-rail" id="group-chat-rail" role="group" aria-label="모임 멤버 1:1 대화"><!-- JS --></div>
+          <p class="chat-dm-policy group-chat-lock" id="group-chat-lock" hidden>모임장이 1:1 대화를 꺼두었어요. 모임 단체방에서 이야기해 주세요.</p>
+        </section>
 
         <!-- Sprint 14~15 — 모임 전체방(단체 채팅) -->
         <section class="chat-group-section" aria-labelledby="chat-group-title">
@@ -2181,19 +2173,26 @@
       </button>
     </nav>
 
-    <!-- 모임 안 4탭 — Sprint 28.5 부터는 쓰지 않는다(상단 3탭 + 전역 하단 4탭).
-         코드·마크업은 되돌리기 쉬우도록 남겨 두고 CSS 로만 숨긴다. -->
+    <!-- 모임 안 4탭 (v35.2) — 모임에 들어오면 글로벌 하단 4탭 대신 이것이 선다.
+         1 원형 모임 대표 이미지(모임 홈/정보) · 2 피드 · 3 게시판(공지+일정) · 4 채팅방(단체+1:1) -->
     <nav class="bottom-nav-bar group-nav" id="group-nav" role="tablist" aria-label="모임 안 화면">
       <span class="nav-indicator" id="nav-indicator-group" aria-hidden="true"></span>
-      <button class="nav-tab-item active" data-tab="tab-home" role="tab" aria-selected="true" aria-controls="tab-home" aria-label="피드 — 이 모임 피드">
+      <button class="nav-tab-item active" data-tab="tab-groupinfo" role="tab" aria-selected="true" aria-controls="tab-groupinfo" aria-label="모임 홈 — 모임 소개·아지트·멤버">
         <span class="tab-icon">
-          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="home"></span>
-          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="homeFill"></span>
+          <span class="nav-tab-avatar tone-neutral" id="group-nav-avatar" aria-hidden="true"><!-- JS: 원형 대표 이미지 --></span>
+        </span>
+        <span class="tab-label">모임</span>
+      </button>
+
+      <button class="nav-tab-item" data-tab="tab-home" role="tab" aria-selected="false" aria-controls="tab-home" aria-label="피드 — 이 모임 피드">
+        <span class="tab-icon">
+          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="grid"></span>
+          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="gridFill"></span>
         </span>
         <span class="tab-label">피드</span>
       </button>
 
-      <button class="nav-tab-item" data-tab="tab-board" role="tab" aria-selected="false" aria-controls="tab-board" aria-label="게시판 — 공지·일정·자유/후기 글">
+      <button class="nav-tab-item" data-tab="tab-board" role="tab" aria-selected="false" aria-controls="tab-board" aria-label="게시판 — 공지·일정">
         <span class="tab-icon">
           <span class="tab-ic-line" aria-hidden="true" data-oog-icon="note"></span>
           <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="noteFill"></span>
@@ -2201,20 +2200,12 @@
         <span class="tab-label">게시판</span>
       </button>
 
-      <button class="nav-tab-item" data-tab="tab-chat" role="tab" aria-selected="false" aria-controls="tab-chat" aria-label="디엠 — 이 모임 대화">
+      <button class="nav-tab-item" data-tab="tab-chat" role="tab" aria-selected="false" aria-controls="tab-chat" aria-label="채팅방 — 단체방과 멤버 1:1">
         <span class="tab-icon">
           <span class="tab-ic-line" aria-hidden="true" data-oog-icon="chat"></span>
           <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="chatFill"></span>
         </span>
-        <span class="tab-label">디엠</span>
-      </button>
-
-      <button class="nav-tab-item" data-tab="tab-profile" role="tab" aria-selected="false" aria-controls="tab-profile" aria-label="내정보 — 내 피드와 설정">
-        <span class="tab-icon">
-          <span class="tab-ic-line" aria-hidden="true" data-oog-icon="person"></span>
-          <span class="tab-ic-fill" aria-hidden="true" data-oog-icon="personFill"></span>
-        </span>
-        <span class="tab-label">내정보</span>
+        <span class="tab-label">채팅방</span>
       </button>
     </nav>
 

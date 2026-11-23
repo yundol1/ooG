@@ -27193,3 +27193,266 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 }
 .composer-delete:active { background: var(--fill-subtle); }
 .composer-delete .oo-ic { font-size: 16px; }
+
+/* ==========================================================================
+ * v35.2 — 모임 공간 개편 (IMG_4588 · 11/23 10:11)
+ * --------------------------------------------------------------------------
+ *  ① 모임 안에서는 글로벌 ooG 헤더 대신 **모임 전용 헤더**(< · 모임 이름 · 삼선바)가 선다.
+ *     상단 '피드 | 채팅 | 일정' 탭과 어두운 대표 이미지 배너는 걷어냈다.
+ *  ② 하단은 모임 전용 4탭 — 1 원형 모임 대표 이미지(모임 홈/정보) · 2 피드 ·
+ *     3 게시판(공지+일정) · 4 채팅방(단체+1:1).
+ *  ③ 삼선바 는 그룹 설정 드로어(게시판 멤버 작성 허용 · 모임 정보/아지트 · 가입 관리 ·
+ *     알림 · 나가기/삭제)를 연다.
+ * ========================================================================== */
+
+/* ---------- 35.2-0. 모임 모드: 글로벌 헤더/하단 탭 ↔ 모임 헤더/하단 4탭 ---------- */
+body.group-mode .app-header { display: none !important; }
+
+.group-header { display: none; }
+body.group-mode .group-header:not([hidden]) { display: flex; }
+
+.group-header {
+  flex: 0 0 auto;
+  height: calc(56px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 12px 0;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-soft);
+  position: relative;
+  z-index: 60;
+}
+
+.group-header-back,
+.group-header-act {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-base);
+  color: var(--text);
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.group-header-back:hover,
+.group-header-act:hover { background: var(--green-soft); border-color: var(--green-soft-border); color: var(--green-dark); }
+.group-header-back:active,
+.group-header-act:active { transform: scale(0.96); }
+
+.group-header-text { flex: 1 1 auto; min-width: 0; }
+.group-header-name {
+  margin: 0;
+  font-size: var(--fs-body);
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-header-meta {
+  margin: 1px 0 0;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 모임 안에서는 글로벌 하단 탭 대신 모임 4탭만 보인다 */
+#bottom-nav { display: flex !important; }
+body.group-mode #bottom-nav { display: none !important; }
+body:not(.group-mode) #group-nav { display: none !important; }
+body.group-mode #group-nav { display: flex !important; }
+
+/* 1번 탭 — 원형 모임 대표 이미지 */
+.nav-tab-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--tone-from, var(--bg-soft));
+  color: var(--tone-ink, var(--text-sub));
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid var(--border);
+}
+.nav-tab-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nav-tab-item.active .nav-tab-avatar { border-color: var(--green-solid); box-shadow: 0 0 0 2px var(--green-on); }
+
+/* ---------- 35.2-1. 모임 홈/정보 탭 ---------- */
+#tab-groupinfo { padding-bottom: 24px; }
+
+.ginfo { display: flex; flex-direction: column; gap: 12px; }
+
+.ginfo-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 18px 0 6px;
+}
+.ginfo-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--tone-from, var(--bg-soft));
+  border: 1px solid var(--border);
+}
+.ginfo-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ginfo-avatar-initial { font-size: 30px; font-weight: 700; color: var(--tone-ink, var(--text-strong)); }
+.ginfo-name { margin: 2px 0 0; font-size: var(--fs-title, 22px); font-weight: 760; letter-spacing: -0.6px; color: var(--text-strong); }
+.ginfo-meta { margin: 0; font-size: var(--fs-caption); color: var(--text-muted); }
+.ginfo-desc { margin: 2px 0 0; font-size: var(--fs-sub); color: var(--text-sub); line-height: 1.55; max-width: 32em; }
+.ginfo-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+.ginfo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-sub);
+  font-size: var(--fs-sub);
+  font-weight: 650;
+}
+.ginfo-btn.primary { background: var(--green-solid); border-color: var(--green-solid); color: #fff; }
+
+.ginfo-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-3, 16px);
+  background: var(--bg-base);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ginfo-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ginfo-card-title { margin: 0; font-size: var(--fs-sub); font-weight: 700; color: var(--text-strong); }
+.ginfo-more { border: 0; background: none; color: var(--text-muted); font-size: var(--fs-caption); font-weight: 600; }
+.ginfo-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.ginfo-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: var(--fs-caption); color: var(--text-muted); }
+.ginfo-stat b { font-size: var(--fs-body); font-weight: 750; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.ginfo-azit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ginfo-azit-row { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sub); color: var(--text); }
+.ginfo-azit-icon { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; color: var(--green-text); }
+.ginfo-azit-name { font-weight: 650; }
+.ginfo-azit-area { margin-left: auto; font-size: var(--fs-caption); color: var(--text-muted); }
+.ginfo-members { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 6px; }
+.ginfo-member { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; padding: 0; min-width: 0; }
+.ginfo-member[disabled] { opacity: 1; }
+.ginfo-member-avatar {
+  width: 44px; height: 44px; border-radius: 50%; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 680; font-size: 15px;
+}
+.ginfo-member-name { font-size: var(--fs-caption); color: var(--text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ginfo-role { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: var(--r-full); background: var(--bg-soft); color: var(--text-muted); }
+.ginfo-role.leader { background: var(--green-soft); color: var(--green-text); }
+.ginfo-role.deputy { background: var(--green-on); color: var(--green-text); }
+.ginfo-role.me { background: var(--bg-soft); color: var(--text-sub); }
+.ginfo-rules { margin: 0; font-size: var(--fs-sub); line-height: 1.6; color: var(--text-sub); }
+.ginfo-settings-link {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 44px; border-radius: var(--r-3, 16px); border: 1px dashed var(--border);
+  background: transparent; color: var(--text-muted); font-size: var(--fs-sub); font-weight: 600;
+}
+
+/* ---------- 35.2-2. 게시판 (공지 + 일정) ---------- */
+.board-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0 6px;
+}
+.board-seg {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: var(--r-full);
+  background: var(--bg-soft);
+  align-self: flex-start;
+}
+.board-seg-btn {
+  border: 0;
+  background: none;
+  border-radius: var(--r-full);
+  padding: 6px 14px;
+  font-size: var(--fs-sub);
+  font-weight: 620;
+  color: var(--text-muted);
+}
+.board-seg-btn.active { background: var(--bg-base); color: var(--green-text); box-shadow: var(--shadow-xs, 0 1px 2px rgba(15,23,42,0.08)); }
+.board-write-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.board-write-btn {
+  height: 36px;
+  padding: 0 15px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--green-solid);
+  background: var(--green-solid);
+  color: #fff;
+  font-size: var(--fs-sub);
+  font-weight: 650;
+}
+.board-write-btn.is-locked,
+.board-write-btn[disabled] {
+  background: var(--bg-soft);
+  border-color: var(--border);
+  color: var(--text-muted);
+  opacity: 1;
+}
+.board-write-note { margin: 0; font-size: var(--fs-caption); color: var(--text-muted); }
+.board-write-note.is-locked { color: var(--text-sub); }
+
+#tab-board [data-board-section][hidden] { display: none !important; }
+#tab-board .home-pinned { position: static; }
+
+/* ---------- 35.2-3. 채팅방 탭 — 단체방 + 멤버 1:1 ---------- */
+.chat-members { margin: 4px 0 14px; }
+.chat-members[hidden] { display: none; }
+.group-chat-rail { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 2px; scrollbar-width: none; }
+.group-chat-rail::-webkit-scrollbar { display: none; }
+.group-chat-member {
+  flex: 0 0 auto;
+  width: 64px;
+  border: 0;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.group-chat-member-avatar {
+  width: 46px; height: 46px; border-radius: 50%; overflow: hidden;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 680; font-size: 15px;
+}
+.group-chat-member-name { font-size: var(--fs-caption); color: var(--text); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-chat-member-hint { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+.group-chat-lock { margin: 2px 0 0; }
+
+/* ---------- 35.2-4. 그룹 설정 드로어 ---------- */
+.drawer-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
+.drawer-avatar { overflow: hidden; background: var(--tone-from, var(--bg-soft)); color: var(--tone-ink, var(--text-strong)); }
+.drawer-menu-value.has-alert { color: var(--green-text); font-weight: 700; }
+
+/* v35.2 — 모임 안에서는 글로벌 알림 권한 배너를 띄우지 않는다(모임 화면을 가리지 않게).
+   모임 밖 홈·내 프로필에서 다시 안내한다. */
+body.group-mode .push-permission-banner { display: none !important; }
+.chat-group-empty { padding: 10px 2px; }
+
+/* v35.2 — 그룹 설정창의 모임 그림은 앱의 다른 모임 표현과 같이 원형. */
+.drawer-group .drawer-avatar { border-radius: 50%; }

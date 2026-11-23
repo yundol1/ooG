@@ -160,6 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* Sprint 16 — 바깥 3탭(홈 갤러리 · 탐색 · 전체 디엠함) + 모임 전용 4탭 */
     groupSpaceId: null,          // null = 바깥 홈(내 모임 갤러리) · 값이 있으면 그 모임 안
+    groupReturnTab: 'tab-home',  // v35.2 — 모임에 들어오기 전 화면(뒤로가기로 그 자리로 돌아간다)
+    boardView: 'all',            // v35.2 — 게시판 보기 'all' | 'notice' | 'event'
     boardTag: null,              // 게시판 말머리 필터(null = 전체)
     storyId: null,               // 보고 있는 스토리 id
     storyGroupId: null,          // 스토리를 연 모임
@@ -283,8 +285,6 @@ document.addEventListener('DOMContentLoaded', () => {
     spotlightPrev: $('#btn-spotlight-prev'),
     spotlightSkip: $('#btn-spotlight-skip'),
     btnNoticeMore: $('#btn-notice-more'),
-    btnBoardPhoto: $('#btn-board-photo'),
-    btnBoardReview: $('#btn-board-review'),
     exploreSummary: $('#explore-summary'),
     /* Sprint 24 — 내 프로필 올리기 시트(만남 목적 · 한 줄 소개 · 2시간) */
     publishModal: $('#explore-publish-modal'),
@@ -418,7 +418,6 @@ document.addEventListener('DOMContentLoaded', () => {
     groupSpaceName: $('#group-space-name'),
     groupSpaceMeta: $('#group-space-meta'),
     groupDrawerBtn: $('#btn-group-drawer'),
-    boardDrawerBtn: $('#btn-board-drawer'),
     profileDrawerBtn: $('#btn-profile-drawer'),
     groupDrawer: $('#group-drawer'),
     groupDrawerBody: $('#group-drawer-body'),
@@ -445,12 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnStoryDelete: $('#btn-story-delete'),
     btnStoryPrev: $('#btn-story-prev'),
     btnStoryNext: $('#btn-story-next'),
-    boardSpaceName: $('#board-space-name'),
-    boardSpaceMeta: $('#board-space-meta'),
     boardNoticeList: $('#board-notice-list'),
-    boardPostList: $('#board-posts'),
-    boardPostCount: $('#board-post-count'),
-    boardFilterChips: $('#board-filter-chips'),
     btnNoticeOpen: $('#btn-notice-open'),
     ageRangeMin: $('#age-range-min'),
     ageRangeMax: $('#age-range-max'),
@@ -472,7 +466,15 @@ document.addEventListener('DOMContentLoaded', () => {
     profileGroupContext: $('#profile-group-context'),
     profileGroupContextName: $('#profile-group-context-name'),
     groupNav: $('#group-nav'),
-    groupTopTabs: $('#group-top-tabs'),
+    groupHeader: $('#group-header'),
+    groupNavAvatar: $('#group-nav-avatar'),
+    groupInfoBody: $('#group-info-body'),
+    boardSeg: $('#board-seg'),
+    boardWriteNote: $('#board-write-note'),
+    groupChatMembers: $('#group-chat-members'),
+    groupChatRail: $('#group-chat-rail'),
+    groupChatMembersSub: $('#group-chat-members-sub'),
+    groupChatLock: $('#group-chat-lock'),
     navIndicatorGroup: $('#nav-indicator-group'),
     bottomNav: $('#bottom-nav'),
     // explore (토스쇼핑형 2열 메이슨리)
@@ -512,7 +514,6 @@ document.addEventListener('DOMContentLoaded', () => {
     feedList: $('#feed-posts-container'),
     fab: $('#fab-write'),
     /* Sprint 14 — 홈(내 모임 허브) · 단체 채팅 · 일정 · 전체 멤버 */
-    homeHero: $('#home-hero'),
     homeEvents: $('#home-events'),
     homeEventNew: $('#btn-home-event-new'),
     homeViewSeg: $('#home-view-seg'),
@@ -630,7 +631,6 @@ document.addEventListener('DOMContentLoaded', () => {
     regionModal: $('#region-modal'),
     regionSheetCurrent: $('#region-sheet-current'),
     filterBearChip: $('#filter-bear-chip'),
-    groupTopTabs: $('#group-top-tabs'),
     dmRequestSection: $('#dm-request-section'),
     dmRequestList: $('#dm-request-list'),
     dmRequestCount: $('#chat-request-count'),
@@ -2043,8 +2043,8 @@ document.addEventListener('DOMContentLoaded', () => {
       syncNavMode();
       updateBadges();
     }
-    /* Sprint 16 — 모임게시판(tab-board)은 모임 안에서만 볼 수 있다. 갤러리로 나가면 피드로 돌린다. */
-    if (tabId === 'tab-board' && !ui.groupSpaceId) tabId = 'tab-home';
+    /* Sprint 16 — 모임게시판·모임 홈은 모임 안에서만 볼 수 있다. 갤러리로 나가면 홈으로 돌린다. */
+    if ((tabId === 'tab-board' || tabId === 'tab-groupinfo') && !ui.groupSpaceId) tabId = 'tab-home';
     /* 떠나는 탭의 스크롤 위치를 기억하고, 돌아올 때 그 자리로 복원한다 */
     if (el.main && ui.activeTab && ui.activeTab !== tabId) {
       ui.scrollByTab[ui.activeTab] = el.main.scrollTop;
@@ -2069,6 +2069,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (top) top.classList.remove('is-tucked');
     }
     if (tabId === 'tab-home') { renderHome(); }
+    if (tabId === 'tab-groupinfo') { renderGroupInfo(); }
     if (tabId === 'tab-board') { renderBoard(); }
     if (tabId === 'tab-explore' && !ui.exploreRendered) { renderExplore(); }
     if (tabId === 'tab-chat') { renderChatRooms(); }
@@ -2077,9 +2078,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (tabId === 'tab-myprofile') { renderMyProfileTab(); }
 
-    /* v33.9 (#22238) — 글쓰기 FAB은 홈·게시판에서 늘 노출한다.
-       모임에 가입하지 않은 이용자도 홈에서 바로 자유 피드를 쓸 수 있어야 한다. */
-    el.fab.classList.toggle('visible', tabId === 'tab-board' || tabId === 'tab-home');
+    /* v33.9 (#22238) — 글쓰기 FAB은 홈(자유 피드)과 모임 피드에서 노출한다.
+       모임에 가입하지 않은 이용자도 홈에서 바로 자유 피드를 쓸 수 있어야 한다.
+       v35.2 — 게시판 탭은 '공지 쓰기' 버튼이 따로 있어 + 를 겹치지 않게 감춘다. */
+    el.fab.classList.toggle('visible', tabId === 'tab-home');
     /* v34.2 — 설정(삼선바)은 내 프로필 탭 우측 상단에만 있다. */
     if (el.myProfileMenu) el.myProfileMenu.hidden = tabId !== 'tab-myprofile';
 
@@ -2154,11 +2156,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  /* 모임 상단 3탭 */
-  el.groupTopTabs && el.groupTopTabs.addEventListener('click', (e) => {
-    const tab = e.target.closest('[data-gtab]');
-    if (tab) goGroupTopTab(tab.dataset.gtab);
-  });
+  /* v35.2 — 모임 상단 3탭은 없어졌다(모임 하단 4탭 + 헤더 설정으로 대신한다). */
 
   window.addEventListener('resize', () => moveNavIndicator({ instant: true }));
 
@@ -2187,35 +2185,37 @@ document.addEventListener('DOMContentLoaded', () => {
     return !!(ui.groupSpaceId && store.isGroupJoined(ui.groupSpaceId));
   }
 
-  /** 탭바를 바꾼다 — 바깥은 3탭(홈·탐색·전체 디엠함), 모임 안은 4탭(피드·게시판·디엠·내정보). */
+  /**
+   * 탭바를 바꾼다 — 바깥은 글로벌 4탭(홈·탐색·전체 디엠함·내 프로필),
+   * 모임 안은 모임 전용 헤더 + 모임 전용 4탭(모임·피드·게시판·채팅방).
+   * v35.2 — 모임 안에서는 글로벌 ooG 헤더와 글로벌 하단 탭을 감춘다.
+   */
   function syncNavMode() {
     const on = isGroupMode();
     document.body.classList.toggle('group-mode', on);
-    /* Sprint 28.5 — 모임 안에서도 전역 하단 4탭은 늘 그대로. 모임 하단 탭은 쓰지 않는다. */
-    if (el.groupNav) el.groupNav.setAttribute('aria-hidden', 'true');
-    if (el.bottomNavEl) el.bottomNavEl.setAttribute('aria-hidden', 'false');
-    if (el.groupTopTabs) el.groupTopTabs.hidden = !on;
-    syncGroupTopTabs();
+    if (el.groupNav) el.groupNav.setAttribute('aria-hidden', on ? 'false' : 'true');
+    if (el.bottomNavEl) el.bottomNavEl.setAttribute('aria-hidden', on ? 'true' : 'false');
+    if (el.groupHeader) el.groupHeader.hidden = !on;
+    if (on) {
+      const grp = homeGroup();
+      if (grp) renderGroupHeader(grp);
+    }
     moveNavIndicator({ instant: true });
   }
 
-  /** 모임 상단 탭(피드·채팅·일정)의 활성 표시를 지금 화면에 맞춘다. */
-  function syncGroupTopTabs() {
-    if (!el.groupTopTabs) return;
-    const map = { 'tab-home': 'feed', 'tab-chat': 'chat', 'tab-board': 'schedule' };
-    const now = map[ui.activeTab] || 'feed';
-    el.groupTopTabs.querySelectorAll('.group-top-tab').forEach((b) => {
-      const on = b.dataset.gtab === now;
-      b.classList.toggle('active', on);
-      b.setAttribute('aria-selected', String(on));
-    });
-  }
+  /* v35.2 — 상단 3탭은 걷어냈다. 테스트·옛 호출 호환용으로 이름만 남긴다. */
+  function syncGroupTopTabs() { /* no-op */ }
 
-  /** 상단 탭 → 화면. 일정은 모임 게시판(공지·일정·글)을 일정 먼저 보여주는 화면이다. */
+  /** 모임 안 탭 이름 → 화면. 옛 상단 탭 이름(feed·chat·schedule)도 그대로 받는다. */
   function goGroupTopTab(name) {
     if (!isGroupMode()) return;
-    const tab = name === 'chat' ? 'tab-chat' : name === 'schedule' ? 'tab-board' : 'tab-home';
-    switchTab(tab);
+    const map = {
+      info: 'tab-groupinfo', home: 'tab-groupinfo',
+      feed: 'tab-home',
+      chat: 'tab-chat',
+      schedule: 'tab-board', board: 'tab-board'
+    };
+    switchTab(map[name] || 'tab-groupinfo');
   }
 
   /**
@@ -2229,8 +2229,13 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('가입한 모임만 들어갈 수 있어요', 'warning');
       return { ok: false, reason: 'not_member' };
     }
-    /* Sprint 28.5 — 모임에 들어가기 전 갤러리 스크롤을 기억했다가 나올 때 되돌린다. */
-    if (el.main && !isGroupMode()) ui.galleryScroll = el.main.scrollTop;
+    /* Sprint 28.5 — 모임에 들어가기 전 갤러리 스크롤을 기억했다가 나올 때 되돌린다.
+       v35.2 — 돌아갈 화면(홈/탐색/디엠함)도 함께 기억해 '<' 가 그 자리로 돌아간다. */
+    if (el.main && !isGroupMode()) {
+      ui.galleryScroll = el.main.scrollTop;
+      ui.groupReturnTab = (ui.activeTab === 'tab-groupinfo' || ui.activeTab === 'tab-board')
+        ? 'tab-home' : (ui.activeTab || 'tab-home');
+    }
     ui.groupSpaceId = groupId;
     ui.homeGroupId = groupId;
     ui.feedGroupId = groupId;
@@ -2241,7 +2246,9 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 32.5 — 들어간 모임의 빨간 점을 지운다(방문 시각 기록). */
     store.markGroupVisited(groupId);
     syncNavMode();
-    switchTab(tabId || 'tab-home');
+    /* v35.2 — 모임에 들어오면 1번 탭(원형 대표 이미지 = 모임 홈/정보)부터.
+       '피드 보기'처럼 피드를 지정해 들어온 때는 그 탭을 그대로 연다. */
+    switchTab(tabId || 'tab-groupinfo');
     updateBadges();
     if (el.main) el.main.scrollTop = 0;
     /* v33.7 — 모임에 들어갈 때 대표 이미지가 잠깐 뜨는 진입 로딩 화면(`#22036`). */
@@ -2333,20 +2340,27 @@ document.addEventListener('DOMContentLoaded', () => {
     return node;
   }
 
-  /** 갤러리로 돌아가기 — 모임 안 4탭이 바깥 3탭으로 돌아온다. */
+  /**
+   * 모임을 나가기 — v35.2 는 들어오기 전 화면(홈·탐색·디엠함)과 글로벌 하단 탭 상태로
+   * 정확히 돌아간다. 모임 헤더의 '<'(data-group-back)·옆으로 밀기 뒤로가기가 같은 길을 쓴다.
+   */
   function exitGroupSpace() {
     clearGroupSplash();
+    if (ui.drawerOpen) closeDrawer({ silent: true });
     ui.feedHashtag = null;
+    const back = ui.groupReturnTab || 'tab-home';
     ui.groupSpaceId = null;
     syncNavMode();
-    switchTab('tab-home');
+    const target = (back === 'tab-board' || back === 'tab-groupinfo') ? 'tab-home' : back;
+    switchTab(target);
     updateBadges();
-    /* 갤러리로 돌아오면 보던 자리로 — 처음으로 튀지 않는다. */
-    restoreScroll(ui.galleryScroll || 0);
+    /* 갤러리(홈)로 돌아오면 보던 자리로 — 처음으로 튀지 않는다. */
+    if (target === 'tab-home') restoreScroll(ui.galleryScroll || 0);
   }
 
   /** 예전 이름 호환 — 모임 전환도 '그 모임 들어가기'와 같은 동작이다. */
   function switchHomeGroup(groupId) {
+    /* 모임을 바꿔 열 때는 그 모임 피드부터(예전과 같다). 게시판을 보고 있었으면 게시판 유지. */
     return enterGroupSpace(groupId, ui.activeTab === 'tab-board' ? 'tab-board' : 'tab-home');
   }
 
@@ -2372,19 +2386,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 모임 안 상단 ?/이름/인원 — 뒤로가기·멤버 버튼이 산다. */
-  function renderGroupSpaceTop(grp) {
+  /**
+   * v35.2 — 모임 전용 헤더: < 뒤로가기 · 모임 이름 · 멤버/사진 · 삼선바 그룹 설정.
+   * 하단 1번 탭의 원형 대표 이미지도 같은 곳에서 맞춘다.
+   */
+  function renderGroupHeader(grp) {
+    if (!grp) return;
     if (el.groupSpaceName) el.groupSpaceName.textContent = grp.name;
     if (el.groupSpaceMeta) {
-      const story = store.getGroupStoryStats(grp.id);
       const photos = store.getGroupPhotoPosts(grp.id).filter((p) => p.photoUrl).length;
-      /* Sprint 28.5 — 스토리는 플래그가 켜져 있을 때만 센다. */
-      el.groupSpaceMeta.textContent = SHOW_STORIES
-        ? `멤버 ${grp.memberCount}명 · 사진 ${photos}장 · 스토리 ${story.total}`
-        : `멤버 ${grp.memberCount}명 · 사진 ${photos}장`;
+      el.groupSpaceMeta.textContent = `멤버 ${grp.memberCount}명 · 사진 ${photos}장`;
     }
-    applyGroupTopbarCover(grp);
+    renderGroupNavAvatar(grp);
   }
+
+  /** 모임 하단 1번 탭 아이콘 자리 — 원형 대표 이미지(없으면 모임 이름 첫 글자 + 취미 색). */
+  function renderGroupNavAvatar(grp) {
+    if (!el.groupNavAvatar || !grp) return;
+    const vis = groupCoverVisual(grp, 'circle');
+    const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
+    el.groupNavAvatar.className = `nav-tab-avatar tone-${tone}`;
+    if (vis.photoUrl) {
+      el.groupNavAvatar.innerHTML = `<img class="nav-tab-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" decoding="async">`;
+      const img = el.groupNavAvatar.querySelector('img');
+      if (img) img.addEventListener('error', () => {
+        el.groupNavAvatar.classList.remove('has-photo');
+        el.groupNavAvatar.textContent = (grp.name || '?').charAt(0);
+      });
+      el.groupNavAvatar.classList.add('has-photo');
+    } else {
+      el.groupNavAvatar.classList.remove('has-photo');
+      el.groupNavAvatar.textContent = (grp.name || '?').charAt(0);
+    }
+  }
+
+  /** 옛 이름 호환 — 모임 헤더를 다시 그린다. */
+  function renderGroupSpaceTop(grp) { renderGroupHeader(grp); }
 
   /* ------------------------------------------------------------------
    * v33.8 (#22158 · IMG_4572) — 모임 상단 헤더에 대표 이미지 + 그라데이션
@@ -2397,55 +2434,10 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   const GROUP_TOP_COVER_TONES = ['green', 'violet', 'teal', 'amber', 'sky', 'coral', 'mint', 'neutral'];
 
-  function applyGroupTopbarCover(grp) {
-    const bar = document.querySelector('#group-space .group-topbar');
-    if (!bar || !grp) return;
-    const vis = groupCoverVisual(grp, 'card');
-    const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
-    /* 같은 모임을 다시 그릴 때 색 클래스가 쌓이지 않게 이전 것만 지운다. */
-    const prevTone = bar.getAttribute('data-cover-tone');
-    if (prevTone && prevTone !== tone) bar.classList.remove(`tone-${prevTone}`);
-    bar.classList.add('has-cover', `tone-${tone}`);
-    bar.setAttribute('data-cover-tone', tone);
-    const photo = vis.photoUrl ? String(vis.photoUrl) : '';
-    if (photo) {
-      /* CSS 변수 안의 url() 은 **스타일시트 기준**으로 풀린다(css/assets/... 로 잘못 잡힘).
-         그래서 문서 기준 절대 주소로 바꿔 넣는다(data:·http(s)는 그대로). */
-      let abs = photo;
-      if (!/^(data:|https?:)/i.test(photo)) {
-        try { abs = new URL(photo, document.baseURI).href; } catch (e) { abs = photo; }
-      }
-      bar.style.setProperty('--gtb-cover', `url("${abs.replace(/"/g, '%22')}")`);
-      bar.classList.add('has-photo');
-    } else {
-      bar.style.removeProperty('--gtb-cover');
-      bar.classList.remove('has-photo');
-    }
-    /* 사진이 없을 때만 보이는 작은 아이콘(사진 자리 오른쪽 위). */
-    let mark = bar.querySelector('.group-topbar-cover-mark');
-    if (!mark) {
-      mark = document.createElement('span');
-      mark.className = 'group-topbar-cover-mark';
-      mark.setAttribute('aria-hidden', 'true');
-      const back = bar.querySelector('.group-back');
-      if (back && back.parentNode === bar) bar.insertBefore(mark, back.nextSibling);
-      else bar.appendChild(mark);
-    }
-    mark.innerHTML = ic(vis.icon);
-    syncCoverHeaderCompact();
-  }
-
-  /* v33.8 — 스크롤하면 모임 헤더가 사진 띠를 접고 한 줄로 줄어든다(고정 높이가 화면을 먹지 않게).
-     맨 위(28px 안쪽)에서는 사진이 보이는 큰 헤더, 내리면 이름만 남는 64px 헤더. */
-  function syncCoverHeaderCompact() {
-    const bar = document.querySelector('#group-space .group-topbar.has-cover');
-    if (!bar || !el.main) return;
-    bar.classList.toggle('is-compact', el.main.scrollTop > 28);
-  }
-
-  el.main && el.main.addEventListener('scroll', () => {
-    if (document.body.classList.contains('group-mode')) syncCoverHeaderCompact();
-  }, { passive: true });
+  /* v35.2 — v33.8 의 '어두운 대표 이미지 배너 + 스크롤하면 접히는 헤더'는 걷어냈다.
+     대표 이미지는 하단 1번 탭의 원형 아이콘으로만 보인다. 옛 호출은 조용히 넘어간다. */
+  function applyGroupTopbarCover(grp) { return !!grp; }
+  function syncCoverHeaderCompact() { /* no-op */ }
 
   /* ==========================================================================
    * H1 (11/21) — 홈은 아래 요소만 남긴다
@@ -3576,7 +3568,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('[data-my-group-all]')) { openMyGroupsScreen(); return; }
         if (e.target.closest('[data-my-group-create]')) { openGroupCreate(); return; }
         const item = e.target.closest('[data-my-group]');
-        if (item) enterGroupSpace(item.dataset.myGroup, 'tab-home');
+        if (item) enterGroupSpace(item.dataset.myGroup, 'tab-groupinfo');
       });
     }
     if (el.btnMyGroupsMore) el.btnMyGroupsMore.addEventListener('click', () => openMyGroupsScreen());
@@ -3595,7 +3587,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.closest('[data-home-find]')) { openFindScreen(); return; }
         const card = e.target.closest('[data-group-card]');
         if (!card) return;
-        if (card.dataset.joined === '1') enterGroupSpace(card.dataset.groupId, 'tab-home');
+        if (card.dataset.joined === '1') enterGroupSpace(card.dataset.groupId, 'tab-groupinfo');
         else openGroupDetail(card.dataset.groupId);
       });
       el.homeRecommendGrid.addEventListener('keydown', (e) => {
@@ -3685,7 +3677,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.myGroupsList) {
       el.myGroupsList.addEventListener('click', (e) => {
         const card = e.target.closest('[data-group-card]');
-        if (card) enterGroupSpace(card.dataset.groupId, 'tab-home');
+        if (card) enterGroupSpace(card.dataset.groupId, 'tab-groupinfo');
       });
       el.myGroupsList.addEventListener('keydown', (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -3708,7 +3700,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const gid = row.dataset.myweekGroup;
         const eid = row.dataset.myweekEvent;
         closeSubscreens();
-        const res = enterGroupSpace(gid, eid ? 'tab-board' : 'tab-home');
+        const res = enterGroupSpace(gid, eid ? 'tab-board' : 'tab-groupinfo');
         if (res && res.ok && eid) setTimeout(() => openEventDetail(eid), 260);
       });
     }
@@ -3921,7 +3913,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const card = e.target.closest('[data-group-card]');
         if (!card) return;
-        if (card.dataset.joined === '1') { closeSubscreens(); enterGroupSpace(card.dataset.groupId, 'tab-home'); }
+        if (card.dataset.joined === '1') { closeSubscreens(); enterGroupSpace(card.dataset.groupId, 'tab-groupinfo'); }
         else openGroupDetail(card.dataset.groupId);
       });
       el.findGrid.addEventListener('keydown', (e) => {
@@ -4744,24 +4736,173 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ------------------------------------------------------------------
-   * 1-D. Sprint 16 — 모임게시판 (공지 · 일정 · 자유/후기 글)
+   * 1-C2. v35.2 — 모임 홈/정보 (하단 1번 탭 = 원형 모임 대표 이미지)
+   * ----------------------------------------------------------------
+   * 11/23 10:11 사용자(IMG_4588): "모임 하단 4탭 — 1번 탭은 원형 모임 대표 이미지,
+   * 누르면 모임 홈/정보(모임 소개, 아지트, 멤버 목록, 활동 요약)를 보여줘."
+   *  · 상단 헤더·탭은 앱 셸(#group-header)이 맡고, 이 탭은 모임의 '얼굴'만 보여준다.
+   *  · 전에 '멤버' 알약 칩·모임 상세 시트로 흩어져 있던 정보를 여기로 모았다.
+   * ======================================================================== */
+  function renderGroupInfo() {
+    if (!isGroupMode()) { renderHome(); return; }
+    const grp = homeGroup();
+    if (!grp || !el.groupInfoBody) return;
+    ui.feedGroupId = grp.id;
+    renderGroupHeader(grp);
+
+    const roster = store.getGroupRoster(grp.id);
+    const posts = store.getGroupPhotoPosts(grp.id);
+    const photos = posts.filter((p) => p.photoUrl).length;
+    const upcoming = store.getUpcomingGroupEvents(grp.id, 99);
+    const notices = store.getGroupNotices(grp.id).length;
+    const azits = store.getGroupHangouts(grp);
+    const vis = groupCoverVisual(grp, 'circle');
+    const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
+    const isLeader = store.isGroupLeader(grp.id);
+    const azitLabel = azits.length ? azits[0].name : (grp.location || '온라인');
+    const roleOf = (m) => {
+      if (m.role === 'leader') return '<span class="ginfo-role leader">모임장</span>';
+      if (store.isGroupDeputy(grp.id, m.id)) return '<span class="ginfo-role deputy">부방장</span>';
+      if (m.isMe) return '<span class="ginfo-role me">나</span>';
+      return '';
+    };
+
+    el.groupInfoBody.innerHTML = `
+      <section class="ginfo-hero" aria-label="${escapeHtml(grp.name)} 모임 정보">
+        <span class="ginfo-avatar tone-${escapeHtml(tone)}">
+          ${vis.photoUrl
+            ? `<img class="ginfo-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" decoding="async">`
+            : `<span class="ginfo-avatar-initial">${escapeHtml((grp.name || '?').charAt(0))}</span>`}
+        </span>
+        <h2 class="ginfo-name">${escapeHtml(grp.name)}</h2>
+        <p class="ginfo-meta">${escapeHtml(grp.categoryName || '모임')} · 아지트 ${escapeHtml(azitLabel)} · 멤버 ${grp.memberCount}명</p>
+        <p class="ginfo-desc">${escapeHtml(grp.description || '')}</p>
+        <div class="ginfo-actions">
+          <button class="ginfo-btn primary" data-ginfo-chat="${grp.id}" type="button">
+            <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chat"></span>단체 채팅</button>
+          <button class="ginfo-btn" data-ginfo-members="${grp.id}" type="button">멤버 ${roster.total}</button>
+          ${isLeader ? `<button class="ginfo-btn" data-ginfo-edit="${grp.id}" type="button">모임 정보 수정</button>` : ''}
+        </div>
+      </section>
+
+      <section class="ginfo-card" aria-labelledby="ginfo-activity-title">
+        <h3 class="ginfo-card-title" id="ginfo-activity-title">활동 요약</h3>
+        <div class="ginfo-stats">
+          <span class="ginfo-stat"><b>${posts.length}</b>글</span>
+          <span class="ginfo-stat"><b>${photos}</b>사진</span>
+          <span class="ginfo-stat"><b>${upcoming.length}</b>다가오는 일정</span>
+          <span class="ginfo-stat"><b>${notices}</b>공지</span>
+        </div>
+      </section>
+
+      <section class="ginfo-card" aria-labelledby="ginfo-azit-title">
+        <h3 class="ginfo-card-title" id="ginfo-azit-title">아지트</h3>
+        <ul class="ginfo-azit-list">
+          ${azits.length ? azits.map((a) => `
+            <li class="ginfo-azit-row">
+              <span class="ginfo-azit-icon" aria-hidden="true">${ic(a.icon || 'pin')}</span>
+              <span class="ginfo-azit-name">${escapeHtml(a.name)}</span>
+              <span class="ginfo-azit-area">${escapeHtml(a.areaName || '')}</span>
+            </li>`).join('')
+            : `<li class="ginfo-azit-row"><span class="ginfo-azit-icon" aria-hidden="true">${ic('pin')}</span>
+                 <span class="ginfo-azit-name">${escapeHtml(grp.location || '온라인')}</span></li>`}
+        </ul>
+      </section>
+
+      <section class="ginfo-card" aria-labelledby="ginfo-members-title">
+        <div class="ginfo-card-head">
+          <h3 class="ginfo-card-title" id="ginfo-members-title">멤버 <span class="section-count">${roster.total}</span></h3>
+          <button class="ginfo-more" data-ginfo-members="${grp.id}" type="button">전체 보기 ›</button>
+        </div>
+        <div class="ginfo-members">
+          ${roster.members.slice(0, 8).map((m) => `
+            <button class="ginfo-member" data-ginfo-member="${m.id}" type="button" ${m.isMe ? 'disabled aria-disabled="true"' : ''}>
+              <span class="ginfo-member-avatar" style="background:${m.gradient}">${m.photoUrl ? avatarImgHTML(m.photoUrl, m.name) : escapeHtml(m.avatarText)}</span>
+              <span class="ginfo-member-name">${escapeHtml(m.name)}</span>
+              ${roleOf(m)}
+            </button>`).join('')}
+        </div>
+      </section>
+
+      ${grp.rules ? `<section class="ginfo-card" aria-labelledby="ginfo-rules-title">
+        <h3 class="ginfo-card-title" id="ginfo-rules-title">모임 규칙</h3>
+        <p class="ginfo-rules">${escapeHtml(grp.rules)}</p>
+      </section>` : ''}
+
+      <button class="ginfo-settings-link" data-ginfo-settings="1" type="button">
+        <span class="oo-icon-17" aria-hidden="true" data-oog-icon="menuLines"></span>그룹 설정 열기
+      </button>`;
+  }
+
+  /* ------------------------------------------------------------------
+   * 1-D. Sprint 16 — 모임게시판 (v35.2: 공지 + 일정)
    * ---------------------------------------------------------------- */
   function renderBoard() {
     if (!isGroupMode()) { renderHome(); return; }
     const grp = homeGroup();
     if (!grp) { renderGallery(); return; }
     ui.feedGroupId = grp.id;
-    if (el.boardSpaceName) el.boardSpaceName.textContent = grp.name;
-    if (el.boardSpaceMeta) el.boardSpaceMeta.textContent = '공지 · 일정 · 자유/후기 글';
+    renderGroupHeader(grp);
+    renderBoardSeg();
+    renderBoardPerms(grp);
     renderHomeNoticeBar(grp);
     renderHomeEvents(grp);
     renderBoardNotices(grp);
-    renderBoardPosts(grp);
     if (el.navHomeBadge) {
       const upcoming = store.getUpcomingGroupEvents(grp.id, 9).length;
       el.navHomeBadge.textContent = String(upcoming);
       el.navHomeBadge.classList.toggle('hide', upcoming === 0);
     }
+  }
+
+  /** 게시판 필터 — 전체 · 공지 · 일정. 고른 곳만 남기고 나머지는 숨긴다. */
+  const BOARD_VIEWS = [
+    { id: 'all', label: '전체' },
+    { id: 'notice', label: '공지' },
+    { id: 'event', label: '일정' }
+  ];
+
+  function renderBoardSeg() {
+    if (el.boardSeg) {
+      el.boardSeg.innerHTML = BOARD_VIEWS.map((v) => `
+        <button class="board-seg-btn ${ui.boardView === v.id ? 'active' : ''}" data-board-view="${v.id}"
+                type="button" aria-pressed="${ui.boardView === v.id}">${v.label}</button>`).join('');
+    }
+    $$('#tab-board [data-board-section]').forEach((sec) => {
+      const kind = sec.dataset.boardSection;
+      sec.hidden = !(ui.boardView === 'all' || ui.boardView === kind);
+    });
+  }
+
+  function setBoardView(view) {
+    ui.boardView = BOARD_VIEWS.some((v) => v.id === view) ? view : 'all';
+    renderBoardSeg();
+    return ui.boardView;
+  }
+
+  /**
+   * 게시판 작성 권한 — 모임장·부방장은 늘 쓸 수 있고, 일반 멤버는 삼선바 그룹 설정의
+   * '게시판 멤버 작성 허용'이 켜져 있을 때만 쓸 수 있다. 끼져 있으면 버튼을 잠그고
+   * "운영자만 작성할 수 있어요"를 적는다.
+   */
+  function renderBoardPerms(grp) {
+    const policy = store.getGroupBoardPolicy(grp.id);
+    const noticeBtn = $('#btn-board-write');
+    const eventBtn = $('#btn-home-event-new');
+    [noticeBtn, eventBtn].forEach((btn) => {
+      if (!btn) return;
+      btn.disabled = !policy.canWrite;
+      btn.classList.toggle('is-locked', !policy.canWrite);
+      btn.setAttribute('aria-disabled', String(!policy.canWrite));
+      if (btn.dataset.baseLabel === undefined) btn.dataset.baseLabel = btn.textContent.trim();
+    });
+    if (el.boardWriteNote) {
+      el.boardWriteNote.textContent = policy.canWrite
+        ? (policy.role === 'member' ? '멤버도 공지·일정을 쓸 수 있어요' : '모임장·부방장이 공지·일정을 쓸 수 있어요')
+        : '운영자만 작성할 수 있어요';
+      el.boardWriteNote.classList.toggle('is-locked', !policy.canWrite);
+    }
+    return policy;
   }
 
   /** 게시판의 공지 목록 — 고정 → 최신 순. Sprint 17: 읽음 수 표시 + 지난 공지 접기. */
@@ -5037,9 +5178,9 @@ document.addEventListener('DOMContentLoaded', () => {
       el.homeNoticeBar.innerHTML = `
         <button class="home-notice-line is-empty" data-notice-open="${grp.id}" type="button">
           <span class="notice-pin-body">
-            <span class="notice-pin-text">아직 공지가 없어요${perm.canManage ? ' · 첫 공지를 남겨보세요' : ''}</span>
+            <span class="notice-pin-text">아직 공지가 없어요${perm.canWrite ? ' · 첫 공지를 남겨보세요' : ''}</span>
           </span>
-          <span class="notice-pin-more">${perm.canManage ? '쓰기' : '전체'} ›</span>
+          <span class="notice-pin-more">${perm.canWrite ? '쓰기' : '전체'} ›</span>
         </button>`;
       return;
     }
@@ -5440,6 +5581,33 @@ document.addEventListener('DOMContentLoaded', () => {
     resendGroupChatMessage(btn.dataset.resendGroup, btn.dataset.resendMessage);
   });
 
+  /**
+   * v35.2 — 모임 채팅방 탭: 단체방 바로 위에 '모임 멤버와 1:1' 원형 줄.
+   * 멤버를 누르면 그 사람과의 1:1 방이 열린다(이미 있으면 그 방, 없으면 새로 연다).
+   */
+  function renderGroupChatMembers(grp, inGroup) {
+    if (!el.groupChatMembers) return;
+    el.groupChatMembers.hidden = !(inGroup && grp);
+    if (!inGroup || !grp) return;
+    const dm = store.getGroupDmPolicy(grp.id);
+    const roster = store.getGroupRoster(grp.id);
+    const others = roster.members.filter((m) => !m.isMe);
+    if (el.groupChatMembersSub) el.groupChatMembersSub.textContent = `멤버 ${roster.total}명`;
+    if (el.groupChatLock) el.groupChatLock.hidden = dm.enabled;
+    if (el.groupChatRail) {
+      el.groupChatRail.hidden = !dm.enabled;
+      el.groupChatRail.innerHTML = others.length
+        ? others.map((m) => `
+            <button class="group-chat-member" data-group-chat-member="${m.id}" type="button"
+                    aria-label="${escapeHtml(m.name)}님과 1:1 대화 열기">
+              <span class="group-chat-member-avatar" style="background:${m.gradient}">${m.photoUrl ? avatarImgHTML(m.photoUrl, m.name) : escapeHtml(m.avatarText)}</span>
+              <span class="group-chat-member-name">${escapeHtml(m.name)}</span>
+              <span class="group-chat-member-hint">1:1</span>
+            </button>`).join('')
+        : '<p class="board-empty">아직 나 혼자예요 · 멤버가 들어오면 여기서 바로 1:1을 열 수 있어요.</p>';
+    }
+  }
+
   /** 채팅 탭의 '모임 단체방' 목록 — 가입한 모임 전부, 최근 대화 순. */
   function renderChatGroupRooms() {
     if (!el.chatGroupRooms) return;
@@ -5626,8 +5794,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const ageRange = store.getGroupAgeRange(grp.id);
     const cover = store.getGroupCover(grp.id);
     const leader = roster.members.find((m) => m.isLeader) || roster.members[0];
+    /* v35.2 — 그룹 설정창: 게시판 작성 권한 · 모임 알림 · 가입 신청 */
+    const boardPolicy = store.getGroupBoardPolicy(grp.id);
+    const notify = store.getGroupNotifySetting(grp.id);
+    const pendingApps = isLeader && joinMode === 'approval' ? store.getPendingApplications(grp.id).length : 0;
 
-    if (el.groupDrawerAvatar) el.groupDrawerAvatar.innerHTML = ic(grp.icon || 'dot');
+    if (el.groupDrawerAvatar) {
+      const vis = groupCoverVisual(grp, 'circle');
+      const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
+      el.groupDrawerAvatar.className = `drawer-avatar tone-${tone}`;
+      el.groupDrawerAvatar.innerHTML = vis.photoUrl
+        ? `<img class="drawer-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" decoding="async">`
+        : escapeHtml((grp.name || '?').charAt(0));
+    }
     if (el.groupDrawerName) el.groupDrawerName.textContent = grp.name;
     if (el.groupDrawerMeta) {
       el.groupDrawerMeta.textContent = `멤버 ${roster.total}명 · ${isLeader ? '내가 모임장' : `${leader ? leader.name : '모임장'} 모임장`}`;
@@ -5715,20 +5894,54 @@ document.addEventListener('DOMContentLoaded', () => {
             : `<span class="drawer-setting-value">${perms.deputyCanModerate ? '함께 관리' : '모임장만'}</span>`}
         </div>
 
+        <!-- v35.2 — 게시판(공지·일정) 멤버 작성 허용. 모임장만 바꿀 수 있다. -->
+        <div class="drawer-toggle-row" data-drawer-board-row="1">
+          <span class="drawer-toggle-text">
+            <span class="drawer-toggle-title">게시판 멤버 작성 허용</span>
+            <span class="drawer-toggle-desc">끄면 모임장·부방장만 공지·일정을 쓸 수 있어요</span>
+          </span>
+          ${isLeader
+            ? `<button class="switch-toggle ${boardPolicy.memberCanWrite ? 'on' : ''}" data-drawer-board-write="1" role="switch"
+                       aria-checked="${boardPolicy.memberCanWrite}" type="button" aria-label="게시판 멤버 작성 허용">
+                 <span class="switch-knob" aria-hidden="true"></span></button>`
+            : `<span class="drawer-setting-value">${boardPolicy.memberCanWrite ? '멤버도 씀' : '운영자만'}</span>`}
+        </div>
+
         <div class="drawer-menu">
           <button class="drawer-menu-item" data-drawer-cover="1" type="button">
             <span>표지 사진</span>
             <span class="drawer-menu-value">${cover && cover.custom ? '직접 고름' : '최근 사진'}</span>
           </button>
           <button class="drawer-menu-item" data-drawer-info="1" type="button">
-            <span>모임 정보 · 규칙 · 말머리</span>
+            <span>모임 정보 · 아지트 수정</span>
             <span class="drawer-menu-value">›</span>
           </button>
+          ${isLeader && joinMode === 'approval'
+            ? `<button class="drawer-menu-item" data-drawer-applications="1" type="button">
+                 <span>가입 신청 관리</span>
+                 <span class="drawer-menu-value ${pendingApps ? 'has-alert' : ''}">${pendingApps ? `대기 ${pendingApps}명` : '없음'} ›</span></button>`
+            : ''}
           ${isLeader
             ? `<button class="drawer-menu-item danger" data-drawer-delete="1" type="button">
                  <span>모임 삭제</span><span class="drawer-menu-value">되돌릴 수 없어요</span></button>`
             : `<button class="drawer-menu-item danger" data-drawer-leave="1" type="button">
                  <span>모임 나가기</span><span class="drawer-menu-value">›</span></button>`}
+        </div>
+      </section>
+
+      <!-- v35.2 — 알림: 이 모임의 새 공지·일정·채팅을 받을지(나에게 오는 알림) -->
+      <section class="drawer-section" aria-labelledby="drawer-notify-title">
+        <div class="drawer-section-head">
+          <h3 class="drawer-section-title" id="drawer-notify-title">알림</h3>
+        </div>
+        <div class="drawer-toggle-row">
+          <span class="drawer-toggle-text">
+            <span class="drawer-toggle-title">모임 알림 받기</span>
+            <span class="drawer-toggle-desc">새 공지·일정·단체 채팅 알림</span>
+          </span>
+          <button class="switch-toggle ${notify.enabled ? 'on' : ''}" data-drawer-notify="1" role="switch"
+                  aria-checked="${notify.enabled}" type="button" aria-label="모임 알림 받기">
+            <span class="switch-knob" aria-hidden="true"></span></button>
         </div>
       </section>`;
   }
@@ -5933,10 +6146,10 @@ document.addEventListener('DOMContentLoaded', () => {
                  </div>
                </form>`
             : `<p class="notice-item-text">${escapeHtml(n.text)}</p>`}
-          ${perm.canManage && !editing ? `
+          ${(perm.canManage || (String(n.authorId) === String(store.currentUser.id) && perm.canWrite)) && !editing ? `
             <div class="notice-item-actions">
               <button class="notice-act read" data-notice-read="${n.id}" type="button">읽음 ${(store.getNoticeReadState(n.id) || {}).readCount || 0}/${(store.getNoticeReadState(n.id) || {}).total || 0}</button>
-              <button class="notice-act ${n.pinned ? 'on' : ''}" data-notice-pin="${n.id}" type="button">${n.pinned ? '고정 해제' : '상단 고정'}</button>
+              ${perm.canManage ? `<button class="notice-act ${n.pinned ? 'on' : ''}" data-notice-pin="${n.id}" type="button">${n.pinned ? '고정 해제' : '상단 고정'}</button>` : ''}
               <button class="notice-act" data-notice-edit="${n.id}" type="button">수정</button>
               <button class="notice-act danger" data-notice-delete="${n.id}" type="button">삭제</button>
             </div>` : ''}
@@ -5944,7 +6157,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }).join('') : '<p class="notice-empty">아직 공지가 없어요. 첫 공지를 남겨보세요.</p>';
 
     if (el.noticeEditor) {
-      el.noticeEditor.innerHTML = perm.canManage ? `
+      el.noticeEditor.innerHTML = perm.canWrite ? `
         <form class="notice-form" data-notice-form="${grp.id}">
           <label class="field-label">새 공지 <span class="field-hint">2~120자 · 멤버 모두에게 보여요</span></label>
           <textarea class="text-area notice-input" maxlength="120" aria-label="새 공지" placeholder="예: 금요일 와드 끝나고 단체 사진 찍어요"></textarea>
@@ -5953,7 +6166,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button type="submit" class="btn-primary">공지 올리기</button>
           </div>
         </form>`
-        : '<p class="notice-lock">공지는 모임장과 모임장이 지정한 부방장만 쓸 수 있어요.</p>';
+        : '<p class="notice-lock">운영자만 작성할 수 있어요 · 모임장이 삼선바 그룹 설정에서 멤버 작성을 허용하면 글을 쓸 수 있어요.</p>';
     }
   }
 
@@ -6175,6 +6388,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!grp || !el.eventModal) return;
     if (!store.isGroupJoined(grp.id)) {
       showToast('가입한 모임에만 일정을 올릴 수 있어요', 'warning');
+      return;
+    }
+    /* v35.2 — 새 일정도 게시판 작성 권한을 따른다(모임장·부방장, 허락된 모임의 멤버).
+       이미 만든 일정의 수정은 만든 사람 몫이라 그대로 둔다. */
+    if (!eventId && !store.getGroupBoardPolicy(grp.id).canWrite) {
+      showToast('운영자만 일정을 만들 수 있어요', 'warning');
       return;
     }
     ui.eventGroupId = grp.id;
@@ -6549,6 +6768,24 @@ document.addEventListener('DOMContentLoaded', () => {
       rerender();
       return;
     }
+    if (t.dataset.drawerBoardWrite) {
+      const cur = store.getGroupBoardPolicy(grp.id).memberCanWrite;
+      const res = store.updateGroupBoardPolicy(grp.id, !cur);
+      if (!res.ok) { showToast('모임장만 바꿀 수 있어요', 'warning'); return; }
+      showToast(cur ? '게시판은 모임장·부방장만 쓰게 바꿨어요' : '이제 멤버도 공지·일정을 쓸 수 있어요');
+      rerender();
+      if (ui.activeTab === 'tab-board' || ui.activeTab === 'tab-groupinfo') renderBoard();
+      return;
+    }
+    if (t.dataset.drawerNotify) {
+      const cur = store.getGroupNotifySetting(grp.id).enabled;
+      const res = store.updateGroupNotifySetting(grp.id, !cur);
+      if (!res.ok) { showToast('모임 알림을 바꾸지 못했어요', 'warning'); return; }
+      showToast(cur ? '이 모임 알림을 꺼뒀어요' : '이 모임 알림을 받아요');
+      rerender();
+      return;
+    }
+    if (t.dataset.drawerApplications) { closeDrawer({ silent: true }); openGroupDetail(grp.id); return; }
     if (t.dataset.drawerCover) { closeDrawer({ silent: true }); openCoverPicker(grp.id); return; }
     if (t.dataset.drawerInfo) { closeDrawer({ silent: true }); openGroupDetail(grp.id); return; }
     if (t.dataset.drawerLeave) {
@@ -6643,12 +6880,47 @@ document.addEventListener('DOMContentLoaded', () => {
       openHomePost(row.dataset.boardPost);
     });
   }
+  /* v35.2 — 게시판 '공지 쓰기': 권한이 없으면 열지 않는다. */
   const boardWrite = (id) => {
     const btn = $(id);
-    btn && btn.addEventListener('click', () => openComposer(ui.groupSpaceId));
+    btn && btn.addEventListener('click', () => {
+      if (!isGroupMode()) return;
+      if (!store.getGroupBoardPolicy(ui.groupSpaceId).canWrite) {
+        showToast('운영자만 작성할 수 있어요', 'warning');
+        return;
+      }
+      openNoticeSheet(ui.groupSpaceId);
+    });
   };
   boardWrite('#btn-board-write');
   boardWrite('#btn-board-write-2');
+
+  /* v35.2 — 게시판 필터 · 모임 홈/정보 탭의 버튼 · 채팅방의 멤버 1:1 */
+  document.addEventListener('click', (e) => {
+    const viewBtn = e.target.closest('[data-board-view]');
+    if (viewBtn) { setBoardView(viewBtn.dataset.boardView); return; }
+
+    const ginfoChat = e.target.closest('[data-ginfo-chat]');
+    if (ginfoChat) { switchTab('tab-chat'); return; }
+    const ginfoMembers = e.target.closest('[data-ginfo-members]');
+    if (ginfoMembers) { openGroupMembers(ginfoMembers.dataset.ginfoMembers || ui.groupSpaceId); return; }
+    const ginfoEdit = e.target.closest('[data-ginfo-edit]');
+    if (ginfoEdit) { openGroupDetail(ginfoEdit.dataset.ginfoEdit || ui.groupSpaceId); return; }
+    const ginfoSettings = e.target.closest('[data-ginfo-settings]');
+    if (ginfoSettings) { openDrawer('group'); return; }
+    const ginfoMember = e.target.closest('[data-ginfo-member]');
+    if (ginfoMember && ui.groupSpaceId) {
+      const dm = store.getGroupDmPolicy(ui.groupSpaceId);
+      if (!dm.enabled) { showToast('모임장이 1:1 대화를 꺼두었어요', 'warning'); return; }
+      goMemberChat(ui.groupSpaceId, ginfoMember.dataset.ginfoMember);
+      return;
+    }
+
+    const chatMember = e.target.closest('[data-group-chat-member]');
+    if (chatMember && ui.groupSpaceId) {
+      goMemberChat(ui.groupSpaceId, chatMember.dataset.groupChatMember);
+    }
+  });
   el.btnNoticeOpen && el.btnNoticeOpen.addEventListener('click', () => {
     if (ui.groupSpaceId) openNoticeSheet(ui.groupSpaceId);
   });
@@ -10860,6 +11132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inGroup = isGroupMode();
     const scopeGroup = inGroup ? store.getGroup(ui.groupSpaceId) : null;
     renderChatGroupRooms();
+    renderGroupChatMembers(scopeGroup, inGroup);
     const allRooms = store.state.chatRooms;
     /* 모임 안에서는 그 모임에서 시작한 1:1 방만 보인다. (Sprint 29 — '안 읽은 대화만' 필터 제거) */
     const roomsAll = inGroup
@@ -10878,14 +11151,12 @@ document.addEventListener('DOMContentLoaded', () => {
     renderDmSentBanner();
     renderDmRequests();
     if (el.dmScope) {
-      el.dmScope.hidden = !inGroup;
-      if (inGroup && el.dmScopeName) {
-        el.dmScopeName.textContent = `${scopeGroup ? scopeGroup.name : '모임'} 대화만 모아 봐요`;
-      }
+      /* v35.2 — 모임 채팅방 탭은 제목이 이미 '모임 이름 채팅방'이라 안내 띠를 겹치지 않는다. */
+      el.dmScope.hidden = true;
     }
-    if (el.dmTitle) el.dmTitle.textContent = inGroup ? '모임 디엠' : '전체 디엠함';
+    if (el.dmTitle) el.dmTitle.textContent = inGroup ? `${scopeGroup ? scopeGroup.name : '모임'} 채팅방` : '전체 디엠함';
     if (el.dmSub) {
-      el.dmSub.textContent = inGroup ? '이 모임의 전체방과 1:1 대화' : '';
+      el.dmSub.textContent = inGroup ? '단체방과 멤버 1:1 대화를 한곳에서' : '';
     }
     if (el.chatDmCount) el.chatDmCount.textContent = `${rooms.length}명`;
     if (el.menuChatCount) el.menuChatCount.textContent = `${allRooms.length}개`;
@@ -10902,6 +11173,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!rooms.length) {
+      /* v35.2 — 모임 안 채팅방 탭에서는 전역 '취미친구 보러 가기' 대신 모임 안 안내만. */
+      if (inGroup) {
+        el.chatRooms.innerHTML = '<p class="board-empty chat-group-empty">아직 1:1 대화가 없어요 · 위 멤버를 눌러 바로 시작할 수 있어요.</p>';
+        return;
+      }
       el.chatRooms.innerHTML = `
         <div class="empty-state chat-empty">
           ${emptyArt('chat')}
@@ -16026,7 +16302,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setScrollNavHidden(hidden) {
-    const nodes = [el.bottomNav].filter(Boolean);
+    /* v35.2 — 모임 안에서는 모임 하단 4탭도 같은 규칙으로 내려간다(스크롤하면 숨김). */
+    const nodes = [el.bottomNav, el.groupNav].filter(Boolean);
     if (!nodes.length) return;
     const want = !!hidden && !scrollNavPaused();
     scrollNav.hidden = want;
@@ -17620,7 +17897,18 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleExploreProfile: (on) => setExploreProfileVisible(on === undefined ? !store.isMyProfileExploreVisible() : on),
     openDmComposer, sendDm, startDirectMessage: (id, text) => store.startDirectMessage(id, text),
     getDmInbox: () => store.getDmInbox(),
-    getSpaceState: () => ({ groupSpaceId: ui.groupSpaceId, groupMode: isGroupMode(), tab: ui.activeTab }),
+    getSpaceState: () => ({
+      groupSpaceId: ui.groupSpaceId, groupMode: isGroupMode(), tab: ui.activeTab,
+      returnTab: ui.groupReturnTab, boardView: ui.boardView
+    }),
+    /* v35.2 — 모임 하단 4탭 · 모임 홈/정보 · 게시판 권한 · 그룹 설정 */
+    renderGroupInfo, goGroupTopTab,
+    setBoardView, getBoardView: () => ui.boardView,
+    getBoardPolicy: (gid) => store.getGroupBoardPolicy(gid || ui.groupSpaceId),
+    setGroupBoardPolicy: (on, gid) => store.updateGroupBoardPolicy(gid || ui.groupSpaceId, on),
+    getGroupNotify: (gid) => store.getGroupNotifySetting(gid || ui.groupSpaceId),
+    setGroupNotify: (on, gid) => store.updateGroupNotifySetting(gid || ui.groupSpaceId, on),
+    getGroupNavLabels: () => (el.groupNav ? [...el.groupNav.querySelectorAll('.nav-tab-item .tab-label')].map((n) => n.textContent.trim()) : []),
     /* Sprint 17 — 회원가입 · 스토리 링/보관함 · 공지 읽음 · 표지 · 디엠 정렬 */
     applySignInGate, renderOnboarding, submitOnboarding, submitOnboardingLogin,
     signOut: runSignOut, resetAllData: runResetData, askConfirm,
