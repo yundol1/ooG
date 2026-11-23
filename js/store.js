@@ -4171,9 +4171,24 @@ const SIGNUP_AVATAR_GRADIENTS = [
   'linear-gradient(135deg, #DFE3E9 0%, #8098D2 100%)'
 ];
 const SIGNUP_LIMITS = {
-  nicknameMin: 2, nicknameMax: 12, passwordMin: 4, passwordMax: 64, ageMin: 14, ageMax: 99,
+  /* v37.0 — 실제 서비스 비밀번호 규칙: 8자리 이상 + 특수기호 1개 이상(Supabase 설정과 같다). */
+  nicknameMin: 2, nicknameMax: 12, passwordMin: 8, passwordMax: 64, ageMin: 14, ageMax: 99,
   emailMax: 120, codeLength: 6
 };
+
+/**
+ * v37.0 — 비밀번호 규칙 검사. 통과하면 null, 아니면 사유를 돌려준다.
+ *  · 8자리 이상 · 특수기호(영문·숫자가 아닌 글자) 1개 이상 · 공백 없음 · 64자 이하
+ *  화면의 실시간 안내와 저장(signUp/resetPassword)이 **같은 함수**를 본다.
+ */
+function oogPasswordIssue(text) {
+  const v = String(text == null ? '' : text);
+  if (v.length < SIGNUP_LIMITS.passwordMin) return 'password_short';
+  if (v.length > SIGNUP_LIMITS.passwordMax) return 'password_long';
+  if (/\s/.test(v)) return 'password_space';
+  if (!/[^A-Za-z0-9]/.test(v)) return 'password_no_symbol';
+  return null;
+}
 
 /* Sprint 22 — 이메일 인증 경계.
  *  · 메일 발송은 아직 없다(정적 SPA). 코드는 **이 기기 안에서만** 만들어지고,
@@ -4223,6 +4238,10 @@ function blankCurrentUser() {
        false 로 둔 모임만 빼고 보여 준다. */
     pastMeetingsPublic: true,
     pastMeetingVisibility: {},
+    /* v37.0 (#23868) — 예정된 일정(다음 일정 한 줄)을 타인에게 보일지. **기본은 비공개**.
+       켜면 profileNextEvent 스냅샷(제목·시각·모임 이름)만 프로필에 실린다. */
+    upcomingMeetingsPublic: false,
+    profileNextEvent: null,
     /* Sprint 17 — 탐색 사람 카드 꾸미기(대표 사진·한 줄 소개) */
     exploreCard: { photoUrl: null, intro: '' },
     /* Sprint 24 — 2시간 탐색 프로필 · 공개/비밀 앨범 · 비밀앨범 공개 대상 */
@@ -5246,8 +5265,9 @@ function buildCleanState() {
   state.tastePrefs = { hobbyIds: [], goalIds: [], updatedAt: null };
   state.customHobbies = [];
   applyRegionIds(state);
-  /* Sprint 27 — 텅 빈 화면 대신 최소 예시 데이터로 시작한다(가입 후 바로 눌러 볼 수 있게). */
-  applySampleData(state);
+  /* v37.0 — 예시(더미) 데이터를 넣지 않는다. 새 계정은 **진짜 빈 상태**에서 시작하고,
+     빈 화면은 Empty State UI 가 안내한다(사용자 지시: "기존 데이터는 다 삭제해줘"). */
+  state.sampleData = { seeded: false, version: SAMPLE_DATA_VERSION, regionId: null, seededAt: null, clearedAt: new Date().toISOString() };
   return state;
 }
 
@@ -5533,22 +5553,19 @@ class Store {
       cu.secretShares = (cu.secretShares && typeof cu.secretShares === 'object') ? cu.secretShares : {};
       /* v34.4 — 다녀온 모임 공개 범위(옛 저장 상태에는 없으므로 '전체 공개'로 시작한다). */
       cu.pastMeetingsPublic = cu.pastMeetingsPublic !== false;
+      /* v37.0 — 예정 일정 공개는 **기본 꺼짐**(옛 저장 상태에는 없으니 false 로 시작한다). */
+      cu.upcomingMeetingsPublic = cu.upcomingMeetingsPublic === true;
+      if (!cu.upcomingMeetingsPublic) cu.profileNextEvent = null;
       if (!cu.pastMeetingVisibility || typeof cu.pastMeetingVisibility !== 'object'
         || Array.isArray(cu.pastMeetingVisibility)) cu.pastMeetingVisibility = {};
       /* Sprint 27 — 예전에 저장된 '텅 빈' 계정에도 최소 예시 데이터를 넣는다.
          (가이드가 빈 화면을 비추던 문제) 내가 만든 내용이 하나라도 있으면 건드리지 않고,
          '예시 데이터 비우기'를 누른 상태(cleared)도 다시 넣지 않는다. */
       const sd = parsed.sampleData && typeof parsed.sampleData === 'object' ? parsed.sampleData : {};
-      const emptyContent = merged.groups.length === 0 && merged.feedPosts.length === 0
-        && merged.explorePosts.length === 0 && merged.matchProfiles.length === 0;
-      if (sd.seeded !== true && !sd.clearedAt && emptyContent) applySampleData(merged);
-      /* Sprint 32.5 — v1 예시 데이터는 아지트·게스트 일정·추천 피드가 비어 있다. 있던 것만 손본다. */
-      if (merged.sampleData && merged.sampleData.seeded === true
-        && Number(merged.sampleData.version || 1) < SAMPLE_DATA_VERSION) {
-        upgradeSampleData(merged);
-        upgradeSampleImages(merged);
-        upgradeSampleAvatars(merged);
-      }
+      /* v37.0 — 이 기기에 남아 있는 **예시 데이터**는 불러올 때 걷어낸다(실서비스에는 0건). */
+      merged.sampleData = { seeded: false, version: SAMPLE_DATA_VERSION, regionId: sd.regionId || null, seededAt: sd.seededAt || null, clearedAt: sd.clearedAt || new Date().toISOString() };
+      /* #demo 미리보기(테스트·시연)는 예시 데이터를 그대로 이어 간다 — 실계정만 걷어낸다. */
+      if (!(parsed.onboarding && parsed.onboarding.demo === true)) stripSampleData(merged);
       /* H2 — 저장된 모임에 아지트·지역·기본값이 없으면(옛 상태) 조용히 채운다. */
       upgradeGroupGeo(merged);
       merged.sampleData = {
@@ -5593,6 +5610,12 @@ class Store {
     }
     /* Sprint 25 — 저장 경계. localStorage 는 그대로 쓰고, 그다음 어댑터(서버로 바꿀 자리)에 넘긴다.
        어댑터가 실패해도 화면·저장은 멈추지 않는다(실패는 세어 두었다가 다음 저장에서 다시 시도). */
+    /* v37.0 — 저장할 때마다 Supabase 로 밀어 올린다(0.7초 디바운스 · 실패해도 로컬은 계속).
+       서버가 없으면 아무 일도 일어나지 않는다(OOGCloud 가 없거나 세션이 없을 때). */
+    try {
+      const cloud = window.OOGCloud;
+      if (cloud && cloud.hasSession() && cloud.currentUser()) cloud.scheduleSync();
+    } catch (e) { /* 동기화는 저장을 막지 않는다 */ }
     if (this.storageAdapter && payload) {
       try {
         this.storageAdapter.write(payload, { at: Date.now() });
@@ -9586,6 +9609,7 @@ class Store {
       groupId: p.groupId || null,
       postId: p.postId || null,
       source: p.source || null,          /* 'explore' | 'feed' — 좋아요·댓글 알림의 출처 */
+      eventId: p.eventId || null,        /* v37.0 — 프로필 일정 알림의 일정 id */
       action: p.action || null,          /* 'join_request' | 'join_result' … */
       at: now.toISOString(),
       read: false,
@@ -12141,6 +12165,64 @@ class Store {
    *  · 날짜가 지난 일정은 지우지 않고 '다녀온 일정'으로 옮긴다.
    * @returns {{upcoming:Array, past:Array, total:number}}
    */
+  /* ==========================================================================
+   * v37.0 (#23868) — 예정된 일정(다음 일정)을 내 프로필에 공개할지
+   * -------------------------------------------------------------------------
+   *  · 기본은 **비공개**. 켜면 지금 잡혀 있는 가장 가까운 일정 하나를 스냅샷으로 남긴다
+   *    (제목·시각·모임 이름만 — 장소·참석자 같은 세부는 넣지 않는다).
+   *  · 참석(RSVP)·일정 생성·취소 때마다 syncProfileNextEvent() 가 스냅샷을 맞춘다.
+   * ========================================================================== */
+  setUpcomingMeetingsPublic(on) {
+    const cu = this.state.currentUser || (this.state.currentUser = blankCurrentUser());
+    cu.upcomingMeetingsPublic = on === true;
+    this.syncProfileNextEvent();
+    this.saveState();
+    return { ok: true, public: cu.upcomingMeetingsPublic, event: cu.profileNextEvent };
+  }
+
+  /** 화면이 쓰는 예정 일정 공개 상태 — { public, event }. */
+  getUpcomingMeetingsPublic() {
+    const cu = this.state.currentUser || {};
+    const isPublic = cu.upcomingMeetingsPublic === true;
+    return { public: isPublic, event: isPublic ? (cu.profileNextEvent || null) : null };
+  }
+
+  /** 지금의 '다음 일정'으로 공개 스냅샷을 맞춘다(비공개면 지운다). */
+  syncProfileNextEvent() {
+    const cu = this.state.currentUser;
+    if (!cu) return null;
+    if (cu.upcomingMeetingsPublic !== true) { cu.profileNextEvent = null; return null; }
+    const next = (this.getMySchedule().upcoming || [])[0] || null;
+    cu.profileNextEvent = next ? {
+      id: next.id,
+      title: String(next.title || '').slice(0, 40),
+      when: next.when,
+      groupName: String(next.groupName || '').slice(0, 30),
+      groupId: next.groupId || null
+    } : null;
+    return cu.profileNextEvent;
+  }
+
+  /**
+   * 그 사람의 '예정된 일정' — 공개한 사람만 돌려준다(내 것이면 지금 계산값).
+   * @returns {{id,title,when,groupName}|null}
+   */
+  getPublicNextEvent(personId) {
+    const me = this.state.currentUser || {};
+    if (!personId || personId === me.id) {
+      if (me.upcomingMeetingsPublic !== true) return null;
+      const next = (this.getMySchedule().upcoming || [])[0] || null;
+      return next ? { id: next.id, title: next.title, when: next.when, groupName: next.groupName || '' } : null;
+    }
+    const person = (this.getPersonProfile && this.getPersonProfile(personId)) || null;
+    if (!person || person.upcomingMeetingsPublic !== true) return null;
+    const snap = person.profileNextEvent;
+    if (!snap || !snap.when) return null;
+    /* 지난 일정은 공개하지 않는다(스냅샷이 낡았으면 없는 것으로 본다). */
+    if (new Date(snap.when).getTime() < Date.now()) return null;
+    return snap;
+  }
+
   getMySchedule() {
     const me = this.currentUser || {};
     const now = Date.now();
@@ -12310,6 +12392,35 @@ class Store {
    *  Sprint 15 — 정원이 찾는데 참석을 누르면 **자동으로 대기 명단**에 들어간다.
    *  참석자가 불참으로 빠져 자리가 나면 대기 1순위가 자동으로 참석이 된다. */
   setGroupEventRsvp(eventId, status) {
+    const before = (this.getGroupEventSummary(eventId) || {}).myRsvp || null;
+    const out = this._setGroupEventRsvp(eventId, status);
+    /* v37.0 — 참석 표시가 바뀌면 프로필의 '다음 일정' 스냅샷도 따라 바뀐다. */
+    try { this.syncProfileNextEvent(); } catch (e) { /* 스냅샷 실패는 참석 표시를 막지 않는다 */ }
+    /* v37.0 (#23868) — '참석'으로 바뀌면 알림함에 프로필 일정 등록 알림을 남긴다.
+       (알림을 누르면 내 프로필의 예정 일정 · 공개 설정으로 바로 이동한다.) */
+    if (out && out.ok && out.status === 'yes' && before !== 'yes') {
+      const ev = this.getGroupEvent(eventId) || {};
+      const isPublic = this.getUpcomingMeetingsPublic().public === true;
+      const grp = this.getGroup(ev.groupId) || {};
+      try {
+        this.dispatchNotification({
+          kind: 'profile_event',
+          title: '내 프로필에 일정이 등록됐어요',
+          body: isPublic
+            ? `${ev.title || '일정'} · 프로필에 공개 중이에요`
+            : `${ev.title || '일정'} · 현재 미노출 상태예요 — 눌러서 공개로 바꿔 보세요`,
+          eventId,
+          groupId: ev.groupId || null,
+          action: 'my_schedule',
+          actorName: grp.name || null,
+          context: { visible: false }
+        });
+      } catch (e) { /* 알림 실패가 참석 표시를 되돌리지 않는다 */ }
+    }
+    return out;
+  }
+
+  _setGroupEventRsvp(eventId, status) {
     if (!GROUP_EVENT_RSVPS.some((r) => r.id === status)) return { ok: false, reason: 'bad_status' };
     const ev = this.getGroupEvent(eventId);
     if (!ev) return { ok: false, reason: 'not_found' };
@@ -13830,8 +13941,8 @@ class Store {
     const check = this.verifyEmailCode({ email, code: d.code, purpose: 'reset' });
     if (!check.ok) return check;
     const password = String(d.password || '');
-    if (password.length < SIGNUP_LIMITS.passwordMin) return { ok: false, reason: 'password_short' };
-    if (password.length > SIGNUP_LIMITS.passwordMax) return { ok: false, reason: 'password_long' };
+    const pwIssue = oogPasswordIssue(password);
+    if (pwIssue) return { ok: false, reason: pwIssue };
     if (String(d.passwordConfirm == null ? password : d.passwordConfirm) !== password) {
       return { ok: false, reason: 'password_mismatch' };
     }
@@ -13860,8 +13971,11 @@ class Store {
     let emailVerified = false;
     if (email) {
       if (!oogIsEmail(email)) return { ok: false, reason: 'email_invalid' };
+      /* v37.0 — 이메일 인증은 Supabase Auth 가 맡는다. 여기서는 **인증을 마친 계정만**
+         프로필을 만들 수 있다 — 서버가 확인한 세션(d.verified) 또는 이 기기에서 마친
+         옛 인증번호 흐름(ev.verified, 테스트·번들 미리보기) 둘 다 인정한다. */
       const ev = this.state.emailVerification || {};
-      if (!(ev.verified === true && ev.email === email && ev.purpose === 'signup')) {
+      if (!(d.verified === true || (ev.verified === true && ev.email === email && ev.purpose === 'signup'))) {
         return { ok: false, reason: 'email_unverified' };
       }
       emailVerified = true;
@@ -13871,8 +13985,8 @@ class Store {
     if (!quick) {
       if (loginId.length < 3) return { ok: false, reason: 'login_id_short' };
       const password = String(d.password || '');
-      if (password.length < SIGNUP_LIMITS.passwordMin) return { ok: false, reason: 'password_short' };
-      if (password.length > SIGNUP_LIMITS.passwordMax) return { ok: false, reason: 'password_long' };
+      const pwIssue = oogPasswordIssue(password);
+      if (pwIssue) return { ok: false, reason: pwIssue };
       if (String(d.passwordConfirm == null ? password : d.passwordConfirm) !== password) {
         return { ok: false, reason: 'password_mismatch' };
       }
@@ -13950,9 +14064,8 @@ class Store {
     };
     if (location) user.coords = null;
 
-    /* Sprint 27 — 가입 계정도 예시 모임 2개에 들어가 있다(빈 화면 대신 바로 눌러 보게). */
-    const sampleJoined = SAMPLE_JOINED_GROUP_IDS.slice();
-    user.joinedGroupIds = sampleJoined;
+    /* v37.0 — 예시 모임에 넣지 않는다. 가입 직후의 내 모임은 **내가 만든 모임**뿐이다. */
+    user.joinedGroupIds = [];
     this.state.currentUser = user;
     this.state.account = {
       loginId: quick ? `guest_${Date.now().toString(36)}` : loginId,
@@ -13968,11 +14081,9 @@ class Store {
     this.state.onboarding = { completed: true, completedAt: new Date().toISOString(), step: 3 };
     this.state.sessionActive = true;
     this.state.homePrefs = { groupId: null };
-    /* Sprint 27 — 예시 사람·글이 가입에서 고른 동네에 보이도록 맞춘다. */
-    if (user.regionId) retargetSampleRegion(this.state, user.regionId);
+    /* v37.0 — 예시 데이터를 맞추지 않는다. 홈 모임은 내가 가입한 첫 모임(없으면 null). */
     if (!this.state.homePrefs.groupId) {
-      const firstSample = (this.state.groups || []).find((g) => g.sample && this.state.currentUser.joinedGroupIds.includes(g.id));
-      this.state.homePrefs.groupId = firstSample ? firstSample.id : ((this.state.currentUser.joinedGroupIds || [])[0] || null);
+      this.state.homePrefs.groupId = (this.state.currentUser.joinedGroupIds || [])[0] || null;
     }
     this.saveState();
     return { ok: true, user, onboarding: this.getOnboardingState() };
@@ -14003,8 +14114,71 @@ class Store {
   signOut() {
     this.state.sessionActive = false;
     this.state.onboarding = { ...(this.state.onboarding || {}), completed: false };
+    delete this.state.onboarding.pendingEmail;
     this.saveState();
     return { ok: true, onboarding: this.getOnboardingState() };
+  }
+
+  /* ==========================================================================
+   * v37.0 — Supabase Auth 세션을 store 에 붙인다.
+   *  · applyCloudSession({userId, email}) : 서버가 확인한 계정을 내 프로필 id 로 삼는다
+   *  · markSignedIn()                    : 인증된 세션으로 앱에 들어올 수 있게 한다
+   *  · local passwordHash 는 더 이상 인증에 쓰지 않는다(서버가 검증).
+   * ========================================================================== */
+  /** v37.0 — 화면이 쓰는 비밀번호 규칙(통과하면 null). */
+  checkPassword(text) {
+    return oogPasswordIssue(text);
+  }
+
+  /**
+   * 다른 계정으로 로그인할 때 — 이 기기에 남은 **콘텐츠**만 비운다.
+   *  · 모임·글·일정·채팅·알림·스토리·신청 → 빈 배열(서버에서 새로 받는다)
+   *  · 내 프로필·설정·기기 설정은 남긴다(로그인 직후 서버 값으로 덮인다).
+   */
+  clearContentForNewAccount() {
+    const st = this.state;
+    ['groups', 'feedPosts', 'explorePosts', 'matchProfiles', 'partnerProfiles', 'chatRooms',
+      'stories', 'storyArchive', 'groupNotices', 'groupEvents', 'groupChats', 'eventChats',
+      'groupApplications', 'notificationLog', 'matchSwipes'].forEach((k) => { st[k] = []; });
+    st.currentUser.joinedGroupIds = [];
+    st.currentUser.album = { public: [], secret: [] };
+    st.homePrefs = { groupId: null };
+    st.sampleData = { seeded: false, version: SAMPLE_DATA_VERSION, regionId: null, seededAt: null, clearedAt: new Date().toISOString() };
+    this.saveState();
+    return { ok: true };
+  }
+
+  applyCloudSession(info) {
+    const d = info || {};
+    const user = this.state.currentUser || (this.state.currentUser = blankCurrentUser());
+    if (d.userId) user.id = d.userId;
+    if (d.nickname) { user.nickname = d.nickname; user.avatarText = `${d.nickname}`.charAt(0); }
+    if (d.photoUrl) user.photoUrl = d.photoUrl;
+    user.registered = true;
+    const acc = this.state.account || {};
+    this.state.account = {
+      ...acc,
+      loginId: d.email || acc.loginId || '',
+      email: d.email || acc.email || null,
+      emailVerified: true,
+      emailVerifiedAt: acc.emailVerifiedAt || new Date().toISOString(),
+      passwordHash: null,
+      provider: 'supabase',
+      createdAt: acc.createdAt || new Date().toISOString()
+    };
+    this.saveState();
+    return { ok: true };
+  }
+
+  /** 이메일 인증을 마친 세션 — 앱 진입 허용. */
+  markSignedIn() {
+    this.state.onboarding = { ...(this.state.onboarding || {}), completed: true, completedAt: (this.state.onboarding && this.state.onboarding.completedAt) || new Date().toISOString() };
+    /* 인증을 마쳤으니 '인증 대기 이메일' 표식은 지운다(로그아웃하면 로그인 화면으로). */
+    delete this.state.onboarding.pendingEmail;
+    this.state.sessionActive = true;
+    this.state.currentUser.registered = true;
+    this.saveState();
+    return { ok: true, user: this.state.currentUser };
   }
 
   /** 데이터 초기화 — 내 계정·활동을 모두 지우고 회원가입부터 다시 시작한다. */

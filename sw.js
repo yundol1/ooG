@@ -34,8 +34,10 @@
    v36.4 (#23649) — 내 프로필 탭에서 '2시간 프로필' 상태 행과 '내 활동' 두 줄
    (내가 좋아요한 취미친구 · 내 활동 기록)을 걷어냈다. 2시간 프로필은 탐색 탭의
    '내 프로필 올리기', 활동 기록은 모임 설정 › 내 활동 한 곳에서만 다룬다.
+   v37.0 (#23667·#23749·#23791·#23815·#23827) — Supabase 실서비스 전환: 이메일 인증 회원가입·
+   로그인·비밀번호 찾기·아이디 찾기, 실DB/Storage/Realtime 동기화(js/cloud.js), 예시(더미) 데이터 0건.
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v36-4';
+const CACHE_VERSION = 'oog-shell-v37-0';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -45,6 +47,7 @@ const SHELL_ASSETS = [
   './js/icons.js',
   './js/store.js',
   './js/api.js',
+  './js/cloud.js',
   './js/app.js',
   /* H2 — 지역·아지트 목록(http 로 열렸을 때 fetch). 없으면 앱 내장본을 쓴다. */
   './data/regions.json',

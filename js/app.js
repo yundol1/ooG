@@ -183,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     obDir: 'next',               // 단계 전환 방향(애니메이션)
     obError: '',                 // 지금 단계의 안내 문구
     obBusy: false,               // 인증번호 발송/확인 중
-    obCode: null,                // 화면의 모의 메일함이 보여줄 { code, email, expiresAt }
+    obCode: null,                // (v37.0) 실제 메일 인증으로 바뀌며 쓰지 않는다 — 옛 상태 호환용
     storyRingId: null,           // 지금 보고 있는 스토리 링의 멤버 id
     storyArchiveView: false,     // 보관함에서 연 스토리인지
     boardNoticeExpanded: false,  // 지난 공지 펼침
@@ -328,6 +328,10 @@ document.addEventListener('DOMContentLoaded', () => {
     myScheduleShare: $('#my-schedule-share'),
     myScheduleShareToggle: $('#my-schedule-share-toggle'),
     myScheduleShareNote: $('#my-schedule-share-note'),
+    /* v37.0 (#23868) — 예정 일정 공개 */
+    myScheduleUpcomingRow: $('#my-schedule-upcoming-row'),
+    myScheduleUpcomingToggle: $('#my-schedule-upcoming-toggle'),
+    myScheduleUpcomingNote: $('#my-schedule-upcoming-note'),
     profileGroupsModal: $('#profile-groups-modal'),
     profileGroupsTitle: $('#profile-groups-title'),
     profileGroupsSub: $('#profile-groups-sub'),
@@ -939,8 +943,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function newOnboardingDraft() {
     return {
-      email: '', code: '', emailVerified: false,
+      email: '', code: '', emailVerified: false, verified: false,
       loginId: '', password: '', passwordConfirm: '', quickStart: false,
+      busy: false, lookupMode: 'id', lookupResult: null,
       nickname: '', handle: store.suggestHandle(), photoUrl: null,
       avatarGradient: (store.getOnboardingState().avatarGradients || [SIGNUP_FALLBACK_GRADIENT])[0],
       age: '', regionId: '', azitId: '', hobbies: []
@@ -967,7 +972,17 @@ document.addEventListener('DOMContentLoaded', () => {
       no_code: '인증번호가 없어요 — 다시 받아주세요',
       code_mismatch: '인증번호가 맞지 않아요',
       code_expired: '인증번호가 만료됐어요 — 다시 받아주세요',
-      too_many_tries: '시도 횟수를 넘었어요 — 인증번호를 다시 받아주세요'
+      too_many_tries: '시도 횟수를 넘었어요 — 인증번호를 다시 받아주세요',
+      /* v37.0 — Supabase Auth 가 돌려주는 사유 */
+      email_taken: '이미 가입된 이메일이에요 — 로그인하거나 비밀번호를 찾아주세요',
+      email_unconfirmed: '이메일 인증을 먼저 마쳐주세요 — 메일함의 인증 링크를 눌러 주세요',
+      password_no_symbol: '비밀번호에 특수기호를 1개 이상 넣어 주세요 (예: ! @ # $ %)',
+      password_space: '비밀번호에는 공백을 쓸 수 없어요',
+      password_weak: '너무 쉬운 비밀번호예요 — 8자 이상, 특수기호를 넣어 주세요',
+      rate_limited: '시도가 너무 잦아요 — 잠시 뒤에 다시 해주세요',
+      network: '서버에 닿지 못했어요 — 연결을 확인하고 다시 시도해 주세요',
+      same_password: '지금 쓰는 비밀번호와 같아요 — 다른 비밀번호를 정해 주세요',
+      unknown: '잠시 뒤에 다시 시도해 주세요'
     }[reason] || '가입 정보를 다시 확인해 주세요');
   }
 
@@ -979,10 +994,13 @@ document.addEventListener('DOMContentLoaded', () => {
   /* v34.5 (#22862) — 사진 단계를 **대표 사진(공개 사진 1번)** 단계로 되살렸다.
      가입을 마치면 그 사진이 내 프로필의 큰 1번 사진으로 그대로 쓰인다.
      ① 계정(이메일 → 인증 → 비밀번호) ② 닉네임·아이디 ③ 대표 사진 ④ 나이·아지트 */
-  const SIGNUP_FLOW = ['email', 'code', 'password', 'nickname', 'photo', 'me'];
-  const SIGNUP_STAGES = { email: 1, code: 1, password: 1, nickname: 2, photo: 3, me: 4, age: 4, region: 4 };
+  /* v37.0 — 실제 이메일 인증(Supabase Auth)으로 바꾸면서 6자리 인증번호 단계를 없앴다.
+     가입 마지막에 계정을 만들고 **인증 메일 안내** 화면을 보여준다(미인증 계정은 앱에 못 들어온다).
+     ① 이메일 ② 비밀번호 ③ 닉네임·아이디 ④ 대표 사진 ⑤ 나이·아지트 → 인증 메일 안내 */
+  const SIGNUP_FLOW = ['email', 'password', 'nickname', 'photo', 'me'];
+  const SIGNUP_STAGES = { email: 1, password: 1, nickname: 2, photo: 3, me: 4, age: 4, region: 4 };
   const SIGNUP_STAGE_COUNT = 4;
-  const RESET_FLOW = ['reset-email', 'reset-code', 'reset-password'];
+  const RESET_FLOW = ['reset-email', 'reset-password'];
 
   function obFlow() { return ui.onboardingMode === 'reset' ? RESET_FLOW : SIGNUP_FLOW; }
   function obStepId() {
@@ -1025,30 +1043,6 @@ document.addEventListener('DOMContentLoaded', () => {
   /** 질문 위의 작은 표시 — 지금 무엇을 묻는지 한 단어로만(진행은 위 막대가 보여준다). */
   function obKicker(stepId) {
     return `<p class="ob-kicker"><span class="ob-kicker-label">${escapeHtml(OB_KICKERS[stepId] || '')}</span></p>`;
-  }
-
-  /** 모의 메일함 — 실제 SMTP 가 없으니 인증번호를 화면에서 보여줄다(숨기지 않는다). */
-  function obMailCard(stepId) {
-    const pending = store.getPendingEmailCode();
-    const fallback = ui.obCode && ui.obCode.code ? ui.obCode : null;
-    const email = (pending && pending.email) || (fallback && fallback.email) || (ui.onboardingDraft || {}).email || '';
-    const expired = pending ? pending.expired : true;
-    const code = pending && !pending.expired ? pending.code : (fallback && !expired ? fallback.code : '');
-    return `
-      <div class="ob-mailcard" data-ob-mailcard="${stepId}" aria-label="모의 메일함">
-        <div class="ob-mailcard-top">
-          <span class="ob-mailcard-title">모의 메일함</span>
-          <span class="ob-mailcard-tag">체험용</span>
-        </div>
-        <p class="ob-mailcard-row">받는 사람 <b>${escapeHtml(email)}</b></p>
-        <p class="ob-mailcard-row">제목 · 우그 인증번호 안내</p>
-        <div class="ob-mailcard-body">
-          <span class="ob-mailcard-label">인증번호</span>
-          <strong class="ob-mailcard-code">${code || '——'}</strong>
-          <span class="ob-mailcard-exp ${expired ? 'is-expired' : ''}">${expired ? '만료됨 · 다시 받기' : '10분 안에 입력'}</span>
-        </div>
-        <p class="ob-mailcard-note">실제 메일 서버는 아직 연결되지 않았어요. 이 화면에 코드를 보여드리고, 서버를 붙이면 같은 자리에서 진짜 메일이 갑니다.</p>
-      </div>`;
   }
 
   /** 진행 막대 — 로그인·재설정 화면에서는 숨긴다. */
@@ -1292,21 +1286,87 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.onboardingBody) return;
     const ob = store.getOnboardingState();
     const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
-    const loginMode = ui.onboardingMode === 'login' && ob.hasAccount;
+    /* v37.0 — 계정은 서버에 있다. 이 기기에 기록이 없어도 로그인 화면을 열 수 있다. */
+    const loginMode = ui.onboardingMode === 'login';
     const stepId = obStepId();
     const errHTML = '<p class="ob-error" id="ob-error" hidden></p>';
     let body = '';
 
-    if (loginMode) {
+    if (ui.onboardingMode === 'verify') {
+      /* v37.0 — 가입은 끝났고 **인증 메일**을 기다리는 화면. 미인증 계정은 앱에 들어오지 못한다. */
+      onboardingProgressVisible(false);
+      body = `
+        <div class="ob-hero">
+          <h1 class="ob-title">인증 메일을<br>보냈어요</h1>
+          <p class="ob-desc"><b>${escapeHtml(d.email || (ob.email || ''))}</b> 메일함에서 <b>인증 링크</b>를 눌러 주세요.<br>
+            링크를 누르면 가입이 끝나고 바로 우그를 시작할 수 있어요.</p>
+        </div>
+        <div class="ob-mailcard" data-ob-mailcard="verify" aria-label="인증 메일 안내">
+          <div class="ob-mailcard-top">
+            <span class="ob-mailcard-title">인증 메일</span>
+            <span class="ob-mailcard-tag">보냄</span>
+          </div>
+          <p class="ob-mailcard-row">받는 사람 <b>${escapeHtml(d.email || (ob.email || ''))}</b></p>
+          <p class="ob-mailcard-row">제목 · ooG 이메일 주소를 확인해 주세요</p>
+          <p class="ob-mailcard-note">메일이 안 보이면 스팸함도 확인해 주세요. 아래 버튼으로 다시 보낼 수 있어요(잠시 기다려야 할 수 있어요).</p>
+        </div>
+        ${errHTML}
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-verify-login" type="button">인증했어요 · 로그인</button>
+          <button class="ob-btn ghost" id="ob-resend" type="button">인증 메일 다시 보내기</button>
+          <button class="ob-btn ghost" id="ob-to-login" type="button">로그인 화면으로</button>
+        </div>`;
+    } else if (ui.onboardingMode === 'reset-sent') {
+      onboardingProgressVisible(false);
+      body = `
+        <div class="ob-hero">
+          <h1 class="ob-title">재설정 메일을<br>보냈어요</h1>
+          <p class="ob-desc"><b>${escapeHtml(d.email || '')}</b> 메일함에서 링크를 눌러 주세요.<br>
+            링크를 누르면 <b>새 비밀번호</b>를 정하는 화면이 열려요.</p>
+        </div>
+        ${errHTML}
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-resend-reset" type="button">메일 다시 보내기</button>
+          <button class="ob-btn ghost" id="ob-to-login" type="button">로그인 화면으로</button>
+        </div>`;
+    } else if (ui.onboardingMode === 'lookup') {
+      /* v37.0 (#23827) — 아이디 찾기. @아이디 ↔ 이메일을 서로의 **마스킹 힌트**로만 알려 준다. */
+      onboardingProgressVisible(false);
+      const lr = d.lookupResult || null;
+      body = `
+        <div class="ob-hero">
+          <h1 class="ob-title">아이디를<br>잊으셨나요?</h1>
+          <p class="ob-desc">@아이디를 넣으면 가입한 이메일을, 이메일을 넣으면 @아이디를 알려드려요.<br>
+            개인정보는 일부만 가려서 보여드려요.</p>
+        </div>
+        <div class="ob-field">
+          <label class="ob-label" for="ob-lookup-input">@아이디 또는 이메일</label>
+          <input class="ob-input ob-input-lg" id="ob-lookup-input" type="text" autocomplete="username"
+                 autocapitalize="none" spellcheck="false" value="${escapeHtml(d.lookupQuery || '')}"
+                 placeholder="예: @rookie 또는 me@example.com">
+        </div>
+        <div class="ob-lookup-result ${lr ? (lr.ok ? 'is-ok' : 'is-warn') : ''}" id="ob-lookup-result">
+          ${lr
+            ? (lr.ok
+              ? `<span class="ob-lookup-label">${lr.kind === 'handle' ? '가입한 이메일' : '내 아이디'}</span><strong class="ob-lookup-value">${escapeHtml(lr.hint)}</strong>`
+              : `<span class="ob-lookup-label">찾지 못했어요</span><span class="ob-lookup-msg">${escapeHtml(lr.message || '')}</span>`)
+            : '<span class="ob-lookup-msg">아이디와 이메일 중 아무거나 하나만 넣어 주세요.</span>'}
+        </div>
+        ${errHTML}
+        <div class="ob-actions">
+          <button class="ob-btn primary" id="ob-lookup-submit" type="button">${d.busy ? '찾는 중…' : '찾기'}</button>
+          <button class="ob-btn ghost" id="ob-to-login" type="button">로그인으로</button>
+        </div>`;
+    } else if (loginMode) {
       onboardingProgressVisible(false);
       body = `
         <div class="ob-hero">
           <h1 class="ob-title">다시 만나요</h1>
-          <p class="ob-desc">${escapeHtml((ob.email || ob.nickname) ? `${ob.email || ob.nickname} 계정으로 이어서 시작해요.` : '저장된 계정으로 이어서 시작해요.')}</p>
+          <p class="ob-desc">${escapeHtml(ob.email ? `${ob.email} 계정으로 이어서 시작해요.` : '이메일과 비밀번호로 로그인해 주세요.')}</p>
         </div>
         <div class="ob-field">
-          <label class="ob-label" for="ob-email">${ob.hasEmail ? '이메일' : '아이디'}</label>
-          <input class="ob-input ob-input-lg" id="ob-email" type="text" autocomplete="username" value="${escapeHtml(ob.email || ob.loginId)}" placeholder="${ob.hasEmail ? 'me@example.com' : '아이디'}">
+          <label class="ob-label" for="ob-email">이메일</label>
+          <input class="ob-input ob-input-lg" id="ob-email" type="email" inputmode="email" autocomplete="username" value="${escapeHtml(ob.email || ob.loginId)}" placeholder="me@example.com">
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-login-pw">비밀번호</label>
@@ -1314,8 +1374,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         ${errHTML}
         <div class="ob-actions">
-          <button class="ob-btn primary" id="ob-login-submit" type="button">이어서 시작</button>
-          <button class="ob-btn ghost" id="ob-forgot" type="button">비밀번호를 잊으셨나요?</button>
+          <button class="ob-btn primary" id="ob-login-submit" type="button">${d.busy ? '로그인 중…' : '이어서 시작'}</button>
+          <div class="ob-link-row">
+            <button class="ob-btn ghost" id="ob-find-id" type="button">아이디 찾기</button>
+            <button class="ob-btn ghost" id="ob-forgot" type="button">비밀번호 찾기</button>
+          </div>
+          ${ob.hasAccount && ob.emailVerified === false
+            ? '<button class="ob-btn ghost" id="ob-resend-verify" type="button">인증 메일 다시 받기</button>' : ''}
           <button class="ob-btn ghost" id="ob-restart-signup" type="button">새 계정 만들기</button>
         </div>`;
     } else if (stepId === 'email' || stepId === 'reset-email') {
@@ -1327,8 +1392,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="ob-hero">
           <h1 class="ob-title">${reset ? '비밀번호를<br>잊으셨나요?' : '어떤 이메일로<br>시작할까요?'}</h1>
           <p class="ob-desc">${reset
-            ? '가입한 이메일을 알려주세요. 인증번호를 통해 새 비밀번호를 정할 수 있어요.'
-            : '인증번호를 보내 드릴게요. 계정을 찾거나 비밀번호를 잊었을 때도 이 주소를 씁니다.'}</p>
+            ? '가입한 이메일로 재설정 링크를 보내 드려요. 링크를 누르면 새 비밀번호를 정할 수 있어요.'
+            : '이 주소로 인증 메일을 보내 드려요. 계정을 찾거나 비밀번호를 잊었을 때도 같은 주소를 씁니다.'}</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-email">이메일</label>
@@ -1337,34 +1402,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         ${errHTML}
         <p class="ob-note">${reset
-          ? '인증번호는 가입한 이메일하고만 대조해요.'
-          : '이 기기에서 도는 체험판이라 실제 메일은 보내지 않아요 — 다음 화면의 모의 메일함에서 인증번호를 확인하세요.'}</p>
+          ? '가입한 이메일과 같은 주소를 넣어 주세요.'
+          : '인증 메일은 가입을 마친 뒤에 보내 드려요. 메일의 링크를 눌러야 계정이 열립니다.'}</p>
         <div class="ob-actions">
-          <button class="ob-btn primary" id="ob-next" type="button">인증번호 받기</button>
+          <button class="ob-btn primary" id="ob-next" type="button">${d.busy ? '보내는 중…' : '계속'}</button>
           ${reset
             ? '<button class="ob-btn ghost" id="ob-to-login" type="button">로그인으로 돌아가기</button>'
-            : (ob.hasAccount ? '<button class="ob-btn ghost" id="ob-to-login" type="button">이미 계정이 있어요</button>' : '')}
-        </div>`;
-    } else if (stepId === 'code' || stepId === 'reset-code') {
-      onboardingProgressVisible(true);
-      onboardingProgress();
-      body = `
-        ${obKicker(stepId)}
-        <div class="ob-hero">
-          <h1 class="ob-title">메일로 온 6자리를<br>알려주세요</h1>
-          <p class="ob-desc"><b>${escapeHtml(d.email)}</b> 로 인증번호를 보냈어요.</p>
-        </div>
-        ${obMailCard(stepId)}
-        <div class="ob-field">
-          <label class="ob-label" for="ob-code">인증번호 <span class="ob-hint">6자리</span></label>
-          <input class="ob-input ob-input-lg ob-num-input" id="ob-code" type="text" inputmode="numeric"
-                 maxlength="6" autocomplete="one-time-code" placeholder="000000" value="">
-        </div>
-        ${errHTML}
-        <div class="ob-actions">
-          <button class="ob-btn primary" id="ob-verify" type="button">확인</button>
-          <button class="ob-btn ghost" id="ob-resend" type="button">인증번호 다시 받기</button>
-          <button class="ob-btn ghost" id="ob-back" type="button">이메일 바꾸기</button>
+            : '<button class="ob-btn ghost" id="ob-to-login" type="button">이미 계정이 있어요 · 로그인</button>'}
         </div>`;
     } else if (stepId === 'password' || stepId === 'reset-password') {
       onboardingProgressVisible(true);
@@ -1374,20 +1418,22 @@ document.addEventListener('DOMContentLoaded', () => {
         ${obKicker(stepId)}
         <div class="ob-hero">
           <h1 class="ob-title">${reset ? '새 비밀번호를<br>정해주세요' : '비밀번호를<br>정해주세요'}</h1>
-          <p class="ob-desc">4자 이상이면 돼요. 비밀번호를 잊으면 이메일 인증으로 다시 찾을 수 있어요.</p>
+          <p class="ob-desc">8자리 이상, 특수기호 1개 이상이면 돼요. 비밀번호를 잊으면 이메일로 다시 찾을 수 있어요.</p>
         </div>
         <div class="ob-field">
-          <label class="ob-label" for="ob-password">비밀번호</label>
-          <input class="ob-input ob-input-lg" id="ob-password" type="password" autocomplete="new-password" placeholder="4자 이상">
+          <label class="ob-label" for="ob-password">비밀번호 <span class="ob-hint">8자 이상 + 특수기호</span></label>
+          <input class="ob-input ob-input-lg" id="ob-password" type="password" autocomplete="new-password" placeholder="예: oogHobby!23">
         </div>
-        ${reset ? `
+        <p class="ob-pw-rule" id="ob-pw-rule" aria-live="polite">
+          <span data-pw-rule="len">8자 이상</span><span data-pw-rule="symbol">특수기호 1개 이상</span>
+        </p>
         <div class="ob-field">
           <label class="ob-label" for="ob-password-confirm">비밀번호 확인</label>
           <input class="ob-input ob-input-lg" id="ob-password-confirm" type="password" autocomplete="new-password" placeholder="한 번 더 입력">
-        </div>` : ''}
+        </div>
         ${errHTML}
         <div class="ob-actions">
-          <button class="ob-btn primary" id="${reset ? 'ob-submit' : 'ob-next'}" type="button">${reset ? '비밀번호 바꾸고 로그인' : '다음'}</button>
+          <button class="ob-btn primary" id="${reset ? 'ob-submit' : 'ob-next'}" type="button">${reset ? '비밀번호 바꾸기' : '다음'}</button>
           <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
         </div>`;
     } else if (stepId === 'nickname') {
@@ -1585,44 +1631,138 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** 이메일 화면에서 → 인증번호 발송 → 인증 화면으로. */
-  function obSendCode() {
+  /* ------------------------------------------------------------------
+   * v37.0 — 실제 서버(Supabase Auth) 흐름
+   *   이메일 화면: 가입이면 다음(비밀번호) / 재설정이면 **재설정 메일 발송**
+   *   인증:  가입 마지막에 계정을 만들고 '인증 메일을 보냈어요' 화면
+   *   복귀:  메일의 링크(#access_token…&type=signup|recovery)로 돌아오면 세션을 되살린다
+   * ------------------------------------------------------------------ */
+  const cloud = () => window.OOGCloud;
+
+  function obSubmitEmail() {
     const d = collectOnboardingInputs();
-    const purpose = ui.onboardingMode === 'reset' ? 'reset' : 'signup';
-    const res = purpose === 'reset'
-      ? store.requestPasswordReset({ email: d.email })
-      : store.requestEmailCode({ email: d.email, purpose: 'signup' });
-    if (!res.ok) return showOnboardingError(onboardingError(res.reason));
-    d.email = res.email;
-    d.emailVerified = false;
-    ui.obCode = res;
-    showToast('인증번호를 만들었어요 · 아래 모의 메일함에서 확인하세요', 'info', null, { ms: 4200 });
-    obGo(1);
+    const email = String(d.email || '').trim().toLowerCase();
+    if (!oogEmailOk(email)) return showOnboardingError(onboardingError('email_invalid'));
+    d.email = email;
+    if (ui.onboardingMode !== 'reset') { obGo(1); return undefined; }
+    /* 비밀번호 찾기 — 재설정 링크를 실제로 보낸다(메일 주소가 가입돼 있는지와 무관하게 같은 화면). */
+    d.busy = true;
+    renderOnboarding();
+    return cloud().recover(email).then((r) => {
+      d.busy = false;
+      if (!r.ok) {
+        if (r.reason === 'rate_limited') { renderOnboarding(); return showOnboardingError(onboardingError('rate_limited')); }
+        if (r.reason === 'email_invalid') { renderOnboarding(); return showOnboardingError(onboardingError('email_invalid')); }
+        /* 가입되지 않은 주소여도 '보냈다'와 같은 화면을 보여 준다(가입 여부를 흘리지 않는다). */
+      }
+      ui.onboardingMode = 'reset-sent';
+      renderOnboarding();
+      showToast('재설정 메일을 보냈어요 · 메일함을 확인해 주세요', 'success', null, { ms: 4200 });
+      return undefined;
+    }).catch(() => {
+      d.busy = false;
+      ui.onboardingMode = 'reset-sent';
+      renderOnboarding();
+      return undefined;
+    });
   }
 
-  /** 인증번호 확인 → 성공하면 다음 질문(가입=비밀번호 / 재설정=새 비밀번호)으로. */
-  function obVerifyCode() {
+  /** 이메일 형식 — 화면과 서버가 같은 규칙을 본다. */
+  function oogEmailOk(email) {
+    return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(String(email || '')) && String(email).length <= 120;
+  }
+
+  /** '인증 메일 다시 보내기' — 가입 확인 메일. */
+  function obResendVerification() {
     const d = collectOnboardingInputs();
-    const purpose = ui.onboardingMode === 'reset' ? 'reset' : 'signup';
-    const res = store.verifyEmailCode({ email: d.email, code: d.code, purpose });
-    if (!res.ok) {
-      const msg = res.reason === 'code_mismatch' && res.triesLeft != null
-        ? `인증번호가 맞지 않아요 · ${res.triesLeft}번 더 시도할 수 있어요`
-        : onboardingError(res.reason);
-      return showOnboardingError(msg);
+    const email = String(d.email || (store.getOnboardingState().email || '')).trim().toLowerCase();
+    if (!oogEmailOk(email)) return showOnboardingError(onboardingError('email_invalid'));
+    d.busy = true;
+    return cloud().resendVerification(email).then((r) => {
+      d.busy = false;
+      if (!r.ok) {
+        showOnboardingError(r.reason === 'rate_limited'
+          ? '조금 전에 보냈어요 — 1분쯤 뒤에 다시 시도해 주세요'
+          : '메일을 다시 보내지 못했어요 — 잠시 뒤 다시 시도해 주세요');
+        return undefined;
+      }
+      showToast('인증 메일을 다시 보냈어요', 'success', null, { ms: 3600 });
+      return undefined;
+    });
+  }
+
+  /** '인증했어요 · 로그인' — 메일 링크를 누른 뒤 돌아와 실제로 인증됐는지 서버에 확인한다. */
+  function obCheckVerified() {
+    const d = collectOnboardingInputs();
+    const email = String(d.email || '').trim().toLowerCase();
+    if (!oogEmailOk(email)) return showOnboardingError(onboardingError('email_invalid'));
+    const pw = String(d.password || '');
+    if (!pw) {
+      d.busy = false;
+      ui.onboardingMode = 'login';
+      ui.onboardingStep = 0;
+      renderOnboarding();
+      showToast('인증을 마쳤다면 이메일과 비밀번호로 로그인해 주세요', 'info', null, { ms: 4200 });
+      return undefined;
     }
-    d.emailVerified = true;
-    showToast('이메일 인증을 마쳤어요', 'success', null, { ms: 3200 });
-    obGo(2);
+    d.busy = true;
+    renderOnboarding();
+    return cloud().signIn(email, pw).then((r) => {
+      d.busy = false;
+      if (!r.ok) {
+        renderOnboarding();
+        if (r.reason === 'email_unconfirmed') {
+          return showOnboardingError('아직 인증 전이에요 — 메일함의 인증 링크를 눌러 주세요');
+        }
+        return showOnboardingError(onboardingError(r.reason));
+      }
+      return enterAfterAuth(email, pw);
+    });
+  }
+
+  /** '아이디 찾기' — 입력이 이메일이면 @아이디 힌트, @아이디면 이메일 힌트를 RPC 로 받는다. */
+  function obSubmitLookup() {
+    const d = collectOnboardingInputs();
+    const q = String(d.lookupQuery || '').trim();
+    if (!q) return showOnboardingError('아이디나 이메일을 넣어 주세요');
+    const isEmail = q.includes('@') && q.split('@')[1] && q.split('@')[1].includes('.');
+    d.busy = true;
+    d.lookupResult = null;
+    renderOnboarding();
+    const done = (r) => {
+      d.busy = false;
+      if (r.ok) {
+        d.lookupResult = { ok: true, kind: isEmail ? 'email' : 'handle', hint: r.hint };
+      } else if (r.reason === 'not_found') {
+        d.lookupResult = { ok: false, message: isEmail
+          ? '이 이메일로 가입한 계정을 찾지 못했어요. 주소를 다시 확인해 주세요.'
+          : '이 아이디로 가입한 계정을 찾지 못했어요. 아이디를 다시 확인해 주세요.' };
+      } else if (r.reason === 'rate_limited') {
+        d.lookupResult = { ok: false, message: '시도가 너무 잦아요 — 10분쯤 뒤에 다시 해주세요.' };
+      } else if (r.reason === 'handle_invalid' || r.reason === 'email_invalid') {
+        d.lookupResult = { ok: false, message: isEmail ? '이메일 주소를 다시 확인해 주세요.' : '아이디는 영문 소문자·숫자·밑줄·점으로 3~20자예요.' };
+      } else {
+        d.lookupResult = { ok: false, message: '잠시 뒤에 다시 시도해 주세요.' };
+      }
+      renderOnboarding();
+      return undefined;
+    };
+    const task = isEmail ? cloud().handleHintForEmail(q) : cloud().emailHintForHandle(q.replace(/^@+/, ''));
+    return task.then(done).catch(() => done({ ok: false, reason: 'unknown' }));
   }
 
   function onboardingNext() {
     const d = collectOnboardingInputs();
     const stepId = obStepId();
-    if (stepId === 'email' || stepId === 'reset-email') return obSendCode();
-    if (stepId === 'code' || stepId === 'reset-code') return obVerifyCode();
+    if (stepId === 'email' || stepId === 'reset-email') return obSubmitEmail();
     if (stepId === 'password') {
-      if (String(d.password || '').length < 4) return showOnboardingError('비밀번호를 4자 이상 입력해 주세요');
-      return obGo(3);
+      /* v37.0 — 8자 이상 + 특수기호 1개. 저장과 같은 함수(store 쪽 규칙)를 쓴다. */
+      const issue = store.checkPassword ? store.checkPassword(d.password) : null;
+      if (issue) return showOnboardingError(onboardingError(issue));
+      if (String(d.passwordConfirm || '') !== String(d.password || '')) {
+        return showOnboardingError(onboardingError('password_mismatch'));
+      }
+      return obGo(2);
     }
     if (stepId === 'nickname') {
       const name = String(d.nickname || '').trim();
@@ -1635,13 +1775,33 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!/^[a-z0-9._]{3,20}$/.test(handle)) {
         return showOnboardingError('아이디는 영문 소문자·숫자·밑줄·점으로 3~20자예요');
       }
-      if (!store.isHandleAvailable(handle, '')) {
-        return showOnboardingError('이미 쓰고 있는 아이디예요 — 다른 아이디를 입력해 주세요');
-      }
       d.handle = handle;
-      return obGo(4);
+      /* v37.0 — 아이디 중복은 **서버**에서 확인한다(이 기기에는 내 계정만 있으므로). */
+      if (ui.obHandleChecked !== handle) {
+        const box = obField('ob-handle-hint');
+        if (box) { box.textContent = '아이디를 확인하고 있어요…'; box.className = 'ob-handle-hint'; }
+        const cloud = window.OOGCloud;
+        cloud.handleAvailable(handle).then((r) => {
+          if (!r.ok) {
+            showOnboardingError('아이디를 확인하지 못했어요 — 잠시 뒤 다시 시도해 주세요');
+            const b2 = obField('ob-handle-hint');
+            if (b2) { b2.textContent = '아이디를 확인하지 못했어요 — 다시 시도해 주세요.'; b2.className = 'ob-handle-hint is-warn'; }
+            return;
+          }
+          if (!r.available) {
+            showOnboardingError('이미 쓰고 있는 아이디예요 — 다른 아이디를 입력해 주세요');
+            const b3 = obField('ob-handle-hint');
+            if (b3) { b3.textContent = '이미 쓰고 있는 아이디예요.'; b3.className = 'ob-handle-hint is-warn'; }
+            return;
+          }
+          ui.obHandleChecked = handle;
+          obGo(3);
+        });
+        return undefined;
+      }
+      return obGo(3);
     }
-    if (stepId === 'photo') return obGo(5);
+    if (stepId === 'photo') return obGo(4);
     if (stepId === 'me') {
       if (String(d.age || '').trim() !== '') {
         const n = Number(d.age);
@@ -1676,46 +1836,163 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function submitOnboarding() {
     const d = collectOnboardingInputs();
-    const res = store.signUp({
-      email: d.email, password: d.password, passwordConfirm: d.passwordConfirm || d.password,
-      quickStart: d.quickStart === true,
-      nickname: d.nickname, handle: d.handle, photoUrl: d.photoUrl, avatarGradient: d.avatarGradient,
+    const nickname = String(d.nickname || '').trim();
+    const pwIssue = store.checkPassword(d.password);
+    if (pwIssue) return showOnboardingError(onboardingError(pwIssue));
+    if (String(d.passwordConfirm || '') !== String(d.password || '')) {
+      return showOnboardingError(onboardingError('password_mismatch'));
+    }
+    const azit = d.azitId ? store.findAzit(d.azitId) : null;
+    d.busy = true;
+    renderOnboarding();
+    /* 1) 서버에 계정을 만든다(여기서 인증 메일이 실제로 발송된다). */
+    return cloud().signUp({
+      email: d.email,
+      password: d.password,
+      nickname,
+      handle: d.handle,
       age: String(d.age || '').trim() === '' ? null : Number(d.age),
-      azitId: d.azitId || null,
-      hobbies: d.hobbies
+      azit: azit ? azit.name : null,
+      avatarGradient: d.avatarGradient,
+      photoUrl: d.photoUrl
+    }).then((r) => {
+      d.busy = false;
+      if (!r.ok) {
+        renderOnboarding();
+        if (r.reason === 'email_taken') {
+          ui.obError = onboardingError('email_taken');
+          return showOnboardingError(onboardingError('email_taken'));
+        }
+        return showOnboardingError(onboardingError(r.reason));
+      }
+      /* 2) 이 기기에 내 프로필을 준비한다(앱 진입은 인증 뒤에). */
+      const local = store.signUp({
+        email: d.email, password: d.password, passwordConfirm: d.passwordConfirm || d.password,
+        nickname, handle: d.handle, photoUrl: d.photoUrl, avatarGradient: d.avatarGradient,
+        age: String(d.age || '').trim() === '' ? null : Number(d.age),
+        azitId: d.azitId || null, hobbies: d.hobbies, verified: true
+      });
+      if (!local.ok) return showOnboardingError(onboardingError(local.reason));
+      /* 인증 전에는 세션을 열지 않는다 — 온보딩 미완료 상태로 둔다. */
+      store.state.onboarding = { completed: false, completedAt: null, step: 3, pendingEmail: d.email };
+      store.state.sessionActive = false;
+      store.saveState();
+      d.verified = true;
+      ui.onboardingMode = 'verify';
+      renderOnboarding();
+      showToast('인증 메일을 보냈어요 · 메일함을 확인해 주세요', 'success', null, { ms: 4200 });
+      return undefined;
+    }).catch(() => {
+      d.busy = false;
+      renderOnboarding();
+      return showOnboardingError(onboardingError('network'));
     });
-    if (!res.ok) return showOnboardingError(onboardingError(res.reason));
-    ui.onboardingDraft = null;
-    ui.obCode = null;
-    return finishSignup();
   }
 
   /** 비밀번호 재설정 완료 — 새 비밀번호로 바로 로그인해 앱으로 들어간다. */
   function submitPasswordReset() {
     const d = collectOnboardingInputs();
-    const res = store.resetPassword({
-      email: d.email, code: d.code, password: d.password, passwordConfirm: d.passwordConfirm
+    const pwIssue = store.checkPassword(d.password);
+    if (pwIssue) return showOnboardingError(onboardingError(pwIssue));
+    if (String(d.passwordConfirm || '') !== String(d.password || '')) {
+      return showOnboardingError(onboardingError('password_mismatch'));
+    }
+    d.busy = true;
+    renderOnboarding();
+    return cloud().updatePassword(d.password).then((r) => {
+      d.busy = false;
+      if (!r.ok) {
+        renderOnboarding();
+        return showOnboardingError(onboardingError(r.reason));
+      }
+      showToast('비밀번호를 바꿨어요', 'success');
+      /* 재설정 링크로 들어온 세션이 살아 있으므로 그대로 앱에 들어간다. */
+      return enterAfterAuth(d.email, d.password);
+    }).catch(() => {
+      d.busy = false;
+      renderOnboarding();
+      return showOnboardingError(onboardingError('network'));
     });
-    if (!res.ok) return showOnboardingError(onboardingError(res.reason));
-    const sign = store.signIn({ email: d.email, password: d.password });
-    if (!sign.ok) return showOnboardingError(onboardingError(sign.reason));
-    ui.onboardingMode = 'signup';
-    ui.onboardingStep = 0;
-    ui.onboardingDraft = null;
-    ui.obCode = null;
-    showToast('비밀번호를 바꿨어요 · 새 비밀번호로 로그인했어요', 'success');
-    return finishSignup();
   }
 
   function submitOnboardingLogin() {
     const idNode = obField('ob-email');
     const pwNode = obField('ob-login-pw');
-    const identifier = idNode ? idNode.value : '';
+    const email = String(idNode ? idNode.value : '').trim().toLowerCase();
     const pw = pwNode ? pwNode.value : '';
-    const res = store.signIn({ email: identifier, loginId: identifier, password: pw });
-    if (!res.ok) return showOnboardingError(onboardingError(res.reason));
+    if (!oogEmailOk(email)) return showOnboardingError(onboardingError('email_invalid'));
+    if (!pw) return showOnboardingError('비밀번호를 입력해 주세요');
+    const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+    d.busy = true;
+    d.email = email;
+    renderOnboarding();
+    return cloud().signIn(email, pw).then((r) => {
+      d.busy = false;
+      if (!r.ok) {
+        renderOnboarding();
+        if (r.reason === 'email_unconfirmed') {
+          ui.onboardingMode = 'verify';
+          renderOnboarding();
+          showToast('아직 인증 전이에요 · 메일함의 인증 링크를 눌러 주세요', 'warning', null, { ms: 4600 });
+          return undefined;
+        }
+        return showOnboardingError(onboardingError(r.reason));
+      }
+      return enterAfterAuth(email, pw, r.user);
+    }).catch(() => {
+      d.busy = false;
+      renderOnboarding();
+      return showOnboardingError(onboardingError('network'));
+    });
+  }
+
+  /**
+   * 인증된 세션으로 앱에 들어간다.
+   *  · 다른 계정으로 들어오면 이 기기의 옛 콘텐츠를 비우고 서버에서 새로 받는다.
+   *  · 같은 계정이면 이 기기 캐시를 그대로 두고 서버와 합친다.
+   */
+  function enterAfterAuth(email, password, cloudUser) {
+    const user = cloudUser || cloud().currentUser() || {};
+    if (!user.email_confirmed_at) {
+      ui.onboardingMode = 'verify';
+      renderOnboarding();
+      showToast('아직 인증 전이에요 · 메일함의 인증 링크를 눌러 주세요', 'warning', null, { ms: 4600 });
+      return undefined;
+    }
+    const prevEmail = (store.state.account && store.state.account.email) || '';
+    if (prevEmail && prevEmail !== email) store.clearContentForNewAccount();
+    store.applyCloudSession({ userId: user.id, email, nickname: store.state.currentUser.nickname, photoUrl: store.state.currentUser.photoUrl });
+    store.markSignedIn();
+    if (password) store.state.account.passwordHash = null;
     ui.onboardingDraft = null;
-    return finishSignup();
+    ui.obCode = null;
+    ui.onboardingMode = 'signup';
+    ui.onboardingStep = 0;
+    finishSignup();
+    /* 서버 데이터로 채운다(프로필·모임·글·채팅·설정). 실패해도 앱은 열린다. */
+    cloud().bootstrap().then((r) => {
+      if (r && r.ok) {
+        oogRefreshAll();
+        showToast('서버에서 내 데이터를 불러왔어요', 'info', null, { ms: 2600 });
+      } else if (r && r.reason === 'network') {
+        showToast('오프라인 상태예요 · 이 기기에 있던 내용으로 시작해요', 'warning', null, { ms: 3600 });
+      }
+    }).catch(() => {});
+    return undefined;
+  }
+
+  /** 화면 전체 다시 그리기 — 서버에서 받은 내용을 모든 탭에 반영한다. */
+  function oogRefreshAll() {
+    try {
+      paintMyAvatars();
+      renderHome();
+      renderGallery();
+      renderExplore();
+      renderChatRooms();
+      renderProfileHeader();
+      renderProfileMyFeed();
+      updateBadges();
+    } catch (e) { console.warn('[ooG] refresh', e); }
   }
 
   /** 가입/로그인 완료 → 앱 화면으로. 정한 닉네임·사진을 전체에 반영한다. */
@@ -1746,7 +2023,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.onboarding) el.onboarding.hidden = signedIn;
     if (!signedIn) {
       const ob = store.getOnboardingState();
-      ui.onboardingMode = ob.hasAccount && !ob.completed ? 'login' : 'signup';
+      const pending = (store.state.onboarding || {}).pendingEmail;
+      /* 메일 링크로 들어온 화면(새 비밀번호·인증 안내·아이디 찾기)만 그대로 둔다.
+         로그아웃·처음 열기에서는 인증 대기 표식이 없으므로 자연히 로그인/가입으로 돌아간다. */
+      const held = ui.onboardingMode === 'lookup'
+        || (ui.onboardingMode === 'reset' && ui.onboardingStep >= 1)
+        || (ui.onboardingMode === 'verify' && !!pending);
+      if (!held) ui.onboardingMode = ob.hasAccount && !ob.completed ? 'login' : 'signup';
+      if (pending && !ob.completed && !held) ui.onboardingMode = 'verify';
+      /* 서버 계정은 이 기기에 없을 수 있다 — 이메일 화면에서도 로그인으로 갈 수 있다. */
       /* 로그인 화면은 질문 단계가 아니라 한 화면이므로 진행 위치를 처음으로 둔다 */
       if (ui.onboardingMode === 'login') ui.onboardingStep = 0;
       if (ui.onboardingMode !== 'login' && !ui.onboardingDraft) ui.onboardingDraft = newOnboardingDraft();
@@ -1764,6 +2049,18 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function runSignOut() {
+    /* 입구 화면 상태를 로그인 기본값으로 되돌린다(인증 대기·재설정 화면이 남지 않게). */
+    ui.onboardingMode = '';
+    ui.onboardingStep = 0;
+    ui.obError = '';
+    /* v37.0 — 서버 세션도 함께 닫는다(다음 사람이 이 브라우저로 내 계정에 들어오지 못하게). */
+    try {
+      if (window.OOGCloud && window.OOGCloud.hasSession()) {
+        window.OOGCloud.stopRealtime();
+        window.OOGCloud.signOut();
+        window.OOGCloud.resetSyncMemory();
+      }
+    } catch (e) { /* 서버 세션이 없어도 로컬 로그아웃은 진행 */ }
     store.signOut();
     ui.onboardingStep = 0;
     ui.onboardingDraft = newOnboardingDraft();
@@ -6926,7 +7223,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v36.4';
+  const APP_VERSION = 'v37.0';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -8255,8 +8552,22 @@ document.addEventListener('DOMContentLoaded', () => {
         renderOnboarding(); return;
       }
       if (id === 'ob-next') { collectOnboardingInputs(); onboardingNext(); return; }
-      if (id === 'ob-verify') { collectOnboardingInputs(); obVerifyCode(); return; }
-      if (id === 'ob-resend') { collectOnboardingInputs(); obSendCode(); return; }
+      if (id === 'ob-verify') { collectOnboardingInputs(); obCheckVerified(); return; }
+      if (id === 'ob-verify-login') { collectOnboardingInputs(); obCheckVerified(); return; }
+      if (id === 'ob-resend') { collectOnboardingInputs(); obResendVerification(); return; }
+      if (id === 'ob-resend-verify') { collectOnboardingInputs(); obResendVerification(); return; }
+      if (id === 'ob-resend-reset') { collectOnboardingInputs(); obSubmitEmail(); return; }
+      if (id === 'ob-find-id') {
+        ui.onboardingMode = 'lookup'; ui.onboardingStep = 0; ui.obError = '';
+        const dd = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+        dd.lookupResult = null; dd.lookupQuery = ''; dd.busy = false;
+        renderOnboarding(); return;
+      }
+      if (id === 'ob-back-login' || id === 'ob-lookup-back') {
+        ui.onboardingMode = store.getOnboardingState().hasAccount ? 'login' : 'signup';
+        ui.onboardingStep = 0; ui.obError = ''; renderOnboarding(); return;
+      }
+      if (id === 'ob-lookup-submit') { collectOnboardingInputs(); obSubmitLookup(); return; }
       if (id === 'ob-back') { collectOnboardingInputs(); onboardingBack(); return; }
       if (id === 'ob-submit') {
         collectOnboardingInputs();
@@ -8341,6 +8652,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const btn = obField('ob-next');
         if (btn) btn.textContent = String(node.value || '').trim() ? '다음' : '건너뛰기';
       }
+      if (node.id === 'ob-password' || node.id === 'ob-password-confirm') {
+        /* v37.0 — 규칙을 그 자리에서 알려 준다(제출 전에 고칠 수 있게). */
+        const pw = (obField('ob-password') || {}).value || '';
+        const box = obField('ob-pw-rule');
+        if (box) {
+          const len = pw.length >= 8;
+          const sym = /[^A-Za-z0-9]/.test(pw);
+          const mark = (key, ok) => {
+            const el2 = box.querySelector(`[data-pw-rule="${key}"]`);
+            if (el2) el2.className = ok ? 'is-ok' : (pw.length ? 'is-warn' : '');
+          };
+          mark('len', len);
+          mark('symbol', sym);
+          box.dataset.ok = len && sym ? 'true' : 'false';
+        }
+        const conf = obField('ob-password-confirm');
+        const confBox = obField('ob-pw-match');
+        if (conf && confBox) confBox.textContent = '';
+      }
+      if (node.id === 'ob-lookup-input') {
+        const dd = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+        dd.lookupQuery = node.value;
+        dd.lookupResult = null;
+      }
     });
     el.onboardingBody.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
@@ -8348,7 +8683,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const step = obStepId();
       collectOnboardingInputs();
       if (ui.onboardingMode === 'login') { submitOnboardingLogin(); return; }
-      if (step === 'code' || step === 'reset-code') { obVerifyCode(); return; }
+      if (ui.onboardingMode === 'lookup') { obSubmitLookup(); return; }
+      if (ui.onboardingMode === 'verify') { obCheckVerified(); return; }
+      if (ui.onboardingMode === 'reset-sent') { obSubmitEmail(); return; }
       if (ui.onboardingMode === 'reset') {
         if (step === 'reset-password') submitPasswordReset(); else onboardingNext();
         return;
@@ -10217,6 +10554,19 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
       ${bio ? `<p class="detail-bio">${escapeHtml(bio)}</p>` : ''}
+      ${(() => {
+        /* v37.0 (#23868) — 상대가 공개한 경우에만 '다음 일정' 한 줄(테두리·박스 없이). */
+        const nx = store.getPublicNextEvent(p.id);
+        if (!nx) return '';
+        const nd = new Date(nx.when);
+        const wd = ['일', '월', '화', '수', '목', '금', '토'];
+        const when = Number.isNaN(nd.getTime()) ? '' :
+          `${nd.getMonth() + 1}/${nd.getDate()} (${wd[nd.getDay()]}) ${nd.getHours() < 12 ? '오전' : '오후'} ${nd.getHours() % 12 === 0 ? 12 : nd.getHours() % 12}:${String(nd.getMinutes()).padStart(2, '0')}`;
+        return `<p class="detail-next-row">
+          <span class="detail-next-ic" aria-hidden="true">${ic('calendar')}</span>
+          <span class="detail-next-text"><strong>${escapeHtml(nx.title)}</strong><span>${escapeHtml([when, nx.groupName].filter(Boolean).join(' · '))}</span></span>
+        </p>`;
+      })()}
       <div class="detail-actions">
         ${primary}
         ${secondary}
@@ -14994,6 +15344,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function openFromNotification(entry) {
     if (!entry) return;
     if (el.notifModal && el.notifModal.classList.contains('active')) closeModal(el.notifModal);
+    /* v37.0 (#23868) — '내 프로필에 일정이 등록됐어요' → 내 프로필의 예정 일정 + 공개 설정.
+       바로 공개로 바꿀 수 있게 예정 일정 갈래를 열어 준다. */
+    if (entry.kind === 'profile_event' || entry.action === 'my_schedule') {
+      switchTab('tab-myprofile');
+      try { renderMyProfileTab(); } catch (e) { /* 화면 갱신 실패는 이동을 막지 않는다 */ }
+      openMyScheduleSheet('upcoming');
+      return;
+    }
     if (entry.kind === 'chat' && entry.roomId && store.getChatRoom(entry.roomId)) {
       switchTab('tab-chat');
       renderChatRooms();
@@ -17206,6 +17564,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </button>`;
       return;
     }
+    const nextPublic = (store.currentUser || {}).upcomingMeetingsPublic === true;
     const d = new Date(next.when);
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
     const clock = Number.isNaN(d.getTime()) ? ''
@@ -17214,6 +17573,7 @@ document.addEventListener('DOMContentLoaded', () => {
         aria-label="다음 일정 ${escapeHtml(next.title)} 상세 열기">
       <span class="mp-next-ic" aria-hidden="true">${ic('calendar')}</span>
       <span class="mp-next-text"><strong>${escapeHtml(next.title)}</strong><span>${escapeHtml([clock, next.groupName].filter(Boolean).join(' · '))}</span></span>
+      <span class="mp-next-vis" aria-hidden="true">${nextPublic ? '공개' : '나만'}</span>
       <span class="mp-next-chev" aria-hidden="true">${ic('chevronRight')}</span>
     </button>`;
   }
@@ -17313,6 +17673,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderMyScheduleSheet() {
+    /* 스냅샷을 먼저 맞춘다(공개 중이면 지금의 다음 일정으로). */
+    try { store.syncProfileNextEvent(); } catch (e) { /* noop */ }
     const sched = store.getMySchedule();
     const privacy = store.getPastMeetingPrivacy();
     const tab = ui.myScheduleTab === 'upcoming' ? 'upcoming' : 'past';
@@ -17326,17 +17688,33 @@ document.addEventListener('DOMContentLoaded', () => {
         b.setAttribute('aria-pressed', String(on));
       });
     }
-    /* 공개 범위는 '다녀온 모임' 갈래에서만 — 전체 스위치 + 타인에게 몇 개 공개 중인지. */
-    if (el.myScheduleShare) el.myScheduleShare.hidden = tab !== 'past';
+    /* 공개 범위 — 다녀온 모임(과거)과 예정 일정(미래)을 각자의 갈래에서 따로 켠다. */
+    if (el.myScheduleShare) el.myScheduleShare.hidden = false;
     if (el.myScheduleShareToggle) {
+      el.myScheduleShareToggle.closest('.mp-share-row').hidden = tab !== 'past';
       el.myScheduleShareToggle.classList.toggle('on', !privacy.hidden);
       el.myScheduleShareToggle.setAttribute('aria-checked', String(!privacy.hidden));
     }
     if (el.myScheduleShareNote) {
+      el.myScheduleShareNote.hidden = tab !== 'past';
       el.myScheduleShareNote.textContent = privacy.hidden
         ? '타인에게 비공개 — 숫자도 보이지 않아요'
         : `타인에게 ${privacy.shared}개 공개 중`;
       el.myScheduleShareNote.classList.toggle('is-off', privacy.hidden);
+    }
+    /* v37.0 (#23868) — 예정 일정 공개(기본 OFF). */
+    const up = store.getUpcomingMeetingsPublic ? store.getUpcomingMeetingsPublic() : { public: false, event: null };
+    if (el.myScheduleUpcomingRow) el.myScheduleUpcomingRow.hidden = tab !== 'upcoming';
+    if (el.myScheduleUpcomingToggle) {
+      el.myScheduleUpcomingToggle.classList.toggle('on', up.public === true);
+      el.myScheduleUpcomingToggle.setAttribute('aria-checked', String(up.public === true));
+    }
+    if (el.myScheduleUpcomingNote) {
+      el.myScheduleUpcomingNote.hidden = tab !== 'upcoming';
+      el.myScheduleUpcomingNote.textContent = !up.public
+        ? '지금은 비공개 — 내 프로필에만 보여요'
+        : (up.event ? `타인에게 “${up.event.title}” 한 줄이 보여요` : '공개 중 — 아직 예정된 일정이 없어요');
+      el.myScheduleUpcomingNote.classList.toggle('is-off', up.public !== true);
     }
     if (!el.myScheduleList) return;
     const list = tab === 'past' ? sched.past : sched.upcoming;
@@ -18032,6 +18410,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMyScheduleSheet();
   });
   /* 전체 공개/비공개 — 숫자까지 숨기는 스위치 */
+  /* v37.0 (#23868) — 예정 일정 공개 스위치 */
+  el.myScheduleUpcomingToggle && el.myScheduleUpcomingToggle.addEventListener('click', () => {
+    const now = store.getUpcomingMeetingsPublic().public === true;
+    const res = store.setUpcomingMeetingsPublic(!now);
+    renderMyScheduleSheet();
+    renderMyProfileTab();
+    renderMyNextEvent();
+    showToast(res.public
+      ? (res.event ? `예정 일정을 타인에게 보여 줄게요 · ${res.event.title}` : '예정 일정 공개를 켰어요 · 일정이 잡히면 바로 보여요')
+      : '예정 일정을 타인에게 숨겼어요', 'info');
+  });
   el.myScheduleShareToggle && el.myScheduleShareToggle.addEventListener('click', () => {
     const next = (store.currentUser || {}).pastMeetingsPublic === false;
     store.setPastMeetingsPublic(next);
@@ -18364,6 +18753,66 @@ document.addEventListener('DOMContentLoaded', () => {
   paintMyAvatars();
   /* Sprint 17 — 가입 전이면 회원가입 화면만 보인다(입구). */
   applySignInGate();
+
+  /* ------------------------------------------------------------------
+   * v37.0 — 서버 세션 복원 · 인증/재설정 메일 링크 처리
+   *   · #access_token=…&type=signup   → 인증 완료 → 앱으로
+   *   · #access_token=…&type=recovery → 새 비밀번호 화면
+   *   · 저장된 세션이 있고 인증된 계정이면 조용히 서버와 맞춘다
+   * ------------------------------------------------------------------ */
+  function cloudBoot() {
+    const cloud = window.OOGCloud;
+    if (!cloud) return;
+    window.oogRefresh = (() => {
+      let t = null;
+      return () => { if (t) return; t = setTimeout(() => { t = null; try { oogRefreshAll(); } catch (e) { /* noop */ } }, 400); };
+    })();
+    cloud.onAuth((event) => {
+      if (event === 'signed_out') return;
+    });
+    cloud.handleUrlCallback().then((cb) => {
+      if (cb && cb.type === 'error') {
+        showToast('링크가 만료됐어요 — 다시 요청해 주세요', 'warning', null, { ms: 4200 });
+        ui.onboardingMode = 'signup';
+        applySignInGate();
+        return undefined;
+      }
+      if (cb && cb.type === 'recovery') {
+        ui.onboardingMode = 'reset';
+        ui.onboardingStep = 1;
+        ui.obError = '';
+        ui.onboardingDraft = newOnboardingDraft();
+        applySignInGate();
+        showToast('새 비밀번호를 정해 주세요', 'info', null, { ms: 3600 });
+        return undefined;
+      }
+      return cloud.getUser().then((u) => {
+        if (!u.ok || !u.user) return undefined;
+        if (!u.user.email_confirmed_at) {
+          /* 인증 전 계정 — 인증 메일 안내 화면으로 되돌린다(앱 진입 차단). */
+          const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+          d.email = u.user.email || d.email;
+          ui.onboardingMode = 'verify';
+          applySignInGate();
+          renderOnboarding();
+          return undefined;
+        }
+        if (cb && cb.type === 'signup') showToast('이메일 인증을 마쳤어요 · 환영해요!', 'success', null, { ms: 4200 });
+        const prevEmail = (store.state.account && store.state.account.email) || '';
+        if (prevEmail && prevEmail !== (u.user.email || '').toLowerCase()) store.clearContentForNewAccount();
+        store.applyCloudSession({ userId: u.user.id, email: u.user.email });
+        store.markSignedIn();
+        applySignInGate();
+        oogRefreshAll();
+        return cloud.bootstrap().then((r) => {
+          if (r && r.ok) { oogRefreshAll(); }
+          else if (r && r.reason === 'network') showToast('오프라인 상태예요 · 이 기기의 내용으로 시작해요', 'warning', null, { ms: 3400 });
+          return undefined;
+        }).catch(() => undefined);
+      }).catch(() => undefined);
+    }).catch(() => undefined);
+  }
+  cloudBoot();
   /* Sprint 21 — 아직 가이드를 보지 않은 계정은 앱을 열 때 이어서 보여준다(도중에 닫아도 다음에 이어서). */
   if (store.isSignedIn() && store.getGuideState().needed && !store.isDemoAccount()) {
     setTimeout(() => startGuide(), 420);
