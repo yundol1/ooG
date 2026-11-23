@@ -26659,44 +26659,12 @@ body.group-mode .push-permission-banner { display: none !important; }
 
 /* ==========================================================================
    v35.3 S2 — 설정에서 옮겨 온 항목의 새 자리
-   · 내 프로필 탭: 2시간 프로필 상태 행(상단) · 내 활동 두 줄(하단)
    · 내 그룹 화면: 탭 2개(가입한 모임 / 신청 현황)
    · 설정: 화면 모드를 바텀시트 → 전체 화면 하위 페이지
    박스 없이 행(48px)과 1px 구분선만 쓴다.
+   (v36.4 #23649 — 내 프로필 탭의 '2시간 프로필' 행 · '내 활동' 두 줄은 걷어냈으므로
+    그 둘만 쓰던 .mp-rows · .mp-status · .myprofile-activity 규칙도 함께 지웠다.)
    ========================================================================== */
-
-/* 내 프로필 탭의 행 목록 — 행 48px · 좌우 글자 시작선에 맞춘 구분선 */
-.mp-rows { display: flex; flex-direction: column; }
-.mp-rows .settings-row { padding: 0 2px; }
-.mp-rows .settings-row + .settings-row::before { left: 2px; right: 2px; }
-.mp-rows .settings-row:active { border-radius: var(--r-1, 8px); }
-
-/* 2시간 프로필 상태 — 프로필 머리와 다음 일정 사이 한 줄 */
-.mp-status {
-  margin: 2px 0 10px;
-  border-top: 1px solid var(--divider);
-  border-bottom: 1px solid var(--divider);
-}
-.mp-status[hidden] { display: none !important; }
-.mp-status .settings-row-value { white-space: nowrap; }
-.mp-status .settings-row.is-on .settings-row-value {
-  color: var(--green-dark);
-  font-weight: var(--fw-label);
-}
-
-/* 내 활동 — 내 피드 아래, 제목 한 줄 + 구분선만 있는 행 2개 */
-.myprofile-activity { margin-top: 18px; }
-.myprofile-activity-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--divider);
-  font-size: var(--fs-small);
-  font-weight: var(--fw-label);
-  color: var(--text-strong);
-}
-.mp-activity-rows { padding-top: 2px; }
 
 /* 내 그룹 화면 — 탭 2개(밑줄형) */
 .subscreen-tabs {

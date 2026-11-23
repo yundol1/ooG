@@ -373,12 +373,6 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsThemeState: $('#settings-theme-state'),
     settingsVersion: $('#settings-version'),
     themeChoices: $('#theme-choices'),
-    /* v35.3 S2 — 내 프로필 탭의 새 자리(2시간 프로필 상태 · 내 활동) */
-    mpStatus: $('#mp-status'),
-    mpStatusRow: $('#mp-status-row'),
-    mpStatusState: $('#mp-status-state'),
-    mpLikedCount: $('#mp-liked-count'),
-    mpActivityCount: $('#mp-activity-count'),
     /* v35.3 S2 — 내 모임 화면 탭 2개(가입한 모임 / 신청 현황) */
     myGroupsTabs: $('#mygroups-tabs'),
     myGroupsAppsList: $('#mygroups-apps-list'),
@@ -6932,7 +6926,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v36.3';
+  const APP_VERSION = 'v36.4';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -17189,9 +17183,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <button class="myprofile-stat is-tap" data-my-groups="1" type="button"
                 aria-label="내 모임 ${groups}개 보기"><strong>${groups}</strong><span>내 모임</span></button>`;
     }
+    /* v36.4 (#23649) — 2시간 프로필 상태 행 · 내 활동 두 줄은 내 프로필 탭에서 걷어냈다(renderMyProfileTab). */
     renderMyNextEvent();
-    renderMyProfileStatusRow();
-    renderMyProfileActivityRows();
     renderMyProfileFeed();
   }
 
@@ -18029,61 +18022,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.closest('[data-my-groups]')) openMyGroupsScreen();
   });
 
-  /* ==========================================================================
-   * v35.3 S2 — 설정에서 옮겨 온 항목의 새 자리 (내 프로필 탭)
-   * ------------------------------------------------------------------------
-   *  · 상단 '2시간 프로필' 행 — 지금 값(켜짐 · 남은 시간 / 내려감)을 보여 주고,
-   *    누르면 올리기(탐색의 내 프로필 올리기 시트) 또는 내리기를 한다.
-   *  · 하단 '내 활동' — 내가 좋아요한 취미친구 · 내 활동 기록 두 줄.
-   * ======================================================================== */
+  /* v36.4 (#23649) — v35.3 S2 가 내 프로필 탭에 두었던 '2시간 프로필' 상태 행과 '내 활동' 두 줄은 걷어냈다.
+     2시간 프로필은 탐색 탭의 '내 프로필 올리기' 한 곳, 활동 기록은 모임 설정 › 내 활동 한 곳에서만 다룬다. */
 
-  /** 2시간 프로필 상태 행 — 켜져 있으면 '켜짐 · 1시간 59분 남음', 아니면 '내려감'. */
-  function renderMyProfileStatusRow() {
-    if (!el.mpStatus) return;
-    if (!store.isSignedIn()) { el.mpStatus.hidden = true; return; }
-    const pub = store.getMyExplorePublishState();
-    el.mpStatus.hidden = false;
-    if (el.mpStatusState) {
-      el.mpStatusState.textContent = pub.active
-        ? `켜짐 · ${pub.remainingLabel || '2시간'}`
-        : '내려감';
-    }
-    if (el.mpStatusRow) el.mpStatusRow.classList.toggle('is-on', !!pub.active);
-  }
-
-  /** 내 활동 두 줄의 숫자 — 좋아요한 취미친구 N명 · 내 활동 기록 N건. */
-  function renderMyProfileActivityRows() {
-    if (!store.isSignedIn()) return;
-    if (el.mpLikedCount) el.mpLikedCount.textContent = `${store.getLikedProfiles().length}명`;
-    if (el.mpActivityCount) {
-      const n = (store.getActivityLogs({}) || []).length;
-      el.mpActivityCount.textContent = `${n}건`;
-    }
-  }
-
-  /** 내가 좋아요한 취미친구 — 설정에서 있던 그 자리(핸들러)를 그대로 옮겨 왔다. */
-  function openLikedFriends() {
-    const liked = store.getLikedProfiles();
-    if (!liked.length) {
-      showToast('아직 좋아요를 보낸 취미친구가 없어요', 'info');
-      switchTab('tab-explore');
-      return;
-    }
-    showToast(`좋아요를 보낸 취미친구 ${liked.length}명 · ${liked.map((p) => p.nickname).join(', ')}`, 'info');
-  }
-
-  el.mpStatusRow && el.mpStatusRow.addEventListener('click', () => {
-    /* 켜져 있으면 내리기, 내려가 있으면 탐색의 '내 프로필 올리기' 시트(기존 #menu-profile-status 핸들러) */
-    if (store.isMyProfileExploreVisible()) {
-      setExploreProfileVisible(false);
-      renderMyProfileStatusRow();
-      return;
-    }
-    switchTab('tab-explore');
-    setTimeout(openPublishSheet, 120);
-  });
-  $('#mp-row-liked') && $('#mp-row-liked').addEventListener('click', openLikedFriends);
-  $('#mp-row-activity') && $('#mp-row-activity').addEventListener('click', openActivityLog);
   el.myScheduleSeg && el.myScheduleSeg.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-my-schedule-tab]');
     if (!btn) return;
@@ -18255,8 +18196,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => {
     const active = store.isMyProfileExploreVisible();
     renderExploreProfileToggle();
-    /* v35.3 S2 — 내 프로필 탭의 '2시간 프로필' 행 남은 시간도 같이 줄어든다. */
-    if (ui.activeTab === 'tab-myprofile') renderMyProfileStatusRow();
+    /* v36.4 (#23649) — 내 프로필 탭의 '2시간 프로필' 행은 없앴으므로 여기서 다시 그릴 것도 없다. */
     if (publishWasActive && !active) {
       ui.exploreBuffer = null;
       if (ui.exploreRendered) renderExploreWithSkeleton();
