@@ -2519,6 +2519,12 @@ document.addEventListener('DOMContentLoaded', () => {
       ui.filterSheetOpen = false;
       if (el.exploreFilterBtn) el.exploreFilterBtn.setAttribute('aria-expanded', 'false');
     }
+    /* v37.6 (#24426) — 탈퇴 시트는 어떤 식으로 닫혀도(취소·바깥·Escape) 비밀번호를 남기지 않는다. */
+    if (node === el.deleteAccountModal) {
+      if (el.deleteAccountPw) el.deleteAccountPw.value = '';
+      if (el.deleteAccountError) { el.deleteAccountError.textContent = ''; el.deleteAccountError.hidden = true; }
+      setDeleteAccountBusy(false);
+    }
     if (!document.querySelector('.modal-overlay.active')) {
       document.body.classList.remove('modal-open');
       if (el.main) el.main.style.overflow = '';
