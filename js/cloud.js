@@ -219,20 +219,26 @@
         }
       });
       /* v37.7 — **이미 가입된 이메일의 2차 방어선.**
-         Supabase Auth 는 이메일 열거 방지 + 이메일 확인 ON 상태에서, 이미 가입된
-         주소로 signup 하면 200 OK 에 user.identities = [] (빈 배열)을 돌려준다
-         (계정은 새로 만들어지지 않는다). 이걸 성공으로 넘기면 '인증 메일을 보냈어요'
-         화면으로 가 버리므로 email_taken 으로 돌려보낸다. */
-      const signedUser = data && data.user;
-      if (signedUser && Array.isArray(signedUser.identities) && signedUser.identities.length === 0) {
+         Supabase Auth 는 이메일 열거 방지 + 이메일 확인 ON 상태에서, 이미 가입된 주소로
+         signup 하면 **200 OK + `identities: []`** 를 돌려준다(계정은 새로 만들어지지 않는다).
+         · 응답 모양이 두 가지다 — 세션이 있으면 `{ access_token, user: { identities } }`,
+           확인 메일을 기다리는 가입이면 **사용자 객체가 응답 맨 위**에 온다(`{ id, email, identities }`).
+           그래서 둘 다 본다.
+         · `identities` 가 비었거나(빈 배열) 없으면(자리만 있고 null) 새 계정이 만들어지지
+           않은 것이므로 성공으로 넘기지 않고 email_taken 으로 돌려보낸다. */
+      const signedUser = data && (data.user || (Object.prototype.hasOwnProperty.call(data, 'identities') ? data : null));
+      const hasIdentitiesKey = !!signedUser && Object.prototype.hasOwnProperty.call(signedUser, 'identities');
+      const noIdentity = hasIdentitiesKey
+        && !(Array.isArray(signedUser.identities) && signedUser.identities.length > 0);
+      if (signedUser && noIdentity) {
         return { ok: false, reason: 'email_taken', user: null, session: false };
       }
       const s = sessionFromAuth(data);
       if (s) saveSession(s);
       return {
         ok: true,
-        needsVerification: !s || !(data.user && data.user.email_confirmed_at),
-        user: data.user || null,
+        needsVerification: !s || !(signedUser && signedUser.email_confirmed_at),
+        user: signedUser || null,
         session: !!s
       };
     } catch (e) {
