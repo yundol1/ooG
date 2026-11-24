@@ -440,6 +440,12 @@ document.addEventListener('DOMContentLoaded', () => {
     confirmTitle: $('#confirm-title'),
     confirmDesc: $('#confirm-desc'),
     confirmOk: $('#btn-confirm-ok'),
+    /* v37.6 (#24426) — 회원탈퇴 2단계(비밀번호 인증) 시트 */
+    deleteAccountModal: $('#delete-account-modal'),
+    deleteAccountEmail: $('#delete-account-email'),
+    deleteAccountPw: $('#delete-account-pw'),
+    deleteAccountError: $('#delete-account-error'),
+    deleteAccountOk: $('#btn-delete-account-ok'),
     profileAvatarImg: $('#profile-avatar-img'),
     profilePhotoInput: $('#profile-photo-input'),
     groupSpace: $('#group-space'),
@@ -2189,31 +2195,30 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * v37.5 (#24337 · IMG_4604) — 회원탈퇴. 설정 › 회원탈퇴에서 두 번 확인한 뒤 부른다.
-   *  ① 서버: 내 사진 파일(모든 버킷) → RPC `delete_my_account()`(프로필·글·댓글·모임 멤버·
+   * v37.6 (#24426) — 회원탈퇴. 설정 › 회원탈퇴에서 ① 안내 확인 → ② **비밀번호 인증**(시트)을 거친 뒤 부른다.
+   *  ① 서버: 입력한 비밀번호로 다시 로그인해 **새 세션**을 얻는다(틀리면 여기서 멈춘다).
+   *  ② 서버: 내 사진 파일(모든 버킷) → RPC `delete_my_account()`(프로필·글·댓글·모임 멤버·
    *     일정·공지·대화·알림·비밀사진·열람 권한·요청·상태 → auth.users).
-   *  ② 이 기기: 저장 상태·옛 로컬 키를 모두 비우고 로그인(회원가입) 화면으로 돌린다.
+   *  ③ 이 기기: 저장 상태·옛 로컬 키를 모두 비우고 로그인(회원가입) 화면으로 돌린다.
    *  서버에 닿지 못하면 **아무것도 지우지 않고** 안내만 한다(반쯤 지운 계정을 만들지 않는다).
    */
-  async function runDeleteAccount() {
+  async function runDeleteAccount(password) {
     if (ui.deletingAccount) return { ok: false, reason: 'busy' };
     ui.deletingAccount = true;
+    setDeleteAccountBusy(true);
     showToast('탈퇴 처리 중이에요…', 'info');
-    let res = { ok: true, mode: 'local' };
+    let res = { ok: false, reason: 'error' };
     try {
       if (window.OOGCloud && typeof window.OOGCloud.deleteAccount === 'function') {
-        res = await window.OOGCloud.deleteAccount();
+        res = await window.OOGCloud.deleteAccount(password || '', deleteAccountEmail());
       }
     } catch (e) {
       res = { ok: false, reason: 'error' };
     }
     ui.deletingAccount = false;
+    setDeleteAccountBusy(false);
     if (!res || !res.ok) {
-      const msg = {
-        network: '서버에 닿지 못했어요 · 연결을 확인한 뒤 다시 시도해 주세요',
-        no_session: '로그인 상태를 확인할 수 없어요 · 다시 로그인한 뒤 시도해 주세요'
-      }[res && res.reason] || '탈퇴를 마치지 못했어요 · 잠시 뒤 다시 시도해 주세요';
-      showToast(msg, 'error');
+      showDeleteAccountError(res);
       return res;
     }
     store.resetAllData();
@@ -2233,6 +2238,89 @@ document.addEventListener('DOMContentLoaded', () => {
     updateBadges();
     showToast('회원탈퇴를 마쳤어요 · 그동안 함께해 주셔서 고마웠어요', 'info');
     return res;
+  }
+
+  /* v37.6 (#24426) — 회원탈퇴 2단계 시트(비밀번호 인증) ---------------------------------- */
+
+  /** 지금 로그인한 계정의 이메일(서버 세션 → 기기에 남은 계정 순).
+   *  · 이메일처럼 보이는 값(@ 포함)만 돌려준다 — 로컬 시연 계정의 id(guest_…)는 이메일이 아니다. */
+  function deleteAccountEmail() {
+    const look = (v) => (typeof v === 'string' && v.indexOf('@') > 0 ? v.trim() : '');
+    try {
+      if (window.OOGCloud && typeof window.OOGCloud.currentUser === 'function') {
+        const u = window.OOGCloud.currentUser();
+        const mail = look(u && u.email);
+        if (mail) return mail;
+      }
+    } catch (e) { /* 아래 기기 값으로 */ }
+    const acct = (store.state && store.state.account) || {};
+    return look(acct.email) || look(acct.loginId) || '';
+  }
+
+  function setDeleteAccountBusy(busy) {
+    if (el.deleteAccountOk) {
+      el.deleteAccountOk.disabled = !!busy;
+      el.deleteAccountOk.textContent = busy ? '지우는 중…' : '탈퇴하기';
+    }
+    if (el.deleteAccountPw) el.deleteAccountPw.disabled = !!busy;
+  }
+
+  function showDeleteAccountError(res) {
+    const reason = (res && res.reason) || 'error';
+    const msg = {
+      password_mismatch: '비밀번호가 맞지 않아요 · 다시 확인해 주세요',
+      password_empty: '비밀번호를 넣어 주세요',
+      no_email: '이 계정의 이메일을 확인할 수 없어요 · 로그아웃한 뒤 다시 로그인하고 시도해 주세요',
+      no_session: '로그인 상태를 확인할 수 없어요 · 다시 로그인한 뒤 시도해 주세요',
+      rate_limited: '시도가 너무 잦아요 · 잠시 뒤 다시 시도해 주세요',
+      network: '서버에 닿지 못했어요 · 연결을 확인한 뒤 다시 시도해 주세요',
+      still_exists: '서버가 계정을 지우지 못했어요 · 잠시 뒤 다시 시도해 주세요',
+      busy: '탈퇴 처리 중이에요 · 잠시만 기다려 주세요'
+    }[reason] || '탈퇴를 마치지 못했어요 · 잠시 뒤 다시 시도해 주세요';
+    const box = el.deleteAccountError;
+    const open = !!(el.deleteAccountModal && el.deleteAccountModal.classList.contains('active'));
+    if (box && open) {
+      box.textContent = msg;
+      box.hidden = false;
+      if (el.deleteAccountPw && reason === 'password_mismatch') {
+        el.deleteAccountPw.select && el.deleteAccountPw.select();
+      }
+    } else {
+      showToast(msg, 'error');
+    }
+  }
+
+  /**
+   * v37.6 — 설정 › 회원탈퇴 ① 안내 확인을 지난 뒤 여는 **비밀번호 인증 시트**.
+   *  · 이메일은 지금 계정 것으로 보여 주고, 비밀번호는 저장하지 않는다(닫으면 바로 비운다).
+   */
+  function openDeleteAccountSheet() {
+    if (!el.deleteAccountModal) return;
+    if (el.deleteAccountEmail) el.deleteAccountEmail.textContent = deleteAccountEmail() || '이 기기의 계정';
+    if (el.deleteAccountPw) { el.deleteAccountPw.value = ''; el.deleteAccountPw.disabled = false; }
+    if (el.deleteAccountError) { el.deleteAccountError.textContent = ''; el.deleteAccountError.hidden = true; }
+    setDeleteAccountBusy(false);
+    openModal(el.deleteAccountModal);
+    setTimeout(() => { if (el.deleteAccountPw) el.deleteAccountPw.focus({ preventScroll: true }); }, 80);
+  }
+
+  function closeDeleteAccountSheet() {
+    if (el.deleteAccountPw) el.deleteAccountPw.value = '';
+    if (el.deleteAccountError) { el.deleteAccountError.textContent = ''; el.deleteAccountError.hidden = true; }
+    if (el.deleteAccountModal) closeModal(el.deleteAccountModal);
+  }
+
+  /** 시트의 '탈퇴하기' — 비밀번호를 들고 서버 삭제로 넘어간다. */
+  async function submitDeleteAccount() {
+    const pw = el.deleteAccountPw ? el.deleteAccountPw.value : '';
+    if (!pw) {
+      if (el.deleteAccountError) { el.deleteAccountError.textContent = '비밀번호를 넣어 주세요'; el.deleteAccountError.hidden = false; }
+      if (el.deleteAccountPw) el.deleteAccountPw.focus();
+      return;
+    }
+    if (el.deleteAccountError) { el.deleteAccountError.textContent = ''; el.deleteAccountError.hidden = true; }
+    await runDeleteAccount(pw);
+    if (el.deleteAccountPw) el.deleteAccountPw.value = '';
   }
 
   /** 모달을 모두 닫는다(로그아웃·초기화 때 화면 정리). */
@@ -4533,23 +4621,21 @@ document.addEventListener('DOMContentLoaded', () => {
    *   · 탐색·디엠을 설명할 때는 **그 탭으로 실제로 이동한 화면**을 짚어 준다(tab).
    * ======================================================================== */
   /* Sprint 28.5 — 가이드를 4단계로 줄였다: 취향 선택 → 홈 → 탐색 → 디엠.
-     · 취향(분야→취미→목표)은 한 단계로 묶어 1/4 안에서 세 화면을 넘긴다.
+     · 취향(분야→취미)은 한 단계로 묶어 1/4 안에서 두 화면을 넘긴다.
+   · v37.6 (#24462 · 사용자: "가이드에 취미를 고르는게 두번인데 … 하나만 있어도 될것같아") —
+     '좋아하는 취미'와 '해보고 싶은 취미'가 같은 칩 목록을 두 번 묻던 것을 **한 번만** 고르게 합쳤다.
+     고른 취미가 곧 추천 모임의 기준(goalIds)이 된다.
      · 모든 단계에 '건너뛰기'가 있다(스포트라이트 상단). */
   const GUIDE_STEPS = [
     {
       id: 'taste-category', stage: 1, target: null, tab: 'tab-home', body: 'taste-category',
       title: '어떤 분야가 끌리나요?',
-      desc: '큰 분야 하나를 골라 주세요. 다음 화면에서 그 안의 취미를 하나씩 물어볼게요.'
+      desc: '큰 분야 하나를 골라 주세요. 다음 화면에서 그 안의 취미를 고를 수 있어요.'
     },
     {
       id: 'taste-hobby', stage: 1, target: null, tab: 'tab-home', body: 'taste-hobby',
-      title: '그중 무엇을 좋아하나요?',
-      desc: '최대 3개까지 고를 수 있고, 목록에 없으면 직접 써도 돼요.'
-    },
-    {
-      id: 'taste-goal', stage: 1, target: null, tab: 'tab-home', body: 'taste-goal',
-      title: '우그에서 어떤 걸 해보고 싶나요?',
-      desc: '함께 해보고 싶은 것을 고르면 홈의 추천 모임이 그 취미로 채워져요. 건너뛰어도 괜찮아요.'
+      title: '그중 어떤 취미를 좋아하나요?',
+      desc: '최대 3개까지 고를 수 있고, 목록에 없으면 직접 써도 돼요. 고른 취미로 홈의 추천 모임을 채워 드려요.'
     },
     {
       id: 'gallery', stage: 2, targets: ['#my-groups-rail .my-group-item'], tab: 'tab-home',
@@ -4898,7 +4984,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function guideBodyHTML(kind) {
     if (kind === 'taste-category') return guideCategoryHTML();
     if (kind === 'taste-hobby') return guidePickHTML('hobby');
-    if (kind === 'taste-goal') return guidePickHTML('goal');
     return '';
   }
 
@@ -5077,13 +5162,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function guideNext() {
     const g = guideState();
     const step = GUIDE_STEPS[g.step];
-    /* v37.3 — 취미 → '해보고 싶은 것'으로 넘어갈 때는 **방금 고른 취미를 그대로 가져간다.**
-       (전에는 같은 칩 목록이 0/3 으로 비어 보여 '고른 것이 초기화됐다'고 느껴졌다 — IMG_4597.)
-       사용자가 '해볼 취미'를 직접 고친 뒤에는(goalTouched) 덮어쓰지 않는다. */
-    if (step && step.id === 'taste-hobby' && !g.goalTouched) {
+    /* v37.6 (#24462) — 취미는 **한 번만** 고른다. 여기서 고른 취미가 그대로 추천 모임의
+       기준(goalIds)이 된다(전에는 같은 칩 목록을 '해볼 취미'로 한 번 더 물었다). */
+    if (step && step.id === 'taste-hobby') {
       g.goalIds = g.hobbyIds.slice(0, 3);
+      g.goalTouched = false;
+      saveGuideTaste();
     }
-    if (step && step.id === 'taste-goal') saveGuideTaste();
     if (g.step >= GUIDE_STEPS.length - 1) {
       closeGuide('done');
       switchTab('tab-home');
@@ -5103,10 +5188,9 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGuide();
   }
 
-  /** 직접 쓴 취미를 어느 질문에 더할지 — 지금 단계가 정한다. */
+  /** 직접 쓴 취미를 어느 질문에 더할지 — v37.6 부터 취미 질문은 하나뿐이다. */
   function guideCurrentPickKind() {
-    const step = GUIDE_STEPS[guideState().step] || {};
-    return step.body === 'taste-goal' ? 'goal' : 'hobby';
+    return 'hobby';
   }
 
   function bindGuide() {
@@ -7617,7 +7701,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v37.5';
+  const APP_VERSION = 'v37.6';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -8571,15 +8655,19 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#settings-row-logout') && $('#settings-row-logout').addEventListener('click', () => {
     askConfirm('로그아웃할까요?', '이 기기에 계정과 프로필은 남고, 회원가입(로그인) 화면으로 돌아가요.', '로그아웃', runSignOut);
   });
-  /* v37.5 (#24337) — 회원탈퇴: 1단계(무엇이 지워지는지) → 2단계(정말인지) → 실행 */
+  /* v37.6 (#24426) — 회원탈퇴: ① 안내 확인 → ② 비밀번호 인증 시트 → 서버 삭제 */
   $('#settings-row-delete-account') && $('#settings-row-delete-account').addEventListener('click', () => {
     askConfirm('회원탈퇴',
       '프로필·공개 사진·비밀앨범·글·댓글·대화·모임 기록이 모두 삭제되고 되돌릴 수 없어요.',
-      '계속', () => {
-        askConfirm('정말 탈퇴할까요?',
-          '탈퇴하면 계정과 데이터를 복구할 수 없어요. 상대와의 대화도 그 사람 화면에서 사라져요. 같은 이메일로 다시 가입할 수는 있어요.',
-          '탈퇴하기', runDeleteAccount);
-      });
+      '계속', openDeleteAccountSheet);
+  });
+  $('#btn-close-delete-account') && $('#btn-close-delete-account').addEventListener('click', closeDeleteAccountSheet);
+  $('#btn-delete-account-cancel') && $('#btn-delete-account-cancel').addEventListener('click', closeDeleteAccountSheet);
+  $('#btn-delete-account-ok') && $('#btn-delete-account-ok').addEventListener('click', submitDeleteAccount);
+  el.deleteAccountPw && el.deleteAccountPw.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    submitDeleteAccount();
   });
   /* 동적 행(설치·개발자 도구)은 한 곳에서 받는다 */
   el.settingsScreen && el.settingsScreen.addEventListener('click', (e) => {
@@ -19939,7 +20027,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const p = store.getPersonProfile(personId);
       return p ? personSecretRingHTML(p) : '';
     },
-    deleteAccount: () => runDeleteAccount(),
+    deleteAccount: (password) => runDeleteAccount(password),
+    openDeleteAccountSheet: () => openDeleteAccountSheet(),
+    submitDeleteAccount: (pw) => {
+      if (el.deleteAccountPw && pw !== undefined) el.deleteAccountPw.value = String(pw);
+      return submitDeleteAccount();
+    },
+    getDeleteAccountSheet: () => ({
+      open: !!(el.deleteAccountModal && el.deleteAccountModal.classList.contains('active')),
+      email: el.deleteAccountEmail ? el.deleteAccountEmail.textContent : '',
+      error: el.deleteAccountError && !el.deleteAccountError.hidden ? el.deleteAccountError.textContent : '',
+      ok: el.deleteAccountOk ? el.deleteAccountOk.textContent : '',
+      pw: el.deleteAccountPw ? el.deleteAccountPw.value : '',
+      type: el.deleteAccountPw ? el.deleteAccountPw.getAttribute('type') : ''
+    }),
     getDeleteAccountConfirm: () => ({
       open: !!(el.confirmModal && el.confirmModal.classList.contains('active')),
       title: el.confirmTitle ? el.confirmTitle.textContent : '',

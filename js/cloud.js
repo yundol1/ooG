@@ -23,7 +23,7 @@
   const CONF = {
     url: 'https://nnzrunhjxwcspsfgsmgf.supabase.co',
     key: 'sb_publishable_fy0CjiojNNWeTVAzrflP8w_098c3T2J',
-    version: 'v37.5'
+    version: 'v37.6'
   };
 
   const LS_SESSION = 'oog_cloud_session_v1';
@@ -800,7 +800,7 @@
     }
   }
 
-  /* ---------------------------------------------------------- 회원탈퇴 (v37.5) */
+  /* ---------------------------------------------------------- 회원탈퇴 (v37.6) */
   const MY_BUCKETS = ['avatars', 'public-photos', 'group-covers', 'post-images', 'secret-photos'];
 
   /** 내 폴더(<uuid>/…) 의 파일 경로를 모은다(Storage list 는 폴더별로 한 단계씩). */
@@ -840,29 +840,101 @@
   }
 
   /**
-   * v37.5 (#24337) — 회원탈퇴: 내 사진 파일 → DB·Auth 계정 순서로 지운다.
-   *  · Auth 계정 삭제는 **SECURITY DEFINER RPC `delete_my_account()`** 가 한다(publishable 키로는
-   *    auth.users 를 지울 수 없다). RPC 는 내 프로필·모임 멤버·글·일정·공지·대화·알림·
-   *    비밀사진·권한·요청·상태를 함께 지우고 마지막에 auth.users 줄을 지운다.
-   *  · 성공하면 로컬 세션·동기화 기억을 비운다(화면은 app.js 가 로그인 화면으로 돌린다).
+   * v37.6 (#24426) — 회원탈퇴 전 **비밀번호 재인증**.
+   *  · 지금 로그인한 계정의 이메일에 사용자가 방금 넣은 비밀번호로 다시 로그인한다
+   *    (Supabase Auth `signInWithPassword` 와 같은 `POST /auth/v1/token?grant_type=password`).
+   *  · 성공하면 그 응답의 **새 세션**으로 갈아 끼운다 — 세션이 만료됐어도 이 순간부터 유효하다.
+   *  · 비밀번호가 틀리면 `password_mismatch` 로 돌려주고 **아무것도 지우지 않는다**.
    */
-  async function deleteAccount() {
+  async function reauthenticate(password, emailOverride) {
     const me = currentUser();
-    if (!hasSession() || !me) {
+    const email = (me && me.email ? String(me.email) : String(emailOverride || '')).trim().toLowerCase();
+    const pw = String(password == null ? '' : password);
+    if (email.indexOf('@') <= 0) return { ok: false, reason: 'no_email' };
+    if (!pw) return { ok: false, reason: 'password_empty' };
+    const r = await signIn(email, pw);
+    if (!r.ok) return { ok: false, reason: r.reason || 'unknown' };
+    if (!hasSession()) return { ok: false, reason: 'no_session' };
+    return { ok: true, user: r.user, email };
+  }
+
+  /**
+   * 계정이 정말 사라졌는지 서버에 되묻는다(삭제 뒤 왕복 확인).
+   *  · 토큰이 아직 살아 있으면(200) 계정이 남아 있는 것이다.
+   *  · 401/403 이면 세션의 주인이 사라진 것 — auth.users 에서 지워졌다는 뜻이다.
+   *  · 답을 못 받으면(null) 판정하지 않는다.
+   */
+  async function accountGone() {
+    if (!state.session || !state.session.access_token) return true;
+    try {
+      const res = await fetch(`${AUTH}/user`, {
+        method: 'GET',
+        headers: { apikey: CONF.key, Authorization: `Bearer ${state.session.access_token}` },
+        cache: 'no-store'
+      });
+      if (res.status === 200) return false;
+      if (res.status === 401 || res.status === 403) return true;
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * v37.6 (#24426) — 회원탈퇴: ① 비밀번호 재인증 → ② 내 사진 파일 → ③ RPC `delete_my_account()`
+   *  (프로필·모임 멤버·글·댓글·일정·공지·대화·알림·비밀사진·권한·요청·상태 → auth.users) →
+   *  ④ 계정이 사라졌는지 왕복 확인 → ⑤ 로컬 세션·동기화 기억 비우기.
+   *
+   *  · **세션이 없거나 만료됐다는 이유로 '로컬만 지운 성공'을 돌려주지 않는다.**
+   *    (v37.5 까지는 `mode:'local'` 로 성공 처리해 서버 계정이 그대로 남았다 — 사용자가 같은
+   *     이메일·비밀번호로 다시 로그인돼 버린 원인.)
+   *  · 비밀번호가 틀리면 아무것도 지우지 않고 `password_mismatch` 로 돌아간다.
+   *  · 서버가 지웠다고 해도 확인이 안 되면 `still_exists` 로 돌려 로컬 상태를 남긴다.
+   */
+  async function deleteAccount(password, emailOverride) {
+    const me = currentUser();
+    const raw = (me && me.email ? String(me.email) : String(emailOverride || '')).trim().toLowerCase();
+    /* 이메일처럼 보이는 값(@ 포함)만 서버 계정으로 친다 — 로컬 id(guest_…)로 로그인을 시도하지 않는다. */
+    const email = raw.indexOf('@') > 0 ? raw : '';
+    /* 이 기기에 **서버 계정이 한 번도 붙지 않은** 경우(로컬 시연·테스트): 서버에 지울 것이 없다.
+       이메일을 아는 순간부터는 세션이 없어도 아래 재인증으로 서버까지 지운다. */
+    if (!email) {
+      if (hasSession()) return { ok: false, reason: 'no_email' };
       clearSession();
       stopRealtime();
       resetSyncMemory();
       return { ok: true, mode: 'local', removed: 0 };
     }
+    /* ① 비밀번호 재인증 — 이 단계를 지나야만 서버를 건드린다. */
+    const auth = await reauthenticate(password, email);
+    if (!auth.ok) return { ok: false, reason: auth.reason };
+    /* ② 내 사진 파일(모든 버킷) */
     const files = await deleteMyStorage();
+    /* ③ DB·Auth 계정 */
     const r = await rpc('delete_my_account', {});
     if (!r.ok) {
       return { ok: false, reason: r.reason, message: (r.error && r.error.message) || '', files };
     }
+    const out = r.data || {};
+    if (out && out.ok === false) {
+      return { ok: false, reason: out.reason || 'server_refused', message: out.message || '', files };
+    }
+    /* ④ 정말 사라졌는지 왕복 확인 — 남아 있으면 완료라고 말하지 않는다. */
+    const gone = await accountGone();
+    if (gone === false) {
+      return { ok: false, reason: 'still_exists', files, report: out };
+    }
+    /* ⑤ 이 기기 정리 */
     clearSession();
     stopRealtime();
     resetSyncMemory();
-    return { ok: true, mode: 'server', removed: files.removed || 0 };
+    return {
+      ok: true,
+      mode: 'server',
+      removed: files.removed || 0,
+      unverified: gone === null,
+      report: out
+    };
   }
 
   /* ----------------------------------------------------------- 내 프로필 */
@@ -1476,7 +1548,7 @@
     rpc, emailHintForHandle, handleHintForEmail, handleAvailable,
     uploadPhoto, ensurePhotoUrl, publicUrl, signedUrl, dataUrlToBlob,
     /* v37.5 (#24337) */
-    fetchSecretAlbum, deleteAccount, deleteMyStorage, shortHandle,
+    fetchSecretAlbum, deleteAccount, deleteMyStorage, reauthenticate, accountGone, shortHandle,
     // sync
     pushAll, pullAll, bootstrap, scheduleSync, resetSyncMemory,
     startRealtime, stopRealtime,

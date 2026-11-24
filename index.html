@@ -751,7 +751,7 @@
             </div>
 
             <!-- 로그아웃 · 회원탈퇴 — 구분선 하나 뒤에 텍스트만.
-                 v37.5 (#24337 · IMG_4604) — 회원탈퇴는 두 단계 확인 뒤 계정·데이터를 지운다. -->
+                 v37.6 (#24426) — 회원탈퇴는 안내 확인 → **비밀번호 인증** → 서버 계정 삭제 순서다. -->
             <div class="settings-group is-separated">
               <button class="settings-row is-plain" id="settings-row-logout" type="button">로그아웃</button>
               <button class="settings-row is-plain is-danger" id="settings-row-delete-account" type="button"
@@ -2056,6 +2056,29 @@
         <div class="confirm-actions btn-pair">
           <button class="btn-secondary" id="btn-confirm-cancel" type="button">취소</button>
           <button class="btn-primary danger" id="btn-confirm-ok" type="button">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== v37.6 (#24426) — 회원탈퇴 2단계: 비밀번호 인증 ====================
+         '탈퇴하기'를 누르면 지금 로그인한 계정의 이메일로 비밀번호를 다시 확인하고,
+         확인된 그 세션으로만 서버(Storage 사진 → DB → auth.users)를 지운다.
+         비밀번호가 틀리면 "비밀번호가 맞지 않아요"를 띄우고 아무것도 지우지 않는다. -->
+    <div class="modal-overlay" id="delete-account-modal" role="dialog" aria-modal="true" aria-label="회원탈퇴 비밀번호 확인">
+      <div class="modal-sheet confirm-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <button class="sheet-close-btn" id="btn-close-delete-account" type="button" aria-label="닫기">&times;</button>
+        <h2 class="sheet-title">비밀번호를 한 번 더 확인할게요</h2>
+        <p class="joined-sub">지금 로그인한 계정 <strong id="delete-account-email">—</strong> 의 비밀번호를 넣어 주세요.
+          확인되면 계정과 모든 데이터를 서버에서 지워요.</p>
+        <div class="ob-field">
+          <label class="ob-label" for="delete-account-pw">비밀번호</label>
+          <input class="ob-input ob-input-lg" id="delete-account-pw" type="password" autocomplete="current-password" placeholder="비밀번호">
+        </div>
+        <p class="ob-error" id="delete-account-error" hidden></p>
+        <div class="confirm-actions btn-pair">
+          <button class="btn-secondary" id="btn-delete-account-cancel" type="button">취소</button>
+          <button class="btn-primary danger" id="btn-delete-account-ok" type="button">탈퇴하기</button>
         </div>
       </div>
     </div>
