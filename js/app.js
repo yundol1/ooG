@@ -1470,7 +1470,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${reset
             ? '<button class="ob-btn ghost" id="ob-to-login" type="button">로그인으로 돌아가기</button>'
             : `<div class="ob-link-row">
-                 <button class="ob-btn ghost" id="ob-to-login" type="button">이미 계정이 있어요 · 로그인</button>
+                 <button class="ob-btn ghost" id="ob-to-login" type="button">로그인</button>
                  <button class="ob-btn ghost" id="ob-forgot" type="button">비밀번호 찾기</button>
                </div>`}
         </div>`;
