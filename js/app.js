@@ -11181,12 +11181,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (raw) return raw;
     const id = String((person && person.id) || '').replace(/^@+/, '');
     if (id && !id.includes(':')) {
-      /* 마지막 조각을 쓴다 — match_junho → junho · sample_p_danchu → danchu · user_kettle → kettle */
+      /* 마지막 조각을 쓴다 — match_junho → junho · sample_p_danchu → danchu · user_kettle → kettle
+         v37.5 (#24337) — Supabase UUID 는 조각이 하나(32자리 hex)라 그대로 쓰면 아이디처럼 새어 나간다. */
       const parts = id.split('_');
       const tail = String(parts[parts.length - 1] || '').replace(/[^a-zA-Z0-9.]/g, '');
-      if (tail.length >= 2) return tail.toLowerCase();
+      if (tail.length >= 2 && tail.length < 20) return tail.toLowerCase();
+      if (/^[0-9a-f]{20,}$/i.test(tail)) return store.personHandle(person);
     }
-    return String((person && person.nickname) || 'member').replace(/\s+/g, '').toLowerCase();
+    const nick = String((person && person.nickname) || '').replace(/\s+/g, '').toLowerCase();
+    if (nick && !/^[0-9a-f]{20,}$/.test(nick)) return nick;
+    return store.personHandle(person);
   }
 
   /* ------------------------------------------------------ 좋아요한 사람 시트 */
@@ -19924,6 +19928,7 @@ document.addEventListener('DOMContentLoaded', () => {
     requestSecretAlbum: (personId) => store.requestSecretAlbum(personId),
     respondSecretAlbum: (personId, action) => respondChatSecretAlbum(personId, action),
     getPersonPhotos: (personId) => personPhotoList(store.getPersonProfile(personId) || {}),
+    getDisplayHandle: (personId) => displayHandle(store.getPersonProfile(personId) || {}),
     getSecretAlbumDebug: (personId) => ({
       state: store.getSecretAlbumState(personId),
       request: store.getSecretRequestWith(personId),
