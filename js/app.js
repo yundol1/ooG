@@ -3064,9 +3064,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------------------------------- H1-① 내 모임 원형 줄 */
 
-  /** '내 모임' 원형 레일 — [내 모임 전체] · 가입한 모임들 · [+ 새 모임] (마지막 칸 고정). */
+  /** '내 모임' 원형 레일 — [내 모임 전체] · 가입한 모임들 · [+ 새 모임] (마지막 칸 고정).
+   *  v37.8 — 가이드의 '내 모임' 단계에서는 임시 모임 카드로 줄을 채운다(저장소는 그대로). */
   function renderMyGroups() {
     if (!el.myGroupsRail) return;
+    if (guidePreviewKind() === 'gallery') {
+      renderGuideMyGroupsPreview();
+      return;
+    }
     const items = store.getGroupGallery();
     const updates = items.filter((it) => it.updateDot).length;
     if (el.myGroupsSub) {
@@ -4662,40 +4667,203 @@ document.addEventListener('DOMContentLoaded', () => {
    *   · 취향은 **한 질문씩** — ① 분야 고르기 ② 세부 취미 ③ 해보고 싶은 것.
    *   · 탐색·디엠을 설명할 때는 **그 탭으로 실제로 이동한 화면**을 짚어 준다(tab).
    * ======================================================================== */
-  /* Sprint 28.5 — 가이드를 4단계로 줄였다: 취향 선택 → 홈 → 탐색 → 디엠.
-     · 취향(분야→취미)은 한 단계로 묶어 1/4 안에서 두 화면을 넘긴다.
-   · v37.6 (#24462 · 사용자: "가이드에 취미를 고르는게 두번인데 … 하나만 있어도 될것같아") —
-     '좋아하는 취미'와 '해보고 싶은 취미'가 같은 칩 목록을 두 번 묻던 것을 **한 번만** 고르게 합쳤다.
-     고른 취미가 곧 추천 모임의 기준(goalIds)이 된다.
-     · 모든 단계에 '건너뛰기'가 있다(스포트라이트 상단). */
+  /* Sprint 28.5 — 가이드를 4단계로 줄였다: 취향(분야) → 홈 → 탐색 → 디엠.
+   * v37.8 (#24749 · 사용자) — 두 가지를 바꿨다.
+   *   ① "가이드때 어떤분야가 끌리는지 선택 후에 어떤 취미를 좋아하는지 또 나오는데 그냥 분야만
+   *      선택후에 안에있는 하위그룹 모두 포함되도록 하고 분야만 선택하면 2단계로 다음 눌러서
+   *      넘어갈수있게해줘" → **세부 취미 질문 단계를 없앴다.** 분야 하나를 고르고 '다음'을
+   *      누르면 그 분야의 모든 취미가 내 취미로 담긴 채 바로 2단계(내 모임)로 간다.
+   *   ② "첫 회원가입 후에 나오는 화면을 가짜화면으로 해서 거기서 알려주면 좋을것같은데"
+   *      → 내 모임·탐색·디엠 단계는 **가이드 중에만 보이는 임시(가짜) 데이터**로 채워 안내하고,
+   *      가이드를 끝내거나 건너뛰면 곧바로 실제 화면으로 돌아간다(저장소에는 아무것도 쓰지 않는다).
+   *      각 단계의 스포트라이트는 그 임시 데이터가 놓인 구역을 정확히 비춘다(step.targets).
+   *     · 모든 단계에 '건너뛰기'가 있다(스포트라이트 상단). */
   const GUIDE_STEPS = [
     {
       id: 'taste-category', stage: 1, target: null, tab: 'tab-home', body: 'taste-category',
       title: '어떤 분야가 끌리나요?',
-      desc: '큰 분야 하나를 골라 주세요. 다음 화면에서 그 안의 취미를 고를 수 있어요.'
+      desc: '큰 분야 하나만 고르면 그 안의 취미가 모두 내 취미로 담겨요. 고른 뒤 다음을 누르면 바로 안내를 이어갈게요.'
     },
     {
-      id: 'taste-hobby', stage: 1, target: null, tab: 'tab-home', body: 'taste-hobby',
-      title: '그중 어떤 취미를 좋아하나요?',
-      desc: '최대 3개까지 고를 수 있고, 목록에 없으면 직접 써도 돼요. 고른 취미로 홈의 추천 모임을 채워 드려요.'
-    },
-    {
-      id: 'gallery', stage: 2, targets: ['#my-groups-rail .my-group-item'], tab: 'tab-home',
+      id: 'gallery', stage: 2, preview: 'gallery',
+      targets: ['#my-groups-rail'],
+      tab: 'tab-home',
       title: '여기가 내 모임 자리예요',
-      desc: '지금 보이는 두 모임은 둘러보기용 예시예요. 카드를 누르면 그 모임의 피드·채팅·일정으로 들어가요.'
+      desc: '가입했거나 만든 모임이 이 줄에 모여요. 지금 보이는 세 모임은 둘러보기용 예시예요. 모임을 누르면 피드·채팅·일정으로 들어가요.'
     },
     {
-      id: 'explore', stage: 3, targets: ['#explore-board .board-row'], tab: 'tab-explore',
+      id: 'explore', stage: 3, preview: 'explore',
+      targets: ['#explore-board', '#explore-masonry'],
+      tab: 'tab-explore',
       title: '탐색은 사람과 글을 보는 곳이에요',
-      desc: '위쪽에서 내 동네를 고르고, 마음에 들면 바로 쪽지를 보내요.'
+      desc: '동네 사람이 남긴 글과 번개가 한 줄씩 올라와요. 지금 보이는 글도 둘러보기용 예시예요. 마음에 들면 바로 쪽지를 보내요.'
     },
     {
-      id: 'dm', stage: 4, target: '#dm-head', tab: 'tab-chat',
+      id: 'dm', stage: 4, preview: 'dm',
+      targets: ['#chat-rooms-container'],
+      tab: 'tab-chat',
       title: '전체 디엠함이에요',
-      desc: '모임 대화와 1:1 대화가 여기에 모여요. 모르는 사람의 첫 메시지는 요청으로 먼저 와요.'
+      desc: '나눈 대화가 여기에 모여요. 지금 보이는 두 대화도 둘러보기용 예시예요. 모르는 사람의 첫 메시지는 요청으로 먼저 와요.'
     }
   ];
-  const GUIDE_STAGE_COUNT = 4;
+  const GUIDE_STAGE_COUNT = GUIDE_STEPS.length;
+
+  /* ==========================================================================
+   * v37.8 — 가이드 전용 임시 화면(가짜 데이터)
+   * ------------------------------------------------------------------------
+   *  사용자: "가이드용으로 몇개의 가짜 모임을 보이게해줬으면해 … 물론 탐색의 글도 임시적 가짜
+   *  데이터로 넣어주고 설명하고 … 마지막 디엠도 미리 가짜 데이터를 넣어서 알려줘"
+   *  · 화면을 그릴 때만 쓰는 값이다 — store/Supabase 에는 **한 줄도 쓰지 않는다**.
+   *  · 가이드를 끝내거나 건너뛰면 각 화면을 다시 그려 실제 상태(빈 화면 또는 실제 데이터)로 돌아간다.
+   *  · 사진 3장은 사용자가 #24749 로 보낸 것 — 여행 모임 대표(IMG_1440), 디엠 보낸 사람
+   *    프로필 2장(IMG_4522·IMG_4520). 원본은 tools/prepare_guide_images_v37_8.py 가
+   *    메타데이터를 지우고 assets/guide 폴더로 다듬어 둔 사본이다(단일 번들에서는 data URI).
+   * ======================================================================= */
+  /* 사진 경로는 **문자열 그대로** 둔다 — build_bundle.py 가 이 문자열을 찾아 data URI 로 바꾼다
+     (단일 파일에서 상대 경로가 깨지지 않게). */
+  const GUIDE_IMG_TRAVEL = 'assets/guide/guide-travel-group.jpg';
+  const GUIDE_IMG_DM1 = 'assets/guide/guide-dm-profile-1.jpg';
+  const GUIDE_IMG_DM2 = 'assets/guide/guide-dm-profile-2.jpg';
+  const GUIDE_PREVIEW_GROUPS = [
+    {
+      id: 'guide_travel', name: '주말 여행', tone: 'sky', icon: 'car',
+      image: GUIDE_IMG_TRAVEL
+    },
+    { id: 'guide_climb', name: '클라이밍', tone: 'green', icon: 'climb', image: null },
+    { id: 'guide_board', name: '보드게임', tone: 'violet', icon: 'dice', image: null }
+  ];
+  const GUIDE_PREVIEW_POSTS = [
+    {
+      id: 'guide_post_travel', authorName: '하루', authorId: 'guide_person_haru', age: 31,
+      regionId: 'seoul-seongsu', caption: '이번 주말 근교로 당일치기 다녀오실 분. 짐은 제가 다 실어요. 아침 8시 출발, 저녁에 돌아와요.',
+      photoUrl: GUIDE_IMG_TRAVEL, mediaCaption: '주말 짐 싣는 날',
+      tag: '여행', meetStyle: 'chat', likes: 4, comments: [], minutesAgo: 18
+    },
+    {
+      id: 'guide_post_climb', authorName: '모래', authorId: 'guide_person_mora', age: 29,
+      regionId: 'seoul-seongsu', caption: '퇴근하고 클라이밍 같이 하실 분 있나요? 오늘 8시 성수 쪽, 초보도 편하게 와요.',
+      photoUrl: null, tag: '클라이밍', meetStyle: 'meet', likes: 2, comments: [], minutesAgo: 46
+    },
+    {
+      id: 'guide_post_board', authorName: '단추', authorId: 'guide_person_danchu', age: 34,
+      regionId: 'seoul-seongsu', caption: '토요일 저녁 보드게임 한 판 하실 분. 처음 오는 분은 규칙부터 천천히 알려드려요.',
+      photoUrl: null, tag: '보드게임', meetStyle: 'chat', likes: 1, comments: [], minutesAgo: 92
+    }
+  ];
+  const GUIDE_PREVIEW_ROOMS = [
+    {
+      id: 'guide_dm_mora', name: '모래', photo: GUIDE_IMG_DM1,
+      last: '주말 모임 잘 봤어요! 저도 갈 수 있을까요?', time: '방금', hobby: '클라이밍 · 여행'
+    },
+    {
+      id: 'guide_dm_danchu', name: '단추', photo: GUIDE_IMG_DM2,
+      last: '사진 찍는 거 좋아하시는 것 같아서요. 다음에 같이 가요 :)', time: '오후 8:12', hobby: '보드게임 · 사진'
+    }
+  ];
+
+  /** 가이드가 지금 보여 줄 임시 화면 종류('gallery'|'explore'|'dm') — 아니면 null. */
+  function guidePreviewKind() {
+    const g = guideState();
+    if (!g || !g.open) return null;
+    const step = GUIDE_STEPS[g.step];
+    return (step && step.preview) || null;
+  }
+
+  /** 임시 화면을 한 번이라도 보여 준 종류를 기억한다 — 가이드가 끝날 때 그것만 다시 그린다. */
+  function markGuidePreview(kind) {
+    if (!kind) return;
+    ui.guidePreviewUsed = ui.guidePreviewUsed || {};
+    ui.guidePreviewUsed[kind] = true;
+  }
+
+  /** '내 모임' 줄의 임시 모임 카드들 — 1번째 사진은 여행 모임의 대표 이미지. */
+  function guideMyGroupsPreviewHTML() {
+    return GUIDE_PREVIEW_GROUPS.map((g) => {
+      const face = g.image
+        ? `<img class="my-group-img" src="${escapeHtml(g.image)}" alt="" decoding="async">`
+        : `<span class="my-group-tile tone-${escapeHtml(g.tone)}" aria-hidden="true">${ic(g.icon)}</span>`;
+      return `
+        <div class="my-group-item" data-guide-preview="group" data-guide-group="${g.id}"
+             role="img" aria-label="${escapeHtml(g.name)} · 가이드 예시 모임">
+          <span class="my-group-ring">
+            <span class="my-group-face tone-${escapeHtml(g.tone)}">${face}</span>
+          </span>
+          <span class="my-group-name">${escapeHtml(g.name)}</span>
+        </div>`;
+    }).join('');
+  }
+
+  /** 탐색 글 목록의 임시 글들 — 실제 게시판 행(explorePostCardHTML)과 같은 모양으로 그린다. */
+  function guideExplorePreviewHTML() {
+    const now = Date.now();
+    return GUIDE_PREVIEW_POSTS.map((p) => explorePostCardHTML({
+      type: 'post',
+      post: {
+        id: p.id, caption: p.caption, photoUrl: p.photoUrl, mediaCaption: p.mediaCaption || '',
+        authorId: p.authorId, authorName: p.authorName, age: p.age, tag: p.tag,
+        regionId: p.regionId, meetStyle: p.meetStyle, likes: p.likes, comments: p.comments.slice(),
+        likedByMe: false, isMine: false,
+        createdAt: new Date(now - p.minutesAgo * 60 * 1000).toISOString()
+      },
+      distanceKm: null,
+      guidePreview: true
+    })).join('');
+  }
+
+  /** '전체 디엠함' 목록의 임시 대화 2건 — 보낸 사람 사진은 2·3번째 이미지. */
+  function guideDmPreviewHTML() {
+    return GUIDE_PREVIEW_ROOMS.map((room) => `
+      <article class="chat-room-item" data-guide-preview="dm" data-room-id="${room.id}"
+               role="img" aria-label="${escapeHtml(room.name)}님과의 대화 · 가이드 예시">
+        <span class="chat-avatar has-photo"><img class="chat-avatar-img" src="${escapeHtml(room.photo)}" alt="" decoding="async"></span>
+        <span class="chat-content">
+          <span class="chat-name-row">
+            <span class="chat-name">${escapeHtml(room.name)}</span>
+            <span class="chat-time">${escapeHtml(room.time)}</span>
+          </span>
+          <p class="chat-last-msg">${escapeHtml(room.last)}</p>
+          <span class="chat-hobby">${escapeHtml(room.hobby)}</span>
+        </span>
+      </article>`).join('');
+  }
+
+  /** 가이드의 '내 모임' 단계 — 임시 모임 카드로 줄을 채운다(저장소는 건드리지 않는다). */
+  function renderGuideMyGroupsPreview() {
+    if (!el.myGroupsRail) return;
+    markGuidePreview('gallery');
+    el.myGroupsRail.innerHTML = guideMyGroupsPreviewHTML();
+    if (el.myGroupsSub) el.myGroupsSub.textContent = '예시 3곳';
+  }
+
+  /** 가이드의 '탐색' 단계 — 임시 글 3개만 있는 게시판으로 그린다. */
+  function renderGuideExplorePreview() {
+    if (!el.exploreMasonry) return;
+    markGuidePreview('explore');
+    const section = document.getElementById('tab-explore');
+    if (section) section.classList.remove('is-field-empty');
+    resetExploreColumns();
+    if (ui.exploreBoardNode) ui.exploreBoardNode.innerHTML = guideExplorePreviewHTML();
+    ui.exploreRendered = true;
+    ui.explorePage = 0;
+    ui.exploreBuffer = null;
+    if (el.exploreCount) {
+      const region = store.getRegion(ui.exploreRegion);
+      el.exploreCount.textContent = `둘러보기 예시 3개${region ? ` · ${store.getRegionLabel(ui.exploreRegion)}` : ''}`;
+    }
+  }
+
+  /** 가이드의 '디엠' 단계 — 임시 1:1 대화 2건만 보이는 디엠함으로 그린다. */
+  function renderGuideDmPreview() {
+    if (!el.chatRooms) return;
+    markGuidePreview('dm');
+    const tab = document.getElementById('tab-chat');
+    if (tab) tab.classList.add('is-guide-preview');
+    if (el.dmTitle) el.dmTitle.textContent = '전체 디엠함';
+    if (el.dmSub) el.dmSub.textContent = '';
+    if (el.chatDmCount) el.chatDmCount.textContent = `${GUIDE_PREVIEW_ROOMS.length}명`;
+    if (el.dmViewSeg) el.dmViewSeg.hidden = true;
+    el.chatRooms.innerHTML = guideDmPreviewHTML();
+  }
 
   /** 가이드 단계가 가리키는 탭 — 단계를 옮길 때 그 탭으로 실제로 이동한다. */
   function guideStepTab(step) {
@@ -4706,7 +4874,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!ui.guide) {
       ui.guide = {
         open: false, step: 0, mode: 'onboarding',
-        hobbyIds: [], goalIds: [], goalTouched: false, category: 'sports'
+        hobbyIds: [], goalIds: [], goalTouched: false, category: null
       };
     }
     return ui.guide;
@@ -4724,11 +4892,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const draft = explicitStep ? null : store.getGuideDraft();
     g.open = true;
     g.mode = options.mode || 'onboarding';
-    g.hobbyIds = (draft ? draft.hobbyIds : taste.hobbyIds).slice(0, 3);
-    g.goalIds = (draft ? draft.goalIds : taste.goalIds).slice(0, 3);
+    /* v37.8 — 이제 분야 하나가 답이다. 그 분야의 취미 전부를 그대로 이어받는다. */
+    g.hobbyIds = (draft ? draft.hobbyIds : taste.hobbyIds).slice(0, 24);
+    g.goalIds = (draft ? draft.goalIds : taste.goalIds).slice(0, 24);
     g.goalTouched = draft ? !!draft.goalTouched : false;
     g.category = (draft && draft.category)
-      || (store.getHobbyChip((g.hobbyIds[0] || g.goalIds[0])) || {}).categoryId || 'sports';
+      || (store.getHobbyChip((g.hobbyIds[0] || g.goalIds[0])) || {}).categoryId || null;
     const wanted = options.step === 'taste' ? 'taste-category' : options.step;
     const found = wanted ? GUIDE_STEPS.findIndex((s) => s.id === wanted) : -1;
     const stepIndex = found >= 0 ? found
@@ -4736,6 +4905,8 @@ document.addEventListener('DOMContentLoaded', () => {
     g.step = stepIndex;
     /* 단계가 바뀌었으니 연출도 처음부터 — 같은 단계 키라 연출을 건너뛰지 않게 한다. */
     ui.guideNarrKey = null;
+    /* v37.8 — 이번 가이드에서 어떤 임시 화면을 보여 줬는지 새로 센다(끝낼 때 그것만 되돌린다). */
+    ui.guidePreviewUsed = {};
     store.startGuide(options.step === 'welcome' || stepIndex === 0);
     saveGuideDraftNow();
     renderGuide();
@@ -4751,9 +4922,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /** 가이드를 닫는다 — 마지막 단계면 'done', 건너뛰기면 'skipped'. */
+  /** 가이드를 닫는다 — 마지막 단계면 'done', 건너뛰기면 'skipped'.
+   *  v37.8 — 가이드 중에만 보이던 임시 화면(가짜 모임·글·디엠)을 **즉시 걷어내고**
+   *  실제 상태(빈 화면 또는 실제 데이터)로 돌려놓는다. 저장소에는 아무것도 남지 않는다. */
   function closeGuide(status) {
     const g = guideState();
+    const used = ui.guidePreviewUsed || {};
+    ui.guidePreviewUsed = {};
     if (status !== 'hidden') store.finishGuide(status === 'skipped' ? 'skipped' : 'done');
     /* v37.3 — 끝났으면 보관해 둔 도중 답도 지운다(다음에 다시 볼 때 새로 시작). */
     store.clearGuideDraft();
@@ -4765,12 +4940,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.spotlightVeil) el.spotlightVeil.hidden = true;
     document.body.classList.remove('spotlight-open');
+    const chatTab = document.getElementById('tab-chat');
+    if (chatTab) chatTab.classList.remove('is-guide-preview');
+    /* 임시 화면을 보여 줬던 화면만 다시 그린다(안 봤으면 그리지 않는다 — 스크롤·상태 보존). */
+    if (used.gallery) renderMyGroups();
+    if (used.explore) renderExplore();
+    if (used.dm) renderChatRooms();
     if (ui.activeTab === 'tab-home') {
       renderHomeRecommend();
     }
   }
 
-  /** 취향 선택을 저장한다 — 프로필 취미(최대 3)와 추천 기준(goal) 둘 다. */
+  /** 취향 선택을 저장한다 — 고른 분야의 취미 전부가 프로필 취미와 추천 기준(goal)이 된다. */
   function saveGuideTaste() {
     const g = guideState();
     const res = store.saveTaste({ hobbyIds: g.hobbyIds, goalIds: g.goalIds });
@@ -4978,10 +5159,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.spotlight) return;
     const step = GUIDE_STEPS[g.step] || GUIDE_STEPS[0];
     const tab = guideStepTab(step);
+    /* v37.8 — 임시 디엠함으로 그린 화면 표시는 그 단계를 떠나면 바로 걷어 둔다. */
+    if (step.preview !== 'dm') {
+      const chatTabNode = document.getElementById('tab-chat');
+      if (chatTabNode) chatTabNode.classList.remove('is-guide-preview');
+    }
     if (ui.activeTab !== tab) {
       switchTab(tab);
       document.body.classList.add('spotlight-open');
     }
+    /* v37.8 — 임시 화면은 탭을 새로 그리지 않을 때도(이미 그려 둔 탭) 반드시 채운다.
+       끝낼 때 되돌릴 수 있도록 어떤 화면을 채웠는지도 함께 기억한다. */
+    if (step.preview === 'gallery') renderMyGroups();
+    else if (step.preview === 'explore') renderExplore();
+    else if (step.preview === 'dm') renderChatRooms();
     el.spotlight.hidden = false;
     el.spotlight.classList.add('is-open');
     document.body.classList.add('spotlight-open');
@@ -5022,14 +5213,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 취향 단계의 본문 — 단계마다 질문 하나씩. */
+  /** 취향 단계의 본문 — v37.8 부터는 분야 카드 하나뿐이다(세부 취미 질문 없음). */
   function guideBodyHTML(kind) {
     if (kind === 'taste-category') return guideCategoryHTML();
-    if (kind === 'taste-hobby') return guidePickHTML('hobby');
     return '';
   }
 
-  /** 1단계 — 관심 분야(대분류) 하나를 고른다. */
+  /** 1단계 — 관심 분야(대분류) 하나를 고른다.
+   *  v37.8 (#24749) — 고르면 **그 분야의 취미가 모두 담긴다**. 세부 취미를 다시 묻지 않는다. */
   function guideCategoryHTML() {
     const g = guideState();
     const cats = store.getHobbyCategories();
@@ -5042,172 +5233,52 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="guide-cat-count">${c.hobbies.length}가지</span>
           </button>`).join('')}
       </div>
-      <p class="guide-hint">나중에 다른 분야도 얼마든지 골라 더할 수 있어요.</p>`;
+      <p class="guide-hint guide-scope" aria-live="polite">${guideScopeHTML()}</p>`;
   }
 
-  /** 2·3단계 — 고른 분야의 세부 취미(최대 3개) + 직접 쓰기.
-   *  v37.3 (#23949 · IMG_4596·IMG_4597) — 카드 안을 **한 구조**로 정리했다.
-   *   · 분야는 알약 칩이 아니라 **밑줄 탭 한 줄**(칩 줄과 헷갈리지 않게).
-   *   · 질문 제목은 말풍선이 이미 하므로 카드 안에서 **되풀이하지 않는다**(겹쳐 보이던 문제).
-   *   · 취미 칩 한 덩어리 + 고른 취미 요약 한 줄 + 직접 쓰기 — 같은 높이의 덩어리 두 개를 없앴다.
-   */
-  function guidePickHTML(kind) {
+  /** 고른 분야에 함께 담기는 취미 — 분야만 고르면 그 안의 취미가 모두 내 취미가 된다. */
+  function guideScopeHTML() {
     const g = guideState();
-    const cats = store.getHobbyCategories();
-    const cat = cats.find((c) => c.id === g.category) || cats[0];
-    return `
-      <div class="guide-pick" data-guide-pick-kind="${kind}">
-        <div class="guide-tabs" role="tablist" aria-label="취미 분야">
-          ${cats.map((c) => `<button class="guide-tab ${c.id === cat.id ? 'on' : ''}" data-guide-cat="${c.id}"
-              type="button" role="tab" aria-selected="${c.id === cat.id ? 'true' : 'false'}">${escapeHtml(c.name)}</button>`).join('')}
-        </div>
-        <p class="guide-picked" id="guide-picked" aria-live="polite">${guidePickedHTML(kind)}</p>
-        <div class="guide-chips" id="guide-chips" role="group"
-             aria-label="${kind === 'goal' ? '해보고 싶은 취미' : '내 취미'}">${guideChipsHTML(kind, cat)}</div>
-        <div class="guide-custom">
-          <input class="guide-custom-input" id="guide-custom-input" type="text" maxlength="12"
-                 placeholder="목록에 없으면 직접 쓰기" autocomplete="off" enterkeyhint="done"
-                 aria-label="목록에 없는 취미 직접 쓰기">
-          <button class="guide-custom-add" id="btn-guide-custom-add" type="button">추가</button>
-        </div>
-      </div>`;
-  }
-
-  /** 지금 분야의 취미 칩들 — 켜진 것/3개가 찼을 때는 흐리게. */
-  function guideChipsHTML(kind, catArg) {
-    const g = guideState();
-    const cats = store.getHobbyCategories();
-    const cat = catArg || cats.find((c) => c.id === g.category) || cats[0];
-    const selected = kind === 'goal' ? g.goalIds : g.hobbyIds;
-    return (cat.hobbies || []).map((h) => {
-      const on = selected.includes(h.id);
-      const full = !on && selected.length >= 3;
-      return `<button class="guide-chip ${on ? 'on' : ''}" data-guide-pick="${kind}" data-guide-hobby="${h.id}"
-                type="button" aria-pressed="${on ? 'true' : 'false'}" ${full ? 'aria-disabled="true"' : ''}>
-                ${ic(h.icon)}<span>${escapeHtml(h.name)}</span>
-              </button>`;
-    }).join('');
-  }
-
-  /** 고른 취미를 한 줄로 — 비어 있어도 자리를 지켜 높이가 흔들리지 않는다. */
-  function guidePickedHTML(kind) {
-    const g = guideState();
-    const ids = kind === 'goal' ? g.goalIds : g.hobbyIds;
-    const names = ids.map((id) => (store.getHobbyChip(id) || {}).name).filter(Boolean);
-    const label = kind === 'goal' ? '해볼 취미' : '고른 취미';
-    const count = `<span class="guide-picked-count">${ids.length}/3</span>`;
-    if (!names.length) {
-      return `<span class="guide-picked-empty">아직 고르지 않았어요 · 3개까지</span>${count}`;
-    }
-    return `<span class="guide-picked-label">${label}</span><span class="guide-picked-names">${escapeHtml(names.join(' · '))}</span>${count}`;
+    const empty = '분야를 하나 고르면 그 안의 취미가 모두 내 취미로 담겨요.';
+    if (!g.category) return empty;
+    const cat = store.getHobbyCategories().find((c) => c.id === g.category);
+    if (!cat) return empty;
+    const names = cat.hobbies.slice(0, 3).map((h) => h.name).join(' · ');
+    const more = cat.hobbies.length > 3 ? ' …' : '';
+    return `${escapeHtml(cat.name)} · 취미 ${cat.hobbies.length}가지가 함께 담겨요 (${escapeHtml(names)}${more})`;
   }
 
   /**
-   * v37.3 — 칩을 누르거나 직접 추가할 때 **카드 전체를 다시 그리지 않는다**.
-   *  · 탭·칩·요약 줄만 그 자리에서 바꿔, 직접 쓰기 입력값과 커서가 그대로 남는다
-   *    (전에는 renderGuide() 가 말풍선 본문을 통째로 갈아 입력이 사라지고 연출이 다시 돌았다).
+   * 분야 카드를 골랐을 때 — 카드 표시와 요약 줄만 그 자리에서 바꾼다.
+   *  · 카드 전체를 다시 그리면 연출(타이핑)이 되감기고 스크롤이 튀어, 표시만 바꾼다.
+   *  · 고른 것만 '다음'에서 저장된다(카드를 누른다고 바로 넘어가지 않는다 — v37.8).
    */
-  function refreshGuidePicks(kind) {
+  function refreshGuideCategory() {
     const g = guideState();
-    const cats = store.getHobbyCategories();
-    const cat = cats.find((c) => c.id === g.category) || cats[0];
-    const box = document.getElementById('guide-chips');
-    if (box) box.innerHTML = guideChipsHTML(kind, cat);
-    const picked = document.getElementById('guide-picked');
-    if (picked) picked.innerHTML = guidePickedHTML(kind);
-    document.querySelectorAll('.spotlight-body .guide-tab').forEach((t) => {
-      const on = t.dataset.guideCat === cat.id;
-      t.classList.toggle('on', on);
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    document.querySelectorAll('.spotlight-body .guide-cat-card').forEach((card) => {
+      const on = card.dataset.guideCat === g.category;
+      card.classList.toggle('on', on);
+      card.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
-  }
-
-  /** 취미 하나를 취향 답변에서 켜고 끈다(한 질문당 최대 3개).
-   *  v37.3 — 카드는 다시 그리지 않고 칩·요약만 바꾼다(직접 쓰기 입력값·커서 유지). */
-  function toggleGuidePick(kind, hobbyId) {
-    const g = guideState();
-    const key = kind === 'goal' ? 'goalIds' : 'hobbyIds';
-    const list = g[key];
-    if (list.includes(hobbyId)) g[key] = list.filter((id) => id !== hobbyId);
-    else if (list.length < 3) g[key] = list.concat(hobbyId);
-    else {
-      showToast('한 질문에는 3개까지 고를 수 있어요', 'info');
-      return;
-    }
-    if (kind === 'goal') g.goalTouched = true;
-    saveGuideDraftNow();
-    refreshGuidePicks(kind);
-  }
-
-  /**
-   * 목록에 없는 취미를 직접 써서 취향에 더한다.
-   *  v37.3 (#23949 · IMG_4596) — **기존에 고른 것을 건드리지 않는다.**
-   *   · 이미 있는 이름이면 그 칩을 그대로 골라 준다(중복은 만들지 않는다).
-   *   · 빈 값·3개 초과만 막고, 그때는 적은 글자를 지우지 않는다(다시 고칠 수 있게).
-   *   · 실패해도 고른 취미·다른 단계 입력이 그대로 남는다.
-   */
-  function addGuideCustomHobby(kind) {
-    const input = document.getElementById('guide-custom-input');
-    const value = input ? input.value : '';
-    const g = guideState();
-    const key = kind === 'goal' ? 'goalIds' : 'hobbyIds';
-    const list = g[key];
-    const label = String(value || '').trim();
-    if (!label) {
-      showToast('취미 이름을 1자 이상 적어주세요', 'warning');
-      return;
-    }
-    /* 이미 있는 이름은 새로 만들지 않는다 — 그 칩을 고르거나, 이미 골랐으면 그대로 둔다. */
-    const existing = store.getHobbyChips().find((h) => String(h.name).toLowerCase() === label.slice(0, 12).toLowerCase());
-    if (existing) {
-      if (list.includes(existing.id)) {
-        showToast(`'${existing.name}' 은 이미 골랐어요`, 'info');
-        return;
-      }
-      if (list.length >= 3) {
-        showToast('한 질문에는 3개까지 고를 수 있어요 · 하나를 빼고 다시 시도해 주세요', 'info');
-        return;
-      }
-      g.category = existing.categoryId || g.category;
-      g[key] = list.concat(existing.id);
-      if (kind === 'goal') g.goalTouched = true;
-      if (input) input.value = '';
-      showToast(`이미 있는 '${existing.name}' 취미를 골랐어요 · ${g[key].length}/3`, 'info');
-      saveGuideDraftNow();
-      refreshGuidePicks(kind);
-      return;
-    }
-    if (list.length >= 3) {
-      showToast('한 질문에는 3개까지 고를 수 있어요 · 하나를 빼고 다시 시도해 주세요', 'info');
-      return;
-    }
-    const res = store.addCustomHobby(label, g.category);
-    const hobby = res.hobby;
-    if (!hobby) {
-      showToast(res.reason === 'too_many' ? '취미는 20개까지 더할 수 있어요' : '취미 이름을 1~12자로 적어주세요', 'warning');
-      return;
-    }
-    /* 새 취미가 다른 분야에 들어갔으면 그 분야로 옮겨 칩이 보이게 한다. */
-    if (hobby.categoryId) g.category = hobby.categoryId;
-    g[key] = list.concat(hobby.id);
-    if (kind === 'goal') g.goalTouched = true;
-    if (input) input.value = '';
-    showToast(`'${hobby.name}' 취미를 더했어요 · ${g[key].length}/3`, 'success');
-    saveGuideDraftNow();
-    refreshGuidePicks(kind);
-    /* 입력창은 계속 열어 둔다 — 하나 더 적을 수 있게(포커스 유지). */
-    if (input && document.activeElement !== input) {
-      try { input.focus({ preventScroll: true }); } catch (e) { /* 구형 브라우저 */ }
-    }
+    const scope = document.querySelector('.spotlight-body .guide-scope');
+    if (scope) scope.innerHTML = guideScopeHTML();
   }
 
   function guideNext() {
     const g = guideState();
     const step = GUIDE_STEPS[g.step];
-    /* v37.6 (#24462) — 취미는 **한 번만** 고른다. 여기서 고른 취미가 그대로 추천 모임의
-       기준(goalIds)이 된다(전에는 같은 칩 목록을 '해볼 취미'로 한 번 더 물었다). */
-    if (step && step.id === 'taste-hobby') {
-      g.goalIds = g.hobbyIds.slice(0, 3);
+    /* v37.8 (#24749) — 분야를 고르고 '다음'을 누르면 그 분야의 **하위 취미 전부**를 담고
+       바로 2단계(내 모임)로 넘어간다. 세부 취미를 다시 묻지 않는다.
+       담긴 취미는 프로필 대표 취미(3개)와 추천 기준(goalIds)에 함께 쓰인다. */
+    if (step && step.id === 'taste-category') {
+      if (!g.category) {
+        showToast('분야를 하나 골라 주세요', 'info');
+        return;
+      }
+      const cat = store.getHobbyCategories().find((c) => c.id === g.category);
+      const ids = ((cat && cat.hobbies) || []).map((h) => h.id);
+      g.hobbyIds = ids.slice(0, 24);
+      g.goalIds = ids.slice(0, 24);
       g.goalTouched = false;
       saveGuideTaste();
     }
@@ -5230,11 +5301,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderGuide();
   }
 
-  /** 직접 쓴 취미를 어느 질문에 더할지 — v37.6 부터 취미 질문은 하나뿐이다. */
-  function guideCurrentPickKind() {
-    return 'hobby';
-  }
-
   function bindGuide() {
     el.spotlightNext && el.spotlightNext.addEventListener('click', guideNext);
     el.spotlightPrev && el.spotlightPrev.addEventListener('click', guidePrev);
@@ -5242,37 +5308,14 @@ document.addEventListener('DOMContentLoaded', () => {
       closeGuide('skipped');
       showToast('가이드는 내정보 › 가이드 다시 보기에서 언제든 볼 수 있어요', 'info');
     });
+    /* v37.8 — 분야 카드는 **고르기만** 한다. '다음'을 눌러야 저장하고 2단계로 넘어간다. */
     el.spotlightBody && el.spotlightBody.addEventListener('click', (e) => {
       const cat = e.target.closest('[data-guide-cat]');
-      if (cat) {
-        const g = guideState();
-        g.category = cat.dataset.guideCat;
-        /* 분야를 고르면 그 분야의 세부 취미 질문으로 넘어간다(한 질문씩). */
-        if ((GUIDE_STEPS[g.step] || {}).id === 'taste-category') {
-          g.step += 1;
-          saveGuideDraftNow();
-          renderGuide();
-          return;
-        }
-        /* v37.3 — 취미 질문 안에서 분야 탭만 바꿀 때는 카드를 다시 그리지 않는다
-           (입력값·커서·연출 그대로, 칩과 요약만 그 분야로). */
-        saveGuideDraftNow();
-        refreshGuidePicks(guideCurrentPickKind());
-        return;
-      }
-      const pick = e.target.closest('[data-guide-pick]');
-      if (pick) { toggleGuidePick(pick.dataset.guidePick, pick.dataset.guideHobby); return; }
-      if (e.target.closest('#btn-guide-custom-add')) {
-        addGuideCustomHobby(guideCurrentPickKind());
-        e.stopPropagation();
-      }
-    });
-    el.spotlightBody && el.spotlightBody.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter') return;
-      const input = e.target.closest('#guide-custom-input');
-      if (!input) return;
-      e.preventDefault();
-      addGuideCustomHobby(guideCurrentPickKind());
+      if (!cat) return;
+      const g = guideState();
+      g.category = cat.dataset.guideCat;
+      saveGuideDraftNow();
+      refreshGuideCategory();
     });
     /* 가이드가 열려 있는 동안 탭·모달이 뒤에서 움직이지 않게 앞에서 막는다 */
     el.spotlight && el.spotlight.addEventListener('click', (e) => {
@@ -7743,7 +7786,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v37.7';
+  const APP_VERSION = 'v37.8';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -10208,6 +10251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ].filter(Boolean);
     return `
       <article class="masonry-card post-card board-row ${p.likedByMe ? 'is-liked' : ''} ${hasMedia ? 'has-media' : 'is-text-only'} ${fresh ? 'is-new' : ''}"
+               ${item.guidePreview ? 'data-guide-preview="post"' : ''}
                data-post-card="${p.id}" data-card-type="post" data-has-media="${hasMedia ? '1' : '0'}"
                data-region-id="${escapeHtml(store.getExplorePostRegionId(p) || '')}"
                role="button" tabindex="0"
@@ -10539,6 +10583,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderExplore(options = {}) {
     if (!el.exploreMasonry) return;
+    /* v37.8 — 가이드의 '탐색' 단계에서는 임시 글 3개만 보이는 게시판으로 그린다. */
+    if (guidePreviewKind() === 'explore') {
+      renderExploreToolbar();
+      renderExploreProfileToggle();
+      renderGuideExplorePreview();
+      return;
+    }
     const renderStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const wasSkeleton = !!ui.exploreSkeleton;
     renderExploreToolbar();
@@ -13160,6 +13211,13 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 16 — 바깥 3번째 탭 = '전체 디엠함'. 모임 안에서는 그 모임 대화만. */
     const inGroup = isGroupMode();
     const scopeGroup = inGroup ? store.getGroup(ui.groupSpaceId) : null;
+    /* v37.8 — 가이드의 '디엠' 단계에서는 임시 1:1 대화 2건만 보이는 디엠함으로 그린다. */
+    if (!inGroup && guidePreviewKind() === 'dm') {
+      renderGuideDmPreview();
+      return;
+    }
+    const chatTabNode = document.getElementById('tab-chat');
+    if (chatTabNode) chatTabNode.classList.remove('is-guide-preview');
     renderChatGroupRooms();
     /* v36.1 (#23461) — 일정 단톡방 줄(내가 참석한 일정만). */
     renderChatEventRooms();
@@ -20334,7 +20392,7 @@ document.addEventListener('DOMContentLoaded', () => {
     getOpenComments: () => homeFeedState().openComments,
     getRecommend: () => store.getRecommendedGroups({ limit: 6 }).map((it) => ({ id: it.group.id, name: it.group.name, tone: it.tone, reason: it.reason })),
     startGuide, closeGuide, renderGuide, nextGuide: guideNext, prevGuide: guidePrev,
-    saveGuideTaste, toggleGuidePick, addGuideCustomHobby,
+    saveGuideTaste,
     getGuideUi: () => {
       const g = guideState();
       return {

@@ -8844,7 +8844,9 @@ class Store {
 
   /**
    * 가입 직후·가이드에서 고른 취향을 저장한다.
-   *  · hobbyIds 는 내 프로필 대표 취미(최대 3개)에도 반영된다.
+   *  · v37.8 (#24749) — 이제 가이드는 **분야 하나**만 묻는다. 그 분야의 취미가 모두 담기도록
+   *    취향 목록은 24개까지 받는다(분야 최대 15 + 직접 쓴 취미). 내 프로필의 '대표 취미'는
+   *    그중 앞 3개로 그대로 유지된다(user.hobbyIds — 프로필 규격이 3개다).
    *  · goalIds 는 "우그에서 해보고 싶은 것" — 홈의 추천 모임 순서를 정한다.
    */
   saveTaste(data) {
@@ -8853,8 +8855,8 @@ class Store {
       .filter((id) => !!this.getHobbyChip(id))
       .filter((id, i, arr) => arr.indexOf(id) === i)
       .slice(0, max);
-    const hobbyIds = clean(d.hobbyIds, 8);
-    const goalIds = clean(d.goalIds, 8);
+    const hobbyIds = clean(d.hobbyIds, 24);
+    const goalIds = clean(d.goalIds, 24);
     this.state.tastePrefs = { hobbyIds, goalIds, updatedAt: new Date().toISOString() };
     const user = this.state.currentUser;
     if (user && hobbyIds.length) {
@@ -8983,13 +8985,14 @@ class Store {
   getGuideDraft() {
     const d = this.state.guide && this.state.guide.draft;
     if (!d) return null;
+    /* v37.8 — 가이드 답은 '분야 하나'라 그 분야의 취미 전부를 들고 있다(최대 24). */
     const ids = (list) => (Array.isArray(list) ? list : [])
       .filter((id) => !!this.getHobbyChip(id))
       .filter((id, i, arr) => arr.indexOf(id) === i)
-      .slice(0, 3);
+      .slice(0, 24);
     return {
       step: Number.isFinite(d.step) ? d.step : 0,
-      category: d.category || 'sports',
+      category: d.category || null,
       hobbyIds: ids(d.hobbyIds),
       goalIds: ids(d.goalIds),
       goalTouched: !!d.goalTouched,
@@ -8997,17 +9000,17 @@ class Store {
     };
   }
 
-  /** 가이드 도중의 답을 보관한다(최대 3개씩). */
+  /** 가이드 도중의 답을 보관한다(v37.8 — 고른 분야의 취미 전부, 최대 24개). */
   saveGuideDraft(draft) {
     const d = draft || {};
     const ids = (list) => (Array.isArray(list) ? list : [])
       .filter((id) => !!this.getHobbyChip(id))
       .filter((id, i, arr) => arr.indexOf(id) === i)
-      .slice(0, 3);
+      .slice(0, 24);
     this.state.guide = Object.assign({}, this.state.guide, {
       draft: {
         step: Number.isFinite(d.step) ? d.step : 0,
-        category: d.category || 'sports',
+        category: d.category || null,
         hobbyIds: ids(d.hobbyIds),
         goalIds: ids(d.goalIds),
         goalTouched: !!d.goalTouched,
