@@ -27314,7 +27314,8 @@ body.group-mode .push-permission-banner { display: none !important; }
 :root[data-theme="light"] .spotlight-bubble { color: var(--text); }
 
 /* ---------------------------------------- ② 피드 카드의 글 — 쓴 그대로
-   white-space: pre-line 이 본문의 줄바꿈을 살린다(빈 줄 하나는 한 줄로 — 카드가 벌어지지 않게).
+   white-space: pre-line 이 본문의 줄바꿈을 살린다 — 쓴 줄과 빈 줄이 그대로 남는다
+   (전에는 첫 줄의 첫 문장만 잘려 둘째 줄부터의 본문이 통째로 사라졌다).
    6줄(또는 240자)이 넘는 글만 접고 '더 보기'로 그 자리에서 펼친다. */
 .ig-caption {
   white-space: pre-line;
