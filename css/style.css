@@ -27592,3 +27592,128 @@ body.group-mode .push-permission-banner { display: none !important; }
   font-weight: var(--fw-meta);
   color: var(--text-muted);
 }
+
+/* ============================================================================
+   v37.5 (#24337 · IMG_4604) — 타인 프로필의 잠긴 비밀앨범 · 열람 요청 카드 · 회원탈퇴
+   ----------------------------------------------------------------------------
+   · 공개 사진 원형 옆에 **자물쇠 원형** 하나. 사진이 있으면 `+N` 배지를 단다.
+   · 잠긴 원형은 회색 자물쇠, 열린 원형은 첫 사진(서명 URL)을 보여 준다.
+   · 1:1 대화방의 요청 카드는 말풍선과 구분되는 납작한 카드 한 장.
+   ========================================================================== */
+.detail-ring.is-secret {
+  background: var(--bg-subtle);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.detail-ring.is-secret.is-open { box-shadow: inset 0 0 0 1px var(--green-soft-border); }
+.detail-ring.is-secret.is-pending { box-shadow: inset 0 0 0 1px var(--green); }
+.detail-ring-lock {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-muted);
+}
+.detail-ring-lock .oo-ic { width: 18px; height: 18px; }
+.detail-ring.is-open .detail-ring-lock { color: var(--green-dark); }
+.detail-ring-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-full);
+  background: var(--green);
+  color: #FFFFFF;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--bg-app);
+}
+
+/* 대화방의 비밀앨범 요청 카드 */
+.chat-secret-card {
+  align-self: center;
+  max-width: 300px;
+  margin: 12px auto 2px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--bg-subtle);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.chat-secret-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.chat-secret-ic { display: inline-flex; color: var(--green-dark); }
+.chat-secret-ic .oo-ic { width: 15px; height: 15px; }
+.chat-secret-title {
+  font-size: var(--fs-caption);
+  font-weight: 680;
+  color: var(--text-strong);
+}
+.chat-secret-text {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-body);
+  line-height: var(--lh-body);
+  color: var(--text);
+}
+.chat-secret-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 10px;
+}
+.chat-secret-btn {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--green);
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: 680;
+  cursor: pointer;
+}
+.chat-secret-btn:active { transform: scale(0.96); }
+.chat-secret-btn.is-ghost {
+  background: var(--bg-soft);
+  color: var(--text-strong);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.chat-secret-btn.is-x {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  padding: 0;
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.chat-secret-btn.is-x .oo-ic { width: 15px; height: 15px; }
+
+.secret-locked-text { min-width: 0; }
+.secret-request-btn {
+  margin-top: 8px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: var(--green);
+  color: #FFFFFF;
+  font-size: var(--fs-caption);
+  font-weight: 680;
+  cursor: pointer;
+}
+.secret-request-btn:active { transform: scale(0.96); }
+
+/* 회원탈퇴 행 — 로그아웃 아래 한 줄, 글자만 붉게 */
+.settings-row.is-plain.is-danger { color: #B91C1C; }
+:root[data-theme="dark"] .settings-row.is-plain.is-danger { color: #FCA5A5; }
+:root[data-theme="dark"] .chat-secret-card { background: var(--bg-soft); }
+:root[data-theme="dark"] .detail-ring-badge { box-shadow: 0 0 0 2px var(--bg-app); }

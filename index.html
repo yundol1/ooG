@@ -750,9 +750,12 @@
               </button>
             </div>
 
-            <!-- 로그아웃 — 구분선 하나 뒤에 텍스트만 -->
+            <!-- 로그아웃 · 회원탈퇴 — 구분선 하나 뒤에 텍스트만.
+                 v37.5 (#24337 · IMG_4604) — 회원탈퇴는 두 단계 확인 뒤 계정·데이터를 지운다. -->
             <div class="settings-group is-separated">
               <button class="settings-row is-plain" id="settings-row-logout" type="button">로그아웃</button>
+              <button class="settings-row is-plain is-danger" id="settings-row-delete-account" type="button"
+                      aria-label="회원탈퇴 — 계정과 모든 데이터를 지웁니다">회원탈퇴</button>
             </div>
 
             <!-- ?dev=1 에서만 '개발자 도구' 그룹을 여기에 그린다(그 외에는 아예 없다) -->

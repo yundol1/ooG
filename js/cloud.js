@@ -23,7 +23,7 @@
   const CONF = {
     url: 'https://nnzrunhjxwcspsfgsmgf.supabase.co',
     key: 'sb_publishable_fy0CjiojNNWeTVAzrflP8w_098c3T2J',
-    version: 'v37.2'
+    version: 'v37.5'
   };
 
   const LS_SESSION = 'oog_cloud_session_v1';
@@ -38,6 +38,14 @@
   const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
   const clone = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)));
   const rid = (p) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  /* v37.5 (#24337) — handle 이 비어 있는 사람에게 보여 줄 짧은 기본 아이디(oog#####).
+     UUID 를 하이픈만 떼어 `@94cfa23e5aff…` 로 노출하지 않는다(store.personHandle 과 같은 결). */
+  const shortHandle = (seed) => {
+    const s = String(seed == null ? '' : seed);
+    let h = 0;
+    for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) % 100000;
+    return `oog${String(h).padStart(5, '0')}`;
+  };
 
   function readJson(key, fallback) {
     try {
@@ -727,6 +735,127 @@
     } catch (e) { /* 무시 */ }
   }
 
+  /**
+   * v37.5 (#24337) — 비밀앨범 열람 요청을 서버에 반영한다(secret_album_requests).
+   *  · 내가 보낸 요청: 줄이 없으면 만든다(이미 있으면 그대로 — 상대가 바꾼 상태를 덮지 않는다).
+   *  · 내가 받은 요청: 주인(나)이 정한 상태로 고친다.
+   */
+  async function syncSecretRequests(me) {
+    const store2 = global.appStore;
+    if (!store2 || !store2.state || !isUuid(me)) return;
+    const reqs = store2.state.secretRequests || {};
+    for (const partnerId of Object.keys(reqs)) {
+      const r = reqs[partnerId];
+      if (!r) continue;
+      const requester = isUuid(r.requesterId) ? r.requesterId : null;
+      const owner = isUuid(r.ownerId) ? r.ownerId : null;
+      if (!requester || !owner) continue;
+      try {
+        if (requester === me) {
+          await request(`${REST}/secret_album_requests?on_conflict=requester_id,owner_id`, {
+            method: 'POST',
+            body: { id: r.id || rid('sreq'), requester_id: requester, owner_id: owner, status: 'pending' },
+            prefer: 'resolution=ignore-duplicates,return=minimal', retry: 0
+          });
+        } else if (owner === me) {
+          await request(`${REST}/secret_album_requests?requester_id=eq.${requester}&owner_id=eq.${me}`, {
+            method: 'PATCH',
+            body: { status: r.status || 'pending', updated_at: nowIso() },
+            prefer: 'return=minimal', retry: 0
+          });
+        }
+      } catch (e) { /* 다음 저장에서 다시 시도 */ }
+    }
+  }
+
+  /**
+   * v37.5 — 상대(ownerId)의 비밀앨범 사진을 서명 URL 로 받아 온다.
+   *  · 열람 권한이 없으면 RLS 가 빈 목록을 준다(잠김 상태 그대로).
+   *  · 받은 목록은 store 에 캐시하고(1시간), 앨범을 열 때마다 새로 받는다.
+   */
+  async function fetchSecretAlbum(ownerId) {
+    const store2 = global.appStore;
+    if (!ownerId || !isUuid(ownerId) || !hasSession()) return { ok: false, reason: 'no_session', photos: [] };
+    try {
+      const rows = await request(`${REST}/secret_photos?select=id,path,caption&owner_id=eq.${encodeURIComponent(ownerId)}&order=created_at.asc`, { retry: 0 });
+      const photos = [];
+      for (const r of (rows || [])) {
+        if (!r || !r.path) continue;
+        const signed = await signedUrl('secret-photos', r.path, 3600);
+        if (signed.ok) photos.push({ id: r.id, url: signed.url, caption: r.caption || '' });
+      }
+      if (store2 && store2.setPersonSecretPhotos) store2.setPersonSecretPhotos(ownerId, photos);
+      return { ok: true, photos };
+    } catch (e) {
+      return { ok: false, reason: e.code || 'error', photos: [] };
+    }
+  }
+
+  /* ---------------------------------------------------------- 회원탈퇴 (v37.5) */
+  const MY_BUCKETS = ['avatars', 'public-photos', 'group-covers', 'post-images', 'secret-photos'];
+
+  /** 내 폴더(<uuid>/…) 의 파일 경로를 모은다(Storage list 는 폴더별로 한 단계씩). */
+  async function listMyObjects(bucket, prefix, depth) {
+    const out = [];
+    const rows = await request(`${STORAGE}/object/list/${bucket}`, {
+      method: 'POST',
+      body: { prefix, limit: 100, offset: 0, sortBy: { column: 'name', order: 'asc' } },
+      retry: 0
+    }).catch(() => []);
+    for (const r of (Array.isArray(rows) ? rows : [])) {
+      if (!r || !r.name) continue;
+      const path = prefix ? `${prefix}/${r.name}` : r.name;
+      if (r.id == null) {
+        if (depth < 3) out.push(...await listMyObjects(bucket, path, depth + 1));
+      } else out.push(path);
+    }
+    return out;
+  }
+
+  /** 내 사진 파일을 모든 버킷에서 지운다(세션이 살아 있을 때만 정책이 허용한다). */
+  async function deleteMyStorage() {
+    const me = currentUser();
+    if (!me || !isUuid(me.id)) return { ok: false, reason: 'no_session', removed: 0 };
+    let removed = 0;
+    for (const bucket of MY_BUCKETS) {
+      const paths = await listMyObjects(bucket, me.id, 0);
+      for (let i = 0; i < paths.length; i += 100) {
+        const chunk = paths.slice(i, i + 100);
+        try {
+          await request(`${STORAGE}/object/${bucket}`, { method: 'DELETE', body: { prefixes: chunk }, retry: 0 });
+          removed += chunk.length;
+        } catch (e) { /* 남은 파일은 관리자가 정리한다 */ }
+      }
+    }
+    return { ok: true, removed };
+  }
+
+  /**
+   * v37.5 (#24337) — 회원탈퇴: 내 사진 파일 → DB·Auth 계정 순서로 지운다.
+   *  · Auth 계정 삭제는 **SECURITY DEFINER RPC `delete_my_account()`** 가 한다(publishable 키로는
+   *    auth.users 를 지울 수 없다). RPC 는 내 프로필·모임 멤버·글·일정·공지·대화·알림·
+   *    비밀사진·권한·요청·상태를 함께 지우고 마지막에 auth.users 줄을 지운다.
+   *  · 성공하면 로컬 세션·동기화 기억을 비운다(화면은 app.js 가 로그인 화면으로 돌린다).
+   */
+  async function deleteAccount() {
+    const me = currentUser();
+    if (!hasSession() || !me) {
+      clearSession();
+      stopRealtime();
+      resetSyncMemory();
+      return { ok: true, mode: 'local', removed: 0 };
+    }
+    const files = await deleteMyStorage();
+    const r = await rpc('delete_my_account', {});
+    if (!r.ok) {
+      return { ok: false, reason: r.reason, message: (r.error && r.error.message) || '', files };
+    }
+    clearSession();
+    stopRealtime();
+    resetSyncMemory();
+    return { ok: true, mode: 'server', removed: files.removed || 0 };
+  }
+
   /* ----------------------------------------------------------- 내 프로필 */
   function profileRow(user, me) {
     const u = user || {};
@@ -742,7 +871,13 @@
       region_id: u.regionId || null,
       hobbies: Array.isArray(u.hobbies) ? u.hobbies.slice(0, 20) : [],
       explore_visible: u.exploreProfileVisible === true,
-      data: { ...stripKeys(u, ['album', 'secretShares']), album: { public: (u.album && u.album.public) || [], secret: [] } }
+      data: {
+        ...stripKeys(u, ['album', 'secretShares']),
+        album: { public: (u.album && u.album.public) || [], secret: [] },
+        /* v37.5 (#24337) — 다른 사람 프로필의 잠긴 비밀앨범 원형이 장수를 보여 줄 수 있게
+           **장수만** 공개한다(사진·경로는 절대 넣지 않는다). */
+        secretCount: (u.album && Array.isArray(u.album.secret)) ? u.album.secret.length : 0
+      }
     };
   }
 
@@ -808,6 +943,7 @@
     try {
       await pushProfile();
       await syncSecretAlbum(me.id);
+      await syncSecretRequests(me.id);
       let mediaChanged = false;
       for (const name of Object.keys(TABLES)) {
         const spec = TABLES[name];
@@ -950,7 +1086,27 @@
       /* --- 채팅 ------------------------------------------------------- */
       st.groupChats = mergeByKey(st.groupChats, (gchats || []).map((r) => ({ ...(r.data || {}), groupId: r.group_id })), 'groupId');
       st.eventChats = mergeByKey(st.eventChats, (echats || []).map((r) => ({ ...(r.data || {}), eventId: r.event_id })), 'eventId');
-      st.chatRooms = mergeById(st.chatRooms, (dms || []).map((r) => ({ ...(r.data || {}), id: r.id })));
+      st.chatRooms = mergeById(st.chatRooms, (dms || []).map((r) => {
+        const data = { ...(r.data || {}), id: r.id };
+        /* v37.5 — 남이 만든 1:1 방은 data.partnerId 가 '나' 로 저장되어 있다(그 사람 기기 기준).
+           내 쪽에서 보면 상대는 **그 방을 만든 사람**이다 — 프로필로 이름·사진을 맞춘다. */
+        let partnerId = data.partnerId;
+        if (!partnerId || partnerId === me.id) {
+          partnerId = (r.user_a === me.id ? r.user_b : r.user_a) || null;
+        }
+        if (!partnerId || partnerId === me.id) return data;
+        const prof = (profiles || []).find((p) => p.id === partnerId);
+        return {
+          ...data,
+          partnerId,
+          partnerName: (prof && prof.nickname) || data.partnerName || '메이트',
+          partnerHandle: prof && prof.handle ? `@${prof.handle}` : (data.partnerHandle || `@${shortHandle(partnerId)}`),
+          partnerAvatarText: (prof && prof.data && prof.data.avatarText)
+            || data.partnerAvatarText || ((prof && prof.nickname) || '?').charAt(0),
+          partnerGradient: (prof && prof.data && prof.data.avatarGradient) || data.partnerGradient || null,
+          partnerHobby: data.partnerHobby || '취미 메이트'
+        };
+      }));
 
       /* --- 스토리 · 신청 · 알림 --------------------------------------- */
       const remoteStories = (stories || []).map((r) => ({ ...(r.data || {}), id: r.id, authorId: r.author_id, groupId: r.group_id }));
@@ -967,7 +1123,8 @@
         .map((p) => ({
           id: p.id,
           nickname: p.nickname || '',
-          handle: p.handle ? `@${p.handle}` : '',
+          /* v37.5 (#24337) — handle 이 비어 있어도 UUID 를 아이디로 쓰지 않는다. */
+          handle: p.handle ? `@${p.handle}` : `@${shortHandle(p.id)}`,
           avatarText: (p.data && p.data.avatarText) || (p.nickname || '?').charAt(0),
           avatarGradient: (p.data && p.data.avatarGradient) || null,
           photoUrl: p.avatar_url || null,
@@ -977,6 +1134,13 @@
           regionId: p.region_id || null,
           hobbyIds: p.hobbies || [],
           hobbies: p.hobbies || [],
+          /* v37.5 (#24337 · IMG_4604) — 프로필 상단 원형은 **프로필·공개 앨범 사진만**이다.
+             예전에는 이 앨범 목록이 아예 오지 않아 화면이 피드 글 사진을 끌어다 썼다. */
+          publicPhotos: ((p.data && p.data.album && Array.isArray(p.data.album.public)) ? p.data.album.public : [])
+            .map((ph) => (ph && ph.url) || '')
+            .filter((u) => /^https?:/i.test(u)),
+          /* 잠긴 비밀앨범 원형의 장수(+N) — 사진은 오지 않는다. */
+          secretCount: Math.max(0, Number(p.data && p.data.secretCount) || 0),
           /* v37.0 (#23868) — 상대가 공개를 켠 경우에만 프로필의 '다음 일정' 한 줄이 보인다. */
           upcomingMeetingsPublic: !!(p.data && p.data.upcomingMeetingsPublic === true),
           profileNextEvent: (p.data && p.data.profileNextEvent) || null,
@@ -1054,7 +1218,20 @@
           grants.forEach((g) => { mine[g.viewer_id] = true; });
           st.currentUser.secretShares = mine;
         }
+        /* v37.5 (#24337) — 내가 **열람 허락을 받은** 남의 비밀앨범 (grants.viewer_id = me). */
+        const grantedToMe = await request(`${REST}/secret_album_grants?select=owner_id&viewer_id=eq.${me.id}`, { retry: 0 });
+        if (Array.isArray(grantedToMe)) {
+          const access = {};
+          grantedToMe.forEach((g) => { access[g.owner_id] = true; });
+          st.secretAlbumAccess = access;
+        }
       } catch (e) { /* 비밀 앨범은 없어도 나머지 동기화는 계속 */ }
+
+      /* v37.5 (#24337) — 비밀앨범 열람 요청(내가 보낸 것 + 받은 것) */
+      try {
+        const reqs = await request(`${REST}/secret_album_requests?select=*&or=(requester_id.eq.${me.id},owner_id.eq.${me.id})`, { retry: 0 });
+        if (Array.isArray(reqs)) reqs.forEach((row) => store2.applySecretRequestRow(row));
+      } catch (e) { /* 요청 표가 없어도 나머지는 계속 */ }
 
       /* 내가 가입한 모임 중 서버에 없는 것(아직 못 올린 것)은 남긴다. */
       st.currentUser.joinedGroupIds = Array.from(new Set([
@@ -1102,7 +1279,8 @@
 
   /* ---------------------------------------------------------- realtime */
   const RT_TABLES = ['profiles', 'groups', 'group_members', 'posts', 'events', 'notices',
-    'group_chats', 'event_chats', 'dm_rooms', 'stories', 'group_applications', 'notifications'];
+    'group_chats', 'event_chats', 'dm_rooms', 'stories', 'group_applications', 'notifications',
+    'secret_album_requests'];
 
   function stopRealtime() {
     if (state.ws) {
@@ -1217,6 +1395,9 @@
         st.groupApplications = mergeById(st.groupApplications, [{ ...(rec.data || {}), id: rec.id, groupId: rec.group_id }]);
       } else if (table === 'notifications' && rec) {
         st.notificationLog = mergeById(st.notificationLog, [{ ...(rec.data || {}), id: rec.id }]);
+      } else if (table === 'secret_album_requests' && rec) {
+        /* v37.5 — 요청이 오가면 그 자리에서 반영한다(받은 요청이면 대화방도 열어 준다). */
+        store2.applySecretRequestRow(rec);
       } else if (table === 'profiles' && rec && old && old.id) {
         /* 다른 사람 프로필 갱신 — 탐색 카드만 가볍게 맞춘다. */
       }
@@ -1285,6 +1466,8 @@
     // data
     rpc, emailHintForHandle, handleHintForEmail, handleAvailable,
     uploadPhoto, ensurePhotoUrl, publicUrl, signedUrl, dataUrlToBlob,
+    /* v37.5 (#24337) */
+    fetchSecretAlbum, deleteAccount, deleteMyStorage, shortHandle,
     // sync
     pushAll, pullAll, bootstrap, scheduleSync, resetSyncMemory,
     startRealtime, stopRealtime,

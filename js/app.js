@@ -850,10 +850,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 사진 파일 → 최대 max(기본 256)px JPEG Data URL (저장 용량·속도 고려).
-   *  Sprint 17 — 게시물·스토리 사진은 1080px, 프로필 사진은 256px로 줄인다.
-   *  Sprint 26.5 — 앨범은 store 의 업로드 스펙(720px · 0.84)을 그대로 따른다. */
-  function readImageFile(file, onDone, max = 256, quality = 0.84) {
+  /** 사진 파일 → 최대 max px JPEG Data URL (저장 용량·속도 고려).
+   *  Sprint 17 — 글·스토리 사진은 1080px.
+   *  v37.5 (#24337 · IMG_4604) — 기본값 256px 는 **프로필 사진을 뭉개는 원인**이었다.
+   *   기본은 글·스토리 화질(1080px · 0.9)로 올리고, 프로필 대표 사진·공개 사진·비밀앨범은
+   *   `PROFILE_PHOTO_MAX`(1600px · 0.92)를 써서 선명하게 남긴다. */
+  const PROFILE_PHOTO_MAX = 1600;
+  const PROFILE_PHOTO_QUALITY = 0.92;
+
+  function readImageFile(file, onDone, max = 1080, quality = 0.9) {
     if (!file) return;
     if (!/^image\//.test(file.type || '')) {
       showToast('이미지 파일만 올릴 수 있어요', 'warning');
@@ -2181,6 +2186,53 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProfileHeader();
     updateBadges();
     showToast('모든 데이터를 비웠어요 · 회원가입부터 다시 시작해요', 'info');
+  }
+
+  /**
+   * v37.5 (#24337 · IMG_4604) — 회원탈퇴. 설정 › 회원탈퇴에서 두 번 확인한 뒤 부른다.
+   *  ① 서버: 내 사진 파일(모든 버킷) → RPC `delete_my_account()`(프로필·글·댓글·모임 멤버·
+   *     일정·공지·대화·알림·비밀사진·열람 권한·요청·상태 → auth.users).
+   *  ② 이 기기: 저장 상태·옛 로컬 키를 모두 비우고 로그인(회원가입) 화면으로 돌린다.
+   *  서버에 닿지 못하면 **아무것도 지우지 않고** 안내만 한다(반쯤 지운 계정을 만들지 않는다).
+   */
+  async function runDeleteAccount() {
+    if (ui.deletingAccount) return { ok: false, reason: 'busy' };
+    ui.deletingAccount = true;
+    showToast('탈퇴 처리 중이에요…', 'info');
+    let res = { ok: true, mode: 'local' };
+    try {
+      if (window.OOGCloud && typeof window.OOGCloud.deleteAccount === 'function') {
+        res = await window.OOGCloud.deleteAccount();
+      }
+    } catch (e) {
+      res = { ok: false, reason: 'error' };
+    }
+    ui.deletingAccount = false;
+    if (!res || !res.ok) {
+      const msg = {
+        network: '서버에 닿지 못했어요 · 연결을 확인한 뒤 다시 시도해 주세요',
+        no_session: '로그인 상태를 확인할 수 없어요 · 다시 로그인한 뒤 시도해 주세요'
+      }[res && res.reason] || '탈퇴를 마치지 못했어요 · 잠시 뒤 다시 시도해 주세요';
+      showToast(msg, 'error');
+      return res;
+    }
+    store.resetAllData();
+    closeAllModals();
+    settingsView = 'main';
+    ui.onboardingStep = 0;
+    ui.onboardingDraft = newOnboardingDraft();
+    ui.groupSpaceId = null;
+    ui.openRoomId = null;
+    ui.secretAlbumPartnerId = null;
+    ui.personSheetId = null;
+    switchTab('tab-home');
+    applySignInGate();
+    renderHome();
+    renderExplore();
+    renderChatRooms();
+    updateBadges();
+    showToast('회원탈퇴를 마쳤어요 · 그동안 함께해 주셔서 고마웠어요', 'info');
+    return res;
   }
 
   /** 모달을 모두 닫는다(로그아웃·초기화 때 화면 정리). */
@@ -7565,7 +7617,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v37.4';
+  const APP_VERSION = 'v37.5';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -8519,6 +8571,16 @@ document.addEventListener('DOMContentLoaded', () => {
   $('#settings-row-logout') && $('#settings-row-logout').addEventListener('click', () => {
     askConfirm('로그아웃할까요?', '이 기기에 계정과 프로필은 남고, 회원가입(로그인) 화면으로 돌아가요.', '로그아웃', runSignOut);
   });
+  /* v37.5 (#24337) — 회원탈퇴: 1단계(무엇이 지워지는지) → 2단계(정말인지) → 실행 */
+  $('#settings-row-delete-account') && $('#settings-row-delete-account').addEventListener('click', () => {
+    askConfirm('회원탈퇴',
+      '프로필·공개 사진·비밀앨범·글·댓글·대화·모임 기록이 모두 삭제되고 되돌릴 수 없어요.',
+      '계속', () => {
+        askConfirm('정말 탈퇴할까요?',
+          '탈퇴하면 계정과 데이터를 복구할 수 없어요. 상대와의 대화도 그 사람 화면에서 사라져요. 같은 이메일로 다시 가입할 수는 있어요.',
+          '탈퇴하기', runDeleteAccount);
+      });
+  });
   /* 동적 행(설치·개발자 도구)은 한 곳에서 받는다 */
   el.settingsScreen && el.settingsScreen.addEventListener('click', (e) => {
     const pwa = e.target.closest('#settings-row-pwa');
@@ -8856,7 +8918,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderExploreWithSkeleton();
       if (isSettingsOpen()) renderSettingsPage();
       showToast('프로필 사진을 등록했어요');
-    });
+    }, PROFILE_PHOTO_MAX, PROFILE_PHOTO_QUALITY);
     el.profilePhotoInput.value = '';
   });
   el.confirmOk && el.confirmOk.addEventListener('click', () => {
@@ -8966,7 +9028,7 @@ document.addEventListener('DOMContentLoaded', () => {
         d.photoUrl = url;
         renderOnboarding();
         showToast('프로필 사진을 준비했어요', 'success');
-      });
+      }, PROFILE_PHOTO_MAX, PROFILE_PHOTO_QUALITY);
     });
     el.onboardingBody.addEventListener('input', (e) => {
       const node = e.target;
@@ -10786,45 +10848,66 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ------------------------------------------------- 취미친구 프로필 상세 시트 */
   /**
-   * v34.3 — 다른 사람의 공개 사진(프로필 사진 1 + 그 사람이 올린 글 사진들).
-   *  내 프로필의 1+3 규칙을 타인 화면에도 그대로 옮기되, 타인에게는 비밀앨범도 '+' 칸도 없다.
-   *  사진을 누르면 그 사진이 올라온 글을 연다(타인 앨범을 따로 들여다보는 화면은 두지 않는다).
-   * @returns {Array<{url:string, postId:string|null}>}
+   * v37.5 (#24337 · IMG_4604) — 타인 프로필 상단 원형은 **프로필 사진 + 공개 앨범 사진만**이다.
+   *  예전에는 이 사람이 올린 **피드 글 사진**까지 끌어와 프로필 사진처럼 보였다
+   *  ("피드에 올린 사진이 왜 프로필로 등록되어보이는거야"). 피드 글 사진은 아래 피드 영역에만 나온다.
+   * @returns {Array<{url:string}>}
    */
   function personPhotoList(p) {
     const out = [];
     const seen = new Set();
-    const add = (url, postId) => {
-      if (!url || seen.has(url)) return;
-      seen.add(url);
-      out.push({ url, postId: postId || null });
+    const add = (url) => {
+      const u = String(url || '');
+      if (!u || seen.has(u)) return;
+      seen.add(u);
+      out.push({ url: u });
     };
-    add(p.photoUrl, null);
-    (store.state.feedPosts || [])
-      .filter((post) => post.authorId === p.id)
-      .slice()
-      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-      .forEach((post) => {
-        (post.images || []).forEach((u) => add(u, post.id));
-        add(post.photoUrl, post.id);
-      });
+    add(p.photoUrl);
+    (Array.isArray(p.publicPhotos) ? p.publicPhotos : []).forEach((ph) => {
+      add(typeof ph === 'string' ? ph : (ph && ph.url));
+    });
     return out;
   }
 
-  /** 타인 프로필 — 큰 사진(1번) 오른쪽에 놓을 작은 원형 3개. 없으면 그리지 않는다. */
+  /**
+   * v37.5 (#24337) — 상대의 **비밀앨범 원형**(잠금). 사진이 있으면 `+N` 배지를 단다.
+   *  · 잠김: 자물쇠 아이콘 · 누르면 '비밀앨범을 요청하시겠습니까?' 확인 → 1:1 대화방에 요청 카드.
+   *  · 열림: 첫 사진(서명 URL)을 원형에 보여 주고 누르면 앨범이 열린다.
+   */
+  function personSecretRingHTML(p) {
+    const secret = store.getPersonSecretAlbum(p.id);
+    const req = store.getSecretRequestWith(p.id);
+    const granted = secret.granted;
+    const pending = !!(req && req.status === 'pending' && req.requesterId === store.currentUser.id);
+    const first = granted && secret.photos.length ? secret.photos[0].url : '';
+    const label = granted
+      ? `${escapeHtml(p.nickname)}님의 비밀앨범 열기 — ${secret.count || secret.photos.length}장`
+      : `${escapeHtml(p.nickname)}님의 비밀앨범${secret.count ? ` ${secret.count}장` : ''} — 잠김 · 눌러서 열람 요청`;
+    return `
+      <button class="detail-ring is-secret${granted ? ' is-open' : ''}${pending ? ' is-pending' : ''}"
+              type="button" data-person-secret="${escapeHtml(p.id)}" aria-label="${label}">
+        ${first
+          ? `<img class="detail-ring-img" src="${escapeHtml(first)}" alt="" loading="lazy" decoding="async">`
+          : `<span class="detail-ring-lock" aria-hidden="true">${ic(granted ? 'unlock' : 'lock')}</span>`}
+        ${secret.count ? `<span class="detail-ring-badge" aria-hidden="true">+${secret.count}</span>` : ''}
+      </button>`;
+  }
+
+  /** 타인 프로필 — 큰 사진(1번) 오른쪽에 놓을 작은 원형 3개 + 비밀앨범 원형. */
   function personPhotoRingsHTML(p) {
     const photos = personPhotoList(p);
-    const rest = photos.slice(1, 4);
-    if (!rest.length) return '';
-    return `
-      <div class="detail-photo-rings" role="group" aria-label="${escapeHtml(p.nickname)}님의 공개 사진">
-        ${rest.map((ph, i) => `
-          <button class="detail-ring${ph.postId ? '' : ' is-plain'}" type="button"
-                  ${ph.postId ? `data-person-photo="${escapeHtml(ph.postId)}"` : 'disabled'}
-                  aria-label="공개 사진 ${i + 2} — ${ph.postId ? '그 사진의 글 열기' : '큰 사진'}">
+    const rest = photos.slice(1, ALBUM_MAX);
+    const rings = rest.map((ph, i) => `
+          <button class="detail-ring is-plain" type="button" disabled
+                  aria-label="공개 사진 ${i + 2}">
             <img class="detail-ring-img" src="${escapeHtml(ph.url)}" alt="" loading="lazy" decoding="async">
-          </button>`).join('')}
-        ${photos.length > 4 ? `<span class="detail-ring-more">외 ${photos.length - 4}장</span>` : ''}
+          </button>`);
+    rings.push(personSecretRingHTML(p));
+    const extra = photos.length > ALBUM_MAX
+      ? `<span class="detail-ring-more">외 ${photos.length - ALBUM_MAX}장</span>` : '';
+    return `
+      <div class="detail-photo-rings" role="group" aria-label="${escapeHtml(p.nickname)}님의 사진">
+        ${rings.join('')}${extra}
       </div>`;
   }
 
@@ -11142,9 +11225,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   el.personDetailBody && el.personDetailBody.addEventListener('click', (e) => {
-    /* v34.3 — 공개 사진 원형을 누르면 그 사진이 올라온 글을 연다. */
-    const photo = e.target.closest('[data-person-photo]');
-    if (photo) { openHomePost(photo.dataset.personPhoto); return; }
+    /* v37.5 (#24337) — 잠긴 비밀앨범 원형: 확인 시 대화방에 열람 요청 카드를 보낸다.
+       열린 원형: 그 사람의 비밀앨범을 연다. */
+    const secretRing = e.target.closest('[data-person-secret]');
+    if (secretRing) { askPersonSecretAlbum(secretRing.dataset.personSecret); return; }
     /* v34.4 (#22760) — 타인 프로필의 '다녀온 모임'·'모임' 숫자도 눌러서 확인 */
     /* v34.4 — 프로필 위에 시트를 겹쳐 연다(닫으면 프로필로 돌아온다). */
     const pastBtn = e.target.closest('[data-person-past]');
@@ -13154,12 +13238,14 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `<div class="chat-typing">${escapeHtml(room.partnerName)}님이 답장을 쓰는 중…</div>`
       : '';
 
-    const empty = messages.length
+    /* v37.5 (#24337) — 비밀앨범 열람 요청 카드(요청이 있으면 말풍선 아래에 한 장). */
+    const secretCard = chatSecretRequestHTML(room);
+    const empty = (messages.length || secretCard)
       ? ''
       : `<div class="chat-day"><span>오늘</span></div>
          <p class="post-comment-empty">첫 메시지를 보내 대화를 시작해 보세요. 상대가 취미에 맞춰 답장해요.</p>`;
 
-    el.chatMessages.innerHTML = rows + typing + empty;
+    el.chatMessages.innerHTML = rows + secretCard + typing + empty;
     el.chatMessages.scrollTop = el.chatMessages.scrollHeight;
   }
 
@@ -13285,6 +13371,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* 말풍선 옆 '재전송' — 말풍선·프로필·링크 클릭을 가로채지 않게 먼저 잡는다. */
   el.chatMessages && el.chatMessages.addEventListener('click', (e) => {
+    const secretBtn = e.target.closest('[data-secret-respond]');
+    if (secretBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      respondChatSecretAlbum(secretBtn.dataset.secretPartner, secretBtn.dataset.secretRespond);
+      return;
+    }
+    const secretView = e.target.closest('[data-secret-view]');
+    if (secretView) {
+      e.preventDefault();
+      e.stopPropagation();
+      openSecretAlbum(secretView.dataset.secretView);
+      return;
+    }
     const btn = e.target.closest('[data-resend-dm]');
     if (!btn) return;
     e.preventDefault();
@@ -19149,11 +19249,121 @@ document.addEventListener('DOMContentLoaded', () => {
     el.chatAlbumBtn.setAttribute('aria-label', shared ? '비밀앨범 — 공개 중' : '비밀앨범 — 잠김');
   }
 
+  /** v37.5 — 상대 앨범 사진(서명 URL)을 받아 와서 화면을 다시 그린다. */
+  async function loadPersonSecretAlbum(personId) {
+    const cloud = window.OOGCloud;
+    if (!cloud || !personId) return { ok: false, reason: 'no_cloud' };
+    if (cloud.fetchSecretAlbum) await cloud.fetchSecretAlbum(personId);
+    if (ui.secretAlbumPartnerId === personId) renderSecretAlbumBody();
+    if (el.personDetailModal && el.personDetailModal.classList.contains('active') && ui.personSheetId === personId) {
+      openPersonDetail(personId);
+    }
+    return { ok: true };
+  }
+
   function openSecretAlbum(partnerId) {
     if (!partnerId) return;
     ui.secretAlbumPartnerId = partnerId;
     renderSecretAlbumBody();
     openModal(el.secretAlbumModal);
+    const theirs = store.getPersonSecretAlbum(partnerId);
+    if (theirs.granted) loadPersonSecretAlbum(partnerId);
+  }
+
+  /** v37.5 — 상대 프로필의 비밀앨범 원형을 눌렀을 때. */
+  function askPersonSecretAlbum(personId) {
+    const p = store.getPersonProfile(personId);
+    if (!p) return;
+    const secret = store.getPersonSecretAlbum(personId);
+    if (secret.granted) { openSecretAlbum(personId); return; }
+    const req = store.getSecretRequestWith(personId);
+    const meId = store.currentUser.id;
+    if (req && req.status === 'pending' && req.requesterId === meId) {
+      showToast('이미 요청했어요 · 상대가 열어 주면 볼 수 있어요', 'info');
+      const room = store.findChatRoomByPartner(personId);
+      if (room) { closeModal(el.personDetailModal); goToChatRoom(room.id); }
+      return;
+    }
+    askConfirm('비밀앨범을 요청하시겠습니까?',
+      `${p.nickname}님에게 비밀앨범 열람을 요청하는 메시지를 1:1 대화방에 보내요. 상대가 열어 주면 이 프로필에서 사진을 볼 수 있어요.`,
+      '요청', () => {
+        const res = store.requestSecretAlbum(personId);
+        if (!res.ok) {
+          if (res.reason === 'already') showToast('이미 요청했어요 · 상대의 답을 기다리고 있어요', 'info');
+          else if (res.reason === 'already_granted') openSecretAlbum(personId);
+          else showToast('요청을 보내지 못했어요', 'warning');
+          return;
+        }
+        closeModal(el.personDetailModal);
+        goToChatRoom(res.room.id);
+        showToast('비밀앨범 열람을 요청했어요', 'success');
+      });
+  }
+
+  /**
+   * v37.5 — 대화방 안의 비밀앨범 요청 카드. 요청 상태(store.secretRequests)를 그대로 그린다.
+   *  · 받은 요청(pending)에는 `석기`와 `X`(거절)를, 열어 준 뒤에는 `다시 닫기`를 보여 준다.
+   *  · 보낸 요청에는 진행 상태만 보여 준다(열렸으면 `앨범 보기`).
+   */
+  function chatSecretRequestHTML(room) {
+    if (!room || !room.partnerId) return '';
+    const req = store.getSecretRequestWith(room.partnerId);
+    if (!req) return '';
+    const meId = store.currentUser.id;
+    const incoming = req.ownerId === meId;
+    if (!incoming && req.requesterId !== meId) return '';
+    const name = room.partnerName || '상대';
+    const lines = {
+      pending: incoming ? `${escapeHtml(name)}님이 비밀앨범 열람을 요청했어요` : '비밀앨범 열람을 요청했어요',
+      granted: incoming ? '비밀앨범을 열어 줬어요' : `${escapeHtml(name)}님이 비밀앨범을 열어 줬어요`,
+      declined: incoming ? '요청을 거절했어요' : `${escapeHtml(name)}님이 요청을 거절했어요`,
+      revoked: incoming ? '비밀앨범을 다시 닫았어요' : `${escapeHtml(name)}님이 비밀앨범을 닫았어요`
+    };
+    const line = lines[req.status] || lines.pending;
+    const pid = escapeHtml(room.partnerId);
+    let actions = '';
+    if (incoming) {
+      if (req.status === 'granted') {
+        actions = `<button class="chat-secret-btn is-ghost" type="button" data-secret-respond="revoke" data-secret-partner="${pid}">다시 닫기</button>`;
+      } else {
+        actions = `${req.status === 'pending'
+          ? `<button class="chat-secret-btn is-x" type="button" data-secret-respond="decline" data-secret-partner="${pid}" aria-label="요청 거절">${ic('close')}</button>` : ''}
+          <button class="chat-secret-btn" type="button" data-secret-respond="grant" data-secret-partner="${pid}">열기</button>`;
+      }
+    } else if (req.status === 'granted') {
+      actions = `<button class="chat-secret-btn" type="button" data-secret-view="${pid}">앨범 보기</button>`;
+    }
+    return `
+      <div class="chat-secret-card" role="group" aria-label="비밀앨범 열람 요청">
+        <div class="chat-secret-head">
+          <span class="chat-secret-ic" aria-hidden="true">${ic(req.status === 'granted' ? 'unlock' : 'lock')}</span>
+          <span class="chat-secret-title">비밀앨범</span>
+        </div>
+        <p class="chat-secret-text">${line}</p>
+        ${actions ? `<div class="chat-secret-actions">${actions}</div>` : ''}
+      </div>`;
+  }
+
+  /** v37.5 — 카드의 열기/X/다시 닫기. */
+  function respondChatSecretAlbum(partnerId, action) {
+    const res = store.respondSecretAlbumRequest(partnerId, action);
+    if (!res.ok) {
+      showToast('처리하지 못했어요', 'warning');
+      return;
+    }
+    renderChatMessages();
+    renderChatRooms();
+    if (el.personDetailModal && el.personDetailModal.classList.contains('active') && ui.personSheetId === partnerId) {
+      openPersonDetail(partnerId);
+    }
+    if (action === 'grant') {
+      showToast('비밀앨범을 열어 줬어요', 'success');
+      if (window.OOGCloud && window.OOGCloud.scheduleSync) window.OOGCloud.scheduleSync(80);
+    } else if (action === 'decline') {
+      showToast('요청을 거절했어요', 'info');
+    } else {
+      showToast('비밀앨범을 다시 닫았어요', 'info');
+    }
   }
 
   function renderSecretAlbumBody() {
@@ -19161,7 +19371,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const pid = ui.secretAlbumPartnerId;
     const room = pid ? store.findChatRoomByPartner(pid) : null;
     const st = store.getSecretAlbumState(pid);
-    const name = room ? room.partnerName : '상대';
+    const person = pid ? store.getPersonProfile(pid) : null;
+    const name = (room && room.partnerName) || (person && person.nickname) || '상대';
+    const req = store.getSecretRequestWith(pid);
+    const meId = store.currentUser.id;
+    const incoming = !!(req && req.ownerId === meId);
+    const theirsPhotos = st.theirs.shared ? st.theirs.photos : [];
+    const theirsInner = st.theirs.shared
+      ? (theirsPhotos.length
+        ? `<div class="album-grid is-secret">${theirsPhotos.map((ph, i) => `
+             <figure class="album-slot is-filled">
+               <img class="album-img" src="${escapeHtml(ph.url)}" alt="${escapeHtml(name)}님의 비밀 사진 ${i + 1}" loading="lazy" decoding="async">
+             </figure>`).join('')}</div>`
+        : `<div class="secret-locked"><span class="secret-lock" aria-hidden="true">${ic('unlock')}</span>
+             <p class="secret-empty">앨범이 열렸어요 · 사진을 불러오는 중이에요</p></div>`)
+      : `<div class="secret-locked">
+           <span class="secret-lock" aria-hidden="true">${ic('lock')}</span>
+           <div class="secret-locked-text">
+             <p class="secret-empty">${req
+               ? (incoming
+                 ? `${escapeHtml(name)}님이 열람을 요청했어요 · 대화방에서 열어 줄 수 있어요`
+                 : (req.status === 'declined' ? '요청이 거절됐어요' : (req.status === 'revoked' ? '앨범이 다시 잠겼어요' : '요청을 보냈어요 · 상대의 답을 기다리는 중이에요')))
+               : '아직 열람 요청을 보내지 않았어요'}</p>
+             ${incoming || !req ? `<button class="secret-request-btn" type="button" data-secret-ask="${escapeHtml(pid || '')}">${incoming ? '열기' : '열람 요청'}</button>` : ''}
+           </div>
+         </div>`;
     el.secretAlbumBody.innerHTML = `
       <section class="secret-block">
         <h4 class="secret-title">내 비밀앨범 <span class="album-count">${st.mine.photos.length} / ${ALBUM_MAX}</span></h4>
@@ -19172,13 +19406,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </section>
       <section class="secret-block">
-        <h4 class="secret-title">${escapeHtml(name)}님의 앨범</h4>
-        <div class="secret-locked">
-          <span class="secret-lock" aria-hidden="true">${ic('lock')}</span>
-          <p class="secret-empty">${st.mine.shared ? '내 앨범만 공개했어요 · 상대 앨범은 아직 잠겨 있어요' : '공개하면 서로의 비밀앨범이 열려요'}</p>
-        </div>
+        <h4 class="secret-title">${escapeHtml(name)}님의 앨범${st.theirs.count ? ` <span class="album-count">${st.theirs.count}</span>` : ''}</h4>
+        ${theirsInner}
       </section>`;
-    if (el.secretAlbumShare) el.secretAlbumShare.textContent = st.mine.shared ? '공개 해제' : '공개하기';
+    if (el.secretAlbumShare) {
+      el.secretAlbumShare.textContent = st.mine.shared ? '공개 해제' : '공개하기';
+      el.secretAlbumShare.hidden = !pid;
+    }
     syncChatAlbumBtn();
   }
 
@@ -19196,6 +19430,19 @@ document.addEventListener('DOMContentLoaded', () => {
   el.secretAlbumShare && el.secretAlbumShare.addEventListener('click', () => toggleSecretAlbumShare());
   $('#btn-secret-album-close') && $('#btn-secret-album-close').addEventListener('click', () => closeModal(el.secretAlbumModal));
   el.secretAlbumModal && el.secretAlbumModal.addEventListener('click', (e) => {
+    const ask = e.target.closest('[data-secret-ask]');
+    if (ask && ask.dataset.secretAsk) {
+      const pid = ask.dataset.secretAsk;
+      const req = store.getSecretRequestWith(pid);
+      if (req && req.ownerId === store.currentUser.id) {
+        respondChatSecretAlbum(pid, 'grant');
+        loadPersonSecretAlbum(pid);
+      } else {
+        closeModal(el.secretAlbumModal);
+        askPersonSecretAlbum(pid);
+      }
+      return;
+    }
     const open = e.target.closest('[data-album-open]');
     if (open) {
       /* 대화방 시트 위에서 열린 확대 보기는 닫았을 때 이 시트로 돌아온다. */
@@ -19672,6 +19919,28 @@ document.addEventListener('DOMContentLoaded', () => {
     openMySchedule: (tab) => openMyScheduleSheet(tab),
     renderMySchedule: () => renderMyScheduleSheet(),
     openSecretAlbum: (partnerId) => openSecretAlbum(partnerId), setSecretAlbumShared: (on) => toggleSecretAlbumShare(on === undefined ? undefined : on),
+    /* v37.5 (#24337) — 타인 비밀앨범(잠김·요청·열기/거절/닫기) · 프로필 사진 목록 · 회원탈퇴 */
+    askPersonSecretAlbum: (personId) => askPersonSecretAlbum(personId),
+    requestSecretAlbum: (personId) => store.requestSecretAlbum(personId),
+    respondSecretAlbum: (personId, action) => respondChatSecretAlbum(personId, action),
+    getPersonPhotos: (personId) => personPhotoList(store.getPersonProfile(personId) || {}),
+    getSecretAlbumDebug: (personId) => ({
+      state: store.getSecretAlbumState(personId),
+      request: store.getSecretRequestWith(personId),
+      direction: store.secretRequestDirection(personId),
+      person: store.getPersonSecretAlbum(personId)
+    }),
+    getSecretRing: (personId) => {
+      const p = store.getPersonProfile(personId);
+      return p ? personSecretRingHTML(p) : '';
+    },
+    deleteAccount: () => runDeleteAccount(),
+    getDeleteAccountConfirm: () => ({
+      open: !!(el.confirmModal && el.confirmModal.classList.contains('active')),
+      title: el.confirmTitle ? el.confirmTitle.textContent : '',
+      desc: el.confirmDesc ? el.confirmDesc.textContent : '',
+      ok: el.confirmOk ? el.confirmOk.textContent : ''
+    }),
     /* Sprint 25 — 앨범 확대 보기(라이트박스) */
     openAlbumViewer: (kind, index, from) => openAlbumViewer(kind, index, from),
     closeAlbumViewer: () => closeAlbumViewer(),

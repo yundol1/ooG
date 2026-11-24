@@ -852,15 +852,39 @@ const EXPLORE_PUBLISH_HOURS = 2;
 const ALBUM_MAX = 4;
 
 /* ---------------------------------------------------------------------------
- * Sprint 26.5 — 앨범 사진 업로드 스펙 (11/17 사용자: "일단은 720으로하자 추후 화질은 높일거야")
+ * Sprint 26.5 → v37.5 — 앨범·프로필 사진 업로드 스펙
  * -------------------------------------------------------------------------
- * 화질을 올릴 때는 **아래 두 값만** 바꾼다. 앱(app.js)도 서버 경계(api.js)도 이 값을 읽는다.
- *   · maxDimension — 긴 변 기준 최대 픽셀. 1440으로 올리면 저장 용량이 약 4배가 된다.
- *   · jpegQuality  — 0~1. 0.9 이상은 눈에 잘 띄지 않고 용량만 는다.
+ * 11/17 사용자: "일단은 720으로하자 추후 화질은 높일거야" → 11/24 v37.5 사용자:
+ *  "프로필 사진이 너무 흐릿해 원본으로 못하나?"
+ *  · maxDimension 720 → **1600**, jpegQuality 0.84 → **0.92** 로 올렸다.
+ *    (사진은 결국 Supabase Storage 에 원본에 가깝게 보관되고, 로컬에는 업로드 전
+ *     잠깐만 data URL 로 머문다. 1600px·0.92 면 5MB 버킷 한도 안에서 충분히 선명하다.)
+ *  · 화질을 또 올릴 때는 **아래 두 값만** 바꾼다. 앱(app.js)도 이 값을 읽는다.
  * ------------------------------------------------------------------------- */
-const ALBUM_MAX_DIMENSION = 720;
-const ALBUM_JPEG_QUALITY = 0.84;   // 720px · 저장 용량 보호(localStorage 4장×2종)
+const ALBUM_MAX_DIMENSION = 1600;
+const ALBUM_JPEG_QUALITY = 0.92;   // 1600px · 프로필·공개/비밀 앨범 공통
 const ALBUM_UPLOAD_SPEC = { maxDimension: ALBUM_MAX_DIMENSION, jpegQuality: ALBUM_JPEG_QUALITY, max: ALBUM_MAX };
+
+/* ---------------------------------------------------------------------------
+ * v37.5 (#24337 · IMG_4604) — 사람 id 에서 만드는 짧은 기본 @아이디
+ * -------------------------------------------------------------------------
+ *  "사진보면 타 이용자의 아이디가 이상하게 보여" — 다른 사람 프로필에 handle 이
+ *  비어 있으면 id(Supabase UUID)에서 하이픈만 뗀 `@94cfa23e5aff447f…` 가 그대로
+ *  아이디로 나왔다. UUID 는 절대 화면에 내보내지 않고, 같은 사람에게 늘 같은
+ *  `oog#####` 를 쓴다(닉네임·id 가 같으면 같은 값 — 앱의 displayHandleOf 와 같은 결).
+ * ------------------------------------------------------------------------- */
+function oogShortHandle(seed) {
+  const s = String(seed == null ? '' : seed);
+  let h = 0;
+  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) % 100000;
+  return `oog${String(h).padStart(5, '0')}`;
+}
+
+/** UUID 처럼 읽히지 않는 식별자(하이픈 유무 무관) — @아이디로 쓸 수 없다. */
+function oogOpaqueId(v) {
+  const s = String(v == null ? '' : v).replace(/-/g, '').toLowerCase();
+  return s.length >= 20 && /^[0-9a-f]+$/.test(s);
+}
 
 /** 만남 스타일 — 글을 올릴 때 하나 고르면 카드에 그대로 붙는다(선택). */
 const EXPLORE_MEET_STYLES = [
@@ -2082,6 +2106,16 @@ const defaultInitialState = {
     /* Sprint 24 — 1:1 대화 상대별 비밀앨범 공개 여부 { partnerId: true } */
     secretShares: {}
   },
+
+  /* ---------------- v37.5 (#24337) — 다른 사람의 비밀앨범 열람 상태 ----------------
+   * secretAlbumAccess : 내가 열람 허락을 받은 사람 { personId: true } (Supabase secret_album_grants 중 viewer=me)
+   * secretAlbumPhotos : 그 사람 앨범 사진의 **서명 URL** 캐시 { personId: { photos:[{id,url}], at } }
+   *   — 서명 URL 은 1시간이면 만료되므로 앨범을 열 때마다 새로 받아 덮어쓴다.
+   * ------------------------------------------------------------------------- */
+  secretAlbumAccess: {},
+  secretAlbumPhotos: {},
+  /* secretRequests : 그 사람과 오간 비밀앨범 요청 { partnerId: { requesterId, ownerId, status, at } } */
+  secretRequests: {},
 
   /* ---------------- 탐색 탭 취미 필터 (사람·모임 카드 공용 키) ----------------
    * group.hobbyId / matchProfile.hobbyIds 가 이 키를 쓴다. 모임은 category 와 달라도
@@ -5604,6 +5638,13 @@ class Store {
           ? cu.album[kind].filter((p) => p && p.url).slice(0, 4) : [];
       });
       cu.secretShares = (cu.secretShares && typeof cu.secretShares === 'object') ? cu.secretShares : {};
+      /* v37.5 — 다른 사람 비밀앨범 열람 권한·서명 URL 캐시(옛 저장 상태에는 없다). */
+      merged.secretAlbumAccess = (merged.secretAlbumAccess && typeof merged.secretAlbumAccess === 'object'
+        && !Array.isArray(merged.secretAlbumAccess)) ? merged.secretAlbumAccess : {};
+      merged.secretAlbumPhotos = (merged.secretAlbumPhotos && typeof merged.secretAlbumPhotos === 'object'
+        && !Array.isArray(merged.secretAlbumPhotos)) ? merged.secretAlbumPhotos : {};
+      merged.secretRequests = (merged.secretRequests && typeof merged.secretRequests === 'object'
+        && !Array.isArray(merged.secretRequests)) ? merged.secretRequests : {};
       /* v34.4 — 다녀온 모임 공개 범위(옛 저장 상태에는 없으므로 '전체 공개'로 시작한다). */
       cu.pastMeetingsPublic = cu.pastMeetingsPublic !== false;
       /* v37.0 — 예정 일정 공개는 **기본 꺼짐**(옛 저장 상태에는 없으니 false 로 시작한다). */
@@ -12555,16 +12596,20 @@ class Store {
   /**
    * v34.5 (#22862) — 사람 프로필의 @아이디. 저장된 값이 없으면 id·닉네임에서 만들어
    * 타인 프로필 맨 위에도 늘 아이디가 보이게 한다(가입자 아닌 예시·쪽지 상대 포함).
+   * v37.5 (#24337) — **UUID 는 아이디로 쓰지 않는다**. handle 이 비었거나 id 를 그대로
+   *  쓴 값이면 `oog#####` 짧은 기본 아이디로 대신한다(`@94cfa23e5aff447f…` 노출 금지).
    */
   personHandle(person) {
-    const raw = String((person && person.handle) || '').replace(/^@+/, '').trim();
-    if (raw) return raw;
-    const base = String((person && (person.id || person.nickname)) || 'oog')
+    const raw = String((person && person.handle) || '').replace(/^@+/, '').trim().toLowerCase();
+    const clean = raw.replace(/[^a-z0-9._]/g, '');
+    if (clean.length >= 3 && !oogOpaqueId(clean)) return clean.slice(0, 20);
+    const base = String((person && (person.id || person.nickname || person.name)) || 'oog')
       .replace(/^sample_p_/, '')
       .replace(/^by-name:/, '')
       .replace(/[^a-zA-Z0-9._]/g, '')
       .toLowerCase();
-    return base.length >= 2 ? base : 'oog';
+    if (base.length >= 2 && !oogOpaqueId(base)) return base;
+    return oogShortHandle((person && (person.id || person.nickname)) || 'oog');
   }
 
   /** 한 사람이 올린 글 수(내 글·타인 글 모두 같은 기준). */
@@ -13811,16 +13856,193 @@ class Store {
 
   /**
    * 대화방의 비밀앨범 상태 — 내 앨범(공개 여부)과 상대 앨범(잠김/열림).
-   * 상대 앨범은 상대가 나에게 공개했을 때만 열린다(데모에서는 상대 쪽 공개 상태를 저장하지 않는다).
+   * 상대 앨범은 상대가 나에게 공개했을 때만 열린다.
+   * v37.5 — 상대가 `석기`를 누르거나 `비밀앨범 열람 요청`을 받아 주면 실제 사진이 열린다.
    */
   getSecretAlbumState(partnerId) {
     const mine = this.getMyAlbum('secret');
     const shared = this.isSecretAlbumSharedWith(partnerId);
+    const theirs = this.getPersonSecretAlbum(partnerId);
+    const request = this.getSecretRequestWith(partnerId);
     return {
       partnerId,
       mine: { photos: mine, shared, locked: !shared },
-      theirs: { photos: [], shared: false, locked: true }
+      theirs: { photos: theirs.photos, shared: theirs.granted, locked: !theirs.granted, count: theirs.count },
+      request: request ? { id: request.id, status: request.status, at: request.at } : null
     };
+  }
+
+  /* ------------------------------------------------------------------------
+   * v37.5 (#24337 · IMG_4604) — 다른 사람의 비밀앨범: 잠김 노출 · 요청 · 열기/거절 · 다시 닫기
+   * ------------------------------------------------------------------------
+   *  · 잠긴 상태에서도 **장수(count)** 와 열람 여부(granted)만 보여 준다(사진은 안 보인다).
+   *  · 요청은 1:1 대화방에 **카드 한 장**으로 보인다. 카드의 내용은 이 요청 상태가 정하고
+   *    (status: pending | granted | declined | revoked), 받는 사람이 열거나 거절한다.
+   *    대화방이 없으면 만든다 — 요청을 받은 쪽도 이 방이 생겨 그 자리에서 답할 수 있다.
+   *  · 받는 사람이 `열기`를 누르면 secretShares(요청자 id)=true 가 되고,
+   *    cloud 가 secret_album_grants 에 올려 요청자가 서명 URL 로 사진을 보게 된다.
+   *  · `다시 닫기`는 secretShares 에서 지우고 요청을 revoked 로 바꾼다 → 요청자가 다시 잠긴다.
+   *  · 요청은 서버의 secret_album_requests 표(요청자·주인·상태)로 동기화된다.
+   * ---------------------------------------------------------------------- */
+
+  /** 상대의 비밀앨범 상태 — 장수·열람 여부·사진(서명 URL) 캐시. */
+  getPersonSecretAlbum(personId) {
+    const id = String(personId || '');
+    const accessMap = this.state.secretAlbumAccess || {};
+    const cacheMap = this.state.secretAlbumPhotos || {};
+    const cache = cacheMap[id] || null;
+    const person = this.getPersonProfile(id) || {};
+    const photos = (cache && Array.isArray(cache.photos)) ? cache.photos : [];
+    const count = Math.max(Number(person.secretCount) || 0, photos.length);
+    return {
+      personId: id,
+      count,
+      granted: accessMap[id] === true,
+      photos,
+      at: (cache && cache.at) || null
+    };
+  }
+
+  /**
+   * 나와 그 사람 사이의 비밀앨범 요청(마지막 상태) — 없으면 null.
+   * @returns {{partnerId, id, requesterId, ownerId, status, at, updatedAt}|null}
+   */
+  getSecretRequestWith(partnerId) {
+    const id = String(partnerId || '');
+    const map = this.state.secretRequests || {};
+    const req = map[id];
+    return req && typeof req === 'object' ? { partnerId: id, ...req } : null;
+  }
+
+  /** 그 사람에게 내가 보낸 요청인가 / 그 사람이 나에게 보낸 요청인가. */
+  secretRequestDirection(partnerId) {
+    const req = this.getSecretRequestWith(partnerId);
+    const me = this.state.currentUser.id;
+    if (!req) return null;
+    if (req.requesterId === me) return 'outgoing';
+    if (req.ownerId === me) return 'incoming';
+    return null;
+  }
+
+  /** 열람 권한 표시(서버 pull 이 부른다) — viewer=me 인 grant 를 받아 두는 곳. */
+  setSecretAlbumAccess(personId, on) {
+    const id = String(personId || '');
+    if (!id) return { ok: false, reason: 'invalid' };
+    if (!this.state.secretAlbumAccess || typeof this.state.secretAlbumAccess !== 'object') {
+      this.state.secretAlbumAccess = {};
+    }
+    if (on) this.state.secretAlbumAccess[id] = true;
+    else delete this.state.secretAlbumAccess[id];
+    if (!on && this.state.secretAlbumPhotos) delete this.state.secretAlbumPhotos[id];
+    this.saveState();
+    return { ok: true, personId: id, granted: !!on };
+  }
+
+  /** 상대 앨범 사진(서명 URL) 캐시 적재 — cloud.fetchSecretAlbum 이 부른다. */
+  setPersonSecretPhotos(personId, photos) {
+    const id = String(personId || '');
+    if (!id) return { ok: false, reason: 'invalid' };
+    if (!this.state.secretAlbumPhotos || typeof this.state.secretAlbumPhotos !== 'object') {
+      this.state.secretAlbumPhotos = {};
+    }
+    this.state.secretAlbumPhotos[id] = {
+      photos: (Array.isArray(photos) ? photos : []).filter((p) => p && p.url).slice(0, ALBUM_MAX),
+      at: new Date().toISOString()
+    };
+    this.saveState();
+    return { ok: true, personId: id, photos: this.state.secretAlbumPhotos[id].photos };
+  }
+
+  /**
+   * 비밀앨범 열람 요청 — 대화방을 만들고(없으면) 요청 상태를 적는다.
+   * 카드는 대화방이 요청 상태를 읽어 그린다(app.js).
+   * @returns {{ok:boolean, reason?:string, room?:object, request?:object}}
+   */
+  requestSecretAlbum(partnerId) {
+    const id = String(partnerId || '');
+    const me = this.state.currentUser.id;
+    if (!id) return { ok: false, reason: 'invalid' };
+    if (id === me) return { ok: false, reason: 'self' };
+    if (!this.getPersonProfile(id)) return { ok: false, reason: 'not_found' };
+    if (this.isSecretAlbumSharedWith(id)) return { ok: false, reason: 'already_granted' };
+    const existing = this.getSecretRequestWith(id);
+    if (existing && existing.status === 'pending') {
+      return { ok: false, reason: 'already', room: this.findChatRoomByPartner(id), request: existing };
+    }
+    const room = this.openChatRoom(id).room;
+    if (!this.state.secretRequests || typeof this.state.secretRequests !== 'object') {
+      this.state.secretRequests = {};
+    }
+    const req = {
+      id: `sreq_${id}_${Date.now().toString(36)}`,
+      requesterId: me,
+      ownerId: id,
+      status: 'pending',
+      at: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    this.state.secretRequests[id] = req;
+    room.lastMessage = '비밀앨범 열람을 요청했어요';
+    room.lastTime = '방금';
+    room.unreadCount = 0;
+    room.isNewMatch = false;
+    this.saveState();
+    return { ok: true, room, request: { partnerId: id, ...req } };
+  }
+
+  /**
+   * 요청을 받은 사람의 답 — 'grant'(석기) · 'decline'(X) · 'revoke'(다시 닫기).
+   * 권한 자체는 secretShares 가 들고 있다(cloud 가 grants 로 올린다).
+   */
+  respondSecretAlbumRequest(partnerId, action) {
+    const id = String(partnerId || '');
+    const me = this.state.currentUser.id;
+    const req = this.getSecretRequestWith(id);
+    if (!req) return { ok: false, reason: 'not_found' };
+    if (req.ownerId !== me) return { ok: false, reason: 'not_owner' };
+    const act = action === 'grant' ? 'grant' : (action === 'decline' ? 'decline' : (action === 'revoke' ? 'revoke' : ''));
+    if (!act) return { ok: false, reason: 'invalid_action' };
+    const next = act === 'grant' ? 'granted' : (act === 'decline' ? 'declined' : 'revoked');
+    this.state.secretRequests[id] = { ...req, status: next, updatedAt: new Date().toISOString() };
+    this.setSecretAlbumShared(req.requesterId, act === 'grant');
+    this.saveState();
+    return { ok: true, request: this.getSecretRequestWith(id), status: next };
+  }
+
+  /**
+   * 서버(secret_album_requests)에서 받은 요청을 상태에 적는다 — cloud 가 부른다.
+   * 받은 요청(내가 주인)이 pending 이면 그 사람과의 대화방을 열어 둔다.
+   */
+  applySecretRequestRow(row) {
+    const me = this.state.currentUser.id;
+    const requesterId = String(row.requester_id || row.requesterId || '');
+    const ownerId = String(row.owner_id || row.ownerId || '');
+    const partnerId = requesterId === me ? ownerId : requesterId;
+    if (!partnerId || (requesterId !== me && ownerId !== me)) return { ok: false, reason: 'not_mine' };
+    if (!this.state.secretRequests || typeof this.state.secretRequests !== 'object') {
+      this.state.secretRequests = {};
+    }
+    const prev = this.state.secretRequests[partnerId] || {};
+    this.state.secretRequests[partnerId] = {
+      id: row.id || prev.id || `sreq_${partnerId}`,
+      requesterId, ownerId,
+      status: ['pending', 'granted', 'declined', 'revoked'].includes(row.status) ? row.status : (prev.status || 'pending'),
+      at: row.created_at || row.at || prev.at || null,
+      updatedAt: row.updated_at || row.updatedAt || prev.updatedAt || null
+    };
+    if (requesterId !== me && ownerId === me) {
+      const req = this.state.secretRequests[partnerId];
+      if (req.status === 'granted') this.setSecretAlbumAccess(partnerId, true);
+      if (req.status === 'pending') {
+        const room = this.findChatRoomByPartner(partnerId) || this.openChatRoom(partnerId).room;
+        if (room) {
+          room.lastMessage = '비밀앨범 열람을 요청했어요';
+          room.lastTime = '방금';
+        }
+      }
+    }
+    this.saveState();
+    return { ok: true, partnerId, request: this.state.secretRequests[partnerId] };
   }
 
   /** 내 공개 앨범·비밀앨범 장수 요약(내 프로필 탭). */
