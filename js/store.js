@@ -204,6 +204,8 @@ const GROUP_ACTION_ROLES = {
 const STAFF_DELEGATED_ACTIONS = ['mute_member', 'warn_member', 'kick_member'];
 /* v33.7 — 한 글에 붙일 수 있는 사진 수(인스타그램과 같은 10장). */
 const MAX_POST_IMAGES = 10;
+/* v37.4 — 본문의 #해시태그(한글·영문·숫자·_ · 최대 24자). app.js 의 같은 규칙과 짝이다. */
+const HASHTAG_RE = /#[0-9A-Za-z\uAC00-\uD7A3_]{1,24}/g;
 /* v33.7 — 글 사진으로 받는 앱 안 상대 경로(예시 사진 폴더 · 아이콘 폴더). */
 const RELATIVE_IMAGE_RE = /^(?:\.\/)?(?:assets|icons)\/[A-Za-z0-9_.\/-]+$/;
 /* Sprint 17 — v14 이하 저장 상태는 '내 활동'이 남아 있다. v15 는 클린 스타트(회원가입부터)라
@@ -5920,6 +5922,78 @@ class Store {
     return this.state.feedPosts.find((p) => p.id === postId) || null;
   }
 
+  /* ---------------- 해시태그 (v37.4) ------------------------------------
+     11/24 08:45 사용자: "태그도 그래 태그도 검색 할 수 있게해줘".
+     · 태그는 글 본문(#해시태그)이 유일한 저장처다. 그래서 여기서 본문을 한 번 훑어
+       이름·글 수 목록을 만들고, 글쓰기 태그 고르기 · 앱 검색 · 피드 태그 탭이 같은 목록을 쓴다.
+     · 볼 수 있는 글만 센다(getPosts('all') — 남의 비공개 모임 글은 들어오지 않는다). */
+  /** 본문에서 #태그만 뽑는다(중복 제거 · 앞의 # 은 떼고 · 처음 나온 순서). */
+  hashtagsOfPost(post) {
+    const text = String((post && post.caption) || '');
+    const out = [];
+    HASHTAG_RE.lastIndex = 0;
+    let m;
+    while ((m = HASHTAG_RE.exec(text)) !== null) {
+      const tag = m[0].slice(1);
+      if (out.indexOf(tag) < 0) out.push(tag);
+    }
+    return out;
+  }
+
+  /** 이 글 본문에 그 태그가 붙어 있나(앞뒤 글자 경계까지 본다 — #개 vs #개모임). */
+  hasHashtag(post, tag) {
+    const clean = String(tag == null ? '' : tag).replace(/^#+/, '').trim();
+    if (!clean) return false;
+    return this.hashtagsOfPost(post).some((t) => t.toLowerCase() === clean.toLowerCase());
+  }
+
+  /** 태그 목록 — [{tag, count, lastAt}] · 많은 순 → 최근 순 → 이름 순. */
+  getHashtagIndex() {
+    const map = new Map();
+    this.getPosts('all').forEach((post) => {
+      const at = new Date(post.createdAt || 0).getTime() || 0;
+      this.hashtagsOfPost(post).forEach((tag) => {
+        const key = tag.toLowerCase();
+        const row = map.get(key) || { tag, count: 0, lastAt: 0 };
+        row.count += 1;
+        row.lastAt = Math.max(row.lastAt, at);
+        map.set(key, row);
+      });
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      (b.count - a.count) || (b.lastAt - a.lastAt) || a.tag.localeCompare(b.tag, 'ko'));
+  }
+
+  /** 태그 검색 — 검색어가 이름에 들어간 태그(앞에서 시작하는 것 먼저) 최대 limit 개. */
+  searchHashtags(query, limit = 8) {
+    const q = String(query == null ? '' : query).replace(/^#+/, '').trim().toLowerCase();
+    const list = this.getHashtagIndex();
+    if (!q) return list.slice(0, Math.max(0, Number(limit) || 0));
+    const hit = list.filter((row) => row.tag.toLowerCase().includes(q));
+    hit.sort((a, b) => {
+      const aStart = a.tag.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      const bStart = b.tag.toLowerCase().indexOf(q) === 0 ? 0 : 1;
+      return (aStart - bStart) || (b.count - a.count) || a.tag.localeCompare(b.tag, 'ko');
+    });
+    return hit.slice(0, Math.max(0, Number(limit) || 0));
+  }
+
+  /** 그 태그가 붙은 글 — 볼 수 있는 글만, 최신 순. */
+  getPostsByHashtag(tag) {
+    const clean = String(tag == null ? '' : tag).replace(/^#+/, '').trim();
+    if (!clean) return [];
+    return this.getPosts('all').filter((post) => this.hasHashtag(post, clean));
+  }
+
+  /** 그 태그가 붙은 글이 있는 모임 id — 검색 결과의 '관련 모임'에 쓴다. */
+  getGroupIdsByHashtag(tag) {
+    const ids = new Set();
+    this.getPostsByHashtag(tag).forEach((post) => {
+      if (post.groupId) ids.add(post.groupId);
+    });
+    return ids;
+  }
+
   /* ---------------- 액션 (Actions) ---------------- */
   /**
    * 가입/탈퇴 토글.
@@ -7007,7 +7081,15 @@ class Store {
    */
   getGroupBrowse(options = {}) {
     const o = options || {};
-    const q = String(o.query || '').trim().toLowerCase();
+    const rawQ = String(o.query || '').trim();
+    const q = rawQ.toLowerCase();
+    /* v37.4 — '#강아지' 처럼 # 을 붙여 찾아도 모임 이름·태그가 걸리고,
+       그 태그가 붙은 글이 있는 모임도 '관련 모임'으로 함께 나온다. */
+    const tagQ = rawQ.replace(/^#+/, '').trim().toLowerCase();
+    const tagGroupIds = tagQ ? this.getGroupIdsByHashtag(tagQ) : null;
+    const queryMatch = (g) => this.matchGroupQuery(g, q)
+      || (!!tagQ && tagQ !== q && this.matchGroupQuery(g, tagQ))
+      || (!!tagGroupIds && tagGroupIds.has(g.id));
     const categoryId = o.categoryId && o.categoryId !== 'all' ? o.categoryId : 'all';
     const hobbyId = o.hobbyId && o.hobbyId !== 'all' ? o.hobbyId : 'all';
     /* Sprint 32.5 — 아지트로 가까운 모임만 (없는 id 는 전체). */
@@ -7056,7 +7138,7 @@ class Store {
       if (!inRegion(this.getGroupRegionId(g))) return false;
       if (!this.radiusAllows(radiusId, this.getGroupDistanceKm(g))) return false;
       if (!nearbyOk(this.getGroupDistanceKm(g))) return false;
-      if (!this.matchGroupQuery(g, q)) return false;
+      if (!queryMatch(g)) return false;
       return true;
     }).map((g) => {
       const chip = this.getHobbyChip(g.hobbyId || g.category);
@@ -7708,6 +7790,10 @@ class Store {
   getExploreFeed(filter = 'all', query = '', options = null, ageFilter = 'all', region = 'all', radius = 'all') {
     const kind = filter || 'all';
     const q = String(query || '').trim().toLowerCase();
+    /* v37.4 — '#강아지' 처럼 # 을 붙여 찾으면 **홈 피드 글**도 함께 찾는다(태그 검색). */
+    const rawQuery = String(query || '').trim();
+    const hashtagOnly = /^#/.test(rawQuery);
+    const tagQuery = rawQuery.replace(/^#+/, '').trim();
     const age = this.getExploreAgeFilters().some((f) => f.id === ageFilter) ? ageFilter : 'all';
     const regionRaw = region && (region === 'all' || region === 'nearby'
       || isKnownRegion(region) || isKnownRegionGroup(region)) ? region : 'all';
@@ -7775,6 +7861,22 @@ class Store {
         posts.push({ type: 'post', id: p.id, ratio: p.ratio || 'square', post: p, distanceKm });
       });
       posts.sort((a, b) => new Date(b.post.createdAt) - new Date(a.post.createdAt));
+      /* v37.4 — 태그 검색은 탐색 글뿐 아니라 **홈 피드에 쓴 글**도 대상이다
+         (탐색 글은 따로 모인 목록이라, 방금 쓴 강아지 글은 거기에 없다).
+         · '#강아지' → 그 태그가 정확히 붙은 글 · '강아지' → 그 말이 든 태그가 붙은 글. */
+      if (tagQuery) {
+        const ql = tagQuery.toLowerCase();
+        const seen = new Set(posts.map((it) => it.post.id));
+        this.getPosts('all').forEach((p) => {
+          if (seen.has(p.id)) return;
+          if (isHobby && p.hobbyId !== kind) return;
+          const hit = this.hashtagsOfPost(p).some((t) => (hashtagOnly
+            ? t.toLowerCase() === ql : t.toLowerCase().includes(ql)));
+          if (!hit) return;
+          posts.push({ type: 'post', id: p.id, ratio: p.ratio || 'square', post: p, distanceKm: this.getExplorePostDistanceKm(p) });
+        });
+        posts.sort((a, b) => new Date(b.post.createdAt) - new Date(a.post.createdAt));
+      }
     }
 
     const total = people.length + groups.length + posts.length;

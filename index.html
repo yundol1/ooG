@@ -98,7 +98,7 @@
            내 프로필 탭에서만 보이고, 타인 프로필은 그 화면의 머리말 가운데에 같은 모양으로 보인다. -->
       <span class="profile-top-id" id="profile-top-handle" hidden></span>
       <div class="header-actions">
-        <button class="icon-btn" id="btn-header-search" aria-label="모임 찾기 — 이름·아지트로 검색">
+        <button class="icon-btn" id="btn-header-search" aria-label="찾기 — 모임 이름·아지트·#태그로 검색">
           <span class="oo-icon-20" aria-hidden="true" data-oog-icon="search"></span>
         </button>
         <button class="icon-btn" id="btn-header-notif" aria-label="알림">
@@ -323,6 +323,15 @@
           </div>
           <div class="find-cats" id="find-cats" role="group" aria-label="취미 대분류"><!-- JS --></div>
           <div class="find-sorts" id="find-sorts" role="group" aria-label="모임 정렬"><!-- JS --></div>
+          <!-- v37.4 — 검색어에 걸린 태그와 그 태그가 붙은 글(11/24 "태그도 검색 할 수 있게해줘") -->
+          <section class="find-tags" id="find-tags" aria-labelledby="find-tag-title" hidden>
+            <div class="find-tags-head">
+              <h3 class="find-tag-title" id="find-tag-title">태그</h3>
+              <p class="find-tag-sub" id="find-tag-sub"></p>
+            </div>
+            <div class="find-tag-chips" id="find-tag-chips" role="group" aria-label="태그 검색 결과"><!-- JS --></div>
+            <div class="find-post-list" id="find-post-list"><!-- JS --></div>
+          </section>
           <!-- v34.1 (#22485) — 추천 모임 '더 보기'로 왔을 때 추천 일정도 함께 보이게. -->
           <section class="find-events" id="find-events" aria-labelledby="find-events-title" hidden>
             <div class="find-events-head">
@@ -391,7 +400,7 @@
           <div class="explore-search">
             <span class="oo-icon-17" aria-hidden="true" data-oog-icon="search"></span>
             <span class="input-shrink">
-              <input type="search" id="explore-search-input" aria-label="동네나 닉네임 검색" placeholder="동네나 닉네임으로 찾기" autocomplete="off">
+              <input type="search" id="explore-search-input" aria-label="동네나 닉네임, #태그로도 찾기" placeholder="동네나 닉네임으로 찾기" autocomplete="off">
             </span>
             <button class="explore-search-clear hide" id="explore-search-clear" aria-label="검색어 지우기">&times;</button>
           </div>
@@ -835,6 +844,24 @@
           <div class="composer-caption-wrap">
             <textarea id="composer-caption" class="composer-caption" aria-label="게시물 내용" maxlength="500"
                       placeholder="오늘의 운동·취미 기록을 남겨보세요. #해시태그도 쓸 수 있어요."></textarea>
+          </div>
+
+          <!-- v37.4 — 태그 고르기(검색해서 넣고, 고른 태그는 본문의 #해시태그와 같은 것이다) -->
+          <div class="composer-tags" id="composer-tags">
+            <div class="composer-tag-head">
+              <span class="composer-tag-title">태그</span>
+              <span class="composer-tag-hint" id="composer-tag-hint">태그는 본문에 #으로 붙어요</span>
+            </div>
+            <div class="composer-tag-picked" id="composer-tag-picked" role="group" aria-label="고른 태그" hidden><!-- JS --></div>
+            <div class="composer-tag-search">
+              <span class="oo-icon-17" aria-hidden="true" data-oog-icon="search"></span>
+              <span class="input-shrink">
+                <input id="composer-tag-search" type="search" placeholder="태그 검색 (예: 강아지)"
+                       aria-label="태그 검색" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
+              </span>
+              <button class="composer-tag-clear hide" id="composer-tag-clear" type="button" aria-label="태그 검색어 지우기">&times;</button>
+            </div>
+            <div class="composer-tag-results" id="composer-tag-results" role="group" aria-label="태그 검색 결과"><!-- JS --></div>
           </div>
         </section>
 

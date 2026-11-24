@@ -275,6 +275,11 @@ document.addEventListener('DOMContentLoaded', () => {
     findCats: $('#find-cats'),
     findSorts: $('#find-sorts'),
     findSub: $('#find-sub'),
+    /* v37.4 — 검색어에 걸린 태그와 그 태그가 붙은 글 */
+    findTags: $('#find-tags'),
+    findTagChips: $('#find-tag-chips'),
+    findTagSub: $('#find-tag-sub'),
+    findPostList: $('#find-post-list'),
     findGrid: $('#find-grid'),
     btnFindMore: $('#btn-find-more'),
     findEvents: $('#find-events'),
@@ -606,6 +611,13 @@ document.addEventListener('DOMContentLoaded', () => {
     btnComposerGallery: $('#btn-composer-gallery'),
     btnComposerBack: $('#btn-composer-back'),
     composerCaption: $('#composer-caption'),
+    /* v37.4 — 글쓰기 태그 고르기(검색 · 고른 태그 칩) */
+    composerTags: $('#composer-tags'),
+    composerTagSearch: $('#composer-tag-search'),
+    composerTagClear: $('#composer-tag-clear'),
+    composerTagPicked: $('#composer-tag-picked'),
+    composerTagResults: $('#composer-tag-results'),
+    composerTagHint: $('#composer-tag-hint'),
     composerRecommendRow: $('#composer-recommend-row'),
     publishBtn: $('#btn-publish'),
     // misc
@@ -783,6 +795,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const escapeHtml = (str) => String(str == null ? '' : str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  /* 정규식에 넣을 글자를 그대로 찾게 만든다(태그 빼기에서 쓴다). */
+  const escapeRegExp = (str) => String(str == null ? '' : str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
   /* 받침으로 조사를 고른다 — '롤는 처음이라' 처럼 받침 있는 말 뒤에 '는'이 붙던 자리 */
   const josa = (word, withFinal, withoutFinal) => {
@@ -3173,7 +3187,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return false;
   }
 
-  /** 해시태그로 모아 보기 — 지금 보던 화면(홈 피드 / 모임 피드)에 그 태그 글만 남긴다. */
+  /** 해시태그로 모아 보기 — 지금 보던 화면(홈 피드 / 모임 피드)에 그 태그 글만 남긴다.
+   *  v37.4 — 거기에 더해 **그 태그의 검색 결과 화면**(태그·그 태그가 붙은 글·관련 모임)을 연다.
+   *  (11/24 08:45 "태그도 검색 할 수 있게해줘" — 피드 카드의 #태그를 누르면 바로 그 결과로 간다) */
   function openHashtag(tag) {
     const clean = String(tag || '').replace(/^#/, '').trim();
     if (!clean) return;
@@ -3186,6 +3202,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderHomeSuggestFeed();
     }
     if (el.main) el.main.scrollTop = 0;
+    openFindScreen({ query: `#${clean}` });
   }
 
   function clearHashtag() {
@@ -3238,6 +3255,14 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `<span class="ig-act-lock" aria-hidden="true">${ic('lock')}</span>`
       : `<span class="ig-act-count" data-feed-like-count="${escapeHtml(p.id)}">${fmtCount(likeCount)}</span>`
         + (likesHidden ? `<span class="ig-act-lock" aria-hidden="true">${ic('lock')}</span>` : '');
+    /* v37.4 (IMG_4600 · 11/24 08:45 "글을 두줄로 썼는데 한줄밖에 안보여") —
+       피드 카드의 글은 **쓴 그대로** 보여 준다.
+        · 전에는 firstSentence() 가 첫 줄·첫 문장만 잘라, 둘째 줄에 쓴 본문이 통째로 사라졌다
+          (태그만 첫 줄에 써 두면 카드에는 태그만 남았다).
+        · 줄바꿈은 CSS white-space: pre-line 이 살린다(#해시태그는 그대로 누를 수 있는 칩).
+        · 아주 긴 글만 6줄로 접고 '더 보기'로 펼친다(짧은 두세 줄 글은 접지 않는다). */
+    const captionText = String(p.caption || '').trim();
+    const captionClamp = captionText.length > 240 || captionText.split('\n').length > 6;
     return `
       <article class="ig-post" data-home-feed-post="${escapeHtml(it.uid)}" data-suggest-post="${escapeHtml(p.id)}"
                data-post-id="${escapeHtml(p.id)}" data-post-round="${it.round || 0}">
@@ -3278,7 +3303,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </button>
         </div>
         ${igLikersHTML(p.id, likerCount, likersInfo.people)}
-        <p class="ig-caption">${hashtagHTML(firstSentence(p.caption) || '사진을 올렸어요')}</p>
+        <p class="ig-caption${captionClamp ? ' is-clamped' : ''}">${hashtagHTML(captionText || '사진을 올렸어요')}</p>
+        ${captionClamp ? `<button class="ig-caption-more" data-caption-more="${escapeHtml(p.id)}" type="button" aria-expanded="false">더 보기</button>` : ''}
         <div class="ig-comments">${igCommentsHTML(p)}</div>
         <button class="ig-add-comment" data-feed-comment-open="${escapeHtml(p.id)}" type="button">댓글 달기…</button>
         <time class="ig-foot-time" datetime="${escapeHtml(when.toISOString())}">${escapeHtml(whenLabel)}</time>
@@ -3606,6 +3632,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const hash = e.target.closest('[data-hashtag]');
       if (hash) { e.preventDefault(); openHashtag(hash.dataset.hashtag); return; }
       if (e.target.closest('[data-hashtag-clear]')) { e.preventDefault(); clearHashtag(); return; }
+      /* v37.4 — 긴 글의 '더 보기/접기' (카드 안에서 그 자리만 펼친다). */
+      const capMore = e.target.closest('[data-caption-more]');
+      if (capMore) {
+        e.preventDefault();
+        e.stopPropagation();
+        const body = capMore.parentElement.querySelector('.ig-caption');
+        if (body) {
+          const open = body.classList.toggle('is-open');
+          capMore.textContent = open ? '접기' : '더 보기';
+          capMore.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        return;
+      }
       /* v35.1 (#23087) — 카드 우상단 점 세 개 → 게시물 메뉴(수정·좋아요 비공개·공유). */
       const more = e.target.closest('[data-feed-more]');
       if (more) {
@@ -3918,6 +3957,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     /* v34.1 — 추천 모임 '더 보기'로 왔을 때 추천 일정도 같은 화면에 보인다. */
     renderFindEvents();
+    /* v37.4 — 검색어에 걸린 태그·그 태그가 붙은 글(11/24 "태그도 검색 할 수 있게해줘"). */
+    renderFindTags(s.query);
     const res = store.getGroupBrowse({
       query: s.query, categoryId: s.categoryId, sort: s.sort, azitId: s.azitId,
       sidoId: s.sidoId, sigunguId: s.sigunguId, hangoutId: s.hangoutId, limit: s.limit
@@ -3951,8 +3992,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 모임 찾기 전용 화면을 연다 — 헤더 검색 아이콘·추천 모임 '더 보기'가 부른다. */
-  function openFindScreen(options = {}) {
+  /** 검색 결과의 글 한 줄 — 사진 썸네일 + 본문 두 줄 + 누가·어디·언제. */
+  function findPostRowHTML(post) {
+    const grp = store.getGroup(post.groupId);
+    const img = (post.images && post.images[0]) || post.photoUrl || '';
+    const tone = grp ? store.getHobbyTone(grp.hobbyId || grp.category) : 'neutral';
+    const icon = grp ? ((store.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle';
+    const thumb = img
+      ? `<img src="${escapeHtml(img)}" alt="" loading="lazy" decoding="async">`
+      : `<span class="find-post-tone tone-${escapeHtml(tone)}" aria-hidden="true">${ic(icon)}</span>`;
+    const line = String(post.caption || '').replace(/\s+/g, ' ').trim() || '사진을 올렸어요';
+    const where = grp ? grp.name : '자유 피드';
+    return `<button class="find-post-row" type="button" data-find-post="${escapeHtml(post.id)}"
+              aria-label="${escapeHtml(line.slice(0, 40))} 글 열기">
+      <span class="find-post-thumb">${thumb}</span>
+      <span class="find-post-text">
+        <span class="find-post-caption">${escapeHtml(line)}</span>
+        <span class="find-post-meta">${escapeHtml(post.authorName || '멤버')} · ${escapeHtml(where)} · ${escapeHtml(timeAgo(post.createdAt))}</span>
+      </span>
+    </button>`;
+  }
+
+  /**
+   * v37.4 (11/24 08:45 "태그도 검색 할 수 있게해줘") — 모임 찾기 화면의 '태그' 결과.
+   *  · '#강아지' 든 '강아지' 든, 그 이름이 든 태그와 그 태그가 붙은 글을 함께 보여 준다.
+   *  · 태그 첩을 누르면 그 태그로 다시 찾는다(# 붙은 검색어).
+   *  · 글이 없으면 숨기지 않고 '아직 없어요' 한 줄을 남긴다(# 으로 직접 찾은 경우).
+   */
+  function renderFindTags(query) {
+    if (!el.findTags) return;
+    const rawQ = String(query || '').trim();
+    const tagQ = rawQ.replace(/^#+/, '').trim();
+    const tagOnly = /^#/.test(rawQ);
+    const reset = () => {
+      el.findTags.hidden = true;
+      if (el.findTagChips) el.findTagChips.innerHTML = '';
+      if (el.findPostList) el.findPostList.innerHTML = '';
+    };
+    if (!tagQ) { reset(); return; }
+    const tags = store.searchHashtags(tagQ, 8);
+    const all = store.getPostsByHashtag(tagQ);
+    if (!tags.length && !all.length && !tagOnly) { reset(); return; }
+    const posts = all.slice(0, 6);
+    const exact = tags.find((t) => t.tag.toLowerCase() === tagQ.toLowerCase());
+    el.findTags.hidden = false;
+    if (el.findTagSub) {
+      el.findTagSub.textContent = all.length
+        ? `#${exact ? exact.tag : tagQ} 글이 ${all.length}개 있어요`
+        : `#${tagQ} 태그가 붙은 글이 아직 없어요`;
+    }
+    if (el.findTagChips) {
+      el.findTagChips.hidden = !tags.length;
+      el.findTagChips.innerHTML = tags.map((row) => {
+        const on = row.tag.toLowerCase() === tagQ.toLowerCase();
+        return `<button class="find-tag-chip${on ? ' on' : ''}" data-find-tag="${escapeHtml(row.tag)}"
+                  type="button" aria-pressed="${on}">#${escapeHtml(row.tag)}<span class="find-tag-count">${row.count}</span></button>`;
+      }).join('');
+    }
+    if (el.findPostList) {
+      el.findPostList.innerHTML = posts.map(findPostRowHTML).join('');
+      hydrateIcons(el.findPostList);
+    }
+  }
+
+  /** 모임 찾기 전용 화면을 연다 — 헤더 검색 아이콘·추천 모임 '더 보기'가 부른다. */  function openFindScreen(options = {}) {
     const s = findState();
     if (options.sort) s.sort = options.sort;
     if (options.azitId) s.azitId = options.azitId;
@@ -4147,6 +4250,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el.findSearch) el.findSearch.value = '';
         findState().limit = FIND_PAGE;
         renderFindScreen();
+      });
+    }
+    /* v37.4 — 태그 칩을 누르면 그 태그로 다시 찾는다. */
+    if (el.findTagChips) {
+      el.findTagChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-find-tag]');
+        if (!chip) return;
+        const s2 = findState();
+        s2.query = `#${chip.dataset.findTag}`;
+        s2.limit = FIND_PAGE;
+        if (el.findSearch) el.findSearch.value = s2.query;
+        renderFindScreen();
+      });
+    }
+    /* v37.4 — 태그 결과의 글을 누르면 그 글을 연다(오버레이는 검색 화면 위로). */
+    if (el.findPostList) {
+      el.findPostList.addEventListener('click', (e) => {
+        const row = e.target.closest('[data-find-post]');
+        if (row) openHomePost(row.dataset.findPost);
       });
     }
     /* v34.1 (#22485) — '지역'과 '아지트'는 같은 말이라 시트 하나로 합쳤다.
@@ -7443,7 +7565,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v37.3';
+  const APP_VERSION = 'v37.4';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -12120,7 +12242,8 @@ document.addEventListener('DOMContentLoaded', () => {
       lockedGroup: locked,
       /* 홈에서 열면 2단계 토글은 가입 모임이 없을 때만 켜 둔다(그때는 고를 모임이 없다). */
       noGroup: !locked && joined.length === 0,
-      tag: null, photoUrl: null, images: [], recommendOptIn: false
+      tag: null, photoUrl: null, images: [], recommendOptIn: false,
+      /* v37.4 — 글쓰기 태그 검색어 */ tagQuery: ''
     };
     composerResetFields();
     renderComposerStep();
@@ -12154,6 +12277,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* 추천 피드 체크는 2단계 · 모임 공간 · 글 수정에서만 보인다(renderComposerRecommend 가 판단). */
     renderComposerGroups();
     renderComposerPhotos();
+    renderComposerTags();
     renderComposerRecommend();
     updatePublishState();
     if (el.composerScroll) {
@@ -12196,8 +12320,10 @@ document.addEventListener('DOMContentLoaded', () => {
   /* (DOM 초기화 헬퍼) 캡션/사진 비우기 */
   function composerResetFields() {
     if (el.composerCaption) { el.composerCaption.value = ''; }
-    if (ui.composer) ui.composer.images = [];
+    if (ui.composer) { ui.composer.images = []; ui.composer.tagQuery = ''; }
+    if (el.composerTagSearch) el.composerTagSearch.value = '';
     renderComposerPhotos();
+    renderComposerTags();
   }
 
   /** 2단계 — 올릴 곳. '모임 없이 올리기'가 켜지면 모임 목록을 숨긴다.
@@ -12244,8 +12370,94 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.composerFreeNote) el.composerFreeNote.hidden = !(inStep2 && noGroup);
   }
 
-  /** Sprint 18 · v33.7 — 말머리 선택 UI 는 없앴다(본문 #해시태그가 그 자리를 대신한다). */
-  function renderComposerTags() { /* 없음 */ }
+  /* ---------------------------------------------------------------- 글쓰기 태그 (v37.4)
+   * 11/24 08:45 사용자: "태그도 그래 태그도 검색 할 수 있게해줘".
+   *  · 태그는 본문 #해시태그가 유일한 저장처다(따로 필드를 두지 않는다 — 글을 고쳐도 한 곳만 고친다).
+   *  · 그래서 이 영역은 **본문을 도우는 도구**다: 검색해서 고르면 본문 뒤에 #태그가 붙고,
+   *    고른 태그 칩을 누르면 본문에서 그 #태그만 빠진다.
+   *  · 목록에 없는 말을 적으면 '새 태그로 추가'가 맨 위에 생긴다(엔터로도 바로 넣는다).
+   * ========================================================================= */
+  /** 지금 본문에 붙어 있는 태그(중복 없이). */
+  function composerCaptionTags() {
+    const text = String((el.composerCaption && el.composerCaption.value) || '');
+    const out = [];
+    HASHTAG_RE.lastIndex = 0;
+    let m;
+    while ((m = HASHTAG_RE.exec(text)) !== null) {
+      const tag = m[0].slice(1);
+      if (out.indexOf(tag) < 0) out.push(tag);
+    }
+    return out;
+  }
+
+  /** 고른 태그 칩 줄 — 본문에서 바로 읽어 그린다. */
+  function renderComposerTagPicked() {
+    if (!el.composerTagPicked) return;
+    const tags = composerCaptionTags();
+    el.composerTagPicked.hidden = !tags.length;
+    el.composerTagPicked.innerHTML = tags.map((tag) => `
+      <button class="composer-tag-chip" type="button" data-composer-tag-remove="${escapeHtml(tag)}"
+              aria-label="#${escapeHtml(tag)} 태그 빼기">#${escapeHtml(tag)}<span class="composer-tag-x" aria-hidden="true">&times;</span></button>`).join('');
+    if (el.composerTagHint) {
+      el.composerTagHint.textContent = tags.length ? `${tags.length}개 고름` : '태그는 본문에 #으로 붙어요';
+    }
+  }
+
+  /** 검색 결과 줄 — 고른 것은 체크, 목록에 없는 말은 맨 위에 '새 태그로 추가'. */
+  function renderComposerTagResults() {
+    if (!el.composerTagResults) return;
+    const q = String((ui.composer && ui.composer.tagQuery) || '').replace(/^#+/, '').trim();
+    const picked = composerCaptionTags().map((t) => t.toLowerCase());
+    const rows = [];
+    const isNew = !!q && !store.searchHashtags(q, 200).some((row) => row.tag.toLowerCase() === q.toLowerCase());
+    if (isNew) {
+      rows.push(`<button class="composer-tag-row is-new" type="button" data-composer-tag="${escapeHtml(q)}">
+        <span class="composer-tag-row-name">#${escapeHtml(q)}</span>
+        <span class="composer-tag-row-meta">새 태그로 추가</span></button>`);
+    }
+    store.searchHashtags(q, isNew ? 9 : 10).forEach((row) => {
+      const on = picked.includes(row.tag.toLowerCase());
+      rows.push(`<button class="composer-tag-row${on ? ' on' : ''}" type="button" data-composer-tag="${escapeHtml(row.tag)}"
+        aria-pressed="${on}">
+        <span class="composer-tag-row-name">#${escapeHtml(row.tag)}</span>
+        <span class="composer-tag-row-meta">${on ? '넣음' : `글 ${row.count}개`}</span></button>`);
+    });
+    el.composerTagResults.innerHTML = rows.length
+      ? rows.join('')
+      : '<p class="composer-tag-empty">아직 태그가 없어요 — 쓰고 싶은 말을 적으면 새 태그로 만들 수 있어요.</p>';
+  }
+
+  /** 태그를 넣거나(본문 뒤에 #태그) 빼다(본문에서 그 #태그만). */
+  function composerToggleTag(tag) {
+    const clean = String(tag == null ? '' : tag).replace(/^#+/, '').replace(/\s+/g, '').trim();
+    if (!clean || !el.composerCaption) return;
+    const has = composerCaptionTags().some((t) => t.toLowerCase() === clean.toLowerCase());
+    let text = el.composerCaption.value;
+    if (has) {
+      /* 앞 공백까지 함께 지워 '태그 태그' 사이 빈 칸이 남지 않게. */
+      const re = new RegExp(`(^|[ \\t\\n])#${escapeRegExp(clean)}(?![0-9A-Za-z\\uAC00-\\uD7A3_])`, 'g');
+      text = text.replace(re, '$1').replace(/[ \\t]{2,}/g, ' ').replace(/[ \\t]+\n/g, '\n').replace(/\s+$/, '');
+    } else {
+      const trimmed = text.replace(/\s+$/, '');
+      const needsGap = trimmed && !/[\s]$/.test(trimmed);
+      text = trimmed ? `${trimmed}${needsGap ? ' ' : ''}#${clean}` : `#${clean}`;
+    }
+    el.composerCaption.value = text;
+    ui.composer.tagQuery = '';
+    if (el.composerTagSearch) el.composerTagSearch.value = '';
+    if (el.composerTagClear) el.composerTagClear.classList.add('hide');
+    updatePublishState();
+    renderComposerTagPicked();
+    renderComposerTagResults();
+  }
+
+  /** 태그 영역 전체를 다시 그린다(글쓰기를 열 때·본문이 바뀔 때). */
+  function renderComposerTags() {
+    if (el.composerTagSearch) el.composerTagSearch.value = (ui.composer && ui.composer.tagQuery) || '';
+    if (el.composerTagClear) el.composerTagClear.classList.toggle('hide', !(ui.composer && ui.composer.tagQuery));
+    renderComposerTagPicked();
+    renderComposerTagResults();
+  }
   function renderMediaPicker() { /* 없음 */ }
   function updatePhotoPreview() { /* 없음 — 이미지 URL 입력창을 없앴다 */ }
 
@@ -12365,7 +12577,52 @@ document.addEventListener('DOMContentLoaded', () => {
   wirePhotoPicker('explore', el.explorePhotoAlbum, el.explorePhotoCamera,
     $('#btn-explore-album'), $('#btn-explore-camera'), $('#btn-explore-photo-remove'));
 
-  el.composerCaption && el.composerCaption.addEventListener('input', updatePublishState);
+  el.composerCaption && el.composerCaption.addEventListener('input', () => {
+    updatePublishState();
+    /* v37.4 — 본문의 #태그가 바뀌면 고른 태그 첩도 따라 바뀐다. */
+    renderComposerTagPicked();
+    renderComposerTagResults();
+  });
+
+  /* ---------------------------------------------------------------- 글쓰기 태그 검색 (v37.4) */
+  el.composerTagSearch && el.composerTagSearch.addEventListener('input', () => {
+    if (ui.composer) ui.composer.tagQuery = el.composerTagSearch.value;
+    if (el.composerTagClear) el.composerTagClear.classList.toggle('hide', !el.composerTagSearch.value);
+    renderComposerTagResults();
+  });
+
+  /* 엔터 — 적은 말을 그대로 넣는다(목록에 있으면 그 태그, 없으면 새 태그). */
+  el.composerTagSearch && el.composerTagSearch.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const first = el.composerTagResults && el.composerTagResults.querySelector('[data-composer-tag]');
+    if (first) composerToggleTag(first.dataset.composerTag);
+  });
+
+  el.composerTagClear && el.composerTagClear.addEventListener('click', () => {
+    if (ui.composer) ui.composer.tagQuery = '';
+    if (el.composerTagSearch) {
+      el.composerTagSearch.value = '';
+      el.composerTagSearch.focus({ preventScroll: true });
+    }
+    el.composerTagClear.classList.add('hide');
+    renderComposerTagResults();
+  });
+
+  /* 결과 줄 — 누르면 본문에 넣거나 본문에서 뺀다. */
+  el.composerTagResults && el.composerTagResults.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-composer-tag]');
+    if (!row) return;
+    composerToggleTag(row.dataset.composerTag);
+    if (el.composerTagSearch) el.composerTagSearch.focus({ preventScroll: true });
+  });
+
+  /* 고른 태그 첩 — 누르면 본문에서 빠진다. */
+  el.composerTagPicked && el.composerTagPicked.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-composer-tag-remove]');
+    if (!chip) return;
+    composerToggleTag(chip.dataset.composerTagRemove);
+  });
 
   /* v34.0 — 카운터 숫자는 화면에 없다(500자 제한은 maxlength + store 의 slice(0,500) 그대로). */
   el.publishBtn && el.publishBtn.addEventListener('click', goComposerNext);
@@ -19343,6 +19600,26 @@ document.addEventListener('DOMContentLoaded', () => {
     groupSplash: (groupId, opts) => showGroupSplash(store.getGroup(groupId), opts || {}),
     clearGroupSplash,
     openHashtag, clearHashtag,
+    /* v37.4 — 태그 검색(모임 찾기의 태그 결과 · 글쓰기 태그 고르기) */
+    openFindScreen, renderFindScreen, closeSubscreens, findState,
+    renderComposerTags, composerToggleTag, composerCaptionTags, renderComposerTagPicked, renderComposerTagResults,
+    getFindTagsState: () => ({
+      open: !!(el.findScreen && !el.findScreen.hidden),
+      query: findState().query,
+      tags: el.findTagChips ? [...el.findTagChips.querySelectorAll('[data-find-tag]')].map((n) => ({
+        tag: n.dataset.findTag, text: n.textContent.trim(), on: n.classList.contains('on')
+      })) : [],
+      sub: el.findTagSub ? el.findTagSub.textContent : '',
+      posts: el.findPostList ? el.findPostList.querySelectorAll('[data-find-post]').length : 0
+    }),
+    getComposerTagsState: () => ({
+      query: (ui.composer && ui.composer.tagQuery) || '',
+      picked: composerCaptionTags(),
+      rows: el.composerTagResults ? [...el.composerTagResults.querySelectorAll('[data-composer-tag]')].map((n) => ({
+        tag: n.dataset.composerTag, text: n.textContent.trim(), on: n.classList.contains('on'), isNew: n.classList.contains('is-new')
+      })) : [],
+      caption: el.composerCaption ? el.composerCaption.value : ''
+    }),
     openOogGallery, openComposerGallery, finishOogGallery,
     getOogGallery: () => ({ items: oogGalleryItems(), selected: (galleryState().ids || []).slice(), open: !!galleryState().open }),
     getGallery: () => store.getGroupGallery().map((it) => ({
