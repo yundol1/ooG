@@ -23,7 +23,7 @@
   const CONF = {
     url: 'https://nnzrunhjxwcspsfgsmgf.supabase.co',
     key: 'sb_publishable_fy0CjiojNNWeTVAzrflP8w_098c3T2J',
-    version: 'v37.6'
+    version: 'v37.7'
   };
 
   const LS_SESSION = 'oog_cloud_session_v1';
@@ -218,6 +218,15 @@
           gotrue_meta_security: {}
         }
       });
+      /* v37.7 — **이미 가입된 이메일의 2차 방어선.**
+         Supabase Auth 는 이메일 열거 방지 + 이메일 확인 ON 상태에서, 이미 가입된
+         주소로 signup 하면 200 OK 에 user.identities = [] (빈 배열)을 돌려준다
+         (계정은 새로 만들어지지 않는다). 이걸 성공으로 넘기면 '인증 메일을 보냈어요'
+         화면으로 가 버리므로 email_taken 으로 돌려보낸다. */
+      const signedUser = data && data.user;
+      if (signedUser && Array.isArray(signedUser.identities) && signedUser.identities.length === 0) {
+        return { ok: false, reason: 'email_taken', user: null, session: false };
+      }
       const s = sessionFromAuth(data);
       if (s) saveSession(s);
       return {
@@ -357,6 +366,20 @@
     const r = await rpc('oog_handle_available', { p_handle: String(handle || '') });
     if (!r.ok) return { ok: false, available: false, reason: r.reason };
     return { ok: true, available: r.data === true };
+  }
+
+  /**
+   * v37.7 — 이메일이 **아직 가입에 쓰이지 않았는지** 서버에 묻는다(가입 1/4 단계).
+   *  · available: false = 이미 auth.users 에 있는 주소(인증 대기 계정 포함)
+   *  · 서버가 답하지 못하면(네트워크·조회 제한) 흐름을 막지 않는다(available: true).
+   *    진짜 중복은 가입 마지막의 signUp() 이 identities: [] 로 한 번 더 막는다.
+   */
+  async function checkEmail(email) {
+    const mail = String(email || '').trim().toLowerCase();
+    if (!mail) return { ok: true, available: true };
+    const r = await rpc('oog_email_available', { p_email: mail });
+    if (!r.ok) return { ok: false, available: true, reason: r.reason };
+    return { ok: true, available: r.data !== false };
   }
 
   /* ------------------------------------------------------------- storage */
@@ -1546,6 +1569,8 @@
     onAuth(fn) { state.authListeners.push(fn); },
     // data
     rpc, emailHintForHandle, handleHintForEmail, handleAvailable,
+    /* v37.7 — 가입 이메일 중복 확인 */
+    checkEmail,
     uploadPhoto, ensurePhotoUrl, publicUrl, signedUrl, dataUrlToBlob,
     /* v37.5 (#24337) */
     fetchSecretAlbum, deleteAccount, deleteMyStorage, reauthenticate, accountGone, shortHandle,

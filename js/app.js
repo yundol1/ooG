@@ -1427,7 +1427,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-email">이메일</label>
-          <input class="ob-input ob-input-lg" id="ob-email" type="email" inputmode="email" autocomplete="username" value="${escapeHtml(ob.email || ob.loginId)}" placeholder="me@example.com">
+          <input class="ob-input ob-input-lg" id="ob-email" type="email" inputmode="email" autocomplete="username" value="${escapeHtml(d.email || ob.email || ob.loginId)}" placeholder="me@example.com">
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-login-pw">비밀번호</label>
@@ -1466,10 +1466,13 @@ document.addEventListener('DOMContentLoaded', () => {
           ? '가입한 이메일과 같은 주소를 넣어 주세요.'
           : '인증 메일은 가입을 마친 뒤에 보내 드려요. 메일의 링크를 눌러야 계정이 열립니다.'}</p>
         <div class="ob-actions">
-          <button class="ob-btn primary" id="ob-next" type="button">${d.busy ? '보내는 중…' : '계속'}</button>
+          <button class="ob-btn primary" id="ob-next" type="button">${d.busy ? '확인 중…' : '계속'}</button>
           ${reset
             ? '<button class="ob-btn ghost" id="ob-to-login" type="button">로그인으로 돌아가기</button>'
-            : '<button class="ob-btn ghost" id="ob-to-login" type="button">이미 계정이 있어요 · 로그인</button>'}
+            : `<div class="ob-link-row">
+                 <button class="ob-btn ghost" id="ob-to-login" type="button">이미 계정이 있어요 · 로그인</button>
+                 <button class="ob-btn ghost" id="ob-forgot" type="button">비밀번호 찾기</button>
+               </div>`}
         </div>`;
     } else if (stepId === 'password' || stepId === 'reset-password') {
       onboardingProgressVisible(true);
@@ -1708,6 +1711,9 @@ document.addEventListener('DOMContentLoaded', () => {
    *   이메일 화면: 가입이면 다음(비밀번호) / 재설정이면 **재설정 메일 발송**
    *   인증:  가입 마지막에 계정을 만들고 '인증 메일을 보냈어요' 화면
    *   복귀:  메일의 링크(#access_token…&type=signup|recovery)로 돌아오면 세션을 되살린다
+   *
+   * v37.7 — 이메일 화면에서 **이미 가입된 주소를 먼저 막는다**(RPC oog_email_available).
+   *   확인이 실패하면 막지 않고 다음 단계로(가입 마지막 signUp 이 2차 방어선).
    * ------------------------------------------------------------------ */
   const cloud = () => window.OOGCloud;
 
@@ -1716,7 +1722,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const email = String(d.email || '').trim().toLowerCase();
     if (!oogEmailOk(email)) return showOnboardingError(onboardingError('email_invalid'));
     d.email = email;
-    if (ui.onboardingMode !== 'reset') { obGo(1); return undefined; }
+    if (ui.onboardingMode !== 'reset') {
+      /* v37.7 — **이미 가입된 이메일은 1/4 이메일 단계에서 막는다.**
+         비밀번호 단계까지 가서 마지막에야 알게 되던 것을 여기서 바로 알려 준다.
+         · 서버에 먼저 묻고(cloud().checkEmail → RPC oog_email_available),
+           '이미 쓰고 있다'는 답일 때만 멈춘다.
+         · 확인이 실패하면(네트워크·조회 제한·옛 클라우드) 흐름을 막지 않는다 —
+           가입 마지막의 signUp() 이 identities: [] 로 2차 차단한다. */
+      if (d.busy) return undefined;                    /* 중복 클릭 방지 */
+      const checkEmail = cloud() && cloud().checkEmail;
+      if (typeof checkEmail !== 'function') { obGo(1); return undefined; }
+      d.busy = true;
+      renderOnboarding();
+      return checkEmail(email).then((r) => {
+        d.busy = false;
+        if (r && r.ok && r.available === false) {
+          ui.obDir = 'next';
+          renderOnboarding();
+          return showOnboardingError(onboardingError('email_taken'));
+        }
+        obGo(1);
+        return undefined;
+      }).catch(() => {
+        d.busy = false;
+        obGo(1);
+        return undefined;
+      });
+    }
     /* 비밀번호 찾기 — 재설정 링크를 실제로 보낸다(메일 주소가 가입돼 있는지와 무관하게 같은 화면). */
     d.busy = true;
     renderOnboarding();
@@ -7707,7 +7739,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v37.6';
+  const APP_VERSION = 'v37.7';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -9045,8 +9077,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderOnboarding(); return;
       }
       if (id === 'ob-forgot') {
+        /* v37.7 — 1/4 에서 넣은 이메일을 그대로 들고 간다(이미 가입된 주소로 바로 비밀번호 찾기). */
+        const keepEmail = String((ui.onboardingDraft && ui.onboardingDraft.email) || '').trim().toLowerCase();
         ui.onboardingMode = 'reset'; ui.onboardingStep = 0;
-        ui.onboardingDraft = newOnboardingDraft(); ui.obError = ''; ui.obCode = null;
+        ui.onboardingDraft = newOnboardingDraft(); ui.onboardingDraft.email = keepEmail;
+        ui.obError = ''; ui.obCode = null;
         renderOnboarding(); return;
       }
       if (id === 'ob-next') { collectOnboardingInputs(); onboardingNext(); return; }

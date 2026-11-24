@@ -55,8 +55,11 @@
    v37.6 (#24426) — 회원탈퇴에 **비밀번호 인증**을 넣고, 서버 계정이 실제로 지워지게 수정
    (세션이 없으면 '로컬만 지운 성공'으로 끝나던 폴백 제거 · 재인증 실패면 아무것도 지우지 않음 ·
    삭제 뒤 auth.users 에게 다시 물어 확인 · 남의 글에 단 내 댓글·일정 참석까지 삭제).
+   v37.7 — 회원가입 1/4 이메일 단계에서 **이미 가입된 이메일을 바로 막는다**
+   (RPC oog_email_available 로 먼저 확인 · 막힌 자리에서 로그인/비밀번호 찾기로 이어짐 ·
+   가입 마지막 signUp 도 user.identities = [] 를 email_taken 으로 처리하는 2차 방어선).
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v37-6';
+const CACHE_VERSION = 'oog-shell-v37-7';
 const SHELL_ASSETS = [
   './',
   './index.html',
