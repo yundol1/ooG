@@ -1730,6 +1730,10 @@ document.addEventListener('DOMContentLoaded', () => {
          · 확인이 실패하면(네트워크·조회 제한·옛 클라우드) 흐름을 막지 않는다 —
            가입 마지막의 signUp() 이 identities: [] 로 2차 차단한다. */
       if (d.busy) return undefined;                    /* 중복 클릭 방지 */
+      /* 다시 눌렀을 때 지난 오류가 남아 있지 않게 먼저 지운다(확인 중에는 안내 없음). */
+      ui.obError = '';
+      const errNode = obField('ob-error');
+      if (errNode) { errNode.hidden = true; errNode.textContent = ''; }
       const checkEmail = cloud() && cloud().checkEmail;
       if (typeof checkEmail !== 'function') { obGo(1); return undefined; }
       d.busy = true;
