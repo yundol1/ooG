@@ -14032,7 +14032,9 @@ class Store {
     };
     if (requesterId !== me && ownerId === me) {
       const req = this.state.secretRequests[partnerId];
-      if (req.status === 'granted') this.setSecretAlbumAccess(partnerId, true);
+      /* 내가 이 사람에게 열어 준 상태를 서버와 맞춘다 — 다른 기기에서 열었거나 닫았을 수 있다. */
+      if (req.status === 'granted') this.setSecretAlbumShared(partnerId, true);
+      else if (req.status === 'declined' || req.status === 'revoked') this.setSecretAlbumShared(partnerId, false);
       if (req.status === 'pending') {
         const room = this.findChatRoomByPartner(partnerId) || this.openChatRoom(partnerId).room;
         if (room) {

@@ -757,6 +757,15 @@
             body: { id: r.id || rid('sreq'), requester_id: requester, owner_id: owner, status: 'pending' },
             prefer: 'resolution=ignore-duplicates,return=minimal', retry: 0
           });
+          /* 상대가 전에 거절·다시 닫기했으면 **다시 요청**할 수 있다
+             (granted 행은 절대 건드리지 않는다 — 조건부 PATCH). */
+          if ((r.status || 'pending') === 'pending') {
+            await request(`${REST}/secret_album_requests?requester_id=eq.${me}&owner_id=eq.${owner}&status=in.(declined,revoked)`, {
+              method: 'PATCH',
+              body: { status: 'pending', updated_at: nowIso() },
+              prefer: 'return=minimal', retry: 0
+            }).catch(() => {});
+          }
         } else if (owner === me) {
           await request(`${REST}/secret_album_requests?requester_id=eq.${requester}&owner_id=eq.${me}`, {
             method: 'PATCH',
