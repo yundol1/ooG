@@ -203,6 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
     gsGroupId: null,
     leaveGroupId: null,
     leaveKeepPosts: true,
+    /* v38.0 — 나가기 경계 호출이 겹치지 않게 */
+    leaving: false,
     /* v36.1 (#23461) — 일정 단톡방 · 게스트 전용 화면 */
     openEventChatId: null,
     guestScreenGroupId: null,
@@ -628,16 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
     publishBtn: $('#btn-publish'),
     // misc
     toast: $('#toast'),
-    statPosts: $('#stat-posts'),
-    statLikes: $('#stat-likes'),
-    statComments: $('#stat-comments'),
     notifDot: $('#notif-dot'),
-    /* Sprint 13 — 프로필 밀도(내 모임·저장한 글·최근 활동) */
-    profileGroupStrip: $('#profile-group-strip'),
-    profileGroupsCount: $('#profile-groups-count'),
-    profileSavedList: $('#profile-saved-list'),
-    profileSavedCount: $('#profile-saved-count'),
-    profileRecentList: $('#profile-recent-list'),
     activityModal: $('#activity-modal'),
     activityBody: $('#activity-body'),
     activityFilters: $('#activity-filters'),
@@ -774,8 +767,17 @@ document.addEventListener('DOMContentLoaded', () => {
     chatForm: $('#chat-form'),
     profileNickname: $('#profile-nickname'),
     profileBio: $('#profile-bio'),
-    profileSpecs: $('#profile-specs'),
+    profileHandle: $('#profile-handle'),
     profileAvatarLetter: $('#profile-avatar-letter'),
+    profileAvatarImg: $('#profile-avatar-img'),
+    /* v38.0 (35일차) — 모임 안 내정보: 바깥 내 프로필과 같은 구조(3열 숫자 · 사진 원형 · 격자) */
+    profileStats: $('#profile-stats'),
+    profilePhotoMini: $('#profile-photo-mini'),
+    profilePhotoCount: $('#profile-photo-count'),
+    profileUpcomingList: $('#profile-upcoming-list'),
+    profileUpcomingCount: $('#profile-upcoming-count'),
+    profilePastList: $('#profile-past-list'),
+    profilePastCount: $('#profile-past-count'),
     /* Sprint 4.5 — 알림 · 가입 신청 */
     pushPermissionBanner: $('#push-permission-banner'),
     btnPushAllow: $('#btn-push-allow'),
@@ -2651,7 +2653,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabId === 'tab-explore' && !ui.exploreRendered) { renderExplore(); }
     if (tabId === 'tab-chat') { renderChatRooms(); }
     if (tabId === 'tab-profile') {
-      renderChatRooms(); renderProfileHeader(); renderNotificationSettings(); renderProfileGroupContext();
+      /* v38.0 — 모임 안 내정보는 바깥 내 프로필과 같은 구조로, 이 모임 기준으로 그린다. */
+      renderChatRooms(); renderGroupMyInfo(); renderNotificationSettings(); renderProfileGroupContext();
     }
     if (tabId === 'tab-myprofile') { renderMyProfileTab(); }
 
@@ -3249,6 +3252,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
+   * v38.0 (35일차 · #23106) — 추천 일정 카드의 게스트 버튼만 제자리에서 다시 칠한다.
+   *  피드 전체를 다시 그리면 스크롤·페이지가 처음으로 돌아가므로, 그 버튼의 글자와
+   *  상태(data-guest-state · aria-pressed)만 바꾼다. 버튼이 사라졌으면 아무 일도 하지 않는다.
+   */
+  function refreshGuestEventButtons(eventId) {
+    const ev = eventId ? store.getGroupEvent(eventId) : null;
+    if (!ev) return;
+    const summary = store.getGroupEventSummary(eventId);
+    const join = suggestEventJoinState({ event: ev, joined: store.isGroupJoined(ev.groupId), myGuestStatus: summary.myGuestStatus });
+    document.querySelectorAll('[data-guest-event]').forEach((btn) => {
+      if (btn.dataset.guestEvent !== eventId) return;
+      btn.dataset.guestState = join.key;
+      btn.classList.remove('is-none', 'is-pending', 'is-approved', 'is-joined', 'is-mine', 'is-rejected');
+      btn.classList.add(`is-${join.key}`);
+      btn.setAttribute('aria-pressed', String(join.pressed));
+      btn.textContent = join.label;
+    });
+  }
+
+  /**
    * v34.1 — 게스트 참석 버튼 한 곳. 홈 추천 일정과 모임 찾기 추천 일정이 같이 쓴다.
    *  · 승인 대기/승인됨이면 취소, 모임 일정이면 상세 열기, 아니면 모임장 승인 대기로 신청.
    */
@@ -3256,7 +3279,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const id = btn.dataset.guestEvent;
     const state = btn.dataset.guestState;
     const redraw = typeof rerender === 'function' ? rerender : renderHomeSuggestEvents;
-    if (state === 'mine') {
+    if (state === 'mine' || state === 'joined') {
       const ev = store.getGroupEvent(id);
       if (ev) openEventDetail(ev.id);
       return;
@@ -3273,6 +3296,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!res.ok) {
       const why = { full: '자리가 다 찼어요', past: '지난 일정이에요', guest_closed: '게스트를 받지 않는 일정이에요', member: '이미 가입한 모임이에요' };
       showToast(why[res.reason] || '참석을 신청하지 못했어요', 'warning');
+      return;
+    }
+    /* v38.0 (35일차 · #23106) — 이미 낸 신청·이미 승인된 참석을 또 누르면 '신청했어요'로 넘기지 않는다. */
+    if (res.already) {
+      redraw();
+      showToast(res.status === 'approved'
+        ? '이미 참석이 승인된 일정이에요'
+        : '이미 신청했어요 · 모임장의 수락을 기다리고 있어요', 'info');
       return;
     }
     redraw();
@@ -3595,11 +3626,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const day = `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]})`;
     const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     const azit = it.azit || (it.group ? store.getGroupAzit(it.group) : null);
+    /* v38.0 (35일차 · #23106) — 홈 피드에 섞여 나오는 추천 일정 카드에도 '게스트 참석' 버튼을 둔다.
+       11/23 08:05 "눌러도 반응이 없어요" — 전에는 카드에 버튼 자체가 없어 카드를 눌러 상세로만 갔다.
+       이제 모임 찾기와 **같은 함수**(handleGuestEventButton)로 신청·대기·취소가 그대로 움직인다. */
+    const join = suggestEventJoinState(it);
     return `
       <article class="feed-rail-event" data-suggest-event="${ev.id}" role="listitem" tabindex="0">
         <span class="feed-rail-event-when">${escapeHtml(day)} · ${escapeHtml(time)}</span>
         <span class="feed-rail-event-title">${escapeHtml(ev.title || '모임 일정')}</span>
         <span class="feed-rail-event-meta">${escapeHtml(it.groupName)}${azit ? ` · ${escapeHtml(azit.name)}` : ''}</span>
+        <button class="feed-rail-event-join is-${join.key}" data-guest-event="${ev.id}"
+                data-guest-state="${join.key}" type="button" aria-pressed="${join.pressed}"
+                aria-label="${escapeHtml(ev.title || '모임 일정')} ${escapeHtml(join.label)}">${escapeHtml(join.label)}</button>
       </article>`;
   }
 
@@ -4319,6 +4357,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (card) {
           if (card.dataset.joined === '1') enterGroupSpace(card.dataset.groupId, 'tab-home');
           else openGroupDetail(card.dataset.groupId);
+          return;
+        }
+        /* v38.0 — 카드 안의 '게스트 참석' 버튼이 먼저다(카드 열기로 새지 않게). */
+        const guestBtn = e.target.closest('[data-guest-event]');
+        if (guestBtn) {
+          handleGuestEventButton(guestBtn, () => refreshGuestEventButtons(guestBtn.dataset.guestEvent));
           return;
         }
         const evCard = e.target.closest('[data-suggest-event]');
@@ -6698,7 +6742,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="member-detail-actions">
             ${member.isMe
-              ? '<span class="member-detail-note">내 프로필은 내정보 탭에서 볼 수 있어요</span>'
+              ? '<button class="btn-secondary" data-member-myinfo="1" type="button">내정보 보기</button>'
               : `${dmEnabled
                   ? `<button class="btn-secondary" data-member-chat="${member.id}" type="button">1:1 대화</button>`
                   : `<button class="btn-secondary is-locked" data-member-chat-locked="1" type="button" disabled aria-disabled="true">1:1 대화 꺼둠</button>`}
@@ -7408,6 +7452,20 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* -------------------------------------------------- 동작 (한 곳에서 받는다) */
+  /**
+   * v38.0 (35일차 · #23106) — 이미 처리된 가입 신청을 다시 누를 때의 안내 문구.
+   *  조용히 성공으로 넘기지 않고, 지금 그 신청이 어떤 상태인지 한 줄로 알린다.
+   */
+  function applicationDecisionMessage(res, action) {
+    const status = res && res.status;
+    if (res && res.reason === 'permission') return '모임장·운영진만 처리할 수 있어요';
+    if (res && res.reason === 'not_found') return '이미 사라진 신청서예요';
+    if (status === 'approved') return action === 'approve' ? '이미 수락한 신청이에요' : '이미 수락된 신청이에요 · 거절할 수 없어요';
+    if (status === 'rejected') return action === 'reject' ? '이미 거절한 신청이에요' : '이미 거절된 신청이에요 · 수락할 수 없어요';
+    if (res && res.reason === 'not_pending') return '이미 처리된 요청이에요';
+    return '신청을 처리하지 못했어요';
+  }
+
   function gsToastAndRender(message, type) {
     renderGroupSettings();
     if (message) showToast(message, type || 'info');
@@ -7527,15 +7585,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    /* 가입 신청 */
+    /* 가입 신청 — v38.0 (35일차): 이미 처리된 신청을 또 누르면 '이미 수락/거절했어요'를 분명히 알린다. */
     if (t.dataset.gsApprove) {
       const res = store.approveApplication(t.dataset.gsApprove);
-      gsToastAndRender(res.ok ? '가입을 수락했어요' : '수락하지 못했어요', res.ok ? 'success' : 'warning');
+      if (res.ok) { gsToastAndRender('가입을 수락했어요', 'success'); return; }
+      gsToastAndRender(applicationDecisionMessage(res, 'approve'), res.reason === 'not_pending' ? 'info' : 'warning');
       return;
     }
     if (t.dataset.gsReject) {
       const res = store.rejectApplication(t.dataset.gsReject);
-      gsToastAndRender(res.ok ? '가입을 거절했어요' : '거절하지 못했어요', res.ok ? 'success' : 'warning');
+      if (res.ok) { gsToastAndRender('가입을 거절했어요', 'success'); return; }
+      gsToastAndRender(applicationDecisionMessage(res, 'reject'), res.reason === 'not_pending' ? 'info' : 'warning');
       return;
     }
 
@@ -7786,7 +7846,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v37.8';
+  const APP_VERSION = 'v38.0';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -8712,20 +8772,42 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const okBtn = e.target.closest('[data-leave-confirm]');
       if (okBtn) {
+        /* v38.0 (35일차) — 나가기도 경계(`group.leave`)를 지난다.
+           경계가 거절하면 화면은 그대로(모임에 남은 채) 두고 이유만 알린다 — 되돌릴 것이 없다. */
         const gid = ui.leaveGroupId;
         const grp = gid ? store.getGroup(gid) : null;
-        const res = store.leaveGroup(gid, { keepPosts: ui.leaveKeepPosts !== false });
-        closeModal(leaveModalNode);
-        if (!res.ok) {
-          showToast(res.reason === 'owner' ? '모임장은 탈퇴할 수 없어요 · 먼저 위임해 주세요' : '나가지 못했어요', 'warning');
-          return;
-        }
-        ui.leaveGroupId = null;
-        closeGroupSettings();
-        exitGroupSpace();
-        renderGallery();
-        updateBadges();
-        showToast(grp ? `'${grp.name}'에서 나왔어요${res.removedComments ? ` · 내 댓글 ${res.removedComments}개도 지웠어요` : ''}` : '모임에서 나왔어요', 'info');
+        const keepPosts = ui.leaveKeepPosts !== false;
+        if (!gid || ui.leaving) return;
+        ui.leaving = true;
+        const finish = (ok, reason, removed) => {
+          ui.leaving = false;
+          closeModal(leaveModalNode);
+          if (!ok) {
+            const why = {
+              leader: '모임장은 탈퇴할 수 없어요 · 먼저 위임해 주세요',
+              owner: '모임장은 탈퇴할 수 없어요 · 먼저 위임해 주세요',
+              not_found: '이미 나간 모임이에요'
+            };
+            showToast(why[reason] || '나가지 못했어요 · 모임에 그대로 있어요', 'error');
+            return;
+          }
+          ui.leaveGroupId = null;
+          closeGroupSettings();
+          exitGroupSpace();
+          renderGallery();
+          updateBadges();
+          showToast(grp ? `'${grp.name}'에서 나왔어요${removed ? ` · 내 댓글 ${removed}개도 지웠어요` : ''}` : '모임에서 나왔어요', 'info');
+        };
+        store.apiCall('group.leave', { groupId: gid, keepPosts }).then((env) => {
+          if (env && env.ok) { finish(true, null, (env.data && env.data.removedComments) || 0); return; }
+          /* 경계가 붙지 않은 환경(옛 저장 상태·테스트)은 예전처럼 store 로 직접 나간다. */
+          if (env && env.error && env.error.code === 'unavailable') {
+            const res = store.leaveGroup(gid, { keepPosts });
+            finish(!!(res && res.ok), res && res.reason, (res && res.removedComments) || 0);
+            return;
+          }
+          finish(false, env && env.error && env.error.details && env.error.details.reason);
+        });
       }
     });
   }
@@ -9442,6 +9524,13 @@ document.addEventListener('DOMContentLoaded', () => {
       if (chatBtn) { goMemberChat(ui.membersGroupId, chatBtn.dataset.memberChat); return; }
       const profileBtn = e.target.closest('[data-member-profile]');
       if (profileBtn) { goMemberProfile(ui.membersGroupId, profileBtn.dataset.memberProfile); return; }
+      /* v38.0 (35일차 · #23106) — 모임 안 '내정보': 멤버 시트의 내 줄에서 바로 연다. */
+      if (e.target.closest('[data-member-myinfo]')) {
+        closeModal(el.membersModal);
+        switchTab('tab-profile');
+        if (el.main) el.main.scrollTop = 0;
+        return;
+      }
       const row = e.target.closest('[data-member-open]');
       if (row) {
         ui.memberDetailId = ui.memberDetailId === row.dataset.memberOpen ? null : row.dataset.memberOpen;
@@ -9571,7 +9660,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderEventDetail(request.dataset.guestRequest);
         renderHomeSuggestEvents();
-        showToast('게스트 참석을 신청했어요 · 모임장이 수락하면 참석돼요');
+        showToast(res.already
+          ? (res.status === 'approved' ? '이미 참석이 승인된 일정이에요' : '이미 신청했어요 · 모임장의 수락을 기다리고 있어요')
+          : '게스트 참석을 신청했어요 · 모임장이 수락하면 참석돼요', res.already ? 'info' : 'success');
         return;
       }
       const cancel = e.target.closest('[data-guest-cancel]');
@@ -13687,23 +13778,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const joinedClose = $('#btn-close-joined');
   joinedClose && joinedClose.addEventListener('click', () => closeModal(el.joinedModal));
 
-  /* Sprint 13 — 프로필 섹션(내 모임·저장한 글·최근 활동) */
-  const btnProfileGroups = $('#btn-profile-groups');
-  btnProfileGroups && btnProfileGroups.addEventListener('click', openJoinedGroups);
-  const btnProfileActivity = $('#btn-profile-activity');
-  btnProfileActivity && btnProfileActivity.addEventListener('click', openActivityLog);
-
-  el.profileGroupStrip && el.profileGroupStrip.addEventListener('click', (e) => {
-    const chip = e.target.closest('[data-profile-group]');
-    if (chip) openGroupDetail(chip.dataset.profileGroup);
+  /* v38.0 (35일차) — 모임 안 내정보: 숫자·일정 줄이 모두 '이 모임' 기준으로 움직인다. */
+  const btnProfileUpcoming = $('#btn-profile-upcoming');
+  btnProfileUpcoming && btnProfileUpcoming.addEventListener('click', () => {
+    const grp = isGroupMode() ? homeGroup() : null;
+    if (grp) { ui.groupEventTab = 'upcoming'; switchTab('tab-board'); renderBoard({ events: true }); }
+    else openMyScheduleSheet('upcoming');
   });
-  el.profileSavedList && el.profileSavedList.addEventListener('click', (e) => {
-    const item = e.target.closest('[data-profile-saved]');
-    if (item) openPostInFeed(item.dataset.profileSaved);
+  el.profileStats && el.profileStats.addEventListener('click', (e) => {
+    const tap = e.target.closest('[data-group-schedule]');
+    if (!tap) return;
+    const which = tap.dataset.groupSchedule;
+    const node = which === 'past' ? el.profilePastList : el.profileUpcomingList;
+    if (node && node.scrollIntoView) node.scrollIntoView({ block: 'start', behavior: 'smooth' });
   });
-  el.profileRecentList && el.profileRecentList.addEventListener('click', (e) => {
-    const item = e.target.closest('[data-profile-activity]');
-    if (item) openActivityLog();
+  [el.profileUpcomingList, el.profilePastList].forEach((list) => {
+    list && list.addEventListener('click', (e) => {
+      const row = e.target.closest('[data-profile-event]');
+      if (row) openEventDetail(row.dataset.profileEvent);
+    });
   });
 
   /* Sprint 15 — 내정보 '내 피드' 타일 → 그 글 상세 */
@@ -14332,34 +14425,44 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ==========================================================================
    * 5-3. 마이프로필 수정 · 새 소모임 개설 (Sprint 4)
    * ======================================================================== */
+  /**
+   * v38.0 (35일차 · #23106) — 모임 안 내정보의 머리.
+   *  바깥 내 프로필(#tab-myprofile)과 **같은 구조**로 맞춘다:
+   *  큰 사진 · 닉네임 · @아이디 · 소개 · (바로 아래 3열 숫자 · 사진 원형은 따로 그린다).
+   *  나이·지역 칩은 v35.1 결정대로 프로필에 노출하지 않는다.
+   */
   function renderProfileHeader() {
-    const u = store.currentUser;
-    if (el.profileNickname) el.profileNickname.textContent = u.nickname || '내 닉네임';
-    paintMyAvatars();
-    if (el.profileBio) el.profileBio.textContent = u.bio || '한 줄 소개를 채워보세요';
-    if (el.profileSpecs) {
-      /* Sprint 34 — 모임 안 내정보도 v34.5 와 같은 말을 쓴다: 아지트 · 취미 · 나이.
-         (옛 '동네·활동 시간대' 칩은 프로필 설정에서 사라졌다.) */
-      const azit = store.getMyAzit ? store.getMyAzit() : null;
-      const place = azit ? azit.name : (u.location || '아지트 미설정');
-      const chips = [`<span class="spec-chip">${ic('pin')} ${escapeHtml(place)}</span>`];
-      (u.hobbyIds || []).forEach((id) => {
-        const chip = store.getHobbyChip(id);
-        if (chip) chips.push(`<span class="spec-chip">${ic(chip.icon)} ${escapeHtml(chip.name)}</span>`);
-      });
-      if (u.age) chips.push(`<span class="spec-chip">${u.age}세</span>`);
-      el.profileSpecs.innerHTML = chips.join('');
+    const u = store.currentUser || {};
+    const grp = isGroupMode() ? homeGroup() : null;
+    if (el.profileNickname) {
+      el.profileNickname.textContent = u.nickname || '내 닉네임';
+      /* 이 모임에서의 나 — 이름 옆에 그 모임 역할만 작게 붙인다. */
+      const role = grp && u.id ? store.roleLabel(store.roleOf(grp.id, u.id)) : '';
+      el.profileNickname.setAttribute('data-role', role || '');
     }
-    /* 내정보 상단 한 줄 — 설정은 v35.3 부터 우측 톱니의 전체 화면 페이지 */
-    /* Sprint 34 — 모임 안에서는 바로 위 줄이 모임 이름을 이미 보여 준다. 같은 이름을 두 번 쓰지 않는다. */
+    paintMyAvatars();
+    if (el.profileHandle) {
+      const handle = store.isSignedIn() ? displayHandleOf(u) : '';
+      el.profileHandle.textContent = handle ? `@${handle}` : '';
+      el.profileHandle.hidden = !handle;
+    }
+    if (el.profileBio) {
+      const bio = String(u.bio || '').trim();
+      el.profileBio.textContent = bio;
+      el.profileBio.hidden = !bio;
+    }
+    /* md 내정보 상단 한 줄 — 설정은 v35.3 부터 우측 톱니의 전체 화면 페이지.
+       Sprint 34 — 모임 안에서는 바로 위 줄이 모임 이름을 이미 보여 준다. 같은 이름을 두 번 쓰지 않는다. */
     if (el.profileTopbarTitle) {
       el.profileTopbarTitle.hidden = isGroupMode();
       el.profileTopbarTitle.textContent = u.nickname || '내정보';
     }
     if (el.profileTopbarSub) {
-      const counts = store.getMyFeedStats();
+      const info = grp ? store.getMyGroupInfo(grp.id) : null;
       const handle = String(u.handle || '').trim();
-      el.profileTopbarSub.textContent = `${counts.total}개 글 · ${counts.photos}장 사진${handle ? ` · ${handle}` : ''}`;
+      el.profileTopbarSub.textContent = info
+        ? `이 모임에서 쓴 글 ${info.posts.length}개${handle ? ` · ${handle}` : ''}`
+        : `${store.getMyFeedStats().total}개 글${handle ? ` · ${handle}` : ''}`;
     }
   }
 
@@ -14548,7 +14651,8 @@ document.addEventListener('DOMContentLoaded', () => {
       store.updateProfile(beforeProfile);
       renderProfileHeader();
       renderMyProfileTab();
-      showToast('프로필을 저장하지 못했어요 · 잠시 뒤 다시 시도해 주세요', 'error');
+      if (isGroupMode()) renderGroupMyInfo();
+      showToast('프로필을 저장하지 못했어요 · 이전 프로필로 되돌렸어요', 'error');
     });
     closeModal(el.profileEditModal);
     renderProfileHeader();
@@ -17320,8 +17424,13 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(ageCheck.message, 'warning');
       return;
     }
+    /* v38.0 (35일차 · #23106) — 이미 낸 신청·이미 들어간 모임은 조용히 넘기지 않고 한 줄로 알린다. */
     if (store.getJoinState(groupId) === 'pending') {
-      showToast('이미 승인을 기다리는 신청서가 있어요', 'info');
+      showToast('이미 신청했어요 · 모임장이 수락하면 알려드릴게요', 'info');
+      return;
+    }
+    if (store.isGroupJoined(groupId)) {
+      showToast('이미 참여 중인 모임이에요', 'info');
       return;
     }
     ui.applyGroupId = groupId;
@@ -17339,13 +17448,15 @@ document.addEventListener('DOMContentLoaded', () => {
         groupId,
         answers: (res.application ? (res.application.answers || []).map((a) => a.answer) : (ui.applyAnswers || []).map((a) => a.answer || a))
       }).then((env) => {
+        /* v38.0 — 이 신청은 화면이 먼저 낸 것(낙관적)이라 경계는 늘 already:true 로 답한다.
+           그래서 '이미 신청' 안내는 store 가 중복을 잡았을 때(위 messages)만 띄운다. */
         if (env.ok) return;
         if (res.joined) store.leaveGroup(groupId);
         else if (res.application) store.cancelApplication(res.application.id);
         renderGroupDetail(store.getGroup(groupId));
         renderExplore({ preserve: true });
         updateBadges();
-        showToast('가입 신청을 보내지 못했어요', 'error');
+        showToast('가입 신청을 보내지 못했어요 · 방금 낸 신청을 되돌렸어요', 'error');
       });
     }
     if (!res.ok) {
@@ -17353,11 +17464,12 @@ document.addEventListener('DOMContentLoaded', () => {
         age: res.message || '이 모임은 나이 제한이 있어요',
         answer_empty: '모든 질문에 답해 주세요',
         answer_short: '소개서가 너무 짧아요 · 10자 이상 적어 주세요',
-        already_pending: '이미 승인을 기다리는 신청서가 있어요',
-        already_member: '이미 이 모임의 멤버예요',
+        already_pending: '이미 신청했어요 · 모임장이 수락하면 알려드릴게요',
+        already_member: '이미 참여 중인 모임이에요',
         full: '모임 정원이 가득 찼어요'
       };
-      showToast(messages[res.reason] || '신청서를 보내지 못했어요', 'warning');
+      showToast(messages[res.reason] || '신청서를 보내지 못했어요',
+        res.reason === 'already_pending' || res.reason === 'already_member' ? 'info' : 'warning');
       return;
     }
     closeModal(el.groupApplyModal);
@@ -17468,23 +17580,23 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ==========================================================================
    * 7. 공통 배지/카운터 갱신
    * ======================================================================== */
-  /* 프로필 탭 활동 요약 (내 글 · 받은 좋아요 · 내 댓글) */
+  /* ==========================================================================
+   * v38.0 (35일차 · #23106) — 모임 안 내정보의 세 숫자
+   * ------------------------------------------------------------------------
+   *  바깥 내 프로필과 **같은 구조**(숫자 위 · 라벨 아래 3칸)를 그대로 쓰고,
+   *  숫자의 범위만 그 모임으로 좁힌다 — 내 글 · 곧 있을 모임 · 다녀온 모임.
+   * ======================================================================== */
   function renderProfileStats() {
-    if (!el.statPosts) return;
-    /* Sprint 34 — 모임 안 내정보의 세 숫자도 v34.4 와 같은 뜻으로 맞춘다:
-       게시물 · 다녀온 모임 · 내 모임(옛 '받은 좋아요·내 댓글'은 내 프로필 탭에 없다). */
-    const me = store.currentUser;
-    const mine = store.state.feedPosts.filter((p) => p.authorId === me.id);
-    const past = store.getPastMeetingPrivacy ? store.getPastMeetingPrivacy() : { total: 0 };
-    const groups = store.getJoinedGroups ? store.getJoinedGroups().length : 0;
-    el.statPosts.textContent = String(mine.length);
-    el.statLikes.textContent = String(past.total);
-    el.statComments.textContent = String(groups);
-    const labels = ['게시물', '다녀온 모임', '내 모임'];
-    const cells = document.querySelectorAll('#tab-profile .profile-stats .stat-cell span');
-    cells.forEach((n, i) => { if (labels[i]) n.textContent = labels[i]; });
-    if (el.statLikes) el.statLikes.setAttribute('aria-label', `다녀온 모임 ${past.total}개`);
-    if (el.statComments) el.statComments.setAttribute('aria-label', `내 모임 ${groups}개`);
+    if (!el.profileStats) return;
+    const grp = isGroupMode() ? homeGroup() : null;
+    if (!grp) { el.profileStats.innerHTML = ''; return; }
+    const info = store.getMyGroupInfo(grp.id);
+    el.profileStats.innerHTML = `
+      <span class="myprofile-stat" data-group-stat="posts"><strong>${info.posts.length}</strong><span>내 글</span></span>
+      <button class="myprofile-stat is-tap" data-group-schedule="upcoming" type="button"
+              aria-label="곧 있을 모임 ${info.upcoming.length}개 보기"><strong>${info.upcoming.length}</strong><span>곧 있을 모임</span></button>
+      <button class="myprofile-stat is-tap" data-group-schedule="past" type="button"
+              aria-label="다녀온 모임 ${info.past.length}개 보기"><strong>${info.past.length}</strong><span>다녀온 모임</span></button>`;
   }
 
   /* ==========================================================================
@@ -17494,79 +17606,93 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 최근 활동: 활동 로그의 최신 3건(전체는 '전체 보기')
    *  모두 저장된 상태에서 파생한다(별도 저장 없음).
    * ======================================================================== */
-  /** Sprint 15 — 내정보 탭 '내 피드': 내가 올린 사진·글을 인스타 프로필처럼 3열로. */
+  /**
+   * v38.0 (35일차 · #23106) — 모임 안 내정보 '내 글' 격자.
+   *  바깥 내 프로필과 같은 3:4 · 3열 모양(클래스도 같다 — .profile-feed-grid.mp-feed-grid)이고,
+   *  내용은 **이 모임에 내가 올린 글**만이다. 타일을 누르면 그 글 상세가 열린다.
+   *  모임 밖에서 이 화면을 부를 때(옛 경로)는 예전처럼 내 글 전체를 보여 준다.
+   */
   function renderProfileMyFeed() {
     if (!el.profileFeedGrid) return;
-    const posts = store.getMyFeedPosts();
-    const stats = store.getMyFeedStats();
-    if (el.profileFeedCount) el.profileFeedCount.textContent = String(stats.total);
+    const grp = isGroupMode() ? homeGroup() : null;
+    const posts = grp ? store.getMyGroupPosts(grp.id) : store.getMyFeedPosts();
+    const photos = posts.filter((p) => p.photoUrl).length;
+    if (el.profileFeedCount) el.profileFeedCount.textContent = String(posts.length);
     if (el.profileFeedSub) {
-      el.profileFeedSub.innerHTML = `사진 <b>${stats.photos}</b> · 글 <b>${stats.total - stats.photos}</b>`;
+      el.profileFeedSub.innerHTML = grp
+        ? `사진 <b>${photos}</b> · 글 <b>${posts.length - photos}</b>`
+        : `사진 <b>${photos}</b> · 글 <b>${posts.length - photos}</b>`;
     }
     el.profileFeedGrid.innerHTML = posts.length
       ? posts.slice(0, 9).map((p) => `
-        <button class="profile-feed-tile" data-my-post="${p.id}" type="button"
-                aria-label="내가 올린 글 열기">
-          <span class="profile-feed-thumb">${p.photoUrl
-            ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="내 사진" loading="lazy" decoding="async">`
+        <button class="profile-feed-tile mp-feed-tile" data-my-post="${p.id}" type="button"
+                aria-label="${escapeHtml(grp ? grp.name : '내')}에 올린 내 글 열기">
+          <span class="profile-feed-thumb mp-feed-thumb">${p.photoUrl
+            ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
             : `<span class="profile-feed-text">${escapeHtml(String(p.caption || '').slice(0, 40) || '글')}</span>`}</span>
-          <span class="profile-feed-meta">
-            <span class="profile-feed-like"><span aria-hidden="true">${ic('heart', { filled: true })}</span> ${fmtCount(p.likes || 0)}</span>
-          </span>
+          <span class="profile-feed-meta mp-feed-tile-meta"><span aria-hidden="true">${ic('heart', { filled: true })}</span> ${fmtCount(p.likes || 0)}</span>
         </button>`).join('')
-      : '<p class="profile-block-empty">아직 올린 피드가 없어요 · 피드 탭에서 첫 사진을 올려보세요.</p>';
+      : `<p class="profile-block-empty">${grp ? '이 모임에 올린 글이 아직 없어요 · 모임 피드에서 첫 글을 남겨보세요.' : '아직 올린 피드가 없어요 · 피드 탭에서 첫 사진을 올려보세요.'}</p>`;
+    renderProfileGroupRings(grp);
   }
 
-  function renderProfileBlocks() {
-    if (!el.profileGroupStrip || !el.profileSavedList || !el.profileRecentList) return;
+  /** 이 모임에 올린 내 사진 — 바깥 내 프로필의 사진 원형 줄과 같은 모양으로 작게. */
+  function renderProfileGroupRings(grp) {
+    if (el.profilePhotoMini) {
+      const photos = [];
+      (grp ? store.getMyGroupPosts(grp.id) : store.getMyFeedPosts()).forEach((p) => {
+        (store.getPostImages(p) || []).forEach((url) => { if (url && photos.length < 3) photos.push(url); });
+      });
+      el.profilePhotoMini.innerHTML = photos.length
+        ? photos.map((url, i) => `<span class="mp-ring is-filled"><img class="album-img" src="${escapeHtml(url)}"
+            alt="이 모임에 올린 내 사진 ${i + 1}" loading="lazy" decoding="async"></span>`).join('')
+        : `<span class="mp-ring is-empty" aria-hidden="true"><span class="mp-ring-plus">${ic('plus')}</span></span>`;
+    }
+    if (el.profilePhotoCount) {
+      const n = grp ? store.getMyGroupPosts(grp.id).filter((p) => p.photoUrl).length : 0;
+      el.profilePhotoCount.textContent = String(n);
+    }
+  }
+
+  /** 곧 있을 모임 · 다녀온 모임 — 이 모임 안에서 내가 참석하는/참석했던 일정 한 줄씩. */
+  function renderProfileGroupEvents() {
+    const grp = isGroupMode() ? homeGroup() : null;
+    const info = grp ? store.getMyGroupInfo(grp.id) : { upcoming: [], past: [] };
+    const row = (ev) => {
+      const d = new Date(ev.when);
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      const when = Number.isNaN(d.getTime()) ? ''
+        : `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]}) ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      return `<button class="profile-event-row" data-profile-event="${escapeHtml(ev.id)}" type="button"
+              aria-label="${escapeHtml(ev.title || '모임 일정')} 상세 열기">
+        <span class="profile-event-when">${escapeHtml(when)}</span>
+        <span class="profile-event-body">
+          <span class="profile-event-title">${escapeHtml(ev.title || '모임 일정')}</span>
+          <span class="profile-event-meta">${escapeHtml(ev.kindMeta ? ev.kindMeta.label : '모임 일정')}${ev.goingCount != null ? ` · 참석 ${ev.goingCount}명` : ''}</span>
+        </span>
+        <span class="profile-event-chev" aria-hidden="true">${ic('chevronRight')}</span>
+      </button>`;
+    };
+    if (el.profileUpcomingCount) el.profileUpcomingCount.textContent = String(info.upcoming.length);
+    if (el.profilePastCount) el.profilePastCount.textContent = String(info.past.length);
+    if (el.profileUpcomingList) {
+      el.profileUpcomingList.innerHTML = info.upcoming.length
+        ? info.upcoming.slice(0, 5).map(row).join('')
+        : '<p class="profile-block-empty">곧 있을 모임이 없어요 · 게시판에서 일정을 확인해 보세요.</p>';
+    }
+    if (el.profilePastList) {
+      el.profilePastList.innerHTML = info.past.length
+        ? info.past.slice(0, 5).map(row).join('')
+        : '<p class="profile-block-empty">아직 다녀온 모임이 없어요.</p>';
+    }
+  }
+
+  /** 모임 안 내정보 전체 — 바깥 내 프로필과 같은 순서로 한 번에 그린다. */
+  function renderGroupMyInfo() {
+    renderProfileHeader();
+    renderProfileStats();
+    renderProfileGroupEvents();
     renderProfileMyFeed();
-
-    const groups = store.getJoinedGroups();
-    if (el.profileGroupsCount) el.profileGroupsCount.textContent = `${groups.length}`;
-    el.profileGroupStrip.innerHTML = groups.length
-      ? groups.slice(0, 8).map((g) => `
-        <button class="profile-group-chip" data-profile-group="${g.id}" type="button"
-                aria-label="${escapeHtml(g.name)} 모임 상세 보기">
-          <span class="profile-group-cover tone-${escapeHtml(store.getHobbyTone(g.hobbyId || g.category))}">${g.photoUrl
-            ? `<img src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span aria-hidden="true">${ic(g.icon || 'dot')}</span>`}</span>
-          <span class="profile-group-text">
-            <span class="profile-group-name">${escapeHtml(g.name)}</span>
-            <span class="profile-group-sub">멤버 ${g.memberCount} · ${escapeHtml(g.meetLabel || g.categoryName)}</span>
-          </span>
-        </button>`).join('')
-      : '<p class="profile-block-empty">아직 가입한 모임이 없어요 · 탐색에서 마음에 드는 모임을 찾아보세요.</p>';
-
-    /* 저장한 글 — Sprint 14: 목록 3줄 → 3장 썸네일 그리드(내 모임 스트립과 균형).
-       사진·글 어느 쪽이든 같은 정사각 타일로 두고, 캡션은 타일 아래 한 줄만. */
-    const saved = store.getSavedPosts();
-    if (el.profileSavedCount) el.profileSavedCount.textContent = `${saved.length}`;
-    el.profileSavedList.innerHTML = saved.length
-      ? saved.slice(0, 6).map((p) => `
-        <button class="profile-saved-tile" data-profile-saved="${p.id}" type="button"
-                aria-label="${escapeHtml(p.authorName)}님의 저장한 글 보기">
-          <span class="profile-saved-thumb">${p.photoUrl
-            ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span class="profile-saved-text">${escapeHtml(String(p.caption || '').trim().slice(0, 40) || '저장한 글')}</span>`}</span>
-          <span class="profile-saved-meta">
-            <span class="profile-saved-author">${escapeHtml(p.authorName)}</span>
-            <span class="profile-saved-time" data-created="${p.createdAt}">${timeAgo(p.createdAt)}</span>
-          </span>
-        </button>`).join('')
-      : '<p class="profile-block-empty">북마크한 글이 여기에 모여요 · 모임 피드에서 저장을 누르면 모입니다.</p>';
-
-    const recent = store.getActivityLogs({ limit: 3 });
-    el.profileRecentList.innerHTML = recent.length
-      ? recent.map((entry) => `
-        <button class="profile-recent-item" data-profile-activity="${entry.id}" type="button">
-          <span class="profile-recent-emoji" aria-hidden="true">${ic(entry.icon)}</span>
-          <span class="profile-recent-body">
-            <span class="profile-recent-title">${escapeHtml(entry.title)}</span>
-            ${entry.body ? `<span class="profile-recent-sub">${escapeHtml(entry.body)}</span>` : ''}
-          </span>
-          <span class="profile-recent-time" data-created="${entry.at}">${timeAgo(entry.at)}</span>
-        </button>`).join('')
-      : '<p class="profile-block-empty">하트·글·댓글·모임 활동이 여기에 쌓여요.</p>';
   }
 
   /** 프로필의 저장한 글 → 피드에서 그 글을 바로 펼친다. */
@@ -17610,7 +17736,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateBadges() {
     renderProfileStats();
-    renderProfileBlocks();
+    renderProfileMyFeed();
     /* Sprint 14~16 — 홈 배지 = 그 모임의 다가오는 약속 수 (바깥 갤러리에서는 숨김) */
     if (el.navHomeBadge) {
       const homeId = isGroupMode() ? store.getHomeGroupId() : null;
@@ -19948,6 +20074,8 @@ document.addEventListener('DOMContentLoaded', () => {
   /* 디버그용(개발 편의): 콘솔에서 oog.ui 로 현재 화면 상태 확인 가능 */
   window.oog = {
     store, ui, switchTab, openComposer, openGroupDetail, openPersonDetail,
+    /* v38.0 — 가입 신청 진입(중복 신청 안내 검증용 · 신청서 시트를 여는 같은 함수) */
+    openGroupApply: (groupId) => openApplyModal(groupId),
     renderFeed, renderExplore, openPostDetail, openChatRoom, openExploreCompose,
     openProfileEdit, openGroupCreate, togglePostLike, quickLike, undoLike,
     /* Sprint 4.5 */

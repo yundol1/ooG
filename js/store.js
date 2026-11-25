@@ -10825,7 +10825,9 @@ class Store {
     const app = (this.state.groupApplications || []).find((a) => a.id === applicationId);
     if (!app) return { ok: false, reason: 'not_found' };
     if (!this.can(app.groupId, 'approve_applications')) return { ok: false, reason: 'permission' };
-    if (app.status !== 'pending') return { ok: false, reason: 'not_pending' };
+    /* v38.0 (35일차) — 이미 처리된 신청을 또 누르면 화면이 '이미 수락/거절했어요'를 구분해 띄울 수 있게
+       지금 상태를 함께 돌려준다. */
+    if (app.status !== 'pending') return { ok: false, reason: 'not_pending', status: app.status, application: app };
     const group = this.getGroup(app.groupId);
     if (!group) return { ok: false, reason: 'not_found' };
 
@@ -10862,7 +10864,7 @@ class Store {
     const app = (this.state.groupApplications || []).find((a) => a.id === applicationId);
     if (!app) return { ok: false, reason: 'not_found' };
     if (!this.can(app.groupId, 'approve_applications')) return { ok: false, reason: 'permission' };
-    if (app.status !== 'pending') return { ok: false, reason: 'not_pending' };
+    if (app.status !== 'pending') return { ok: false, reason: 'not_pending', status: app.status, application: app };
     app.status = 'rejected';
     app.decidedAt = new Date().toISOString();
     app.decisionNote = String(note || '이번에는 함께하지 못했어요').slice(0, 80);
@@ -13303,6 +13305,41 @@ class Store {
       likes: posts.reduce((sum, p) => sum + (p.likes || 0), 0),
       comments: posts.reduce((sum, p) => sum + (p.commentCount || 0), 0),
       explore: posts.filter((p) => p.photoUrl).length
+    };
+  }
+
+  /* ==========================================================================
+   * v38.0 (35일차 · #23106) — 모임 안 내정보: 그 모임 **안에서의 나**
+   * --------------------------------------------------------------------------
+   *  11/23 08:02 루키 님: "그 모임에서는 내가 올린 및 내가 다녀온 모임 및 곧 있을 모임 나오게
+   *  구조는 같게" — 바깥 내 프로필과 같은 구조를 쓰되, 숫자·목록의 범위만 그 모임으로 좁힌다.
+   *   · 글  : 내가 이 모임에 올린 글(최신순)
+   *   · 곧  : 이 모임의 다가오는 일정 중 내가 참석(또는 만든) 일정
+   *   · 다녀온: 이 모임의 지난 일정 중 내가 참석했던 일정
+   *  `setGroupMyInfo(groupId)` 도 함께 둔다 — 화면 인원이 많지 않아 계산을 한 번에 모은다.
+   * ========================================================================== */
+  getMyGroupPosts(groupId, limit = 0) {
+    const me = (this.currentUser || {}).id;
+    if (!groupId || !me) return [];
+    const list = (this.state.feedPosts || [])
+      .filter((p) => p.authorId === me && p.groupId === groupId)
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map((p) => ({ ...p, commentCount: (p.comments || []).length, photo: !!p.photoUrl }));
+    return limit ? list.slice(0, limit) : list;
+  }
+
+  /** 그 모임 안에서의 내 활동 묶음 — 글 · 곧 있을 모임 · 다녀온 모임. */
+  getMyGroupInfo(groupId) {
+    if (!groupId) return { posts: [], photos: 0, upcoming: [], past: [] };
+    const posts = this.getMyGroupPosts(groupId);
+    const schedule = this.getMySchedule();
+    const inside = (e) => e && e.groupId === groupId;
+    return {
+      posts,
+      photos: posts.filter((p) => p.photoUrl).length,
+      upcoming: schedule.upcoming.filter(inside),
+      past: schedule.past.filter(inside)
     };
   }
 

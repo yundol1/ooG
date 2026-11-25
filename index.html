@@ -570,60 +570,54 @@
           <span class="pgc-name" id="profile-group-context-name">모임</span>
           <button class="pgc-back" id="btn-profile-group-back" type="button">다른 모임 보기</button>
         </div>
-        <div class="profile-header-area">
-          <div class="profile-avatar-large"><span class="avatar-letter" id="profile-avatar-letter">루</span><img class="avatar-img" id="profile-avatar-img" alt="" hidden><span class="online-indicator"></span></div>
-          <div class="profile-info-block">
-            <div class="profile-name-row">
-              <h2 class="profile-nickname" id="profile-nickname">루키</h2>
-              <span class="badge-role">모임장</span>
-              <span class="badge-membership">PLUS</span>
+        <!-- ========== v38.0 (35일차) — 모임 안 내정보 ==========
+             11/23 08:02 루키 님(#23106): "그 모임에서는 내가 올린 및 내가 다녀온 모임 및
+             곧 있을 모임 나오게 구조는 같게" — 바깥 내 프로필 탭(#tab-myprofile)과 **구조만**
+             같게 맞춘다: 큰 사진 + 이름·아이디 + 3열 숫자 + 사진 원형 + 3:4 격자.
+             내용은 그 모임 안에서의 나 — 내가 올린 글 · 곧 있을 모임 · 다녀온 모임. -->
+        <div class="profile-head-block myprofile-head" id="profile-head-block">
+          <div class="mp-top">
+            <div class="myprofile-avatar" id="profile-avatar-large" aria-hidden="true">
+              <span class="avatar-letter" id="profile-avatar-letter">나</span>
+              <img class="avatar-img" id="profile-avatar-img" alt="" hidden>
             </div>
-            <p class="profile-bio" id="profile-bio">성수동 거주 · 크로스핏 6개월차 푸시업 맹연습 중</p>
-            <div class="profile-specs-chips" id="profile-specs">
-              <span class="spec-chip">성수동</span>
-              <span class="spec-chip">크로스핏 6개월</span>
-              <span class="spec-chip">볼더링 입문</span>
+            <div class="mp-id-col">
+              <h2 class="myprofile-name" id="profile-nickname">내 닉네임</h2>
+              <p class="myprofile-handle" id="profile-handle" hidden></p>
+              <section class="myprofile-stats" id="profile-stats" aria-label="이 모임에서의 내 활동"><!-- JS --></section>
+              <div class="mp-rings-line">
+                <div class="myprofile-photo-mini mp-rings" id="profile-photo-mini" role="group" aria-label="이 모임에 올린 내 사진"><!-- JS --></div>
+                <p class="mp-photos-note" id="profile-photos-note">모임 사진 <span class="album-count" id="profile-photo-count">0</span></p>
+              </div>
             </div>
           </div>
+          <p class="myprofile-bio" id="profile-bio" hidden></p>
         </div>
 
-        <div class="profile-stats">
-          <div class="stat-cell"><strong id="stat-posts">0</strong><span>게시물</span></div>
-          <div class="stat-cell"><strong id="stat-likes">0</strong><span>다녀온 모임</span></div>
-          <div class="stat-cell"><strong id="stat-comments">0</strong><span>내 모임</span></div>
-        </div>
+        <!-- 곧 있을 모임 — 이 모임에서 내가 참석한다고 답한 다가오는 일정 -->
+        <section class="profile-block" aria-labelledby="profile-upcoming-title">
+          <div class="profile-block-head">
+            <h3 class="profile-block-title" id="profile-upcoming-title">곧 있을 모임 <span class="section-count" id="profile-upcoming-count">0</span></h3>
+            <button class="text-btn" id="btn-profile-upcoming" type="button">모임 일정</button>
+          </div>
+          <div class="profile-event-list" id="profile-upcoming-list"><!-- JS --></div>
+        </section>
 
-        <!-- ===== Sprint 15 — 내정보: 내가 올린 피드 (인스타 프로필 피드) ===== -->
+        <!-- 다녀온 모임 — 이 모임에서 내가 참석했던 지난 일정 -->
+        <section class="profile-block" aria-labelledby="profile-past-title">
+          <div class="profile-block-head">
+            <h3 class="profile-block-title" id="profile-past-title">다녀온 모임 <span class="section-count" id="profile-past-count">0</span></h3>
+          </div>
+          <div class="profile-event-list" id="profile-past-list"><!-- JS --></div>
+        </section>
+
+        <!-- 내가 이 모임에 올린 글 — 바깥 내 프로필과 같은 3:4 격자 -->
         <section class="profile-block" aria-labelledby="profile-feed-title">
           <div class="profile-block-head">
-            <h3 class="profile-block-title" id="profile-feed-title">내 피드 <span class="section-count" id="profile-feed-count">0</span></h3>
+            <h3 class="profile-block-title" id="profile-feed-title">내 글 <span class="section-count" id="profile-feed-count">0</span></h3>
             <span class="profile-feed-sub" id="profile-feed-sub">사진 <b>0</b> · 글 <b>0</b></span>
           </div>
-          <div class="profile-feed-grid" id="profile-feed-grid" aria-live="polite"><!-- JS --></div>
-        </section>
-
-        <!-- ===== Sprint 13 — 프로필 밀도: 내 모임 · 저장한 글 · 최근 활동 ===== -->
-        <section class="profile-block" aria-labelledby="profile-groups-title">
-          <div class="profile-block-head">
-            <h3 class="profile-block-title" id="profile-groups-title">내 모임 <span class="section-count" id="profile-groups-count">0</span></h3>
-            <button class="text-btn" id="btn-profile-groups" type="button">전체 보기</button>
-          </div>
-          <div class="profile-group-strip" id="profile-group-strip"><!-- JS --></div>
-        </section>
-
-        <section class="profile-block" aria-labelledby="profile-saved-title">
-          <div class="profile-block-head">
-            <h3 class="profile-block-title" id="profile-saved-title">저장한 글 <span class="section-count" id="profile-saved-count">0</span></h3>
-          </div>
-          <div class="profile-saved-list" id="profile-saved-list"><!-- JS --></div>
-        </section>
-
-        <section class="profile-block" aria-labelledby="profile-recent-title">
-          <div class="profile-block-head">
-            <h3 class="profile-block-title" id="profile-recent-title">최근 활동</h3>
-            <button class="text-btn" id="btn-profile-activity" type="button">전체 보기</button>
-          </div>
-          <div class="profile-recent-list" id="profile-recent-list"><!-- JS --></div>
+          <div class="profile-feed-grid mp-feed-grid" id="profile-feed-grid" aria-live="polite"><!-- JS --></div>
         </section>
 
       </section>

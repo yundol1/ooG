@@ -27753,3 +27753,90 @@ body.group-mode .push-permission-banner { display: none !important; }
   line-height: 1.5;
   word-break: keep-all;
 }
+
+/* ============================================================================
+   v38.0 (35일차 · #23106) — 모임 안 내정보(바깥 내 프로필과 같은 구조)
+   ----------------------------------------------------------------------------
+   · 머리: .myprofile-head 문법을 그대로 쓰되 안쪽 여백만 탭 여백에 맞춘다.
+   · 숫자·사진 원형: .mp-id-col 안(바깥과 같은 자리).
+   · 일정 줄: 곧 있을 모임 · 다녀온 모임 — 얇은 구분선 한 줄씩.
+   · 격자: .profile-feed-grid.mp-feed-grid — 3:4 · 2px · 화면 폭 꽉 참.
+   · 추천 일정 카드의 '게스트 참석' 버튼(44px 손가락 영역은 ::after 로).
+   ========================================================================== */
+#tab-profile { padding: 4px 14px var(--sp-6); }
+#tab-profile .profile-head-block { margin-top: 6px; }
+#tab-profile .profile-head-block .myprofile-head { padding: 0; border-radius: 0; background: none; box-shadow: none; }
+#tab-profile .profile-block { padding: 0; margin-top: 22px; }
+
+.profile-event-list { margin-top: 6px; }
+.profile-event-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 2px;
+  border: 0;
+  border-top: 1px solid var(--divider);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+.profile-event-row:first-child { border-top: 0; }
+.profile-event-row:active { background: var(--fill-subtle); }
+.profile-event-when {
+  flex: 0 0 auto;
+  font-size: var(--fs-caption);
+  /* v35.0 — 11px 작은 글자는 굵기 600 이상 */
+  font-weight: 600;
+  color: var(--green-text);
+  white-space: nowrap;
+}
+.profile-event-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.profile-event-title {
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.profile-event-meta { font-size: var(--fs-caption); font-weight: 600; color: var(--text-muted); }
+.profile-event-chev { flex: 0 0 auto; display: inline-flex; color: var(--text-muted); }
+.profile-event-chev .oo-ic { width: 14px; height: 14px; }
+
+/* 추천 일정 카드의 '게스트 참석' — 모임 찾기의 같은 버튼과 같은 말을 쓴다. */
+.feed-rail-event-join {
+  position: relative;
+  margin-top: auto;
+  align-self: flex-start;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green-text);
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  cursor: pointer;
+}
+/* 보이는 크기는 그대로, 손가락 영역만 44px 로 넓힌다(이웃 요소와 겹치지 않게 좌우 4px). */
+.feed-rail-event-join::after { content: ''; position: absolute; inset: -7px -4px; }
+.feed-rail-event-join:active { transform: scale(0.97); }
+.feed-rail-event-join.is-pending,
+.feed-rail-event-join.is-approved,
+.feed-rail-event-join.is-joined,
+.feed-rail-event-join.is-mine {
+  background: var(--fill-subtle);
+  color: var(--text-sub);
+}
+.feed-rail-event-join.is-rejected { background: var(--fill-subtle); color: var(--green-text); }
+
+/* v38.0 — 모임 안 내정보의 작은 글자 버튼도 손가락 하한(44px) 안에 둔다. */
+#tab-profile .profile-block-head .text-btn { min-height: 44px; display: inline-flex; align-items: center; }
+#tab-profile .pgc-back { min-height: 44px; display: inline-flex; align-items: center; }
+
+/* v38.0 — 추천 일정 카드의 '게스트 참석'(아직 신청 전) 상태 */
+.feed-rail-event-join.is-none { background: var(--green-soft); color: var(--green-text); }

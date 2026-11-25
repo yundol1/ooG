@@ -544,15 +544,16 @@
         groupId: { type: 'string', required: true, max: 80 },
         answers: { type: 'array', optional: true, maxItems: 2, itemMax: 300 }
       },
-      response: ['ok', 'joined', 'application', 'group'],
+      response: ['ok', 'joined', 'already', 'application', 'group'],
       local: (store, p) => {
         const res = store.applyToGroup(p.groupId, p.answers || []);
-        /* 멱등 — 화면이 먼저 신청했으니(낙관적) 같은 신청이 다시 오면 그 신청서를 그대로 확정한다. */
+        /* 멱등 — 화면이 먼저 신청했으니(낙관적) 같은 신청이 다시 오면 그 신청서를 그대로 확정한다.
+           v38.0 — 이때는 `already: true` 를 함께 돌려 화면이 '이미 신청했어요'를 분명히 띄운다. */
         if (res && res.reason === 'already_pending' && res.application) {
-          return { ok: true, joined: false, application: slimApplication(res.application), group: slimGroup(res.group) };
+          return { ok: true, joined: false, already: true, application: slimApplication(res.application), group: slimGroup(res.group) };
         }
         if (res && res.reason === 'already_member') {
-          return { ok: true, joined: true, application: null, group: slimGroup(res.group) };
+          return { ok: true, joined: true, already: true, application: null, group: slimGroup(res.group) };
         }
         if (!res || !res.ok) {
           const reason = (res && res.reason) || 'not_found';
@@ -568,7 +569,7 @@
           throw new ApiError(code, message, { details: { reason } });
         }
         return {
-          ok: true, joined: !!res.joined,
+          ok: true, joined: !!res.joined, already: false,
           application: res.application ? slimApplication(res.application) : null,
           group: slimGroup(res.group)
         };
@@ -581,7 +582,7 @@
         decision: { type: 'string', required: true, enum: ['approve', 'reject'] },
         note: { type: 'string', optional: true, max: 80 }
       },
-      response: ['ok', 'decision', 'application', 'group'],
+      response: ['ok', 'decision', 'already', 'application', 'group'],
       local: (store, p) => {
         const res = p.decision === 'approve'
           ? store.approveApplication(p.applicationId)
@@ -591,7 +592,7 @@
           const current = (store.state.groupApplications || []).find((a) => a.id === p.applicationId);
           const wanted = p.decision === 'approve' ? 'approved' : 'rejected';
           if (current && current.status === wanted) {
-            return { ok: true, decision: p.decision, application: slimApplication(current), group: slimGroup(store.getGroup(current.groupId)) };
+            return { ok: true, decision: p.decision, already: true, application: slimApplication(current), group: slimGroup(store.getGroup(current.groupId)) };
           }
         }
         if (!res || !res.ok) {
@@ -603,7 +604,7 @@
           throw new ApiError(code, message, { details: { reason } });
         }
         return {
-          ok: true, decision: p.decision,
+          ok: true, decision: p.decision, already: false,
           application: slimApplication(res.application),
           group: slimGroup(res.group)
         };
@@ -633,16 +634,20 @@
     },
     'group.leave': {
       method: 'POST', mutate: true, idempotent: true,
-      params: { groupId: { type: 'string', required: true, max: 80 } },
-      response: ['ok', 'left', 'groupId'],
+      params: {
+        groupId: { type: 'string', required: true, max: 80 },
+        /* v38.0 — 화면의 '내 글·댓글 함께 지우기' 선택을 경계가 그대로 전한다. */
+        keepPosts: { type: 'boolean', optional: true }
+      },
+      response: ['ok', 'left', 'groupId', 'removedComments'],
       local: (store, p) => {
-        const res = store.leaveGroup(p.groupId);
+        const res = store.leaveGroup(p.groupId, { keepPosts: p.keepPosts !== false });
         if (!res || res.ok === false) {
           const reason = (res && res.reason) || 'not_found';
           const code = reason === 'leader' ? 'conflict' : reason === 'not_found' ? 'not_found' : 'validation';
           throw new ApiError(code, reason === 'leader' ? '모임장은 삭제만 할 수 있어요' : '모임을 나가지 못했어요', { details: { reason } });
         }
-        return { ok: true, left: true, groupId: p.groupId };
+        return { ok: true, left: true, groupId: p.groupId, removedComments: res.removedComments || 0 };
       }
     },
     /* 채팅 한 입구 — 방(1:1)이면 dm.send, 모임이면 group.chat.send 로 보낸다. */
