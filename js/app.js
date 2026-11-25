@@ -6040,6 +6040,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.profileGroupContext) return;
     const on = isGroupMode();
     el.profileGroupContext.hidden = !on;
+    /* v38.0 — 모임 안에서는 모임 헤더(뒤로가기 · 이름 · 삼선바)가 이미 위에 있다.
+       바깥 내 프로필과 같은 구조로 보이도록 이 화면의 상단 줄(제목·톱니)은 접는다. */
+    const root = document.getElementById('tab-profile');
+    if (root) root.classList.toggle('is-group', on);
     if (on && el.profileGroupContextName) {
       const grp = homeGroup();
       el.profileGroupContextName.textContent = grp ? grp.name : '모임';
@@ -14458,11 +14462,9 @@ document.addEventListener('DOMContentLoaded', () => {
       el.profileTopbarTitle.textContent = u.nickname || '내정보';
     }
     if (el.profileTopbarSub) {
+      /* v38.0 — 모임 안에서는 아래 3열 숫자가 이미 '내 글' 수를 말한다. 같은 말을 두 번 쓰지 않는다. */
       const info = grp ? store.getMyGroupInfo(grp.id) : null;
-      const handle = String(u.handle || '').trim();
-      el.profileTopbarSub.textContent = info
-        ? `이 모임에서 쓴 글 ${info.posts.length}개${handle ? ` · ${handle}` : ''}`
-        : `${store.getMyFeedStats().total}개 글${handle ? ` · ${handle}` : ''}`;
+      el.profileTopbarSub.textContent = info ? '' : `${store.getMyFeedStats().total}개 글`;
     }
   }
 

@@ -27840,3 +27840,36 @@ body.group-mode .push-permission-banner { display: none !important; }
 
 /* v38.0 — 추천 일정 카드의 '게스트 참석'(아직 신청 전) 상태 */
 .feed-rail-event-join.is-none { background: var(--green-soft); color: var(--green-text); }
+
+/* v38.0 — 모임 안 내정보의 머리 위 한 줄: 상자 없이 얇게(모임 이름은 위 헤더가 이미 말한다). */
+#tab-profile .profile-group-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+#tab-profile .profile-group-context .pgc-name {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-meta);
+  color: var(--text-muted);
+}
+#tab-profile .profile-group-context .pgc-back {
+  margin-left: auto;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--green-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+}
+/* 상단 줄의 부가 문구는 숫자와 같은 말을 두 번 하지 않는다(모임 안에서는 숨김). */
+#tab-profile .profile-topbar-sub:empty { display: none; }
+
+/* v38.0 — 모임 안 내정보: 모임 헤더가 이미 있으니 상단 줄(제목·톱니)은 접는다. */
+#tab-profile.is-group .profile-topbar { display: none; }
+#tab-profile.is-group .profile-group-context { margin-top: 8px; }
