@@ -1192,7 +1192,8 @@
       hobbies: Array.isArray(u.hobbies) ? u.hobbies.slice(0, 20) : [],
       explore_visible: u.exploreProfileVisible === true,
       data: {
-        ...stripKeys(u, ['album', 'secretShares']),
+        /* v39.0 — 사진의 Storage 경로(photoPath)는 이 기기의 정리용 열쇠라 서버 data 에는 넣지 않는다. */
+        ...stripKeys(u, ['album', 'secretShares', 'photoPath']),
         album: { public: (u.album && u.album.public) || [], secret: [] },
         /* v37.5 (#24337) — 다른 사람 프로필의 잠긴 비밀앨범 원형이 장수를 보여 줄 수 있게
            **장수만** 공개한다(사진·경로는 절대 넣지 않는다). */
