@@ -21625,6 +21625,27 @@ body.subscreen-open { overflow: hidden; }
   cursor: pointer;
 }
 .azit-search-clear.hide { display: none; }
+
+/* v38.9 (#26330) — 아지트 고르기 첫 갈래: 전국 권역 칩 줄(가로 스크롤).
+   전국 역 900곳을 한 번에 그리지 않고, 권역 → 검색 → 더 보기 순으로 좁힌다. */
+.azit-metro-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 0 8px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.azit-metro-chips::-webkit-scrollbar { display: none; height: 0; }
+.ob-azit .azit-metro-chips { margin: 0 0 6px; }
+.azit-metro-chip { padding: 0 12px; }
+.azit-row.azit-more {
+  justify-content: center;
+  color: var(--text-sub);
+  background: var(--bg-subtle);
+}
+.azit-row.azit-more .azit-row-text { flex: 0 1 auto; text-align: center; }
+.azit-row.azit-more .azit-row-name { color: var(--text-sub); font-weight: var(--fw-label); }
 .azit-areas {
   display: flex;
   gap: 6px;

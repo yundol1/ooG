@@ -1353,7 +1353,11 @@
         u.id = me.id;
         u.nickname = mine.nickname || u.nickname;
         u.handle = mine.handle ? `@${mine.handle}` : u.handle;
-        u.photoUrl = mine.avatar_url || u.photoUrl;
+        /* v38.9 (#26318) — 서버 프로필의 공개 앨범(data.album.public)이 비어 있으면
+           avatar_url 이 남아 있어도 사진을 되살리지 않는다(이름만 남긴다). */
+        const serverAlbum = (mine.data && mine.data.album && Array.isArray(mine.data.album.public))
+          ? mine.data.album.public : null;
+        u.photoUrl = (serverAlbum && serverAlbum.length === 0) ? null : (mine.avatar_url || u.photoUrl);
         u.bio = mine.bio || u.bio;
         u.age = mine.age == null ? u.age : mine.age;
         u.regionId = mine.region_id || u.regionId;

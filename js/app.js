@@ -7957,7 +7957,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.8';
+  const APP_VERSION = 'v38.9';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -9365,6 +9365,24 @@ document.addEventListener('DOMContentLoaded', () => {
       if (id === 'ob-photo-camera-btn') { const node = obField('ob-photo-camera'); if (node) node.click(); return; }
       /* v37.3 — 아지트 검색 고르기(회원가입 4/4) */
       if (id === 'ob-azit-field') { obAzitToggle(); return; }
+      /* v38.9 — 권역 칩 / 더 보기 */
+      const obMetro = target.closest('[data-ob-azit-metro]');
+      if (obMetro) {
+        ui.obAzitMetro = obMetro.dataset.obAzitMetro || 'all';
+        ui.obAzitLimit = OB_AZIT_PAGE;
+        const chips = obField('ob-azit-metros');
+        if (chips) chips.innerHTML = obAzitMetroChipsHTML();
+        obAzitRepaint();
+        return;
+      }
+      if (target.closest('[data-ob-azit-more]')) {
+        ui.obAzitLimit = (ui.obAzitLimit || OB_AZIT_PAGE) + OB_AZIT_PAGE;
+        obAzitRepaint();
+        const list = obField('ob-azit-list');
+        const more = list && list.querySelector('[data-ob-azit-more]');
+        if (more) { try { more.focus({ preventScroll: true }); } catch (e) { /* noop */ } }
+        return;
+      }
       const obAzitRow = target.closest('[data-ob-azit-row]');
       if (obAzitRow) { obAzitChoose(obAzitRow.dataset.obAzitRow || ''); return; }
       if (id === 'ob-azit-clear') {
@@ -9421,8 +9439,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const node = e.target;
       /* v37.3 — 아지트 검색어를 칠 때마다 결과 목록을 바로 좁힌다. */
       if (node.id === 'ob-azit-search') {
-        const list = obField('ob-azit-list');
-        if (list) list.innerHTML = obAzitRowsHTML(node.value);
+        ui.obAzitLimit = OB_AZIT_PAGE;
+        obAzitRepaint();
         const clear = obField('ob-azit-clear');
         if (clear) clear.classList.toggle('hide', !String(node.value || '').trim());
         return;
@@ -14297,6 +14315,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </span>
             <button class="azit-search-clear hide" id="ob-azit-clear" type="button" aria-label="검색어 지우기">&times;</button>
           </div>
+          <div class="azit-metro-chips" id="ob-azit-metros" role="group" aria-label="권역 고르기">
+            ${obAzitMetroChipsHTML()}
+          </div>
           <div class="azit-list" id="ob-azit-list" role="listbox" aria-label="아지트 목록">
             ${obAzitRowsHTML('')}
           </div>
@@ -14305,9 +14326,30 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`;
   }
 
+  /* v38.9 (#26330) — 전국 역 900곳 넘게 들어와서, 회원가입의 아지트 고르기에도
+     **권역 칩 + 스무 줄씩 더 보기**를 붙였다(한꺼번에 다 그리지 않는다). */
+  const OB_AZIT_PAGE = 20;
+
+  function obAzitMetroState() {
+    if (!ui.obAzitMetro) ui.obAzitMetro = 'all';
+    if (!ui.obAzitLimit) ui.obAzitLimit = OB_AZIT_PAGE;
+    return ui.obAzitMetro;
+  }
+
+  /** 권역 칩 — '전체' + 아지트가 있는 권역(서울·수도권 / 부산·경남 …). */
+  function obAzitMetroChipsHTML() {
+    const active = obAzitMetroState();
+    const metros = store.getHangoutMetros();
+    const chip = (id, name) => `<button class="region-chip azit-metro-chip ${active === id ? 'active' : ''}"
+        data-ob-azit-metro="${escapeHtml(id)}" type="button" aria-pressed="${active === id}">${escapeHtml(name)}</button>`;
+    return chip('all', '전체') + metros.map((m) => chip(m.id, m.name)).join('');
+  }
+
   /** 아지트 검색 결과 줄 — '아지트 선택 안 함' → 이름/권역/종류 → 내 동네 표시 → 체크. */
   function obAzitRowsHTML(query) {
     const q = String(query || '').trim();
+    const metroId = obAzitMetroState();
+    const limit = ui.obAzitLimit || OB_AZIT_PAGE;
     const selected = ((ui.onboardingDraft || {}).azitId) || '';
     const none = `
       <button class="azit-row ob-azit-row-none ${!selected ? 'active' : ''}" data-ob-azit-row="" type="button"
@@ -14319,11 +14361,17 @@ document.addEventListener('DOMContentLoaded', () => {
         </span>
         <span class="azit-row-check" aria-hidden="true">${!selected ? ic('check') : ''}</span>
       </button>`;
-    const rows = store.getHangouts({ query: q, limit: 60 });
-    if (!rows.length) {
-      return none + `<p class="azit-empty">'${escapeHtml(q)}'에 맞는 아지트가 없어요. 역·학교 이름으로 다시 찾아보세요.</p>`;
+    /* 한 줄 더 받아 보고, 더 있으면 '더 보기'를 붙인다. */
+    const rows = store.getHangouts({ query: q, metroId, limit: limit + 1 });
+    const shown = rows.slice(0, limit);
+    const more = rows.length > limit;
+    if (!shown.length) {
+      const where = metroId !== 'all' ? (store.getHangoutMetro(metroId) || {}).name || '' : '';
+      return none + `<p class="azit-empty">${q
+        ? `'${escapeHtml(q)}'에 맞는 아지트가 없어요. 역·학교 이름으로 다시 찾아보세요.`
+        : `${escapeHtml(where)}에는 아직 아지트가 없어요. 다른 권역을 골라 보세요.`}</p>`;
     }
-    return none + rows.map((h) => `
+    const list = none + shown.map((h) => `
       <button class="azit-row ${selected === h.id ? 'active' : ''}" data-ob-azit-row="${escapeHtml(h.id)}" type="button"
               role="option" aria-selected="${selected === h.id ? 'true' : 'false'}">
         <span class="azit-row-ic" aria-hidden="true">${ic(h.icon)}</span>
@@ -14334,6 +14382,19 @@ document.addEventListener('DOMContentLoaded', () => {
         ${h.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
         <span class="azit-row-check" aria-hidden="true">${selected === h.id ? ic('check') : ''}</span>
       </button>`).join('');
+    return list + (more
+      ? `<button class="azit-row azit-more" data-ob-azit-more="1" type="button">
+           <span class="azit-row-ic" aria-hidden="true">${ic('chevronDown')}</span>
+           <span class="azit-row-text"><span class="azit-row-name">더 보기</span>
+             <span class="azit-row-meta">${limit}곳까지 봤어요 · 이름으로 찾으면 더 빨라요</span></span>
+         </button>`
+      : '');
+  }
+
+  /** 목록만 다시 그린다(검색창·권역 칩은 그대로). */
+  function obAzitRepaint() {
+    const list = obField('ob-azit-list');
+    if (list) list.innerHTML = obAzitRowsHTML(obField('ob-azit-search') ? obField('ob-azit-search').value : '');
   }
 
   /** 검색 패널을 열고 닫는다(열 때는 검색창에 바로 커서). */
@@ -14344,9 +14405,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!panel || !field) return;
     const open = force == null ? panel.hidden : !!force;
     if (open) {
-      const list = obField('ob-azit-list');
-      const search = obField('ob-azit-search');
-      if (list) list.innerHTML = obAzitRowsHTML(search ? search.value : '');
+      ui.obAzitLimit = OB_AZIT_PAGE;
+      const chips = obField('ob-azit-metros');
+      if (chips) chips.innerHTML = obAzitMetroChipsHTML();
+      obAzitRepaint();
       panel.hidden = false;
       field.setAttribute('aria-expanded', 'true');
       if (wrap) wrap.classList.add('is-open');
@@ -15776,15 +15838,20 @@ document.addEventListener('DOMContentLoaded', () => {
         : '<span class="azit-chosen-none">아직 고르지 않았어요 · 1~3곳</span>';
     }
     if (el.createGroupAzitList) {
-      /* H2 — 4단계에서 고른 시·군·구 후보를 먼저, 그다음 같은 시·도의 다른 곳(검색은 전체). */
-      let rows = store.getHangouts({ query, limit: 200 });
-      if (!query && d.sigunguId) {
-        const inArea = rows.filter((h) => h.sigunguId === d.sigunguId);
-        const rest = rows.filter((h) => h.sigunguId !== d.sigunguId);
-        rows = inArea.concat(rest);
-      } else if (!query && d.sidoId) {
-        const inSido = rows.filter((h) => h.sidoId === d.sidoId);
-        rows = inSido.concat(rows.filter((h) => h.sidoId !== d.sidoId));
+      /* H2 — 4단계에서 고른 시·군·구 후보를 먼저, 그다음 같은 시·도의 다른 곳(검색은 전체).
+         v38.9 — 전국 역 900곳이 들어와 '먼저 200곳을 자르고 나서 정렬'하면 고른 구의 역이
+         잘려 나갔다(성동구를 골라도 성수역이 목록에 없던 이유). 구·시·도로 **먼저 거른다**. */
+      let rows;
+      if (query) {
+        rows = store.getHangouts({ query, limit: 80 });
+      } else {
+        const inArea = d.sigunguId ? store.getHangouts({ sigunguId: d.sigunguId }) : [];
+        const taken = new Set(inArea.map((h) => h.id));
+        const inSido = d.sidoId
+          ? store.getHangouts({ sidoId: d.sidoId }).filter((h) => !taken.has(h.id)) : [];
+        inSido.forEach((h) => taken.add(h.id));
+        const rest = store.getHangouts({ limit: 90 }).filter((h) => !taken.has(h.id));
+        rows = inArea.concat(inSido, rest);
       }
       rows = rows.slice(0, 80);
       el.createGroupAzitList.innerHTML = rows.length
@@ -18940,11 +19007,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.myProfileAvatarLetter) el.myProfileAvatarLetter.textContent = me.avatarText || (me.nickname || '나').charAt(0);
     if (el.myProfileAvatarImg) {
+      /* v38.9 (#26318) — 대표 사진은 공개 앨범 1번 하나. 모두 지우면 **이름 글자만** 남기고
+         img 의 src 도 지운다(숨긴 img 에 옛 사진 주소가 남아 있지 않게). */
       const photo = (store.getMyAlbum('public')[0] || {}).url || me.photoUrl || '';
       el.myProfileAvatarImg.hidden = !photo;
       if (photo) el.myProfileAvatarImg.src = photo;
-      if (photo) el.myProfileAvatarLetter.hidden = true;
-      else el.myProfileAvatarLetter.hidden = false;
+      else el.myProfileAvatarImg.removeAttribute('src');
+      el.myProfileAvatarLetter.hidden = !!photo;
     }
     renderMyPhotoMini();
     renderAlbumGrid(el.albumSecretGrid, 'secret');
@@ -19632,9 +19701,15 @@ document.addEventListener('DOMContentLoaded', () => {
     return res;
   }
 
-  /** 앨범이 바뀌면 그 앨범을 보여주던 화면들을 함께 다시 그린다. */
+  /** 앨범이 바뀌면 그 앨범을 보여주던 화면들을 함께 다시 그린다.
+   *  v38.9 (#26318) — 대표 사진(공개 1번)이 바뀌면 하단 아바타·설정 아바타도 함께 칠한다.
+   *   모두 지웠으면 사진 없이 이름(첫 글자)만 남는다. */
   function afterAlbumChange(kind) {
     renderMyProfileTab();
+    if (kind !== 'secret') {
+      paintMyAvatars();
+      if (isSettingsOpen()) renderSettingsPage();
+    }
     if (kind === 'secret' && ui.secretAlbumPartnerId) renderSecretAlbumBody();
   }
 
