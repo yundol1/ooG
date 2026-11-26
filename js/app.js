@@ -9372,7 +9372,7 @@ document.addEventListener('DOMContentLoaded', () => {
       /* v38.5 (#26011) — "회원가입할때 프로필 이미지에도 해당돼": 모임 대표와 같은
          풀스크린 원형 크롭을 거친다. 확인을 누르면 원 그대로 잘린 사진이 대표 사진이 된다. */
       readImageFile(file, (url) => {
-        openCircleCrop({ src: url, out: 1024, title: '대표 사진을 원형으로 맞춰 주세요' }).then((out) => {
+        openCircleCrop({ src: url, out: 1440, title: '대표 사진을 원형으로 맞춰 주세요' }).then((out) => {
           if (!out) return;
           const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
           d.photoUrl = out;
