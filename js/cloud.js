@@ -23,7 +23,7 @@
   const CONF = {
     url: 'https://nnzrunhjxwcspsfgsmgf.supabase.co',
     key: 'sb_publishable_fy0CjiojNNWeTVAzrflP8w_098c3T2J',
-    version: 'v38.1'
+    version: 'v39.0'
   };
 
   const LS_SESSION = 'oog_cloud_session_v1';
@@ -764,6 +764,160 @@
     return { value, changed: false };
   }
 
+  /* ==========================================================================
+   * v39.0 (36일차) — 모임 전용 프로필 사진 · 사진 파일의 Storage 정리
+   * --------------------------------------------------------------------------
+   *  ① 모임마다 다른 '모임 전용 프로필 사진'은 지금까지 group_members 줄의 **data URL** 로만
+   *     올라가 표를 무겁게 했다. 이제 avatars 버킷 `<내 uuid>/group-profile-…` 에 올리고
+   *     줄에는 URL 만 남긴다.  서버가 없거나 끊겼으면 data URL 을 그대로 두고(로컬 화면은 계속)
+   *     다음 저장에서 다시 시도한다 — 오프라인 우선은 그대로다.
+   *  ② 사진을 바꾸거나 지우면 **예전 파일을 지운다**. 다른 기기에서 바꾼 것까지 맞추려고
+   *     세션마다 한 번 내 폴더를 훑어 쓰이지 않는 사진을 정리한다(방금 올린 파일을 잘못
+   *     지우지 않도록 **한 시간 지난 파일만**).
+   * ======================================================================== */
+  const MEDIA_PREFIXES = { avatars: ['avatar-', 'group-profile-'], 'public-photos': ['photo-'] };
+
+  /** 공개 URL → 버킷 안 경로(내가 올린 파일만 다룬다). */
+  function pathFromPublicUrl(bucket, url) {
+    const m = new RegExp(`/storage/v1/object/public/${bucket}/(.+)$`).exec(String(url || ''));
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  async function deleteObjects(bucket, paths) {
+    const list = (paths || []).filter(Boolean);
+    for (let i = 0; i < list.length; i += 100) {
+      try {
+        await request(`${STORAGE}/object/${bucket}`, {
+          method: 'DELETE', body: { prefixes: list.slice(i, i + 100) }, retry: 0
+        });
+      } catch (e) { /* 다음 저장·다음 세션에서 다시 */ }
+    }
+    return list.length;
+  }
+
+  /** 내 폴더의 파일과 올린 시각 — 쓰이지 않는 사진을 골라내는 데 쓴다. */
+  async function listMyFiles(bucket, prefix, depth) {
+    const out = [];
+    const rows = await request(`${STORAGE}/object/list/${bucket}`, {
+      method: 'POST',
+      body: { prefix, limit: 100, offset: 0, sortBy: { column: 'name', order: 'asc' } },
+      retry: 0
+    }).catch(() => []);
+    for (const r of (Array.isArray(rows) ? rows : [])) {
+      if (!r || !r.name) continue;
+      const path = prefix ? `${prefix}/${r.name}` : r.name;
+      if (r.id == null) {
+        if (depth < 3) out.push(...await listMyFiles(bucket, path, depth + 1));
+      } else out.push({ path, at: r.updated_at || r.created_at || null });
+    }
+    return out;
+  }
+
+  /**
+   * 모임 전용 프로필 사진을 Storage 로 — 내 멤버 줄만 손댄다(남의 사진은 건드리지 않는다).
+   *  · data URL → 업로드 후 URL·경로 저장, 바뀐 사진의 예전 파일 삭제
+   *  · 사진을 지웠으면(빈 값) 예전 파일 삭제
+   */
+  async function syncMyGroupProfiles(me) {
+    const store2 = global.appStore;
+    const meId = typeof me === 'string' ? me : (me && me.id);
+    if (!store2 || !isUuid(meId) || !hasSession()) return { ok: false, reason: 'no_session', changed: 0 };
+    const st = store2.state;
+    const joined = (st.currentUser && st.currentUser.joinedGroupIds) || [];
+    const rent = st.groupMembership || {};
+    let changed = 0;
+    for (const gid of joined) {
+      const row = rent[gid] && rent[gid][meId];
+      if (!row) continue;
+      const url = String(row.photoUrl || '');
+      if (/^data:image\//.test(url)) {
+        const up = await uploadPhoto(url, 'avatars', 'group-profile');
+        if (!up.ok) continue;                 /* 오프라인 — data URL 그대로, 다음 저장에서 다시 */
+        if (row.photoPath && row.photoPath !== up.path) await deleteObjects('avatars', [row.photoPath]);
+        row.photoUrl = up.url;
+        row.photoPath = up.path;
+        changed += 1;
+      } else if (!url) {
+        if (row.photoPath) {
+          await deleteObjects('avatars', [row.photoPath]);
+          row.photoPath = null;
+          changed += 1;
+        }
+      } else {
+        const path = pathFromPublicUrl('avatars', url);
+        if (path && row.photoPath !== path) {
+          if (row.photoPath) await deleteObjects('avatars', [row.photoPath]);
+          row.photoPath = path;
+          changed += 1;
+        }
+      }
+    }
+    if (changed) { try { store2.saveState(); } catch (e) { /* 저장 실패가 동기화를 막지 않는다 */ } }
+    return { ok: true, changed };
+  }
+
+  /** 지금 내 사진들이 서버에서 가리키는 경로 — 정리(sweep)에서 남길 목록. */
+  function myMediaKeep() {
+    const store2 = global.appStore;
+    const st = (store2 && store2.state) || {};
+    const u = st.currentUser || {};
+    const keep = { avatars: new Set(), 'public-photos': new Set() };
+    const add = (bucket, path) => { if (path) keep[bucket].add(path); };
+    add('avatars', u.photoPath || pathFromPublicUrl('avatars', u.photoUrl));
+    const rent = st.groupMembership || {};
+    (u.joinedGroupIds || []).forEach((gid) => {
+      const row = rent[gid] && rent[gid][currentUserId()];
+      if (row) add('avatars', row.photoPath || pathFromPublicUrl('avatars', row.photoUrl));
+    });
+    ((u.album && u.album.public) || []).forEach((p) => {
+      if (p) add('public-photos', p.cloudPath || pathFromPublicUrl('public-photos', p.url));
+    });
+    return keep;
+  }
+
+  function currentUserId() {
+    const me = currentUser();
+    return me && me.id ? me.id : null;
+  }
+
+  /**
+   * 쓰이지 않는 내 사진 파일 정리 — 세션마다 한 번(사진이 바뀌면 그 자리에서 한 번 더).
+   *  · 한 시간 안에 올린 파일은 남긴다(다른 기기가 방금 올리고 아직 프로필에 못 쓴 것).
+   */
+  async function sweepMyMedia(me, options = {}) {
+    const meId = typeof me === 'string' ? me : (me && me.id);
+    if (!isUuid(meId) || !hasSession()) return { ok: false, reason: 'no_session', removed: 0 };
+    if (state.mediaSwept && !options.force) return { ok: true, removed: 0, skipped: 'session' };
+    state.mediaSwept = true;
+    const keep = myMediaKeep();
+    const grace = Date.now() - 60 * 60 * 1000;
+    let removed = 0;
+    for (const bucket of Object.keys(MEDIA_PREFIXES)) {
+      const files = await listMyFiles(bucket, meId, 0);
+      const stale = files.filter((f) => {
+        const name = f.path.split('/').pop() || '';
+        if (!MEDIA_PREFIXES[bucket].some((p) => name.startsWith(p))) return false;
+        if (keep[bucket].has(f.path)) return false;
+        const at = f.at ? new Date(f.at).getTime() : 0;
+        return !at || at < grace;
+      }).map((f) => f.path);
+      if (stale.length) removed += await deleteObjects(bucket, stale);
+    }
+    return { ok: true, removed };
+  }
+
+  /** 사진 구성이 바뀌었는지 — 바뀌면 push 끝에 정리를 한 번 더 돌린다. */
+  function mediaSignature() {
+    const store2 = global.appStore;
+    const u = (store2 && store2.state.currentUser) || {};
+    const brief = (v) => {
+      const s = String(v || '');
+      return s.length ? `${s.length}:${s.slice(0, 24)}:${s.slice(-24)}` : '';
+    };
+    const photos = ((u.album && u.album.public) || []).map((p) => (p && (p.id || p.cloudPath || brief(p.url))) || '');
+    return [brief(u.photoUrl), String(u.photoPath || ''), photos.join(',')].join('|');
+  }
+
   /** 비밀 사진 — 비공개 버킷 + secret_photos 표(RLS: 본인·허용된 사람만). */
   async function syncSecretAlbum(me) {
     const store2 = global.appStore;
@@ -1052,11 +1206,20 @@
     const me = currentUser();
     if (!store2 || !me || !isUuid(me.id)) return;
     const u = store2.state.currentUser;
-    /* 사진은 Storage 로 — 프로필/아바타는 avatars, 공개 앨범은 public-photos. */
+    /* 사진은 Storage 로 — 프로필/아바타는 avatars, 공개 앨범은 public-photos.
+       v39.0 — 바꾼 사진의 **예전 파일은 지운다**(경로를 기억해 두었다가 교체·삭제 시). */
+    const prevAvatarPath = u.photoPath || pathFromPublicUrl('avatars', u.photoUrl) || null;
     if (u && typeof u.photoUrl === 'string' && u.photoUrl.startsWith('data:image/')) {
       const up = await uploadPhoto(u.photoUrl, 'avatars', 'avatar');
-      if (up.ok) u.photoUrl = up.url;
+      if (up.ok) { u.photoUrl = up.url; u.photoPath = up.path; }
+    } else if (u && !u.photoUrl && prevAvatarPath) {
+      /* 사진을 모두 지웠다(v38.9 — 이름만 남기기) — 서버에 남은 내 사진 파일도 지운다. */
+      u.photoPath = null;
     }
+    if (u && u.photoPath && prevAvatarPath && u.photoPath !== prevAvatarPath) {
+      await deleteObjects('avatars', [prevAvatarPath]);
+    }
+    if (u && !u.photoUrl) await deleteObjects('avatars', [prevAvatarPath]);
     if (u && u.album && Array.isArray(u.album.public)) {
       for (const photo of u.album.public) {
         if (photo && typeof photo.url === 'string' && photo.url.startsWith('data:image/')) {
@@ -1114,6 +1277,7 @@
     const errors = [];
     try {
       await pushProfile();
+      await syncMyGroupProfiles(me.id);
       await syncSecretAlbum(me.id);
       await syncSecretRequests(me.id);
       let mediaChanged = false;
@@ -1165,7 +1329,12 @@
         }
       }
       await pushUserState();
-      if (mediaChanged) { try { store2.saveState(); } catch (e) { /* noop */ } }
+      const sig = mediaSignature();
+      const sigChanged = state.meta.mediaSig !== sig;
+      state.meta.mediaSig = sig;
+      if (mediaChanged || sigChanged) { try { store2.saveState(); } catch (e) { /* noop */ } }
+      /* v39.0 — 사진을 바꾸거나 지우면 그 자리에서 한 번 더 쓰이지 않는 파일을 정리한다. */
+      try { await sweepMyMedia(me.id, { force: mediaChanged || sigChanged }); } catch (e) { /* 정리는 다음 기회에 */ }
       saveMeta();
       state.lastSyncAt = nowIso();
       state.status = errors.length ? 'error' : 'online';
@@ -1661,6 +1830,7 @@
   /** 로그아웃·계정 전환 — 서버 동기화 기억을 비운다(내 줄을 남의 계정에 올리지 않게). */
   function resetSyncMemory() {
     state.meta = { pushed: {}, pulled: {} };
+    state.mediaSwept = false;
     saveMeta();
   }
 
@@ -1676,6 +1846,8 @@
     /* v37.7 — 가입 이메일 중복 확인 */
     checkEmail,
     uploadPhoto, ensurePhotoUrl, publicUrl, signedUrl, dataUrlToBlob,
+    /* v39.0 (36일차) — 모임 전용 프로필 사진 · 사진 파일 정리 */
+    syncMyGroupProfiles, sweepMyMedia, pathFromPublicUrl, myMediaKeep,
     /* v37.5 (#24337) */
     fetchSecretAlbum, deleteAccount, deleteMyStorage, reauthenticate, accountGone, shortHandle,
     // sync

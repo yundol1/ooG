@@ -106,6 +106,19 @@
   --clay-mint-deep: var(--green-soft-border);
   --clay-edge: var(--border);
   --clay-edge-soft: var(--border-soft);
+
+  /* v39.0 — 풀스크린 원형 크롭 판(라이트). 판·빈 자리·가림·원 테두리·글자색을 토큰 하나로.
+     결과 JPEG 의 빈 자리도 --pcf-void 를 그대로 쓴다(본 그대로 저장). */
+  --pcf-plate: #F1F5F9;
+  --pcf-void: #E9EEF4;
+  --pcf-scrim: rgba(241, 245, 249, 0.82);
+  --pcf-ring: rgba(15, 23, 42, 0.9);
+  --pcf-grip: #FFFFFF;
+  --pcf-grip-edge: rgba(15, 23, 42, 0.42);
+  --pcf-ink: #0F172A;
+  --pcf-ink-soft: rgba(15, 23, 42, 0.66);
+  --pcf-btn: rgba(15, 23, 42, 0.07);
+  --pcf-btn-press: rgba(15, 23, 42, 0.14);
 }
 
 :root[data-theme="dark"] {
@@ -202,6 +215,18 @@
   --clay-green-lift: none;
   --clay-green-in: none;
   --focus-ring: 0 0 0 3px rgba(110, 231, 183, 0.4);
+
+  /* v39.0 — 풀스크린 원형 크롭 판(다크) — 사진이 주인공인 어두운 판. */
+  --pcf-plate: #0A0F14;
+  --pcf-void: #0D1117;
+  --pcf-scrim: rgba(4, 8, 12, 0.66);
+  --pcf-ring: rgba(255, 255, 255, 0.92);
+  --pcf-grip: #FFFFFF;
+  --pcf-grip-edge: rgba(10, 15, 20, 0.45);
+  --pcf-ink: #FFFFFF;
+  --pcf-ink-soft: rgba(255, 255, 255, 0.9);
+  --pcf-btn: rgba(255, 255, 255, 0.16);
+  --pcf-btn-press: rgba(255, 255, 255, 0.26);
 }
 
 :root {
@@ -27442,23 +27467,83 @@ body.group-mode .push-permission-banner { display: none !important; }
 #tab-profile .profile-block { padding: 0; margin-top: 22px; }
 
 .profile-event-list { margin-top: 6px; }
+.profile-event-item { border-top: 1px solid var(--divider); }
+.profile-event-item:first-child { border-top: 0; }
 .profile-event-row {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   min-height: 52px;
-  padding: 10px 2px;
-  border: 0;
-  border-top: 1px solid var(--divider);
-  background: none;
+  padding: 0;
   text-align: left;
-  cursor: pointer;
   color: inherit;
 }
-.profile-event-row:first-child { border-top: 0; }
-.profile-event-row:active { background: var(--fill-subtle); }
+/* v39.0 — 줄 안에 '상세 열기'(왼쪽 전부)와 '참석 표시'(오른쪽 알약) 두 단추가 나란히 산다. */
+.profile-event-open {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 0 10px 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.profile-event-open:active { background: var(--fill-subtle); }
+.profile-event-rsvp-pill {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 58px;
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg-soft);
+  color: var(--text-sub);
+  font-family: var(--font);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-label);
+  letter-spacing: -0.1px;
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-spring), background var(--dur-quick) ease,
+              border-color var(--dur-quick) ease, color var(--dur-quick) ease;
+}
+.profile-event-rsvp-pill:active { transform: scale(0.96); }
+/* 손가락 하한 44px — 알약 자체가 44px(내정보의 모든 단추와 같은 기준). */
+.profile-event-rsvp-pill.rs-yes {
+  border-color: transparent;
+  background: var(--green-grad);
+  color: #FFFFFF;
+}
+.profile-event-rsvp-pill.rs-maybe {
+  border-color: #FCD34D;
+  background: #FEF3C7;
+  color: #92400E;
+}
+.profile-event-rsvp-pill.rs-none,
+.profile-event-rsvp-pill.is-static { cursor: default; }
+.profile-event-rsvp-pill.is-static { opacity: 0.9; }
+.profile-event-rsvp-menu {
+  display: flex;
+  gap: 5px;
+  padding: 0 0 10px 2px;
+}
+/* 내정보 안 단추는 모두 44px — 세 칸도 같은 하한을 지킨다. */
+.profile-event-rsvp-menu .rsvp-btn { height: 44px; min-height: 44px; }
+.profile-event-rsvp-menu[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .profile-event-rsvp-pill { transition: none; }
+}
 .profile-event-when {
   flex: 0 0 auto;
   font-size: var(--fs-caption);
@@ -27748,7 +27833,7 @@ body.group-mode .push-permission-banner { display: none !important; }
   height: 100vh;
   height: 100dvh;
   z-index: 9600;
-  background: #0A0F14;
+  background: var(--pcf-plate, #0A0F14);
   overflow: hidden;
   touch-action: none;
   user-select: none;
@@ -27779,9 +27864,9 @@ body.is-photo-crop { overflow: hidden; }
 .pcf-ring {
   position: absolute;
   box-sizing: border-box;
-  border: 2px solid rgba(255, 255, 255, 0.92);
+  border: 2px solid var(--pcf-ring, rgba(255, 255, 255, 0.92));
   border-radius: 50%;
-  box-shadow: 0 0 0 9999px rgba(4, 8, 12, 0.66);
+  box-shadow: 0 0 0 9999px var(--pcf-scrim, rgba(4, 8, 12, 0.66));
   pointer-events: none;
 }
 /* v38.8 — 원 둘레 모서리 손잡이 네 개. 끌면 자를 원의 지름이 바뀐다(터치는 원 테두리 아무 데나). */
@@ -27791,10 +27876,10 @@ body.is-photo-crop { overflow: hidden; }
   width: 16px;
   height: 16px;
   margin: -8px 0 0 -8px;
-  border: 1px solid rgba(10, 15, 20, 0.45);
+  border: 1px solid var(--pcf-grip-edge, rgba(10, 15, 20, 0.45));
   border-radius: 50%;
-  background: #FFFFFF;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  background: var(--pcf-grip, #FFFFFF);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.32);
   pointer-events: none;
 }
 
@@ -27816,19 +27901,19 @@ body.is-photo-crop { overflow: hidden; }
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  color: #FFFFFF;
+  background: var(--pcf-btn, rgba(255, 255, 255, 0.16));
+  color: var(--pcf-ink, #FFFFFF);
   font-size: var(--fs-small);
   font-weight: var(--fw-label);
   letter-spacing: -0.01em;
 }
-.pcf-cancel:active { background: rgba(255, 255, 255, 0.26); }
+.pcf-cancel:active { background: var(--pcf-btn-press, rgba(255, 255, 255, 0.26)); }
 .pcf-title {
   flex: 1 1 auto;
   min-width: 0;
   padding-right: 56px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--pcf-ink-soft, rgba(255, 255, 255, 0.9));
   font-size: var(--fs-small);
   font-weight: var(--fw-label);
   letter-spacing: -0.01em;

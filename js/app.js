@@ -4202,6 +4202,8 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------------------------------- 모임 찾기 전용 화면 */
 
   const FIND_PAGE = 12;
+  /* v39.0 (36일차) — 아지트 목록 한 페이지(서울·수도권 672곳도 40곳씩). */
+  const FIND_AZIT_PAGE = 40;
 
   function findState() {
     if (!ui.find) {
@@ -4209,7 +4211,9 @@ document.addEventListener('DOMContentLoaded', () => {
         query: '', categoryId: 'all', azitId: 'all', sort: 'recommend', limit: FIND_PAGE,
         /* v34.1 — 지역·아지트는 **아지트 하나**로 통일(권역 = 시·도/시·군·구). */
         sidoId: 'all', sigunguId: 'all', hangoutId: 'all',
-        hangoutQuery: '', azitSidoDraft: 'all', azitSigunguDraft: 'all'
+        hangoutQuery: '', azitSidoDraft: 'all', azitSigunguDraft: 'all',
+        /* v39.0 (36일차) — 아지트 목록은 페이지씩 그린다(968곳을 한 번에 그리지 않는다). */
+        hangoutLimit: FIND_AZIT_PAGE
       };
     }
     if (!ui.find.azitId) ui.find.azitId = 'all';
@@ -4584,14 +4588,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function openFindHangoutSheet() {
       const s2 = findState();
       s2.hangoutQuery = '';
+      s2.hangoutLimit = FIND_AZIT_PAGE;
       s2.azitSidoDraft = s2.sidoId && s2.sidoId !== 'all' ? s2.sidoId : 'all';
       s2.azitSigunguDraft = s2.sigunguId && s2.sigunguId !== 'all' ? s2.sigunguId : 'all';
       if (el.findHangoutSearch) el.findHangoutSearch.value = '';
       renderFindHangoutSheet();
       openModal(el.findHangoutModal);
     }
-    function renderFindHangoutSheet() {
+    /**
+     * v39.0 (36일차) — 아지트 목록 시트.
+     *  · `listOnly` 면 권역 칩·제목은 그대로 두고 **목록만** 다시 그린다(검색어를 칠 때 화면이
+     *    통째로 다시 그려지며 스크롤·커서가 튀던 문제를 없앤다).
+     *  · 목록은 40곳씩 — '더 보기'를 누르면 보던 자리를 유지한 채 새 줄이 아래로 붙는다.
+     *  · 672곳(서울·수도권)도 80곳에서 조용히 잘리지 않고 끝까지 볼 수 있다.
+     */
+    function renderFindHangoutSheet(options = {}) {
       const s2 = findState();
+      const listOnly = options.listOnly === true;
       const sidoId = s2.azitSidoDraft && s2.azitSidoDraft !== 'all' ? s2.azitSidoDraft : null;
       const sigunguId = s2.azitSigunguDraft && s2.azitSigunguDraft !== 'all' ? s2.azitSigunguDraft : null;
       const sidoRow = sidoId ? store.getRegionSido().find((x) => x.id === sidoId) : null;
@@ -4599,40 +4612,47 @@ document.addEventListener('DOMContentLoaded', () => {
       const query = s2.hangoutQuery || '';
       if (el.findHangoutClear) el.findHangoutClear.classList.toggle('hide', !query);
 
-      /* 1) 권역 — 시·도 */
-      if (el.findHangoutSido) {
-        el.findHangoutSido.innerHTML = [`<button class="region-chip ${!sidoId ? 'active' : ''}" data-find-azit-sido="all"
-            type="button" aria-pressed="${!sidoId}">전체</button>`]
-          .concat(store.getRegionSido().map((x) => `
-            <button class="region-chip ${sidoId === x.id ? 'active' : ''}" data-find-azit-sido="${x.id}"
-                    type="button" aria-pressed="${sidoId === x.id}">${escapeHtml(x.short)}</button>`)).join('');
-      }
-      /* 2) 권역 — 시·군·구. 고르면 아래 목록이 그 권역으로 좁혀진다. */
-      if (el.findHangoutSigungu) {
-        const rows = sidoId ? store.getRegionSigungu(sidoId) : [];
-        el.findHangoutSigungu.innerHTML = sidoId
-          ? [`<button class="region-gu ${!sigunguId ? 'active' : ''}" data-find-azit-sigungu="all"
-                type="button" aria-pressed="${!sigunguId}">${escapeHtml((sidoRow && sidoRow.short) || '권역')} 전체</button>`]
-            .concat(rows.map((g) => `
-              <button class="region-gu ${sigunguId === g.sigunguId ? 'active' : ''}" data-find-azit-sigungu="${g.sigunguId}"
-                      type="button" aria-pressed="${sigunguId === g.sigunguId}">${escapeHtml(g.name)}</button>`)).join('')
-          : '<p class="azit-empty">권역(시·도)을 먼저 골라 주세요.</p>';
-      }
+      if (!listOnly) {
+        /* 1) 권역 — 시·도 */
+        if (el.findHangoutSido) {
+          el.findHangoutSido.innerHTML = [`<button class="region-chip ${!sidoId ? 'active' : ''}" data-find-azit-sido="all"
+              type="button" aria-pressed="${!sidoId}">전체</button>`]
+            .concat(store.getRegionSido().map((x) => `
+              <button class="region-chip ${sidoId === x.id ? 'active' : ''}" data-find-azit-sido="${x.id}"
+                      type="button" aria-pressed="${sidoId === x.id}">${escapeHtml(x.short)}</button>`)).join('');
+        }
+        /* 2) 권역 — 시·군·구. 고르면 아래 목록이 그 권역으로 좁혀진다. */
+        if (el.findHangoutSigungu) {
+          const rows = sidoId ? store.getRegionSigungu(sidoId) : [];
+          el.findHangoutSigungu.innerHTML = sidoId
+            ? [`<button class="region-gu ${!sigunguId ? 'active' : ''}" data-find-azit-sigungu="all"
+                  type="button" aria-pressed="${!sigunguId}">${escapeHtml((sidoRow && sidoRow.short) || '권역')} 전체</button>`]
+              .concat(rows.map((g) => `
+                <button class="region-gu ${sigunguId === g.sigunguId ? 'active' : ''}" data-find-azit-sigungu="${g.sigunguId}"
+                        type="button" aria-pressed="${sigunguId === g.sigunguId}">${escapeHtml(g.name)}</button>`)).join('')
+            : '<p class="azit-empty">권역(시·도)을 먼저 골라 주세요.</p>';
+        }
 
-      const sel = s2.hangoutId !== 'all' ? store.findAzit(s2.hangoutId) : null;
-      if (el.findHangoutCurrent) {
-        el.findHangoutCurrent.textContent = sel ? sel.name
-          : (area ? `${area.name} 아지트` : (sidoRow ? `${sidoRow.short} 아지트` : '전체 아지트'));
+        const sel = s2.hangoutId !== 'all' ? store.findAzit(s2.hangoutId) : null;
+        if (el.findHangoutCurrent) {
+          el.findHangoutCurrent.textContent = sel ? sel.name
+            : (area ? `${area.name} 아지트` : (sidoRow ? `${sidoRow.short} 아지트` : '전체 아지트'));
+        }
       }
 
       if (el.findHangoutList) {
+        const limit = s2.hangoutLimit || FIND_AZIT_PAGE;
+        const oldTop = el.findHangoutList.scrollTop;
+        const oldH = el.findHangoutList.scrollHeight;
         let rows = store.getHangouts({
           query,
           sidoId: query ? 'all' : (sidoId || 'all'),
           sigunguId: query ? 'all' : (sigunguId || 'all'),
-          limit: 80
+          limit: limit + 1
         });
-        if (!rows.length && !query) rows = store.getHangouts({ limit: 80 });
+        if (!rows.length && !query) rows = store.getHangouts({ limit: limit + 1 });
+        const more = rows.length > limit;
+        rows = rows.slice(0, limit);
         const whole = !sidoId && !sigunguId;
         const head = `<button class="azit-row ${s2.hangoutId === 'all' && !query ? 'active' : ''}" data-find-hangout-pick="all" type="button">
             <span class="azit-row-ic" aria-hidden="true">${ic('map')}</span>
@@ -4640,6 +4660,13 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="azit-row-meta">${whole ? '모든 아지트에서 찾기' : '아지트를 고르지 않고 권역으로만 거르기'}</span></span>
             <span class="azit-row-check" aria-hidden="true">${s2.hangoutId === 'all' && !query ? ic('check') : ''}</span>
           </button>`;
+        const moreRow = more
+          ? `<button class="azit-row azit-more" data-find-hangout-more="1" type="button">
+               <span class="azit-row-ic" aria-hidden="true">${ic('chevronDown')}</span>
+               <span class="azit-row-text"><span class="azit-row-name">더 보기</span>
+                 <span class="azit-row-meta">${limit}곳까지 봤어요 · 이름으로 찾으면 더 빨라요</span></span>
+             </button>`
+          : '';
         el.findHangoutList.innerHTML = head + rows.map((h) => `
           <button class="azit-row ${s2.hangoutId === h.id ? 'active' : ''}" data-find-hangout-pick="${h.id}"
                   type="button" aria-pressed="${s2.hangoutId === h.id}">
@@ -4650,7 +4677,21 @@ document.addEventListener('DOMContentLoaded', () => {
             </span>
             ${h.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
             <span class="azit-row-check" aria-hidden="true">${s2.hangoutId === h.id ? ic('check') : ''}</span>
-          </button>`).join('');
+          </button>`).join('') + moreRow;
+        /* 더 보기 — **새로 붙은 첫 줄을 목록 맨 위로** 올린다(이어서 읽는 자리).
+           검색은 늘 맨 위부터, 그 밖의 다시 그리기는 보던 자리를 지킨다. */
+        if (typeof options.startAt === 'number') {
+          const first = el.findHangoutList.children[options.startAt + 1];
+          if (first) {
+            const fr = first.getBoundingClientRect();
+            const lr = el.findHangoutList.getBoundingClientRect();
+            el.findHangoutList.scrollTop += Math.round(fr.top - lr.top) - 4;
+          }
+        } else if (listOnly && !options.resetScroll) {
+          el.findHangoutList.scrollTop = oldTop;
+        } else if (!listOnly) {
+          el.findHangoutList.scrollTop = 0;
+        }
       }
     }
     if (el.findHangoutBtn) el.findHangoutBtn.addEventListener('click', openFindHangoutSheet);
@@ -4663,6 +4704,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const s2 = findState();
         s2.azitSidoDraft = chip.dataset.findAzitSido || 'all';
         s2.azitSigunguDraft = 'all';
+        s2.hangoutLimit = FIND_AZIT_PAGE;
         renderFindHangoutSheet();
       });
     }
@@ -4670,25 +4712,47 @@ document.addEventListener('DOMContentLoaded', () => {
       el.findHangoutSigungu.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-find-azit-sigungu]');
         if (!btn) return;
-        findState().azitSigunguDraft = btn.dataset.findAzitSigungu || 'all';
+        const s2 = findState();
+        s2.azitSigunguDraft = btn.dataset.findAzitSigungu || 'all';
+        s2.hangoutLimit = FIND_AZIT_PAGE;
         renderFindHangoutSheet();
       });
     }
     if (el.findHangoutSearch) {
+      /* v39.0 — 한 글자마다 목록 전체를 다시 그리면 968곳을 훑느라 손이 멈춘다.
+         120ms 로 묶고, 다시 그리는 것은 **목록 하나**뿐이다(칩·제목·스크롤·커서 그대로). */
       el.findHangoutSearch.addEventListener('input', () => {
-        findState().hangoutQuery = el.findHangoutSearch.value.trim();
-        renderFindHangoutSheet();
+        const raw = el.findHangoutSearch.value.trim();
+        clearTimeout(ui.findHangoutTimer);
+        ui.findHangoutTimer = setTimeout(() => {
+          const s2 = findState();
+          if (s2.hangoutQuery === raw) return;
+          s2.hangoutQuery = raw;
+          s2.hangoutLimit = FIND_AZIT_PAGE;
+          renderFindHangoutSheet({ listOnly: true, resetScroll: true });
+        }, 120);
       });
     }
     if (el.findHangoutClear) {
       el.findHangoutClear.addEventListener('click', () => {
-        findState().hangoutQuery = '';
+        const s2 = findState();
+        s2.hangoutQuery = '';
+        s2.hangoutLimit = FIND_AZIT_PAGE;
+        clearTimeout(ui.findHangoutTimer);
         if (el.findHangoutSearch) { el.findHangoutSearch.value = ''; el.findHangoutSearch.focus(); }
-        renderFindHangoutSheet();
+        renderFindHangoutSheet({ listOnly: true, resetScroll: true });
       });
     }
     if (el.findHangoutList) {
       el.findHangoutList.addEventListener('click', (e) => {
+        /* v39.0 — '더 보기': 보던 자리를 지키며 40곳씩 더 */
+        if (e.target.closest('[data-find-hangout-more]')) {
+          const s2 = findState();
+          const from = s2.hangoutLimit || FIND_AZIT_PAGE;
+          s2.hangoutLimit = from + FIND_AZIT_PAGE;
+          renderFindHangoutSheet({ listOnly: true, startAt: from });
+          return;
+        }
         const btn = e.target.closest('[data-find-hangout-pick]');
         if (!btn) return;
         const s2 = findState();
@@ -7957,7 +8021,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.9';
+  const APP_VERSION = 'v39.0';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -9376,8 +9440,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       if (target.closest('[data-ob-azit-more]')) {
-        ui.obAzitLimit = (ui.obAzitLimit || OB_AZIT_PAGE) + OB_AZIT_PAGE;
-        obAzitRepaint();
+        const from = ui.obAzitLimit || OB_AZIT_PAGE;
+        ui.obAzitLimit = from + OB_AZIT_PAGE;
+        obAzitRepaint({ startAt: from });
         const list = obField('ob-azit-list');
         const more = list && list.querySelector('[data-ob-azit-more]');
         if (more) { try { more.focus({ preventScroll: true }); } catch (e) { /* noop */ } }
@@ -9389,8 +9454,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const s = obField('ob-azit-search');
         if (s) { s.value = ''; try { s.focus({ preventScroll: true }); } catch (e) { /* noop */ } }
         target.classList.add('hide');
-        const list = obField('ob-azit-list');
-        if (list) list.innerHTML = obAzitRowsHTML('');
+        ui.obAzitLimit = OB_AZIT_PAGE;
+        obAzitRepaint({ toTop: true });
         return;
       }
       const swatch = target.closest('[data-ob-gradient]');
@@ -9437,12 +9502,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     el.onboardingBody.addEventListener('input', (e) => {
       const node = e.target;
-      /* v37.3 — 아지트 검색어를 칠 때마다 결과 목록을 바로 좁힌다. */
+      /* v37.3 — 아지트 검색어를 칠 때마다 결과 목록을 바로 좁힌다.
+         v39.0 — 120ms 로 묶어 한 글자마다 968곳을 다시 그리지 않는다(목록만 갱신). */
       if (node.id === 'ob-azit-search') {
         ui.obAzitLimit = OB_AZIT_PAGE;
-        obAzitRepaint();
+        clearTimeout(ui.obAzitTimer);
+        const raw = String(node.value || '');
+        ui.obAzitTimer = setTimeout(() => {
+          ui.obAzitLimit = OB_AZIT_PAGE;
+          obAzitRepaint({ toTop: true });
+        }, 120);
         const clear = obField('ob-azit-clear');
-        if (clear) clear.classList.toggle('hide', !String(node.value || '').trim());
+        if (clear) clear.classList.toggle('hide', !raw.trim());
         return;
       }
       if (node.id === 'ob-code') {
@@ -13942,10 +14013,76 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   [el.profileUpcomingList, el.profilePastList].forEach((list) => {
     list && list.addEventListener('click', (e) => {
+      /* v39.0 (36일차) — 일정 줄에서 바로 참석 표시 바꾸기 */
+      const toggle = e.target.closest('[data-profile-rsvp-toggle]');
+      if (toggle) {
+        const id = toggle.dataset.profileRsvpToggle || '';
+        const item = toggle.closest('.profile-event-item');
+        const menu = (item && item.querySelector('[data-profile-rsvp-menu]'))
+          || (list.querySelector(`[data-profile-rsvp-menu="${id}"]`));
+        const open = !!(menu && menu.hidden);
+        /* 한 번에 하나만 었다. */
+        list.querySelectorAll('.profile-event-rsvp-menu').forEach((m) => { m.hidden = true; });
+        list.querySelectorAll('[data-profile-rsvp-toggle]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+        if (menu && open) {
+          menu.hidden = false;
+          toggle.setAttribute('aria-expanded', 'true');
+          const first = menu.querySelector('.rsvp-btn');
+          if (first) first.focus({ preventScroll: true });
+        }
+        return;
+      }
+      const set = e.target.closest('[data-profile-rsvp-set]');
+      if (set) {
+        profileRsvp(set.dataset.profileRsvpEvent, set.dataset.profileRsvpSet);
+        return;
+      }
       const row = e.target.closest('[data-profile-event]');
       if (row) openEventDetail(row.dataset.profileEvent);
     });
   });
+
+  /**
+   * v39.0 — 모임 안 내정보의 일정 줄에서 참석 표시를 바꾼다.
+   *  · 모임 멤버만(`store.can(gid, 'view_feed')`) · 지난 일정은 바꿀 수 없다.
+   *  · 화면은 `rsvpWithBoundary`가 먼저 바꾸고 경계(`event.rsvp`)가 실패하면 되돌린다.
+   *  · '불참'으로 바꾸면 이 목록('곧 있을 모임' = 내가 참석하는 일정)에서 빠지므로 되돌리기를 함께 띄운다.
+   */
+  function profileRsvp(eventId, status) {
+    const grp = isGroupMode() ? homeGroup() : null;
+    if (!grp || !eventId) return;
+    if (!store.can(grp.id, 'view_feed')) {
+      showToast('모임 멤버만 참석 표시를 바꿀 수 있어요', 'warning');
+      return;
+    }
+    const labels = { yes: '참석', maybe: '대기', no: '불참' };
+    const res = rsvpWithBoundary(eventId, status);
+    if (!res.ok) {
+      showToast(res.reason === 'past' ? '지난 일정은 참석을 바꿀 수 없어요' : '참석 표시를 바꾸지 못했어요', 'warning');
+      return;
+    }
+    renderProfileGroupEvents();
+    renderProfileStats();
+    if (typeof renderHomeEvents === 'function') renderHomeEvents(homeGroup());
+    if (typeof renderHomeHero === 'function') renderHomeHero(homeGroup());
+    updateBadges();
+    if (res.autoWait) {
+      showToast(`정원이 찾아요 · 대기 ${res.summary.myWaitOrder || res.summary.maybe}순위로 들어갔어요`, 'info');
+    } else if (status === 'no') {
+      showToast('참석을 취소했어요 · 곧 있을 모임에서 빠졌어요', 'info', {
+        label: '되돌리기',
+        onClick: () => {
+          rsvpWithBoundary(eventId, 'yes');
+          renderProfileGroupEvents();
+          renderProfileStats();
+          updateBadges();
+          showToast('참석으로 되돌렸어요');
+        }
+      });
+    } else {
+      showToast(`'${labels[status] || status}'으로 표시했어요 · 참석 ${res.summary.yes}명`);
+    }
+  }
 
   /* Sprint 15 — 내정보 '내 피드' 타일 → 그 글 상세 */
   el.profileFeedGrid && el.profileFeedGrid.addEventListener('click', (e) => {
@@ -14395,10 +14532,25 @@ document.addEventListener('DOMContentLoaded', () => {
       : '');
   }
 
-  /** 목록만 다시 그린다(검색창·권역 칩은 그대로). */
-  function obAzitRepaint() {
+  /** 목록만 다시 그린다(검색창·권역 칩은 그대로).
+   *  v39.0 — 다시 그려도 **스크롤이 튀지 않게** 보던 자리를 돌려준다.
+   *  '더 보기'는 늘어난 높이만큼만 내려가(읽던 줄이 그대로 보인다). */
+  function obAzitRepaint(options = {}) {
     const list = obField('ob-azit-list');
-    if (list) list.innerHTML = obAzitRowsHTML(obField('ob-azit-search') ? obField('ob-azit-search').value : '');
+    if (!list) return;
+    const oldTop = list.scrollTop;
+    list.innerHTML = obAzitRowsHTML(obField('ob-azit-search') ? obField('ob-azit-search').value : '');
+    if (typeof options.startAt === 'number') {
+      /* '더 보기' — 새로 붙은 첫 줄을 목록 맨 위로(이어서 읽는다). */
+      const first = list.children[options.startAt + 1];
+      if (first) {
+        const fr = first.getBoundingClientRect();
+        const lr = list.getBoundingClientRect();
+        list.scrollTop += Math.round(fr.top - lr.top) - 4;
+        return;
+      }
+    }
+    list.scrollTop = options.toTop ? 0 : oldTop;
   }
 
   /** 검색 패널을 열고 닫는다(열 때는 검색창에 바로 커서). */
@@ -15290,7 +15442,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const PCF_MAX_ZOOM = 4;
   const PCF_MIN_DIA = 140;
   const PCF_GRIP = 18;          /* 원 테두리를 잡았다고 보는 폭(px) */
-  const PCF_EMPTY = '#0D1117';  /* 축소해 원 밖이 빈 자리 — 크롭 결과에서도 이 색으로 채운다 */
+  const PCF_EMPTY = '#0D1117';  /* 축소해 원 밖이 빈 자리 — 테마를 읽지 못했을 때의 바탕(다크) */
+  /**
+   * v39.0 (36일차) — 원 밖 빈 자리 색을 **지금 테마**에서 읽는다.
+   *  · 판과 결과 JPEG 이 같은 색이어야 "본 그대로" 저장된다(라이트 = 옅은 회색 · 다크 = #0D1117).
+   *  · --pcf-void 가 없으면(옛 브라우저) 어두운 바탕으로 돌아간다.
+   */
+  function pcfVoidColor() {
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--pcf-void').trim();
+      if (v) return v;
+    } catch (e) { /* noop */ }
+    return PCF_EMPTY;
+  }
   const PCF_DEFAULT_OUT = 720;
   ui.circleCrop = ui.circleCrop || {
     open: false, src: '', natW: 0, natH: 0, zoom: 1, panX: 0, panY: 0, dia: 0,
@@ -15435,7 +15599,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 원 안을 정사각으로 잘라 JPEG data URL 로 — 위치 정보(EXIF)는 따라오지 않는다.
    *  v38.8 — 사진을 원 창 좌표계로 옮겨 그리므로, 축소해 원 밖이 빈 자리는
-   *  늘어나거나 잘리지 않고 어두운 바탕(PCF_EMPTY)으로 남는다. */
+   *  늘어나거나 잘리지 않고 바탕색(pcfVoidColor — 지금 테마)으로 남는다. */
   function pcfCropDataUrl() {
     const s = pcfState();
     const img = el.pcfImg;
@@ -15448,7 +15612,7 @@ document.addEventListener('DOMContentLoaded', () => {
     canvas.width = out;
     canvas.height = out;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = PCF_EMPTY;
+    ctx.fillStyle = pcfVoidColor();
     ctx.fillRect(0, 0, out, out);
     ctx.imageSmoothingEnabled = true;
     if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
@@ -18105,35 +18269,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 곧 있을 모임 · 다녀온 모임 — 이 모임 안에서 내가 참석하는/참석했던 일정 한 줄씩. */
+  /** 곧 있을 모임 · 다녀온 모임 — 이 모임 안에서 내가 참석하는/참석했던 일정 한 줄씩.
+   *  v39.0 (36일차) — **일정 줄에서 바로 참석 표시를 바꾼다**. 줄 오른쪽 알약에 지금 내 상태가
+   *  보이고, 누르면 그 자리에서 참석·대기·불참 세 칸이 열린다(지난 일정은 읽기만).
+   *  실제 변경은 `rsvpWithBoundary`(낙관 적용 + 실패 시 되돌림)를 그대로 쓴다. */
   function renderProfileGroupEvents() {
     const grp = isGroupMode() ? homeGroup() : null;
     const info = grp ? store.getMyGroupInfo(grp.id) : { upcoming: [], past: [] };
-    const row = (ev) => {
+    const rsvps = store.getGroupEventRsvpOptions();
+    const row = (ev, past) => {
       const d = new Date(ev.when);
       const days = ['일', '월', '화', '수', '목', '금', '토'];
       const when = Number.isNaN(d.getTime()) ? ''
         : `${d.getMonth() + 1}/${d.getDate()} (${days[d.getDay()]}) ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      return `<button class="profile-event-row" data-profile-event="${escapeHtml(ev.id)}" type="button"
-              aria-label="${escapeHtml(ev.title || '모임 일정')} 상세 열기">
-        <span class="profile-event-when">${escapeHtml(when)}</span>
-        <span class="profile-event-body">
-          <span class="profile-event-title">${escapeHtml(ev.title || '모임 일정')}</span>
-          <span class="profile-event-meta">${escapeHtml(ev.kindMeta ? ev.kindMeta.label : '모임 일정')}${ev.goingCount != null ? ` · 참석 ${ev.goingCount}명` : ''}</span>
-        </span>
-        <span class="profile-event-chev" aria-hidden="true">${ic('chevronRight')}</span>
-      </button>`;
+      const my = ev.myRsvp || null;
+      const found = rsvps.find((r) => r.id === my);
+      const label = found ? found.label : '미정';
+      /* 게스트로 들어온 일정은 내가 참석 표시를 바꿀 수 없다 — 상태만 보여 준다. */
+      const canChange = !past && store.isGroupJoined(ev.groupId) && store.can(ev.groupId, 'view_feed');
+      const guest = !store.isGroupJoined(ev.groupId);
+      const pill = canChange
+        ? `<button class="profile-event-rsvp-pill rs-${escapeHtml(my || 'none')}" data-profile-rsvp-toggle="${escapeHtml(ev.id)}"
+                   type="button" aria-expanded="false"
+                   aria-label="내 참석 상태 ${escapeHtml(label)} · 눌러서 바꾸기">${escapeHtml(label)}</button>`
+        : `<span class="profile-event-rsvp-pill is-static rs-${escapeHtml(my || 'none')}">${escapeHtml(guest ? '게스트' : label)}</span>`;
+      const menu = canChange
+        ? `<div class="profile-event-rsvp-menu" data-profile-rsvp-menu="${escapeHtml(ev.id)}" hidden>
+            ${rsvps.map((r) => `<button class="rsvp-btn rs-${r.id} ${my === r.id ? 'active' : ''}"
+                data-profile-rsvp-set="${r.id}" data-profile-rsvp-event="${escapeHtml(ev.id)}" type="button"
+                aria-pressed="${my === r.id}">${escapeHtml(r.label)}</button>`).join('')}
+          </div>`
+        : '';
+      return `<div class="profile-event-item${past ? ' is-past' : ''}">
+        <div class="profile-event-row" data-profile-event-row="${escapeHtml(ev.id)}">
+          <button class="profile-event-open" data-profile-event="${escapeHtml(ev.id)}" type="button"
+                  aria-label="${escapeHtml(ev.title || '모임 일정')} 상세 열기">
+            <span class="profile-event-when">${escapeHtml(when)}</span>
+            <span class="profile-event-body">
+              <span class="profile-event-title">${escapeHtml(ev.title || '모임 일정')}</span>
+              <span class="profile-event-meta">${escapeHtml(ev.kindMeta ? ev.kindMeta.label : '모임 일정')}${ev.goingCount != null ? ` · 참석 ${ev.goingCount}명` : ''}</span>
+            </span>
+            <span class="profile-event-chev" aria-hidden="true">${ic('chevronRight')}</span>
+          </button>
+          ${pill}
+        </div>
+        ${menu}
+      </div>`;
     };
     if (el.profileUpcomingCount) el.profileUpcomingCount.textContent = String(info.upcoming.length);
     if (el.profilePastCount) el.profilePastCount.textContent = String(info.past.length);
     if (el.profileUpcomingList) {
       el.profileUpcomingList.innerHTML = info.upcoming.length
-        ? info.upcoming.slice(0, 5).map(row).join('')
+        ? info.upcoming.slice(0, 5).map((ev) => row(ev, false)).join('')
         : '<p class="profile-block-empty">곧 있을 모임이 없어요 · 게시판에서 일정을 확인해 보세요.</p>';
     }
     if (el.profilePastList) {
       el.profilePastList.innerHTML = info.past.length
-        ? info.past.slice(0, 5).map(row).join('')
+        ? info.past.slice(0, 5).map((ev) => row(ev, true)).join('')
         : '<p class="profile-block-empty">아직 다녀온 모임이 없어요.</p>';
     }
   }
@@ -21104,6 +21296,12 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     resetCreateDraft: () => { resetCreateWizard(); return readCreateDraft(); },
     reloadCreateDraft: () => readCreateDraft(),
+    /* v39.0 (36일차) — 풀스크린 원형 크롭 판(테스트·미리보기용 바늘구멍). */
+    openCircleCrop: (opts) => openCircleCrop(opts),
+    getPcfState: () => ({ ...(ui.circleCrop || {}) }),
+    pcfSetZoom: (z) => setPcfZoom(z),
+    pcfConfirm: () => applyPhotoCrop(),
+    pcfCancel: () => { if (ui.circleCrop && ui.circleCrop.open) closeCircleCrop(null); },
     /* H1 — 모임 찾기(옛 홈 '모임 둘러보기'). 테스트·미리보기가 한 번에 펼치던 이름을 그대로 둔다. */
     renderFindScreen, openFindScreen, focusHomeBrowse,
     getFindState: () => ({ ...findState() }),

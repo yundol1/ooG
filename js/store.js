@@ -7548,6 +7548,13 @@ class Store {
     const metroSido = metro ? metro.sidoIds : null;
     const my = this.getMyArea();
     const preferSido = o.preferSido && o.preferSido !== 'all' ? o.preferSido : null;
+    /* v39.0 (36일차) — 아지트마다 모임 수를 세려고 968곳 × 모임을 훑던 것을 한 번의 통과로.
+       검색어를 칠 때마다(그리고 목록을 그릴 때마다) 같은 계산을 되풀이하지 않는다. */
+    const groupCounts = new Map();
+    (this.state.groups || []).forEach((g) => {
+      const a = this.getGroupAzit(g);
+      if (a) groupCounts.set(a.id, (groupCounts.get(a.id) || 0) + 1);
+    });
     return AZIT_SPOTS
       .filter((s) => {
         if (s.legacy && o.includeLegacy !== true) return false;
@@ -7562,10 +7569,7 @@ class Store {
       .map((s) => ({
         ...azitView(s),
         isMyArea: !!(my && s.sigunguId === my.sigunguId),
-        groupCount: (this.state.groups || []).filter((g) => {
-          const a = this.getGroupAzit(g);
-          return !!a && a.id === s.id;
-        }).length
+        groupCount: groupCounts.get(s.id) || 0
       }))
       .sort((a, b) => ((b.isMyArea ? 1 : 0) - (a.isMyArea ? 1 : 0))
         /* v38.9 — 전국 목록의 첫 화면은 **내 시·도**(모르면 서울)부터 보여 준다.
@@ -11078,6 +11082,8 @@ class Store {
       photoVisible: raw.photoVisible === true,
       /* v38.1 (#6건) — 이 모임에서만 쓰는 프로필 사진(바깥 공개 앨범과 별개). */
       photoUrl: String(raw.photoUrl || ''),
+      /* v39.0 — 그 사진의 Storage 경로(교체·삭제 시 옛 파일을 지우는 데 쓴다). */
+      photoPath: raw.photoPath || null,
       /* v38.1 — 그 모임에 처음 들어올 때 '모임 전용 프로필' 안내를 한 번 띄웠는지. */
       profileAsked: raw.profileAsked === true,
       hiddenInList: raw.hiddenInList === true,
@@ -11100,6 +11106,9 @@ class Store {
       bio: d.bio === undefined ? cur.bio : String(d.bio || '').trim().slice(0, 60),
       photoVisible: d.photoVisible === undefined ? cur.photoVisible : !!d.photoVisible,
       photoUrl: d.photoUrl === undefined ? cur.photoUrl : String(d.photoUrl || ''),
+      /* v39.0 — 사진의 서버 경로(Storage). 사진을 바꾸거나 지울 때 옛 파일을 지우는 열쇠라
+         다른 설정을 바꿀 때도 잃지 않는다. */
+      photoPath: d.photoPath === undefined ? (cur.photoPath || null) : (d.photoPath || null),
       profileAsked: d.profileAsked === undefined ? cur.profileAsked : !!d.profileAsked,
       hiddenInList: d.hiddenInList === undefined ? cur.hiddenInList : !!d.hiddenInList,
       pinned: d.pinned === undefined ? cur.pinned : !!d.pinned,
