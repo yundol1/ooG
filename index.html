@@ -131,6 +131,12 @@
         <h1 class="group-header-name" id="group-space-name">모임</h1>
         <p class="group-header-meta" id="group-space-meta"></p>
       </div>
+      <!-- v38.1 — 모임 안 내정보로 바로 가는 **내 원형**. 모임 헤더 오른쪽에 늘 보인다.
+           (멤버 시트 › 내 줄 › 내정보 보기 도 그대로 남겨 둔다.) -->
+      <button class="group-header-me" id="btn-group-me" type="button"
+              aria-label="모임 안 내정보 열기">
+        <span class="group-header-me-face" id="group-header-me-face">나</span>
+      </button>
       <!-- v36.0 — 오른쪽 ⋯ 하나가 '모임 설정' 한 화면(#group-settings-screen)을 연다.
            예전 삼선바 드로어는 없앴다(중복 진입점 정리). -->
       <button class="group-header-act" id="btn-group-settings" type="button"
@@ -2004,7 +2010,15 @@
       <div class="album-viewer-stage">
         <div class="album-viewer-head">
           <span class="album-viewer-count" id="album-viewer-count">1 / 1</span>
-          <button class="album-viewer-close" id="btn-album-viewer-close" type="button" aria-label="닫기">&times;</button>
+          <!-- v38.1 — 사진 위에 바로 붙어 있던 ×·지우기 버튼을 걷어내고,
+               크게 본 화면의 점 3개(⋯) 하나에서 '사진 바꾸기 / 사진 삭제'를 고른다. -->
+          <div class="album-viewer-head-right">
+            <button class="album-viewer-more" id="btn-album-viewer-more" type="button"
+                    aria-label="사진 메뉴 열기" aria-haspopup="menu" aria-expanded="false" aria-controls="album-viewer-menu">
+              <span aria-hidden="true">⋯</span>
+            </button>
+            <button class="album-viewer-close" id="btn-album-viewer-close" type="button" aria-label="닫기">&times;</button>
+          </div>
         </div>
         <div class="album-viewer-frame">
           <img class="album-viewer-img" id="album-viewer-img" alt="">
@@ -2016,13 +2030,18 @@
         <p class="album-viewer-hint" id="album-viewer-hint">좌우로 넘기거나 화살표로 넘겨 보세요</p>
         <!-- Sprint 31 — 넘기기·대표 지정·순서 이동을 보조기기에 알리는 영역 -->
         <p class="sr-only" id="album-viewer-live" role="status" aria-live="polite" aria-atomic="true"></p>
-        <div class="album-viewer-foot">
-          <button class="album-viewer-act" id="btn-album-viewer-replace" type="button">사진 바꾸기</button>
-          <button class="album-viewer-act is-danger" id="btn-album-viewer-delete" type="button">지우기</button>
-        </div>
+        <!-- v38.1 — 아래 '사진 바꾸기 / 지우기' 두 버튼은 위 ⋯ 메뉴로 옮겼다(사진을 가리지 않게). -->
       </div>
       <!-- Sprint 26.5 — 사진을 길게 누르면(또는 우클릭) 그 자리에서 열리는 메뉴 -->
       <div class="album-viewer-menu" id="album-viewer-menu" role="menu" aria-label="사진 메뉴" tabindex="-1" hidden>
+        <!-- v38.1 — 사진에 하는 일 두 가지를 맨 위에 둔다(바로 지워지지 않게 ⋯ 안에서 고른다). -->
+        <button class="avm-item" data-viewer-menu="replace" role="menuitem" type="button">
+          <span class="avm-icon" data-oog-icon="image" aria-hidden="true"></span>사진 바꾸기
+        </button>
+        <button class="avm-item is-danger" data-viewer-menu="delete" role="menuitem" type="button">
+          <span class="avm-icon" data-oog-icon="trash" aria-hidden="true"></span>사진 삭제
+        </button>
+        <div class="avm-sep" role="separator" aria-hidden="true"></div>
         <button class="avm-item" data-viewer-menu="cover" role="menuitem" type="button">
           <span class="avm-icon" data-oog-icon="star" aria-hidden="true"></span>대표 사진으로
         </button>
@@ -2032,12 +2051,64 @@
         <button class="avm-item" data-viewer-menu="next" role="menuitem" type="button">
           <span class="avm-icon" data-oog-icon="chevronDown" aria-hidden="true"></span>뒤로 이동
         </button>
-        <button class="avm-item" data-viewer-menu="replace" role="menuitem" type="button">
-          <span class="avm-icon" data-oog-icon="image" aria-hidden="true"></span>사진 바꾸기
-        </button>
-        <button class="avm-item is-danger" data-viewer-menu="delete" role="menuitem" type="button">
-          <span class="avm-icon" data-oog-icon="trash" aria-hidden="true"></span>사진 지우기
-        </button>
+      </div>
+    </div>
+
+    <!-- ==================== v38.1 (#2) — 모임 전용 프로필 (비포·애프터) ====================
+         모임에 **처음 들어온 순간** 한 번 묻는다:
+           "이 모임에서만 사용하는 프로필을 새로 만들까요?"
+         왼쪽 = 지금 내 프로필(바깥 사진·닉네임) · 가운데 >>> · 오른쪽 = 이 모임에서만 쓸 사진(?)·이름.
+         오른쪽 '?' 원형을 누르면 사진을 고른다. -->
+    <div class="modal-overlay" id="group-profile-modal" role="dialog" aria-modal="true"
+         aria-labelledby="gp-title" data-backdrop-close="on">
+      <div class="modal-sheet gp-sheet" tabindex="-1">
+        <div class="sheet-grabber"></div>
+        <div class="gp-head">
+          <span class="gp-badge" aria-hidden="true" data-oog-icon="person"></span>
+          <h2 class="sheet-title" id="gp-title">모임 전용 프로필</h2>
+          <p class="gp-sub" id="gp-sub">이 모임에서만 사용하는 프로필을 새로 만들까요?</p>
+        </div>
+
+        <div class="gp-compare" id="gp-compare">
+          <div class="gp-side gp-before">
+            <span class="gp-side-tag">지금</span>
+            <span class="gp-face" id="gp-before-face">나</span>
+            <span class="gp-name" id="gp-before-name">내 닉네임</span>
+            <span class="gp-side-note">바깥 프로필 그대로</span>
+          </div>
+          <div class="gp-arrow" aria-hidden="true">
+            <span class="gp-arrow-mark">&gt;&gt;&gt;</span>
+            <span class="gp-arrow-label">이 모임에서만</span>
+          </div>
+          <div class="gp-side gp-after">
+            <span class="gp-side-tag">새 프로필</span>
+            <button class="gp-face gp-face-pick" id="gp-pick-photo" type="button"
+                    aria-label="이 모임에서 쓸 프로필 사진 고르기">
+              <span class="gp-face-q" id="gp-face-q" aria-hidden="true">?</span>
+              <img class="gp-face-img" id="gp-face-img" alt="" hidden>
+              <span class="gp-face-edit" aria-hidden="true" data-oog-icon="camera"></span>
+            </button>
+            <span class="gp-name" id="gp-after-name">사진을 골라 주세요</span>
+            <span class="gp-side-note">이 모임에서만 보여요</span>
+          </div>
+        </div>
+        <input type="file" id="gp-photo-input" accept="image/*" hidden>
+
+        <div class="gp-fields">
+          <label class="gp-field">
+            <span class="gs-field-label">이 모임에서 쓸 이름 <span class="gp-optional">(비우면 그대로)</span></span>
+            <input class="gs-input" id="gp-nickname" type="text" maxlength="12" autocomplete="off"
+                   placeholder="예: 러너" aria-describedby="gp-nick-hint">
+            <span class="gp-hint" id="gp-nick-hint">같은 이름을 쓰려면 비워 두세요.</span>
+          </label>
+          <p class="gp-warn" id="gp-warn" hidden></p>
+        </div>
+
+        <div class="gp-actions">
+          <button class="btn-secondary" id="gp-skip" type="button">기본 프로필 그대로</button>
+          <button class="btn-primary" id="gp-save" type="button">이 프로필 저장</button>
+        </div>
+        <p class="gp-foot-note">이 사진·이름은 이 모임 안(피드·멤버·채팅·내정보)에서만 쓰이고, 바깥 내 프로필 사진과 별개예요.</p>
       </div>
     </div>
 

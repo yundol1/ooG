@@ -408,8 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     albumViewerMenu: $('#album-viewer-menu'),
     albumViewerPrev: $('#btn-album-viewer-prev'),
     albumViewerNext: $('#btn-album-viewer-next'),
-    albumViewerReplace: $('#btn-album-viewer-replace'),
-    albumViewerDelete: $('#btn-album-viewer-delete'),
+    albumViewerMore: $('#btn-album-viewer-more'),
     albumViewerClose: $('#btn-album-viewer-close'),
     albumViewerLive: $('#album-viewer-live'),
     headerHomeBtn: $('#btn-header-home'),
@@ -495,6 +494,8 @@ document.addEventListener('DOMContentLoaded', () => {
     groupNav: $('#group-nav'),
     groupHeader: $('#group-header'),
     groupNavAvatar: $('#group-nav-avatar'),
+    groupMe: $('#btn-group-me'),
+    groupMeFace: $('#group-header-me-face'),
     groupInfoBody: $('#group-info-body'),
     boardSeg: $('#board-seg'),
     boardWriteNote: $('#board-write-note'),
@@ -837,19 +838,23 @@ document.addEventListener('DOMContentLoaded', () => {
     return `<img class="avatar-img" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(alt || '')}" loading="lazy" decoding="async">`;
   }
 
-  /** 헤더·내정보 아바타를 내 사진/이니셜로 맞춘다. */
+  /** 헤더·내정보 아바타를 내 사진/이니셜로 맞춘다.
+   *  v38.1 — 모임 안에서는 그 모임에서만 쓰는 사진·이니셜로 칠한다. */
   function paintMyAvatars() {
     const u = store.currentUser || {};
-    const text = myAvatarText();
+    const grp = isGroupMode() ? homeGroup() : null;
+    const ident = grp ? store.groupIdentity(grp.id) : null;
+    const photo = ident ? ident.photoUrl : u.photoUrl;
+    const text = ident ? ident.avatarText : myAvatarText();
     /* H1 — 헤더에는 로고·검색·알림만 둔다(프로필 아바타는 하단 '내 프로필' 탭이 맡는다). */
     if (el.profileAvatarLetter) {
-      el.profileAvatarLetter.hidden = !!u.photoUrl;
-      el.profileAvatarLetter.textContent = u.photoUrl ? '' : text;
+      el.profileAvatarLetter.hidden = !!photo;
+      el.profileAvatarLetter.textContent = photo ? '' : text;
     }
     if (el.profileAvatarImg) {
-      if (u.photoUrl) {
-        el.profileAvatarImg.src = u.photoUrl;
-        el.profileAvatarImg.alt = u.nickname || '내 사진';
+      if (photo) {
+        el.profileAvatarImg.src = photo;
+        el.profileAvatarImg.alt = ident ? ident.name : (u.nickname || '내 사진');
         el.profileAvatarImg.hidden = false;
       } else {
         el.profileAvatarImg.removeAttribute('src');
@@ -2835,6 +2840,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.feedHashtag = null;
     showGroupSplash(store.getGroup(groupId));
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(6);
+    /* v38.1 (#2) — 이 모임에 처음 들어왔으면 '모임 전용 프로필'을 한 번 묻는다. */
+    maybeAskGroupProfile(groupId);
     return { ok: true, groupId };
   }
 
@@ -2977,6 +2984,34 @@ document.addEventListener('DOMContentLoaded', () => {
       el.groupSpaceMeta.textContent = `멤버 ${grp.memberCount}명 · 사진 ${photos}장`;
     }
     renderGroupNavAvatar(grp);
+    renderGroupHeaderMe(grp);
+  }
+
+  /**
+   * v38.1 (#1) — 모임 헤더 오른쪽의 내 원형.
+   *  · 이 모임에서 쓰는 내 프로필 사진(없으면 이니셜)로 칠한다.
+   *  · 누르면 모임 안 내정보(#tab-profile)가 바로 열린다 — 모임에 들어오자마자 보이는 자리.
+   */
+  function renderGroupHeaderMe(grp) {
+    const face = el.groupMeFace;
+    const btn = el.groupMe;
+    if (!btn || !face) return;
+    const gid = grp ? grp.id : null;
+    if (!gid) { btn.hidden = true; return; }
+    btn.hidden = false;
+    const ident = store.groupIdentity(gid);
+    btn.setAttribute('aria-label', `모임 안 내정보 열기 — ${ident.name}`);
+    btn.setAttribute('title', `${ident.name} · 내정보`);
+    if (ident.photoUrl) {
+      face.classList.add('has-photo');
+      face.innerHTML = `<img class="group-header-me-img" src="${escapeHtml(ident.photoUrl)}" alt="" decoding="async">`;
+      face.style.background = 'transparent';
+    } else {
+      face.classList.remove('has-photo');
+      face.innerHTML = '';
+      face.textContent = ident.avatarText;
+      face.style.background = ident.gradient || '';
+    }
   }
 
   /** 모임 하단 1번 탭 아이콘 자리 — 원형 대표 이미지(없으면 모임 이름 첫 글자 + 취미 색). */
@@ -3447,6 +3482,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const grp = it.group;
     const tone = it.tone || 'neutral';
     const author = personFor(p.authorId, p.authorName);
+    if (p.authorPhotoUrl) author.photoUrl = p.authorPhotoUrl;   // v38.1 — 모임 전용 사진
     const images = postImages(p);
     const media = igMediaInnerHTML(images, tone, it.hobbyIcon);
     const mediaClass = images.length === 0 ? ' is-plain' : (images.length > 1 ? ' has-carousel' : '');
@@ -6486,7 +6522,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const mine = msg.from === 'me';
       return `${divider}
         <div class="chat-msg group-chat-msg ${mine ? 'mine' : 'them'}">
-          ${mine ? '' : `<span class="chat-msg-avatar" style="background:${msg.authorGradient || 'linear-gradient(135deg,#10B981,#047857)'}">${escapeHtml(msg.authorAvatarText || msg.authorName.charAt(0))}</span>`}
+          ${mine ? '' : `<span class="chat-msg-avatar" style="background:${msg.authorGradient || 'linear-gradient(135deg,#10B981,#047857)'}">${msg.authorPhotoUrl
+            ? `<img class="chat-msg-avatar-img" src="${escapeHtml(msg.authorPhotoUrl)}" alt="" loading="lazy" decoding="async">`
+            : escapeHtml(msg.authorAvatarText || msg.authorName.charAt(0))}</span>`}
           <div class="chat-bubble-wrap">
             ${mine ? '' : `<span class="chat-sender">${escapeHtml(msg.authorName)}</span>`}
             <div class="chat-bubble">${escapeHtml(msg.text)}</div>
@@ -7055,9 +7093,22 @@ document.addEventListener('DOMContentLoaded', () => {
   function gsProfileView(grp) {
     const pid = grp.id;
     const m = store.getGroupMembership(pid);
+    const ident = store.groupIdentity(pid);
     return `
       <div class="gs-view">
         <div class="gs-form">
+          <div class="gs-group-profile">
+            <span class="gs-group-profile-face" style="${ident.photoUrl ? '' : `background:${ident.gradient || 'var(--green-soft)'}`}">${ident.photoUrl
+              ? `<img class="gs-group-profile-img" src="${escapeHtml(ident.photoUrl)}" alt="">`
+              : escapeHtml(ident.avatarText)}</span>
+            <div class="gs-group-profile-copy">
+              <strong>이 모임에서만 쓰는 프로필</strong>
+              <span>바깥 공개 앨범과 별개예요. 피드·멤버·채팅·내정보에 이 모습으로 보여요.</span>
+              <button class="btn-secondary gs-group-profile-btn" type="button" data-gp-open="${escapeHtml(pid)}">
+                ${ident.custom ? '다시 만들기' : '새로 만들기'}
+              </button>
+            </div>
+          </div>
           <label class="gs-field">
             <span class="gs-field-label">이 모임에서 쓸 이름</span>
             <input class="gs-input" id="gs-profile-nick" type="text" maxlength="12"
@@ -7548,6 +7599,12 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    /* v38.1 — 모임 전용 프로필(비포·애프터) 다시 열기 */
+    if (t.dataset.gpOpen) {
+      openGroupProfileSetup(t.dataset.gpOpen, { manual: true });
+      return;
+    }
+
     /* 프로필·정보 저장 */
     if (t.dataset.gsSave === 'profile') {
       const nick = ($('#gs-profile-nick') || {}).value || '';
@@ -7850,7 +7907,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.0';
+  const APP_VERSION = 'v38.1';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -8496,6 +8553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const grp = store.getGroup(post.groupId);
     const comments = post.comments || [];
     const author = personFor(post.authorId, post.authorName);
+    if (post.authorPhotoUrl) author.photoUrl = post.authorPhotoUrl;   // v38.1 — 모임 전용 사진
     const likeCount = Number(post.likes) || 0;
     const detailImages = postImages(post);
     /* v35.1 (#23087) — 좋아요 비공개: 남에게는 숫자·누른 사람을 감춘다(글쓴이에게만 보인다). */
@@ -8718,6 +8776,15 @@ document.addEventListener('DOMContentLoaded', () => {
       if (chatBtn) { openEventChat(chatBtn.dataset.guestChatOpen); return; }
     });
   }
+
+  /* v38.1 (#1) — 모임 헤더의 내 원형 → 모임 안 내정보(#tab-profile). 모임에 들어오면 바로 보인다. */
+  const groupMeBtnNode = $('#btn-group-me');
+  if (groupMeBtnNode) groupMeBtnNode.addEventListener('click', () => {
+    if (!isGroupMode()) { showToast('모임에 들어가면 내정보를 볼 수 있어요', 'info'); return; }
+    switchTab('tab-profile');
+    renderGroupMyInfo();
+    renderProfileGroupContext();
+  });
 
   /* v36.0 — 모임 헤더 ⋯ 하나가 모임 설정 한 화면을 연다. */
   const groupSettingsBtnNode = $('#btn-group-settings');
@@ -12165,6 +12232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `<img class="media-img" src="${escapeHtml(post.photoUrl)}" alt="게시물 사진" loading="lazy" decoding="async" width="400" height="400">`
       : '';
     const author = personFor(post.authorId, post.authorName);
+    if (post.authorPhotoUrl) author.photoUrl = post.authorPhotoUrl;   // v38.1 — 모임 전용 사진
     const likeCount = Number(post.likes) || 0;
     const commentCount = (post.comments || []).length;
 
@@ -13838,6 +13906,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const comments = post.comments || [];
 
     const author = personFor(post.authorId, post.authorName);
+    if (post.authorPhotoUrl) author.photoUrl = post.authorPhotoUrl;   // v38.1 — 모임 전용 사진
     const likeCount = Number(post.likes) || 0;
     const meId = (store.currentUser || {}).id;
     const isMineExplore = !!meId && post.authorId === meId;
@@ -14438,8 +14507,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderProfileHeader() {
     const u = store.currentUser || {};
     const grp = isGroupMode() ? homeGroup() : null;
+    /* v38.1 — 모임 안에서는 그 모임에서 쓰는 이름·소개·사진이 먼저다. */
+    const gprof = grp ? store.getGroupProfile(grp.id) : null;
+    const gident = grp ? store.groupIdentity(grp.id) : null;
     if (el.profileNickname) {
-      el.profileNickname.textContent = u.nickname || '내 닉네임';
+      el.profileNickname.textContent = gident ? gident.name : (u.nickname || '내 닉네임');
       /* 이 모임에서의 나 — 이름 옆에 그 모임 역할만 작게 붙인다. */
       const role = grp && u.id ? store.roleLabel(store.roleOf(grp.id, u.id)) : '';
       el.profileNickname.setAttribute('data-role', role || '');
@@ -14451,7 +14523,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.profileHandle.hidden = !handle;
     }
     if (el.profileBio) {
-      const bio = String(u.bio || '').trim();
+      const bio = String((gprof && gprof.bio) || u.bio || '').trim();
       el.profileBio.textContent = bio;
       el.profileBio.hidden = !bio;
     }
@@ -18514,8 +18586,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <button class="album-open" data-album-open="${escapeHtml(photo.id)}" data-album-kind="${kind}" data-album-index="${index}" type="button"
               aria-label="${label} 사진 ${index + 1} 크게 보기"></button>
       ${cover ? '<span class="album-cover-badge">대표</span>' : ''}
-      <button class="album-remove" data-album-remove="${escapeHtml(photo.id)}" data-album-kind="${kind}" type="button"
-              aria-label="${label} 사진 ${index + 1} 지우기">&times;</button>
+      <!-- v38.1 — 사진 위에 얹던 ×(바로 지우기)는 없앴다. 칸을 누르면 크게 보고,
+           그 화면의 ⋯ 에서 '사진 바꾸기 / 사진 삭제'를 고른다. -->
     </figure>`;
   }
 
@@ -18705,6 +18777,12 @@ document.addEventListener('DOMContentLoaded', () => {
               data-past-share="${escapeHtml(ev.id)}" aria-checked="${shared}"
               aria-label="${escapeHtml(ev.title)} — 타인에게 ${shared ? '공개' : '비공개'}"
               ${o.shareDisabled ? 'disabled' : ''}>${shared ? '공개' : '비공개'}</button>` : '';
+    /* v38.1 (#3) — 다녀온 모임 기록은 하나씩 지울 수 있다(모임·일정 자체는 남는다). */
+    const delBtn = (ev.past && !o.noDelete) ? `
+      <button class="my-sched-del" type="button" data-past-delete="${escapeHtml(ev.id)}"
+              aria-label="${escapeHtml(ev.title)} — 다녀온 모임 기록 지우기">
+        <span aria-hidden="true">${ic('trash')}</span>
+      </button>` : '';
     return `
       <div class="my-sched-row${ev.past ? ' is-past' : ''}">
         <button class="my-sched-item${ev.past ? ' is-past' : ''}" data-my-schedule-event="${escapeHtml(ev.id)}" type="button"
@@ -18722,6 +18800,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="my-sched-chev" aria-hidden="true">${ic('chevronRight')}</span>
         </button>
         ${shareBtn}
+        ${delBtn}
       </div>`;
   }
 
@@ -18860,7 +18939,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <p class="my-sched-empty-desc">참석한 모임이 날짜를 지나면 여기에 쌓여요.</p>
         </div>`;
       } else {
-        el.pastMeetingsList.innerHTML = data.visible.map((ev) => myScheduleRowHTML(ev, { noShare: true })).join('');
+        el.pastMeetingsList.innerHTML = data.visible.map((ev) => myScheduleRowHTML(ev, { noShare: true, noDelete: true })).join('');
       }
     }
     openModal(el.pastMeetingsModal);
@@ -19027,8 +19106,8 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 26.5 — 길게 누르기 메뉴를 알리는 한 줄(버튼은 보조용으로 남긴다). */
     if (el.albumViewerHint) {
       el.albumViewerHint.textContent = single
-        ? '사진을 길게 누르면 대표·바꾸기·지우기가 열려요'
-        : '좌우로 넘기기 · 길게 누르면 대표·순서·바꾸기·지우기';
+        ? '사진을 바꾸거나 지우려면 오른쪽 위 ⋯ 를 눌러 주세요'
+        : '좌우로 넘기기 · 바꾸기·삭제는 오른쪽 위 ⋯';
     }
     /* Sprint 27.5 — 메뉴 항목의 가능 여부(대표는 공개 앨범에만, 끝에서는 이동 불가) */
     syncAlbumViewerMenuState(photos.length);
@@ -19312,6 +19391,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!menu || !albumViewer.open) return { open: false };
     menu.hidden = false;
     menu.classList.add('is-open');
+    if (el.albumViewerMore) el.albumViewerMore.setAttribute('aria-expanded', 'true');
     const vw = window.innerWidth || 390;
     const vh = window.innerHeight || 844;
     const mw = menu.offsetWidth || 178;
@@ -19329,11 +19409,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function closeAlbumViewerMenu() {
     const menu = el.albumViewerMenu;
+    if (el.albumViewerMore) el.albumViewerMore.setAttribute('aria-expanded', 'false');
     if (!menu || menu.hidden) return { open: false };
     menu.hidden = true;
     menu.classList.remove('is-open');
     return { open: false };
   }
+
+  /**
+   * v38.1 — 크게 본 사진의 점 3개(⋯) 버튼.
+   *  · 사진 위에는 아무 버튼도 없다 — 눌러서 크게 보고, 여기서 '사진 바꾸기 / 사진 삭제'를 고른다.
+   *  · 메뉴는 이 버튼 바로 아래에 붙인다(사진을 가리지 않게).
+   */
+  el.albumViewerMore && el.albumViewerMore.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (albumViewerMenuOpen()) { closeAlbumViewerMenu(); return; }
+    const rect = el.albumViewerMore.getBoundingClientRect();
+    openAlbumViewerMenu(rect.left + rect.width / 2, rect.bottom);
+  });
 
   (function wireAlbumViewerLongPress() {
     const frame = el.albumViewer && el.albumViewer.querySelector('.album-viewer-frame');
@@ -19413,17 +19507,163 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  /* ==========================================================================
+   * v38.1 (#2) — 모임 전용 프로필 (비포 · 애프터 안내)
+   * --------------------------------------------------------------------------
+   *  윤루키 님(11/26): "모임 처음 가입할때 가이드마냥 그 모임에서 새로 프로필을 만들지
+   *  그렇다면 닉네임을 다르게 쓸지/프로필 사진을 어떤걸로 바꿀지 물어봐줬으면 해.
+   *  디자인은 비포 애프터 비교마냥 ... ?표인 원형 프로필을 누르면 수정가능하게"
+   *
+   *  · 이 모임에서만 쓰는 사진은 바깥 공개 앨범과 **완전히 별개**다(모임 멤버십에만 저장).
+   *  · 모임에 **처음 들어올 때 한 번** 묻는다(`profileAsked`). 건너뛰어도 다시 묻지 않고,
+   *    모임 설정 › 나의 설정 › 이 모임 프로필에서 언제든 다시 만들 수 있다.
+   *  · 저장하면 피드 글·댓글·멤버 명단·모임 채팅·모임 안 내정보·헤더 원형이 함께 바뀐다.
+   * ======================================================================== */
+  const gpModalNode = $('#group-profile-modal');
+  ui.gp = ui.gp || { groupId: null, photoUrl: '', nickname: '' };
+
+  function gpNode(id) { return document.getElementById(id); }
+
+  function renderGroupProfileModal() {
+    const gid = ui.gp.groupId;
+    const grp = gid ? store.getGroup(gid) : null;
+    if (!grp) return;
+    const me = store.currentUser || {};
+    const gpSub = gpNode('gp-sub');
+    if (gpSub) gpSub.textContent = `'${grp.name}' 모임에서만 사용하는 프로필을 새로 만들까요?`;
+
+    /* 왼쪽 — 지금 내 프로필(바깥 사진·닉네임) */
+    const beforeFace = gpNode('gp-before-face');
+    if (beforeFace) {
+      if (me.photoUrl) {
+        beforeFace.innerHTML = `<img class="avatar-img" src="${escapeHtml(me.photoUrl)}" alt="" decoding="async">`;
+      } else {
+        beforeFace.textContent = myAvatarText();
+      }
+    }
+    const beforeName = gpNode('gp-before-name');
+    if (beforeName) beforeName.textContent = me.nickname || '내 닉네임';
+
+    /* 오른쪽 — 이 모임에서만 쓸 사진(고르기 전에는 ?) */
+    const q = gpNode('gp-face-q');
+    const img = gpNode('gp-face-img');
+    if (img) {
+      if (ui.gp.photoUrl) {
+        img.src = ui.gp.photoUrl;
+        img.hidden = false;
+        if (q) q.hidden = true;
+      } else {
+        img.removeAttribute('src');
+        img.hidden = true;
+        if (q) q.hidden = false;
+      }
+    }
+    const afterName = gpNode('gp-after-name');
+    if (afterName) {
+      const nick = String(ui.gp.nickname || '').trim();
+      afterName.textContent = nick || (ui.gp.photoUrl ? (me.nickname || '새 프로필') : '사진을 골라 주세요');
+    }
+    const nickInput = gpNode('gp-nickname');
+    if (nickInput && nickInput.value !== (ui.gp.nickname || '')) nickInput.value = ui.gp.nickname || '';
+    const warn = gpNode('gp-warn');
+    if (warn) { warn.hidden = true; warn.textContent = ''; }
+  }
+
+  function openGroupProfileSetup(groupId, options) {
+    const gid = groupId || (isGroupMode() ? (homeGroup() || {}).id : null);
+    if (!gid || !store.isGroupJoined(gid)) return { ok: false, reason: 'not_member' };
+    if (!gpModalNode) return { ok: false, reason: 'no_modal' };
+    const prof = store.getGroupProfile(gid);
+    ui.gp = { groupId: gid, photoUrl: prof.photoUrl || '', nickname: prof.nickname || '' };
+    renderGroupProfileModal();
+    openModal(gpModalNode);
+    /* 한 번 물었으면 다시 묻지 않는다(건너뛰어도). 다만 설정에서 직접 열 때는 표시만 남긴다. */
+    if (!(options && options.manual)) store.markGroupProfileAsked(gid);
+    return { ok: true, groupId: gid };
+  }
+
+  /** 이 모임에 처음 들어왔을 때 한 번만 묻는다. */
+  function maybeAskGroupProfile(groupId) {
+    if (!groupId) return false;
+    if (!store.needsGroupProfileSetup(groupId)) return false;
+    if (ui.gp && ui.gp.groupId === groupId && gpModalNode && gpModalNode.classList.contains('active')) return false;
+    openGroupProfileSetup(groupId);
+    return true;
+  }
+
+  function saveGroupProfileSetup() {
+    const gid = ui.gp.groupId;
+    if (!gid) return { ok: false, reason: 'no_group' };
+    const nick = String(ui.gp.nickname || '').trim();
+    const photo = String(ui.gp.photoUrl || '');
+    if (nick && (nick.length < 1 || nick.length > 12)) {
+      const warn = gpNode('gp-warn');
+      if (warn) { warn.hidden = false; warn.textContent = '이름은 12자까지 쓸 수 있어요'; }
+      return { ok: false, reason: 'nickname' };
+    }
+    const res = store.updateGroupProfile(gid, { nickname: nick, photoUrl: photo, profileAsked: true });
+    if (!res.ok) {
+      const warn = gpNode('gp-warn');
+      if (warn) { warn.hidden = false; warn.textContent = '저장하지 못했어요 — 잠시 뒤 다시 시도해 주세요'; }
+      return res;
+    }
+    closeModal(gpModalNode);
+    afterGroupProfileChange(gid);
+    showToast(photo || nick ? '이 모임에서만 쓰는 프로필을 저장했어요' : '기본 프로필 그대로 쓰기로 했어요', 'success');
+    return { ok: true };
+  }
+
+  function skipGroupProfileSetup() {
+    const gid = ui.gp.groupId;
+    if (gid) {
+      store.markGroupProfileAsked(gid);
+      afterGroupProfileChange(gid, { quiet: true });
+    }
+    closeModal(gpModalNode);
+    showToast('기본 프로필 그대로 쓸게요 · 설정에서 언제든 바꿀 수 있어요', 'info');
+    return { ok: true };
+  }
+
+  /** 모임 전용 프로필이 바뀌면 이 모임의 모든 얼굴을 다시 칠한다. */
+  function afterGroupProfileChange(groupId, opts) {
+    const o = opts || {};
+    const grp = groupId ? store.getGroup(groupId) : null;
+    if (grp) renderGroupHeader(grp);
+    if (isGroupMode()) { renderGroupMyInfo(); renderProfileGroupContext(); }
+    renderMyProfileTab();
+    renderFeed();
+    const gsScreen = $('#group-settings-screen');
+    if (gsScreen && gsScreen.classList.contains('active') && typeof renderGroupSettings === 'function') renderGroupSettings();
+    if (!o.quiet) { try { renderChatRooms(); } catch (e) { /* 채팅 화면이 없을 때 */ } }
+  }
+
+  $('#gp-pick-photo') && $('#gp-pick-photo').addEventListener('click', () => {
+    const input = $('#gp-photo-input');
+    if (input) input.click();
+  });
+  $('#gp-photo-input') && $('#gp-photo-input').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    readImageFile(file, (url) => {
+      ui.gp.photoUrl = url;
+      renderGroupProfileModal();
+    }, PROFILE_PHOTO_MAX, PROFILE_PHOTO_QUALITY);
+  });
+  $('#gp-nickname') && $('#gp-nickname').addEventListener('input', (e) => {
+    ui.gp.nickname = String(e.target.value || '').slice(0, 12);
+    const afterName = gpNode('gp-after-name');
+    if (afterName) {
+      const me = store.currentUser || {};
+      afterName.textContent = ui.gp.nickname.trim() || (ui.gp.photoUrl ? (me.nickname || '새 프로필') : '사진을 골라 주세요');
+    }
+  });
+  $('#gp-save') && $('#gp-save').addEventListener('click', () => saveGroupProfileSetup());
+  $('#gp-skip') && $('#gp-skip').addEventListener('click', () => skipGroupProfileSetup());
+
   const myProfileTabNode = $('#tab-myprofile');
   myProfileTabNode && myProfileTabNode.addEventListener('click', (e) => {
-    const rm = e.target.closest('[data-album-remove]');
-    if (rm) {
-      const kind = rm.dataset.albumKind === 'secret' ? 'secret' : 'public';
-      store.removeMyAlbumPhoto(kind, rm.dataset.albumRemove);
-      afterAlbumChange(kind);
-      if (albumViewer.open) renderAlbumViewer();
-      showToast('사진을 지웠어요', 'info');
-      return;
-    }
+    /* v38.1 — 사진 위 × 는 없다. 지우기·바꾸기는 크게 본 화면의 ⋯ 에서. */
     const open = e.target.closest('[data-album-open]');
     if (open) {
       openAlbumViewer(open.dataset.albumKind === 'secret' ? 'secret' : 'public',
@@ -19482,6 +19722,39 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(next ? '다녀온 모임을 타인에게 보여 줄게요' : '다녀온 모임을 타인에게 숨겼어요 · 숫자도 보이지 않아요', 'info');
   });
   el.myScheduleList && el.myScheduleList.addEventListener('click', (e) => {
+    /* v38.1 (#3) — 다녀온 모임 기록 하나 지우기(한 번 더 확인). */
+    const del = e.target.closest('[data-past-delete]');
+    if (del) {
+      e.preventDefault();
+      e.stopPropagation();
+      const id = del.dataset.pastDelete;
+      const row = del.closest('.my-sched-row');
+      if (del.dataset.armed === '1') {
+        store.hidePastMeeting(id);
+        renderMyScheduleSheet();
+        renderMyProfileTab();
+        if (isGroupMode()) { renderGroupMyInfo(); }
+        showToast('다녀온 모임 기록을 지웠어요', 'info');
+        return;
+      }
+      /* 바로 지우지 않는다 — 한 번 더 눌러야 지운다(실수 방지). */
+      del.dataset.armed = '1';
+      del.classList.add('is-armed');
+      del.setAttribute('aria-label', '한 번 더 누르면 이 기록이 지워져요');
+      showToast('한 번 더 누르면 이 기록이 지워져요 · 모임 기록 자체는 남아요', 'info');
+      if (row) {
+        const tip = row.querySelector('.my-sched-del-tip');
+        if (tip) tip.hidden = false;
+      }
+      setTimeout(() => {
+        if (!del.isConnected) return;
+        delete del.dataset.armed;
+        del.classList.remove('is-armed');
+        const tip = row && row.querySelector('.my-sched-del-tip');
+        if (tip) tip.hidden = true;
+      }, 4000);
+      return;
+    }
     const share = e.target.closest('[data-past-share]');
     if (share) {
       e.preventDefault();
@@ -19532,12 +19805,7 @@ document.addEventListener('DOMContentLoaded', () => {
       openAlbumViewer('secret', Number(open.dataset.albumIndex || 0), 'profile');
       return;
     }
-    const rm = e.target.closest('[data-album-remove]');
-    if (rm) {
-      store.removeMyAlbumPhoto('secret', rm.dataset.albumRemove);
-      renderMyProfileTab();
-      showToast('사진을 지웠어요', 'info');
-    }
+    /* v38.1 — 사진 위 × 는 없다. 지우기·바꾸기는 크게 본 화면의 ⋯ 에서. */
   });
 
   /* 대표 사진(1번)을 누르면 크게 본다 — 사진이 있을 때만. */
@@ -19772,12 +20040,7 @@ document.addEventListener('DOMContentLoaded', () => {
       openAlbumViewer('secret', Number(open.dataset.albumIndex || 0), 'secret');
       return;
     }
-    const rm = e.target.closest('[data-album-remove]');
-    if (rm) {
-      store.removeMyAlbumPhoto(rm.dataset.albumKind === 'secret' ? 'secret' : 'public', rm.dataset.albumRemove);
-      renderSecretAlbumBody();
-      renderMyProfileTab();
-    }
+    /* v38.1 — 사진 위 × 는 없다. 지우기·바꾸기는 크게 본 화면의 ⋯ 에서. */
   });
 
   /* 2시간이 지난 프로필은 화면에서도 조용히 내린다(20초마다 확인 — 남은 시간 표기도 함께 갱신). */
@@ -20168,6 +20431,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }),
     /* Sprint 16 — 바깥 3탭 · 모임 4탭 · 스토리 · 게시판 · 나이 슬라이더 · 쪽지 */
     enterGroupSpace, exitGroupSpace, isGroupMode, renderGallery,
+    /* v38.1 — 모임 전용 프로필 안내 · 다녀온 모임 기록 지우기 */
+    openGroupProfileSetup: (gid) => openGroupProfileSetup(gid, { manual: true }),
+    getGroupProfileState: (gid) => ({
+      open: !!(document.getElementById('group-profile-modal') || {}).classList?.contains('active'),
+      groupId: ui.gp.groupId, photoUrl: ui.gp.photoUrl, nickname: ui.gp.nickname,
+      profile: gid ? store.getGroupProfile(gid) : null
+    }),
     /* v33.7 — 모임 진입 로딩 · 사진 캐러셀 · #해시태그 · 우그 자체 갤러리 */
     groupSplash: (groupId, opts) => showGroupSplash(store.getGroup(groupId), opts || {}),
     clearGroupSplash,

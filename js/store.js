@@ -4311,6 +4311,14 @@ function blankCurrentUser() {
        false 로 둔 모임만 빼고 보여 준다. */
     pastMeetingsPublic: true,
     pastMeetingVisibility: {},
+    /* v38.1 — 내가 지운 '다녀온 모임' 기록(그 일정 id). 모임을 나간 뒤에도 남는 기록을
+       하나씩 지울 수 있게 한다. 모임·일정 자체는 지우지 않는다(다른 사람 기록은 그대로). */
+    hiddenPastMeetings: [],
+    /* v38.1 — 방금 가입해서 '모임 전용 프로필'을 아직 묻지 않은 모임들(입장할 때 한 번 묻는다). */
+    pendingGroupProfile: [],
+    /* v38.1 — 내가 누른 좋아요(글·댓글). 서버 글 데이터에 싣지 않고 내 계정에만 둔다. */
+    likedPostIds: [],
+    likedCommentIds: [],
     /* v37.0 (#23868) — 예정된 일정(다음 일정 한 줄)을 타인에게 보일지. **기본은 비공개**.
        켜면 profileNextEvent 스냅샷(제목·시각·모임 이름)만 프로필에 실린다. */
     upcomingMeetingsPublic: false,
@@ -6055,6 +6063,8 @@ class Store {
       if (grp0.memberCount >= grp0.maxMembers) return false;            // 정원 마감
       if (!this.ageAllowed(user.age, this.getGroupAgeLimit(groupId).id).ok) return false;
       user.joinedGroupIds.push(groupId);
+      /* v38.1 — 방금 가입 → 모임에 들어갈 때 전용 프로필을 한 번 묻는다. */
+      if (this.markGroupProfilePending(groupId)) user.pendingGroupProfile = this.currentUser.pendingGroupProfile;
     }
     const grp = this.getGroup(groupId);
     if (grp) grp.memberCount = Math.max(1, grp.memberCount + (isJoined ? -1 : 1));
@@ -6172,8 +6182,54 @@ class Store {
     if (!post) return null;
     post.likedByMe = !post.likedByMe;
     post.likes = Math.max(0, post.likes + (post.likedByMe ? 1 : -1));
+    this.rememberMyLike('post', postId, post.likedByMe);
     this.saveState();
     return { liked: post.likedByMe, likes: post.likes };
+  }
+
+  /* ==========================================================================
+   * v38.1 — '내가 누른 좋아요'는 **내 계정에만** 남긴다
+   * --------------------------------------------------------------------------
+   *  윤루키 님(11/26): "탈퇴후, 똑같은 이메일로 가입하게되면 좋아요가 이미 눌러져있어"
+   *  원인: 글 데이터(모두가 같이 보는 행)에 `likedByMe` 를 그대로 저장해 두었다.
+   *        좋아요를 누른 사람의 기기에 있던 '내가 눌렀음' 표시가 글 자체에 붙어
+   *        서버로 올라갔고, 그 이메일로 다시 가입하면 그 표시가 그대로 따라왔다.
+   *  고침: `likedByMe` 는 서버 글 데이터에 싣지 않고(cloud 가 걷어낸다),
+   *        내 좋아요 목록은 내 계정 상태(currentUser.likedPostIds)에만 둔다.
+   *        계정을 지우면 계정 상태도 함께 사라지므로 새 계정은 0에서 시작한다.
+   * ======================================================================== */
+  myLikeIds(kind) {
+    const cu = this.currentUser || {};
+    const key = kind === 'comment' ? 'likedCommentIds' : 'likedPostIds';
+    if (!Array.isArray(cu[key])) cu[key] = [];
+    return cu[key];
+  }
+
+  rememberMyLike(kind, id, on) {
+    if (!id) return false;
+    const list = this.myLikeIds(kind);
+    const at = list.indexOf(id);
+    if (on && at < 0) { list.push(id); return true; }
+    if (!on && at >= 0) { list.splice(at, 1); return true; }
+    return false;
+  }
+
+  /** 내 좋아요 목록을 지금 화면의 글들에 다시 칠한다(서버에서 받아 온 뒤 한 번). */
+  applyMyLikes() {
+    const posts = this.myLikeIds('post');
+    const comments = this.myLikeIds('comment');
+    const paint = (p) => {
+      if (!p || !p.id) return;
+      const liked = posts.indexOf(p.id) >= 0;
+      if (!!p.likedByMe !== liked) p.likedByMe = liked;
+      (p.comments || []).forEach((c) => {
+        if (!c || !c.id) return;
+        const on = comments.indexOf(c.id) >= 0;
+        if (!!c.likedByMe !== on) c.likedByMe = on;
+      });
+    };
+    (this.state.feedPosts || []).forEach(paint);
+    (this.state.explorePosts || []).forEach(paint);
   }
 
   /**
@@ -6191,6 +6247,7 @@ class Store {
     if (!!post.likedByMe !== want) {
       post.likedByMe = want;
       post.likes = Math.max(0, (Number(post.likes) || 0) + (want ? 1 : -1));
+      this.rememberMyLike('post', postId, want);
       this.saveState();
     }
     return { liked: !!post.likedByMe, likes: Math.max(0, Number(post.likes) || 0), changed: before.liked !== want, before, kind: kind || 'feed' };
@@ -10759,6 +10816,7 @@ class Store {
       if (group.memberCount >= group.maxMembers) return { ok: false, reason: 'full', group };
       this.state.currentUser.joinedGroupIds.push(groupId);
       group.memberCount = Math.max(1, group.memberCount + 1);
+      this.markGroupProfilePending(groupId);
       this.saveState();
       return { ok: true, joined: true, group };
     }
@@ -10973,6 +11031,10 @@ class Store {
       nickname: String(raw.nickname || ''),
       bio: String(raw.bio || ''),
       photoVisible: raw.photoVisible === true,
+      /* v38.1 (#6건) — 이 모임에서만 쓰는 프로필 사진(바깥 공개 앨범과 별개). */
+      photoUrl: String(raw.photoUrl || ''),
+      /* v38.1 — 그 모임에 처음 들어올 때 '모임 전용 프로필' 안내를 한 번 띄웠는지. */
+      profileAsked: raw.profileAsked === true,
       hiddenInList: raw.hiddenInList === true,
       pinned: raw.pinned === true,
       muted: raw.muted === true,
@@ -10992,6 +11054,8 @@ class Store {
       nickname: d.nickname === undefined ? cur.nickname : String(d.nickname || '').trim().slice(0, 12),
       bio: d.bio === undefined ? cur.bio : String(d.bio || '').trim().slice(0, 60),
       photoVisible: d.photoVisible === undefined ? cur.photoVisible : !!d.photoVisible,
+      photoUrl: d.photoUrl === undefined ? cur.photoUrl : String(d.photoUrl || ''),
+      profileAsked: d.profileAsked === undefined ? cur.profileAsked : !!d.profileAsked,
       hiddenInList: d.hiddenInList === undefined ? cur.hiddenInList : !!d.hiddenInList,
       pinned: d.pinned === undefined ? cur.pinned : !!d.pinned,
       muted: d.muted === undefined ? cur.muted : !!d.muted,
@@ -11010,7 +11074,30 @@ class Store {
   /** 모임별 프로필 — 이 모임에서만 쓰는 이름·소개·사진 공개. */
   getGroupProfile(groupId) {
     const m = this.getGroupMembership(groupId);
-    return { nickname: m.nickname, bio: m.bio, photoVisible: m.photoVisible };
+    return {
+      nickname: m.nickname, bio: m.bio, photoVisible: m.photoVisible,
+      photoUrl: m.photoUrl || '', profileAsked: m.profileAsked === true
+    };
+  }
+
+  /**
+   * v38.1 — 이 모임에서 보이는 내 모습 한 벌(이름·사진·이니셜).
+   *  · 모임 전용 사진(photoUrl)이 있으면 그것, 없으면 photoVisible 일 때만 바깥 사진.
+   *  · 모임 닉네임이 없으면 바깥 닉네임.
+   *  글·댓글·멤버 명단·모임 채팅·모임 안 내정보가 모두 이 한 함수를 본다.
+   */
+  groupIdentity(groupId) {
+    const me = this.currentUser || {};
+    const prof = groupId ? this.getGroupProfile(groupId) : { nickname: '', photoUrl: '', photoVisible: false };
+    const name = prof.nickname || me.nickname || '나';
+    const photo = prof.photoUrl || (prof.photoVisible ? (me.photoUrl || '') : '');
+    return {
+      name,
+      photoUrl: photo || '',
+      avatarText: String(name).charAt(0) || me.avatarText || '나',
+      gradient: me.avatarGradient,
+      custom: !!(prof.nickname || prof.photoUrl || prof.photoVisible)
+    };
   }
 
   updateGroupProfile(groupId, patch) {
@@ -11020,9 +11107,39 @@ class Store {
       if (nick && (nick.length < 1 || nick.length > 12)) return { ok: false, reason: 'nickname' };
     }
     const res = this.updateGroupMembership(groupId, {
-      nickname: d.nickname, bio: d.bio, photoVisible: d.photoVisible
+      nickname: d.nickname, bio: d.bio, photoVisible: d.photoVisible,
+      photoUrl: d.photoUrl, profileAsked: d.profileAsked
     });
     return res;
+  }
+
+  /** 그 모임에 처음 들어왔을 때 '모임 전용 프로필' 안내를 한 번 띄운다. */
+  needsGroupProfileSetup(groupId) {
+    if (!groupId || !this.isGroupJoined(groupId)) return false;
+    const cu = this.currentUser || {};
+    const pending = Array.isArray(cu.pendingGroupProfile) ? cu.pendingGroupProfile : [];
+    if (pending.indexOf(groupId) < 0) return false;
+    return this.getGroupProfile(groupId).profileAsked !== true;
+  }
+
+  /** 방금 가입한 모임 — 다음 입장에서 '모임 전용 프로필'을 한 번 묻는다. */
+  markGroupProfilePending(groupId) {
+    if (!groupId) return false;
+    const cu = this.currentUser || {};
+    if (!Array.isArray(cu.pendingGroupProfile)) cu.pendingGroupProfile = [];
+    if (this.getGroupProfile(groupId).profileAsked === true) return false;
+    if (cu.pendingGroupProfile.indexOf(groupId) >= 0) return false;
+    cu.pendingGroupProfile.push(groupId);
+    return true;
+  }
+
+  markGroupProfileAsked(groupId) {
+    if (!groupId || !this.isGroupJoined(groupId)) return { ok: false, reason: 'not_member' };
+    const cu = this.currentUser || {};
+    if (Array.isArray(cu.pendingGroupProfile)) {
+      cu.pendingGroupProfile = cu.pendingGroupProfile.filter((id) => id !== groupId);
+    }
+    return this.updateGroupProfile(groupId, { profileAsked: true });
   }
 
   /* -------------------------------------------------- 내 활동 */
@@ -11801,12 +11918,22 @@ class Store {
     if (!post || !post.groupId) return post;
     const me = this.currentUser;
     if (!me || post.authorId !== me.id) return post;
-    const prof = this.getGroupProfile(post.groupId);
-    if (!prof.nickname) return post;
-    return Object.assign({}, post, {
-      authorName: prof.nickname,
-      authorAvatarText: prof.nickname.charAt(0)
+    const ident = this.groupIdentity(post.groupId);
+    if (!ident.custom) return post;
+    const next = Object.assign({}, post, {
+      authorName: ident.name,
+      authorAvatarText: ident.avatarText,
+      authorPhotoUrl: ident.photoUrl || null
     });
+    /* 내 댓글도 이 모임 이름·사진으로(저장된 값은 그대로 두고 읽을 때만). */
+    if (Array.isArray(post.comments)) {
+      next.comments = post.comments.map((c) => (c && c.authorId === me.id ? Object.assign({}, c, {
+        authorName: ident.name,
+        authorAvatarText: ident.avatarText,
+        authorPhotoUrl: ident.photoUrl || null
+      }) : c));
+    }
+    return next;
   }
 
   /** 홈 사진 피드 상단의 말머리 칩 — 그 모임 글에 실제로 붙은 말머리만(건수 포함, 많은 순). */
@@ -11889,8 +12016,9 @@ class Store {
       id: `gcm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
       from: 'me',
       authorId: me.id,
-      authorName: me.nickname,
-      authorAvatarText: me.avatarText,
+      authorName: this.groupIdentity(groupId).name,
+      authorAvatarText: this.groupIdentity(groupId).avatarText,
+      authorPhotoUrl: this.groupIdentity(groupId).photoUrl || null,
       authorGradient: me.avatarGradient,
       text: body,
       at: new Date().toISOString()
@@ -11911,8 +12039,9 @@ class Store {
       id: `pgm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
       from: 'me',
       authorId: me.id,
-      authorName: me.nickname,
-      authorAvatarText: me.avatarText,
+      authorName: this.groupIdentity(groupId).name,
+      authorAvatarText: this.groupIdentity(groupId).avatarText,
+      authorPhotoUrl: this.groupIdentity(groupId).photoUrl || null,
       authorGradient: me.avatarGradient,
       text: body,
       at: new Date().toISOString(),
@@ -12154,12 +12283,15 @@ class Store {
         return { ok: true, message: pending, confirmed: true };
       }
     }
+    const evGroupId = ((this.state.groupEvents || []).find((e) => e.id === eventId) || {}).groupId || null;
+    const evIdent = this.groupIdentity(evGroupId);
     const message = {
       id: `ecm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
       from: 'me',
       authorId: me.id,
-      authorName: me.nickname,
-      authorAvatarText: me.avatarText,
+      authorName: evIdent.name,
+      authorAvatarText: evIdent.avatarText,
+      authorPhotoUrl: evIdent.photoUrl || null,
       authorGradient: me.avatarGradient,
       text: body,
       at: new Date().toISOString()
@@ -12177,12 +12309,15 @@ class Store {
     const chat = this.ensureEventChat(eventId);
     if (!chat) return { ok: false, reason: 'not_found' };
     const me = this.currentUser;
+    const evGroupId2 = ((this.state.groupEvents || []).find((e) => e.id === eventId) || {}).groupId || null;
+    const evIdent2 = this.groupIdentity(evGroupId2);
     const message = {
       id: `ecm_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
       from: 'me',
       authorId: me.id,
-      authorName: me.nickname,
-      authorAvatarText: me.avatarText,
+      authorName: evIdent2.name,
+      authorAvatarText: evIdent2.avatarText,
+      authorPhotoUrl: evIdent2.photoUrl || null,
       authorGradient: me.avatarGradient,
       text: body,
       at: new Date().toISOString(),
@@ -12490,15 +12625,24 @@ class Store {
         groupName: grp ? grp.name : ''
       };
     };
+    const hidden = new Set(Array.isArray(me.hiddenPastMeetings) ? me.hiddenPastMeetings : []);
     const mine = (this.state.groupEvents || [])
+      /* v38.1 — 모임을 나갔어도 **내가 참석한 지난 일정**은 '다녀온 모임'에 남긴다.
+         (예전에는 가입한 모임의 일정만 모아서, 나가면 지난 기록까지 사라졌다.) */
       .filter((e) => this.isGroupJoined(e.groupId)
-        || (Array.isArray(e.rsvps) && e.rsvps.some((r) => r.memberId === me.id && r.guest === true)))
+        || (Array.isArray(e.rsvps) && e.rsvps.some((r) => r.memberId === me.id))
+        || e.createdBy === me.id)
+      .filter((e) => !hidden.has(e.id))
       .map(row)
       .filter((e) => {
         /* 내가 만든 일정이라도 '불참'으로 돌리면 빠진다(대기(maybe)는 확정이 아니므로 참석이 아니다). */
         if (e.myRsvp === 'no') return false;
-        return e.myRsvp === 'yes' || e.myGuestStatus === 'approved'
+        const attended = e.myRsvp === 'yes' || e.myGuestStatus === 'approved'
           || (e.createdBy === me.id && e.myRsvp !== 'maybe');
+        if (!attended) return false;
+        /* 나간 모임의 **앞으로의** 일정은 보이지 않는다 — 지난 기록만 남긴다. */
+        if (!e.past && !this.isGroupJoined(e.groupId) && e.myGuestStatus !== 'approved') return false;
+        return true;
       });
     const upcoming = mine.filter((e) => !e.past)
       .sort((a, b) => new Date(a.when).getTime() - new Date(b.when).getTime());
@@ -12554,6 +12698,28 @@ class Store {
     this.currentUser.pastMeetingsPublic = on === true;
     this.saveState();
     return { ok: true, public: this.currentUser.pastMeetingsPublic };
+  }
+
+  /** v38.1 — 다녀온 모임 기록 하나를 내 목록에서 지운다(모임·일정 자체는 남는다). */
+  hidePastMeeting(eventId) {
+    const id = String(eventId || '');
+    if (!id) return { ok: false, reason: 'bad_event' };
+    const cu = this.currentUser || {};
+    if (!Array.isArray(cu.hiddenPastMeetings)) cu.hiddenPastMeetings = [];
+    if (cu.hiddenPastMeetings.indexOf(id) >= 0) return { ok: true, eventId: id, already: true };
+    cu.hiddenPastMeetings.push(id);
+    this.saveState();
+    return { ok: true, eventId: id };
+  }
+
+  /** 지운 기록 되돌리기(안전망). */
+  restorePastMeeting(eventId) {
+    const cu = this.currentUser || {};
+    if (!Array.isArray(cu.hiddenPastMeetings)) cu.hiddenPastMeetings = [];
+    const before = cu.hiddenPastMeetings.length;
+    cu.hiddenPastMeetings = cu.hiddenPastMeetings.filter((id) => id !== eventId);
+    if (cu.hiddenPastMeetings.length !== before) this.saveState();
+    return { ok: true, eventId };
   }
 
   /** 모임 하나만 공개/비공개. */
@@ -12858,10 +13024,11 @@ class Store {
     const hobbyList = (hobbyNames) => (hobbyNames || []).slice(0, 2)
       .map((name) => ({ name, icon: 'dot' }));
 
-    /* 이 모임에서만 쓰는 내 프로필(닉네임·사진 공개) — 명단·글에 그대로 반영된다. */
-    const myProfile = this.getGroupProfile(groupId);
-    const myName = myProfile.nickname || me.nickname;
-    const myPhoto = myProfile.photoVisible ? (me.photoUrl || null) : null;
+    /* 이 모임에서만 쓰는 내 프로필(닉네임·사진) — 명단·글·채팅에 그대로 반영된다.
+       v38.1 — 모임 전용 사진 > (공개 허용 시) 바깥 사진 > 없음 순서. */
+    const myIdent = this.groupIdentity(groupId);
+    const myName = myIdent.name;
+    const myPhoto = myIdent.photoUrl || null;
     const roleOfEntry = (id) => this.roleOf(groupId, id);
     /* 1) 모임장 */
     const leaderIsMe = group.leaderId === me.id;
@@ -13325,7 +13492,8 @@ class Store {
       .filter((p) => p.authorId === me && p.groupId === groupId)
       .slice()
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .map((p) => ({ ...p, commentCount: (p.comments || []).length, photo: !!p.photoUrl }));
+      /* v38.1 — 이 모임에서 쓰는 내 이름·사진으로 읽는다(글·멤버·채팅과 같은 모습). */
+      .map((p) => this.applyGroupIdentity({ ...p, commentCount: (p.comments || []).length, photo: !!p.photoUrl }));
     return limit ? list.slice(0, limit) : list;
   }
 
@@ -13352,6 +13520,7 @@ class Store {
     if (!comment) return null;
     comment.likedByMe = !comment.likedByMe;
     comment.likes = Math.max(0, (comment.likes || 0) + (comment.likedByMe ? 1 : -1));
+    this.rememberMyLike('comment', commentId, comment.likedByMe);
     this.saveState();
     return { liked: comment.likedByMe, likes: comment.likes || 0, comment };
   }

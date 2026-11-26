@@ -12011,7 +12011,7 @@ b {
 .onboarding-head { display: flex; align-items: baseline; gap: 8px; }
 .onboarding-logo {
   font-size: 25px;
-  font-weight: 760;
+  font-weight: 700;
   letter-spacing: -0.04em;
   color: var(--green-dark);
 }
@@ -13491,7 +13491,7 @@ body {
 /* 박스 없이 글자만 — 흰 워드마크 + 은은한 민트 후광 */
 .oog-splash-logo {
   font-size: 58px;
-  font-weight: 760;
+  font-weight: 700;
   letter-spacing: -2.8px;
   line-height: 1;
   color: #FFFFFF;
@@ -15469,6 +15469,38 @@ select.ob-input {
 }
 
 .album-viewer-close:active { transform: scale(0.93); }
+
+/* v38.1 — 크게 본 사진의 점 3개(⋯) 메뉴 버튼. 사진 위·아래 어디에도 따로 버튼을 두지 않는다. */
+.album-viewer-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.album-viewer-more {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 1px;
+  display: grid;
+  place-items: center;
+  padding-bottom: 6px;
+}
+.album-viewer-more:hover { background: rgba(255, 255, 255, 0.22); }
+.album-viewer-more:active { transform: scale(0.93); }
+.album-viewer-more[aria-expanded="true"] { background: rgba(110, 231, 183, 0.28); }
+
+.avm-sep {
+  height: 1px;
+  margin: 4px 10px;
+  background: rgba(255, 255, 255, 0.14);
+}
 
 .album-viewer-frame {
   position: relative;
@@ -26545,6 +26577,35 @@ body.group-mode .group-header:not([hidden]) { display: flex; }
 .group-header-back:active,
 .group-header-act:active { transform: scale(0.96); }
 
+/* v38.1 (#1) — 모임 헤더의 내 원형(모임 안 내정보로 바로). */
+.group-header-me {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1.5px solid var(--green-soft-border, var(--border));
+  border-radius: 50%;
+  background: var(--bg-base);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.group-header-me:active { transform: scale(0.95); }
+.group-header-me[hidden] { display: none; }
+.group-header-me-face {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: -0.3px;
+}
+.group-header-me-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
 .group-header-text { flex: 1 1 auto; min-width: 0; }
 .group-header-name {
   margin: 0;
@@ -26615,7 +26676,7 @@ body.group-mode #group-nav { display: flex !important; }
 }
 .ginfo-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .ginfo-avatar-initial { font-size: 30px; font-weight: 700; color: var(--tone-ink, var(--text-strong)); }
-.ginfo-name { margin: 2px 0 0; font-size: var(--fs-title, 22px); font-weight: 760; letter-spacing: -0.6px; color: var(--text-strong); }
+.ginfo-name { margin: 2px 0 0; font-size: var(--fs-title, 22px); font-weight: 700; letter-spacing: -0.6px; color: var(--text-strong); }
 .ginfo-meta { margin: 0; font-size: var(--fs-caption); color: var(--text-muted); }
 .ginfo-desc { margin: 2px 0 0; font-size: var(--fs-sub); color: var(--text-sub); line-height: 1.55; max-width: 32em; }
 .ginfo-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
@@ -27873,3 +27934,185 @@ body.group-mode .push-permission-banner { display: none !important; }
 /* v38.0 — 모임 안 내정보: 모임 헤더가 이미 있으니 상단 줄(제목·톱니)은 접는다. */
 #tab-profile.is-group .profile-topbar { display: none; }
 #tab-profile.is-group .profile-group-context { margin-top: 8px; }
+
+
+/* ==========================================================================
+ * v38.1 (#2) — 모임 전용 프로필 안내(비포 · 애프터)
+ * --------------------------------------------------------------------------
+ *  모임에 처음 들어온 순간 한 번: 지금 내 프로필 →(>>>) 이 모임에서만 쓸 프로필.
+ *  오른쪽 ? 원형을 누르면 사진을 고르고, 이름은 따로 적을 수 있다.
+ * ========================================================================== */
+.gp-sheet { padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+
+.gp-head { text-align: center; padding: 2px 6px 10px; }
+.gp-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 34px; height: 34px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+.gp-sub {
+  margin: 6px 0 0;
+  font-size: var(--fs-small);
+  font-weight: 620;
+  color: var(--text-sub);
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
+.gp-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px 14px;
+}
+
+.gp-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px 6px;
+  border-radius: 18px;
+  background: var(--bg-soft, var(--bg-base));
+  border: 1px solid var(--border-soft);
+}
+.gp-before { background: var(--bg-soft, var(--bg-base)); }
+.gp-after { border: 1px dashed var(--green-soft-border, var(--border)); background: var(--green-soft); }
+
+.gp-side-tag {
+  font-size: var(--fs-caption);
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: var(--text-muted);
+}
+.gp-after .gp-side-tag { color: var(--green-dark); }
+
+.gp-face {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  color: var(--text-strong);
+  font-size: var(--fs-screen);
+  font-weight: 700;
+}
+.gp-face-pick { border: 2px dashed var(--green-soft-border, var(--border)); background: var(--bg-base); }
+.gp-face-pick:active { transform: scale(0.96); }
+.gp-face-q { font-size: 26px; font-weight: 700; color: var(--green-dark); }
+.gp-face-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.gp-face-edit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--green-dark, #047857);
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--bg-base);
+}
+
+.gp-name {
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--text-strong);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gp-side-note { font-size: var(--fs-caption); font-weight: 600; color: var(--text-muted); text-align: center; }
+
+.gp-arrow { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.gp-arrow-mark { font-size: var(--fs-body); font-weight: 700; letter-spacing: -1px; color: var(--green-dark); }
+.gp-arrow-label { display: none; }   /* 좁은 화면에서 가운데 칸을 넘치지 않게 — 화살표만 */
+
+.gp-fields { padding: 0 4px 4px; }
+.gp-field { display: block; }
+.gp-optional { font-weight: 600; color: var(--text-muted); font-size: var(--fs-caption); }
+.gp-hint { display: block; margin-top: 5px; font-size: var(--fs-caption); font-weight: 600; color: var(--text-muted); }
+.gp-warn { margin: 8px 0 0; font-size: var(--fs-small); font-weight: 700; color: var(--red); }
+
+.gp-actions { display: flex; gap: 8px; padding: 12px 4px 6px; }
+.gp-actions .btn-secondary, .gp-actions .btn-primary { flex: 1; min-height: 46px; }
+.gp-foot-note {
+  margin: 6px 6px 0;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+@media (max-width: 340px) {
+  .gp-compare { grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr); }
+  .gp-face { width: 54px; height: 54px; }
+  .gp-arrow-label { display: none; }
+}
+
+/* v38.1 (#2) — 모임 설정 › 나의 설정 › 이 모임 프로필 머리 */
+.gs-group-profile {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--bg-soft, var(--bg-base));
+  border: 1px solid var(--border-soft);
+  margin-bottom: 12px;
+}
+.gs-group-profile-face {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-title, 18px);
+  font-weight: 700;
+  color: #FFFFFF;
+  background: var(--green-soft);
+}
+.gs-group-profile-img { width: 100%; height: 100%; object-fit: cover; }
+.gs-group-profile-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.gs-group-profile-copy strong { font-size: var(--fs-small); font-weight: 700; color: var(--text-strong); }
+.gs-group-profile-copy span { font-size: var(--fs-caption); font-weight: 600; color: var(--text-muted); line-height: 1.5; word-break: keep-all; }
+.gs-group-profile-btn { align-self: flex-start; margin-top: 4px; min-height: 36px; padding: 0 12px; font-size: var(--fs-small); }
+
+/* v38.1 (#3) — 다녀온 모임 기록 지우기(두 번 눌러 지운다) */
+.my-sched-del {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  margin-left: 2px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-base);
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+.my-sched-del span { display: inline-grid; place-items: center; }
+.my-sched-del.is-armed {
+  border-color: var(--red);
+  background: var(--red-soft);
+  color: var(--red);
+}
+.my-sched-del:active { transform: scale(0.94); }
+
+.chat-msg-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }

@@ -23,7 +23,7 @@
   const CONF = {
     url: 'https://nnzrunhjxwcspsfgsmgf.supabase.co',
     key: 'sb_publishable_fy0CjiojNNWeTVAzrflP8w_098c3T2J',
-    version: 'v38.0'
+    version: 'v38.1'
   };
 
   const LS_SESSION = 'oog_cloud_session_v1';
@@ -202,6 +202,20 @@
 
   async function signUp({ email, password, nickname, handle, age, azit, avatarGradient, photoUrl }) {
     try {
+      /* v38.1 — @아이디는 계정을 만들기 **전에** 서버에서 한 번 더 확인한다(2차 방어선).
+         화면(가입 3/4)이 이미 확인하지만, 창을 나눠 쓰거나 두 사람이 같은 아이디를
+         동시에 잡는 경우를 서버가 막는다. 확인에 실패하면(네트워크·조회 제한) 막지 않고
+         아래 가입을 그대로 진행한다 — 진짜 중복은 DB 의 고유 색인이 마지막에 막는다. */
+      const wantHandle = String(handle || '').replace(/^@+/, '').trim().toLowerCase();
+      if (wantHandle) {
+        const avail = await rpc('oog_handle_available', { p_handle: wantHandle });
+        if (avail.ok && avail.data === false && !/lookup/i.test(String(avail.reason || ''))) {
+          /* false 는 '이미 있는 아이디' 또는 '형식 오류' 둘 다일 수 있다 — 형식은 화면이 먼저 본다. */
+          if (/^[a-z0-9._]{3,20}$/.test(wantHandle)) {
+            return { ok: false, reason: 'handle_taken', user: null, session: false };
+          }
+        }
+      }
       const data = await request(`${AUTH}/signup`, {
         method: 'POST',
         body: {
@@ -514,6 +528,28 @@
               }
             });
           });
+          /* v38.1 — 이 모임에서만 쓰는 내 프로필(닉네임·사진)도 서버에 남긴다.
+             그래야 다른 기기·다른 사람이 그 모임 안에서 내 모습을 그 이름·사진으로 본다. */
+          if (me && (st.currentUser.joinedGroupIds || []).indexOf(g.id) >= 0
+              && !(g.members || []).some((m) => m && m.id === me)) {
+            const st2 = global.appStore;
+            const mineProf = st2 && st2.groupIdentity ? st2.groupIdentity(g.id) : null;
+            const memb = st2 && st2.getGroupProfile ? st2.getGroupProfile(g.id) : null;
+            out.push({
+              group_id: g.id,
+              user_id: me,
+              role: g.leaderId === me ? 'owner' : ((st2 && st2.roleOf) ? st2.roleOf(g.id) : 'member'),
+              status: 'member',
+              data: {
+                nickname: (memb && memb.nickname) || '',
+                avatarText: mineProf ? mineProf.avatarText : '',
+                gradient: mineProf ? mineProf.gradient : null,
+                photoUrl: (memb && memb.photoUrl) || null,
+                profileAsked: !!(memb && memb.profileAsked),
+                joinedAt: null
+              }
+            });
+          }
         });
         return out;
       },
@@ -525,14 +561,31 @@
       coll: 'posts',
       /* 피드 글(feedPosts)과 탐색 글(explorePosts)을 한 표에 담고 kind 로 가른다. */
       expand: (st) => {
+        /* v38.1 — `likedByMe`(내가 눌렀는지)는 **모두가 같이 보는 글 행**에 싣지 않는다.
+           실었더니 좋아요를 누른 사람의 표시가 글에 붙어 서버로 올라갔고,
+           탈퇴 뒤 같은 이메일로 다시 가입해도 그 표시가 그대로 따라왔다.
+           내 좋아요는 내 계정 상태(likedPostIds)에만 남고, 글 행에는 좋아요 수만 싣는다. */
+        const shareable = (p) => {
+          const d = Object.assign({}, p);
+          delete d.likedByMe;
+          if (Array.isArray(d.comments)) {
+            d.comments = d.comments.map((c) => {
+              if (!c) return c;
+              const x = Object.assign({}, c);
+              delete x.likedByMe;
+              return x;
+            });
+          }
+          return d;
+        };
         const rows = [];
         (st.feedPosts || []).forEach((p) => {
           if (!p || !p.id) return;
-          rows.push({ id: p.id, group_id: p.groupId || null, author_id: isUuid(p.authorId) ? p.authorId : null, kind: 'feed', data: p, deleted: false });
+          rows.push({ id: p.id, group_id: p.groupId || null, author_id: isUuid(p.authorId) ? p.authorId : null, kind: 'feed', data: shareable(p), deleted: false });
         });
         (st.explorePosts || []).forEach((p) => {
           if (!p || !p.id) return;
-          rows.push({ id: p.id, group_id: null, author_id: isUuid(p.authorId) ? p.authorId : null, kind: 'explore', data: p, deleted: false });
+          rows.push({ id: p.id, group_id: null, author_id: isUuid(p.authorId) ? p.authorId : null, kind: 'explore', data: shareable(p), deleted: false });
         });
         return rows;
       },
@@ -937,6 +990,9 @@
     /* ① 비밀번호 재인증 — 이 단계를 지나야만 서버를 건드린다. */
     const auth = await reauthenticate(password, email);
     if (!auth.ok) return { ok: false, reason: auth.reason };
+    /* ①-b v38.1 — 내 좋아요 목록을 서버에 마지막으로 올려 둔다.
+       탈퇴 RPC 가 이 목록(user_state.myLikes)을 읽어 좋아요 수를 되돌리고 글에 남은 표시를 지운다. */
+    try { await pushUserState(); } catch (e) { /* 올리지 못해도 탈퇴는 진행한다 */ }
     /* ② 내 사진 파일(모든 버킷) */
     const files = await deleteMyStorage();
     /* ③ DB·Auth 계정 */
@@ -1026,6 +1082,12 @@
       notificationSettings: s.notificationSettings, explorePrefs: s.explorePrefs,
       guide: s.guide, tastePrefs: s.tastePrefs, customHobbies: s.customHobbies,
       groupVisits: s.groupVisits, matchSwipes: s.matchSwipes || [],
+      /* v38.1 — 계정을 지우면 이 줄도 함께 사라진다 → 같은 이메일로 다시 가입해도 좋아요 0에서 시작. */
+      myLikes: {
+        posts: (s.currentUser && Array.isArray(s.currentUser.likedPostIds)) ? s.currentUser.likedPostIds : [],
+        comments: (s.currentUser && Array.isArray(s.currentUser.likedCommentIds)) ? s.currentUser.likedCommentIds : [],
+        hiddenPastMeetings: (s.currentUser && Array.isArray(s.currentUser.hiddenPastMeetings)) ? s.currentUser.hiddenPastMeetings : []
+      },
       onboarding: { completed: true, completedAt: s.onboarding && s.onboarding.completedAt }
     };
     await request(`${REST}/user_state?on_conflict=user_id`, {
@@ -1174,9 +1236,31 @@
         return g;
       });
       st.groups = mergeById(st.groups, remoteGroups, (item) => isUuid(item.leaderId) && item.leaderId !== me.id ? 'remote' : 'keep');
+      const beforeJoined = (st.currentUser.joinedGroupIds || []).slice();
       st.currentUser.joinedGroupIds = (members || [])
         .filter((m) => m.user_id === me.id && m.status === 'member')
         .map((m) => m.group_id);
+      /* v38.1 — 승인으로 새로 들어온 모임은 들어갈 때 '모임 전용 프로필'을 한 번 묻는다.
+         (처음 켠 기기에서 기존 모임까지 다시 묻지 않도록, 이미 목록이 있던 기기만.) */
+      if (beforeJoined.length && store2.markGroupProfilePending) {
+        st.currentUser.joinedGroupIds
+          .filter((id) => beforeJoined.indexOf(id) < 0)
+          .forEach((id) => store2.markGroupProfilePending(id));
+      }
+
+      /* v38.1 — 서버에 남긴 '이 모임에서만 쓰는 내 프로필'(닉네임·사진)을 되살린다. */
+      if (!st.groupMembership || typeof st.groupMembership !== 'object') st.groupMembership = {};
+      (members || []).filter((m) => m.user_id === me.id).forEach((m) => {
+        const d = m.data || {};
+        if (!d.nickname && !d.photoUrl && d.profileAsked !== true) return;
+        if (!st.groupMembership[m.group_id]) st.groupMembership[m.group_id] = {};
+        const cur = st.groupMembership[m.group_id][me.id] || {};
+        st.groupMembership[m.group_id][me.id] = Object.assign({}, cur, {
+          nickname: d.nickname !== undefined ? d.nickname : cur.nickname,
+          photoUrl: d.photoUrl !== undefined ? d.photoUrl : cur.photoUrl,
+          profileAsked: d.profileAsked === true || cur.profileAsked === true
+        });
+      });
 
       /* --- 글 --------------------------------------------------------- */
       const remoteFeed = [];
@@ -1188,6 +1272,8 @@
       });
       st.feedPosts = mergeById(st.feedPosts, remoteFeed);
       st.explorePosts = mergeById(st.explorePosts, remoteExplore);
+      /* v38.1 — 글 행에는 '내가 눌렀는지'가 없다. 내 좋아요 목록으로 다시 칠한다. */
+      if (store2.applyMyLikes) store2.applyMyLikes();
 
       /* --- 일정 · 공지 ------------------------------------------------ */
       st.groupEvents = mergeById(st.groupEvents, (events || []).map((r) => ({ ...(r.data || {}), id: r.id, groupId: r.group_id })));
@@ -1291,6 +1377,14 @@
         if (d.tastePrefs) st.tastePrefs = { ...st.tastePrefs, ...d.tastePrefs };
         if (Array.isArray(d.customHobbies)) st.customHobbies = d.customHobbies;
         if (d.groupVisits) st.groupVisits = { ...st.groupVisits, ...d.groupVisits };
+        /* v38.1 — 내 좋아요·지운 '다녀온 모임' 기록은 내 계정에만 남긴다.
+           (글 행에 싣지 않으므로, 다시 로그인해도 이 목록에서만 되살아난다.) */
+        if (d.myLikes) {
+          if (Array.isArray(d.myLikes.posts)) st.currentUser.likedPostIds = d.myLikes.posts.slice();
+          if (Array.isArray(d.myLikes.comments)) st.currentUser.likedCommentIds = d.myLikes.comments.slice();
+          if (Array.isArray(d.myLikes.hiddenPastMeetings)) st.currentUser.hiddenPastMeetings = d.myLikes.hiddenPastMeetings.slice();
+          if (store2.applyMyLikes) store2.applyMyLikes();
+        }
       }
 
       /* --- 내 비밀 앨범 (서명 URL 로만 보인다) ---------------------- */
