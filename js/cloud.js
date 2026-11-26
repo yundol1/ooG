@@ -857,7 +857,7 @@
   }
 
   /** 지금 내 사진들이 서버에서 가리키는 경로 — 정리(sweep)에서 남길 목록. */
-  function myMediaKeep() {
+  function myMediaKeep(meId) {
     const store2 = global.appStore;
     const st = (store2 && store2.state) || {};
     const u = st.currentUser || {};
@@ -866,7 +866,7 @@
     add('avatars', u.photoPath || pathFromPublicUrl('avatars', u.photoUrl));
     const rent = st.groupMembership || {};
     (u.joinedGroupIds || []).forEach((gid) => {
-      const row = rent[gid] && rent[gid][currentUserId()];
+      const row = rent[gid] && rent[gid][meId || currentUserId()];
       if (row) add('avatars', row.photoPath || pathFromPublicUrl('avatars', row.photoUrl));
     });
     ((u.album && u.album.public) || []).forEach((p) => {
@@ -889,7 +889,7 @@
     if (!isUuid(meId) || !hasSession()) return { ok: false, reason: 'no_session', removed: 0 };
     if (state.mediaSwept && !options.force) return { ok: true, removed: 0, skipped: 'session' };
     state.mediaSwept = true;
-    const keep = myMediaKeep();
+    const keep = myMediaKeep(meId);
     const grace = Date.now() - 60 * 60 * 1000;
     let removed = 0;
     for (const bucket of Object.keys(MEDIA_PREFIXES)) {
@@ -914,7 +914,8 @@
       const s = String(v || '');
       return s.length ? `${s.length}:${s.slice(0, 24)}:${s.slice(-24)}` : '';
     };
-    const photos = ((u.album && u.album.public) || []).map((p) => (p && (p.id || p.cloudPath || brief(p.url))) || '');
+    /* 사진을 바꿔도(id 는 그대로) 알아채도록 주소·경로를 함께 본다. */
+    const photos = ((u.album && u.album.public) || []).map((p) => (p ? `${p.id || ''}:${p.cloudPath || ''}:${brief(p.url)}` : ''));
     return [brief(u.photoUrl), String(u.photoPath || ''), photos.join(',')].join('|');
   }
 
