@@ -15485,15 +15485,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         s.panX = pcfDrag.panX + (e.clientX - pcfDrag.x);
         s.panY = pcfDrag.panY + (e.clientY - pcfDrag.y);
+        pcfDrag.moved = Math.max(pcfDrag.moved || 0,
+                                 Math.hypot(e.clientX - pcfDrag.x, e.clientY - pcfDrag.y));
         layoutPhotoCrop();
       });
       const end = (e) => {
         pcfPointers.delete(e.pointerId);
         if (pcfPointers.size < 2) pcfPinch = null;
         if (pcfPointers.size === 0) {
-          /* 두 번 톡톡 — 사진을 처음 자리(1배·가운데)로 되돌린다. */
+          /* 두 번 톡톡 — 사진을 처음 자리(1배·가운데)로 되돌린다. 끌어 옮긴 손짓(8px 이상)은
+             두드림으로 치지 않는다(사진을 이어서 끌 때 엉뚱하게 되돌아가지 않게). */
           const now = Date.now();
-          if (pcfDrag && pcfDrag.mode === 'pan' && now - pcfLastTap < 320) {
+          const tapped = !!(pcfDrag && pcfDrag.mode === 'pan' && (pcfDrag.moved || 0) < 8);
+          if (tapped && now - pcfLastTap < 320) {
             const s = pcfState();
             s.zoom = 1;
             s.panX = 0;
@@ -15501,7 +15505,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pcfLastTap = 0;
             layoutPhotoCrop();
           } else {
-            pcfLastTap = pcfDrag && pcfDrag.mode === 'pan' ? now : 0;
+            pcfLastTap = tapped ? now : 0;
           }
           pcfDrag = null;
           stage.classList.remove('is-dragging');
