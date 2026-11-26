@@ -1227,6 +1227,14 @@
           if (up.ok) { photo.url = up.url; photo.cloudPath = up.path; }
         }
       }
+      /* v39.0 — 공개 앨범에서 **빠진 사진**은 서버 파일도 그 자리에서 지운다.
+         (전에는 목록에서만 사라지고 파일이 남았다. 지금 기기가 아는 경로만 지우니
+          다른 기기가 방금 올린 사진을 건드리지 않는다.) */
+      const keepPublic = new Set(u.album.public.map((p) => p && (p.cloudPath || pathFromPublicUrl('public-photos', p.url))).filter(Boolean));
+      const knownPublic = Array.isArray(state.meta.publicPaths) ? state.meta.publicPaths : [];
+      const gone = knownPublic.filter((path) => !keepPublic.has(path));
+      if (gone.length) await deleteObjects('public-photos', gone);
+      state.meta.publicPaths = Array.from(keepPublic);
     }
     const row = profileRow(store2.state.currentUser, me.id);
     await request(`${REST}/profiles?on_conflict=id`, {

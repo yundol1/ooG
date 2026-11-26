@@ -14042,6 +14042,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  /* Esc — 열어 둔 참석 메뉴를 닫고 알약으로 초점을 돌린다. */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const open = document.querySelector('.profile-event-rsvp-menu:not([hidden])');
+    if (!open) return;
+    open.hidden = true;
+    const item = open.closest('.profile-event-item');
+    const pill = item && item.querySelector('[data-profile-rsvp-toggle]');
+    if (pill) {
+      pill.setAttribute('aria-expanded', 'false');
+      try { pill.focus({ preventScroll: true }); } catch (err) { /* noop */ }
+    }
+  });
+
   /* 열어 둔 참석 메뉴는 바깥을 누르면 닫는다(화면에 하나만). */
   document.addEventListener('click', (e) => {
     if (e.target.closest('.profile-event-rsvp-menu') || e.target.closest('[data-profile-rsvp-toggle]')) return;
@@ -18302,11 +18316,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const canChange = !past && !guest && store.can(ev.groupId, 'view_feed');
       const pill = canChange
         ? `<button class="profile-event-rsvp-pill rs-${escapeHtml(my || 'none')}" data-profile-rsvp-toggle="${escapeHtml(ev.id)}"
-                   type="button" aria-expanded="false"
+                   type="button" aria-expanded="false" aria-controls="profile-rsvp-menu-${escapeHtml(ev.id)}"
                    aria-label="내 참석 상태 ${escapeHtml(label)} · 눌러서 바꾸기">${escapeHtml(label)}</button>`
         : `<span class="profile-event-rsvp-pill is-static rs-${escapeHtml(my || 'none')}">${escapeHtml(guest ? '게스트' : label)}</span>`;
       const menu = canChange
-        ? `<div class="profile-event-rsvp-menu" data-profile-rsvp-menu="${escapeHtml(ev.id)}" hidden>
+        ? `<div class="profile-event-rsvp-menu" id="profile-rsvp-menu-${escapeHtml(ev.id)}" data-profile-rsvp-menu="${escapeHtml(ev.id)}" hidden>
             ${rsvps.map((r) => `<button class="rsvp-btn rs-${r.id} ${my === r.id ? 'active' : ''}"
                 data-profile-rsvp-set="${r.id}" data-profile-rsvp-event="${escapeHtml(ev.id)}" type="button"
                 aria-pressed="${my === r.id}">${escapeHtml(r.label)}</button>`).join('')}
