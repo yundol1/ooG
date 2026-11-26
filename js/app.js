@@ -715,7 +715,7 @@ document.addEventListener('DOMContentLoaded', () => {
     pcfStage: $('#pcf-stage'),
     pcfImg: $('#pcf-img'),
     pcfRing: $('#pcf-ring'),
-    pcfZoom: $('#pcf-zoom'),
+    pcfHandles: [...document.querySelectorAll('[data-pcf-handle]')],
     pcfOk: $('#pcf-ok'),
     pcfCancel: $('#pcf-cancel'),
     pcfTitle: $('#pcf-title'),
@@ -7957,7 +7957,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.7';
+  const APP_VERSION = 'v38.8';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -15207,36 +15207,54 @@ document.addEventListener('DOMContentLoaded', () => {
    *  윤루키 님(11/26 #25999 · #26011):
    *    "사진을 선택하면 그 사진을 풀스크린으로 띄어서 원형을 맞추잖아 그렇게 해주고
    *     확인버튼을 누르면 설정되게" · "회원가입할때 프로필 이미지에도 해당돼"
+   *  v38.8 (#26176) — "사진 축소는 왜 안돼..? 확대 밖에 안돼? 그냥 사진속 박스 원형 드래그로
+   *    사진을 애초에 조절할수있게해줘 아래 선을 통해서 확대만 하지말거"
    *
    *  · 화면 전체(100vw × 100dvh)를 어두운 판으로 덮고, 가운데 원 안만 밝게 보여 준다.
-   *  · 사진은 손가락으로 끌어 옮기고(팬), 두 손가락·휠·아래 슬라이더로 확대한다(1~4배).
-   *  · `확인` 을 누르면 원 안을 정사각으로 잘라 JPEG 로 다시 그린다(EXIF 위치 정보 제거).
+   *  · 사진 — 손가락으로 끌어 옮기고(팬), 두 손가락·휠·두 번 두드리기로 0.35~4배 확대·축소.
+   *    확대뿐 아니라 **축소**도 된다(원보다 사진이 작아지면 그 자리는 어두운 바탕으로 남는다).
+   *  · 원 — 테두리(모서리 손잡이 네 개)를 직접 끌어 자를 원의 지름을 140px ~ min(vw,vh)-32px 로 바꾼다.
+   *  · 아래 확대 슬라이더는 없다(v38.8 에서 걷어냈다) — 위 왼쪽 `취소` · 아래 `확인` 둘만.
+   *  · `확인` 을 누르면 지금의 원(중심·지름)과 지금의 사진(배율·위치) 그대로 잘라 JPEG 로 다시 그린다
+   *    (EXIF 위치 정보 제거).
    *  · 모임 대표 이미지 · 회원가입 대표 사진 · 모임 전용 프로필 사진이 같은 판을 쓴다.
    *    v38.7 (#26108 · #26120) — 프로필 편집 사진 · 공개 사진 · 비밀앨범까지 이 판으로 넓혔다.
    * ======================================================================== */
-  const PCF_MIN_ZOOM = 1;
+  const PCF_MIN_ZOOM = 0.35;
   const PCF_MAX_ZOOM = 4;
+  const PCF_MIN_DIA = 140;
+  const PCF_GRIP = 18;          /* 원 테두리를 잡았다고 보는 폭(px) */
+  const PCF_EMPTY = '#0D1117';  /* 축소해 원 밖이 빈 자리 — 크롭 결과에서도 이 색으로 채운다 */
   const PCF_DEFAULT_OUT = 720;
   ui.circleCrop = ui.circleCrop || {
-    open: false, src: '', natW: 0, natH: 0, zoom: 1, panX: 0, panY: 0,
+    open: false, src: '', natW: 0, natH: 0, zoom: 1, panX: 0, panY: 0, dia: 0,
     out: PCF_DEFAULT_OUT, title: '', resolve: null
   };
   let pcfPointers = new Map();
   let pcfDrag = null;
   let pcfPinch = null;
   let pcfRestoreFocus = null;
+  let pcfLastTap = 0;
 
   function pcfState() { return ui.circleCrop; }
 
-  /** 원의 자리 — 화면 가운데, 아래 조작 줄(확대·확인)을 비워 둔다. */
+  /** 처음 원 지름 — 화면의 78%(가로) · 50%(세로) 중 작은 쪽. */
+  function pcfDefaultDia(W, H) {
+    return Math.round(Math.max(PCF_MIN_DIA, Math.min(W * 0.78, H * 0.5)));
+  }
+
+  /** 원의 자리 — 화면 가운데. 지름은 사용자가 끈 값(s.dia)을 화면 안으로 가둔다. */
   function pcfMetrics() {
     const node = el.photoCropFull;
     const W = (node && node.clientWidth) || window.innerWidth || 390;
     const H = (node && node.clientHeight) || window.innerHeight || 844;
-    const D = Math.max(140, Math.round(Math.min(W * 0.78, H * 0.5)));
+    const maxD = Math.max(PCF_MIN_DIA, Math.round(Math.min(W, H) - 32));
+    const s = pcfState();
+    const D = Math.round(Math.min(maxD, Math.max(PCF_MIN_DIA, s.dia || pcfDefaultDia(W, H))));
+    if (s.open) s.dia = D;
     const cx = Math.round(W / 2);
     const cy = Math.round(H / 2);
-    return { W, H, D, cx, cy, left: Math.round(cx - D / 2), top: Math.round(cy - D / 2) };
+    return { W, H, D, maxD, cx, cy, left: Math.round(cx - D / 2), top: Math.round(cy - D / 2) };
   }
 
   /** 처음 배율 — 사진이 **화면 전체**를 덮게(cover). 원은 그 안의 가운데 창이다. */
@@ -15252,8 +15270,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const scale = pcfBaseScale(mm) * (s.zoom || 1);
     const w = (s.natW || 1) * scale;
     const h = (s.natH || 1) * scale;
-    const ox = Math.max(0, (w - mm.D) / 2);
-    const oy = Math.max(0, (h - mm.D) / 2);
+    /* 끼울 수 있는 범위 — 사진이 원보다 크면 원을 덮는 선까지, 작으면 원 안에서
+       이 끝에서 저 끝까지(축소한 사진도 원 안에서 자리를 옮길 수 있게). */
+    const ox = Math.abs(w - mm.D) / 2;
+    const oy = Math.abs(h - mm.D) / 2;
     s.panX = Math.min(ox, Math.max(-ox, s.panX || 0));
     s.panY = Math.min(oy, Math.max(-oy, s.panY || 0));
     return {
@@ -15276,12 +15296,17 @@ document.addEventListener('DOMContentLoaded', () => {
     el.pcfRing.style.top = `${m.top}px`;
     el.pcfRing.style.width = `${m.D}px`;
     el.pcfRing.style.height = `${m.D}px`;
+    /* 네 모서리 손잡이 — 원 둘레 45° 자리에 붙는다(끌면 원 지름이 바뀐다). */
+    const off = (m.D / 2) * Math.SQRT1_2;
+    const dirs = { nw: [-1, -1], ne: [1, -1], sw: [-1, 1], se: [1, 1] };
+    (el.pcfHandles || []).forEach((h) => {
+      const d = dirs[h.dataset.pcfHandle] || [1, 1];
+      h.style.left = `${Math.round(m.cx + d[0] * off)}px`;
+      h.style.top = `${Math.round(m.cy + d[1] * off)}px`;
+    });
     if (el.photoCropFull) {
       el.photoCropFull.dataset.zoom = String(Math.round((s.zoom || 1) * 100));
       el.photoCropFull.dataset.circle = String(m.D);
-    }
-    if (el.pcfZoom && document.activeElement !== el.pcfZoom) {
-      el.pcfZoom.value = String(Math.round((s.zoom || 1) * 100));
     }
   }
 
@@ -15309,15 +15334,19 @@ document.addEventListener('DOMContentLoaded', () => {
     s.zoom = 1;
     s.panX = 0;
     s.panY = 0;
+    s.dia = pcfDefaultDia(
+      (el.photoCropFull && el.photoCropFull.clientWidth) || window.innerWidth || 390,
+      (el.photoCropFull && el.photoCropFull.clientHeight) || window.innerHeight || 844
+    );
     s.out = Math.max(160, Math.min(1600, Number(o.out) || PCF_DEFAULT_OUT));
     s.title = String(o.title || '원형으로 맞춰 주세요');
     pcfPointers = new Map();
     pcfDrag = null;
     pcfPinch = null;
+    pcfLastTap = 0;
     if (el.pcfTitle) el.pcfTitle.textContent = s.title;
     el.photoCropFull.hidden = false;
     el.photoCropFull.classList.add('is-open');
-    if (el.pcfZoom) el.pcfZoom.value = '100';
     el.pcfStage && el.pcfStage.classList.remove('is-dragging');
     pcfRestoreFocus = document.activeElement;
     document.body.classList.add('is-photo-crop');
@@ -15338,24 +15367,26 @@ document.addEventListener('DOMContentLoaded', () => {
     return done;
   }
 
-  /** 원 안을 정사각으로 잘라 JPEG data URL 로 — 위치 정보(EXIF)는 따라오지 않는다. */
+  /** 원 안을 정사각으로 잘라 JPEG data URL 로 — 위치 정보(EXIF)는 따라오지 않는다.
+   *  v38.8 — 사진을 원 창 좌표계로 옮겨 그리므로, 축소해 원 밖이 빈 자리는
+   *  늘어나거나 잘리지 않고 어두운 바탕(PCF_EMPTY)으로 남는다. */
   function pcfCropDataUrl() {
     const s = pcfState();
     const img = el.pcfImg;
     if (!s.src || !img || !img.naturalWidth) return null;
     const m = pcfMetrics();
     const r = pcfImageRect(m);
-    const square = Math.max(1, Math.min(s.natW, s.natH, m.D / r.scale));
-    const sx = Math.max(0, Math.min(s.natW - square, (m.left - r.left) / r.scale));
-    const sy = Math.max(0, Math.min(s.natH - square, (m.top - r.top) / r.scale));
     const out = Math.round(s.out || PCF_DEFAULT_OUT);
+    const k = out / m.D;
     const canvas = document.createElement('canvas');
     canvas.width = out;
     canvas.height = out;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#0D1117';
+    ctx.fillStyle = PCF_EMPTY;
     ctx.fillRect(0, 0, out, out);
-    ctx.drawImage(img, sx, sy, square, square, 0, 0, out, out);
+    ctx.imageSmoothingEnabled = true;
+    if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, (r.left - m.left) * k, (r.top - m.top) * k, r.w * k, r.h * k);
     return canvas.toDataURL('image/jpeg', 0.86);
   }
 
@@ -15365,10 +15396,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const resolve = s.resolve;
     s.open = false;
     s.src = '';
+    s.dia = 0;
     s.resolve = null;
     pcfPointers = new Map();
     pcfDrag = null;
     pcfPinch = null;
+    pcfLastTap = 0;
     if (el.photoCropFull) {
       el.photoCropFull.classList.remove('is-open');
       el.photoCropFull.hidden = true;
@@ -15381,8 +15414,10 @@ document.addEventListener('DOMContentLoaded', () => {
       el.pcfImg.style.left = '';
       el.pcfImg.style.top = '';
     }
-    if (el.pcfZoom) el.pcfZoom.value = '100';
-    if (el.pcfStage) el.pcfStage.classList.remove('is-dragging');
+    if (el.pcfStage) {
+      el.pcfStage.classList.remove('is-dragging');
+      el.pcfStage.classList.remove('is-resizing');
+    }
     document.body.classList.remove('is-photo-crop');
     const back = pcfRestoreFocus;
     pcfRestoreFocus = null;
@@ -15414,8 +15449,16 @@ document.addEventListener('DOMContentLoaded', () => {
         pcfPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         try { stage.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
         if (pcfPointers.size === 1) {
-          pcfDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, panX: s.panX || 0, panY: s.panY || 0 };
-          stage.classList.add('is-dragging');
+          const m = pcfMetrics();
+          const dist = Math.hypot(e.clientX - m.cx, e.clientY - m.cy);
+          /* 원 테두리(모서리 손잡이 포함)를 잡았으면 → 원 지름 조절, 그 밖이면 → 사진 옮기기. */
+          if (Math.abs(dist - m.D / 2) <= PCF_GRIP) {
+            pcfDrag = { mode: 'resize', id: e.pointerId, cx: m.cx, cy: m.cy, dia: m.D, dist: Math.max(24, dist) };
+            stage.classList.add('is-resizing');
+          } else {
+            pcfDrag = { mode: 'pan', id: e.pointerId, x: e.clientX, y: e.clientY, panX: s.panX || 0, panY: s.panY || 0 };
+            stage.classList.add('is-dragging');
+          }
         } else if (pcfPointers.size === 2) {
           pcfDrag = null;
           pcfPinch = { dist: pcfPinchDistance(), zoom: s.zoom || 1 };
@@ -15432,6 +15475,14 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
         if (!pcfDrag || pcfDrag.id !== e.pointerId) return;
+        if (pcfDrag.mode === 'resize') {
+          /* 중심에서 손가락까지의 거리에 비례해 원 지름을 키우거나 줄인다. */
+          const dist = Math.hypot(e.clientX - pcfDrag.cx, e.clientY - pcfDrag.cy);
+          const maxD = pcfMetrics().maxD;
+          s.dia = Math.round(Math.min(maxD, Math.max(PCF_MIN_DIA, pcfDrag.dia * (dist / pcfDrag.dist))));
+          layoutPhotoCrop();
+          return;
+        }
         s.panX = pcfDrag.panX + (e.clientX - pcfDrag.x);
         s.panY = pcfDrag.panY + (e.clientY - pcfDrag.y);
         layoutPhotoCrop();
@@ -15440,23 +15491,45 @@ document.addEventListener('DOMContentLoaded', () => {
         pcfPointers.delete(e.pointerId);
         if (pcfPointers.size < 2) pcfPinch = null;
         if (pcfPointers.size === 0) {
+          /* 두 번 톡톡 — 사진을 처음 자리(1배·가운데)로 되돌린다. */
+          const now = Date.now();
+          if (pcfDrag && pcfDrag.mode === 'pan' && now - pcfLastTap < 320) {
+            const s = pcfState();
+            s.zoom = 1;
+            s.panX = 0;
+            s.panY = 0;
+            pcfLastTap = 0;
+            layoutPhotoCrop();
+          } else {
+            pcfLastTap = pcfDrag && pcfDrag.mode === 'pan' ? now : 0;
+          }
           pcfDrag = null;
           stage.classList.remove('is-dragging');
+          stage.classList.remove('is-resizing');
         }
       };
       stage.addEventListener('pointerup', end);
       stage.addEventListener('pointercancel', end);
-      /* 데스크톱 — 휠로도 확대한다(슬라이더가 같은 값을 보여 준다). */
+      /* 데스크톱 — 휠로도 확대·축소한다. */
       stage.addEventListener('wheel', (e) => {
         const s = pcfState();
         if (!s.open) return;
         e.preventDefault();
         setPcfZoom((s.zoom || 1) * (e.deltaY < 0 ? 1.08 : 0.92));
       }, { passive: false });
+      /* 두 번 두드리기(더블클릭) — 휠이 없는 화면에서도 처음 상태로 돌아간다. */
+      stage.addEventListener('dblclick', (e) => {
+        const s = pcfState();
+        if (!s.open) return;
+        e.preventDefault();
+        s.zoom = 1;
+        s.panX = 0;
+        s.panY = 0;
+        layoutPhotoCrop();
+      });
     }
     if (el.pcfOk) el.pcfOk.addEventListener('click', () => applyPhotoCrop());
     if (el.pcfCancel) el.pcfCancel.addEventListener('click', () => closeCircleCrop(null));
-    if (el.pcfZoom) el.pcfZoom.addEventListener('input', () => setPcfZoom(Number(el.pcfZoom.value) / 100));
     document.addEventListener('keydown', (e) => {
       if (!ui.circleCrop || !ui.circleCrop.open) return;
       if (e.key === 'Escape') {

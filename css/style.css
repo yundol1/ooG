@@ -27713,9 +27713,12 @@ body.group-mode .push-permission-banner { display: none !important; }
    ----------------------------------------------------------------------------
    윤루키 님: "사진을 선택하면 그 사진을 풀스크린으로 띄어서 원형을 맞추잖아 그렇게 해주고
    확인버튼을 누르면 설정되게" · "회원가입할때 프로필 이미지에도 해당돼"
+   v38.8 (#26176) — "사진 축소는 왜 안돼..? ... 그냥 사진속 박스 원형 드래그로 사진을 애초에
+   조절할수있게해줘 아래 선을 통해서 확대만 하지말거"
    · 화면 전체를 어두운 판으로 덮고, 가운데 원 안만 밝게 — 원 바깥은 어둡게 가린다.
-   · 사진은 끌어 옮기고(팬) 두 손가락·휠·슬라이더로 확대한다.
-   · 위 왼쪽 `취소` · 아래 `확인`(간단한 두 글자).
+   · 사진은 끌어 옮기고(팬) 두 손가락·휠·두 번 두드리기로 0.35~4배 확대·축소한다.
+   · 원 테두리(모서리 손잡이 네 개)를 끌어 자를 원의 지름을 바꾼다.
+   · 위 왼쪽 `취소` · 아래 `확인`(간단한 두 글자) — 아래 확대 슬라이더는 없다(v38.8).
    ============================================================================ */
 .photo-crop-full {
   position: fixed;
@@ -27743,6 +27746,7 @@ body.is-photo-crop { overflow: hidden; }
   cursor: grab;
 }
 .pcf-stage.is-dragging { cursor: grabbing; }
+.pcf-stage.is-resizing { cursor: nwse-resize; }
 .pcf-img {
   position: absolute;
   max-width: none;
@@ -27757,6 +27761,19 @@ body.is-photo-crop { overflow: hidden; }
   border: 2px solid rgba(255, 255, 255, 0.92);
   border-radius: 50%;
   box-shadow: 0 0 0 9999px rgba(4, 8, 12, 0.66);
+  pointer-events: none;
+}
+/* v38.8 — 원 둘레 모서리 손잡이 네 개. 끌면 자를 원의 지름이 바뀐다(터치는 원 테두리 아무 데나). */
+.pcf-handle {
+  position: absolute;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 1px solid rgba(10, 15, 20, 0.45);
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 
@@ -27808,21 +27825,7 @@ body.is-photo-crop { overflow: hidden; }
   gap: 14px;
   padding: 14px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
 }
-.pcf-zoom-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  max-width: 340px;
-}
-.pcf-zoom-ic { display: inline-flex; color: rgba(255, 255, 255, 0.72); }
-.pcf-zoom-ic .oo-ic { font-size: 18px; }
-.pcf-zoom {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 32px;
-  accent-color: var(--green-solid);
-}
+/* v38.8 — 아래 확대 슬라이더는 없다. 판 위에 `취소`(위 왼쪽) · `확인`(아래) 둘만. */
 .pcf-ok {
   width: 100%;
   max-width: 340px;
