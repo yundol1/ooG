@@ -5577,6 +5577,8 @@ class Store {
         /* v35.2 — 게시판 멤버 작성 허용(기본 꺼짐) · 모임 알림 받기(기본 켜짐) */
         memberBoardWrite: g.memberBoardWrite === true,
         notifyEnabled: g.notifyEnabled !== false,
+        /* v38.5 — 옛 저장 상태에 없으면 허용(예전처럼 묻는다). */
+        allowGroupProfile: g.allowGroupProfile !== false,
         deputyCanModerate: g.deputyCanModerate === true,
         members: Array.isArray(g.members) ? g.members : []
       }));
@@ -9577,6 +9579,10 @@ class Store {
       privacyType,
       privacyLabel: privacyType === 'open' ? '자유 가입' : '비공개 승인제',
       joinMode,
+      /* v38.5 (11/26 #25999) — 모임 내 프로필: 멤버(과 모임장)가 그 모임에서만 쓸
+         이름·사진을 따로 둘 수 있는지. 기본은 허용이고, 끄면 모두 기본 프로필이다.
+         groups 표의 data(jsonb)에 함께 실려 다른 기기·다른 사람에게도 같은 값이 간다. */
+      allowGroupProfile: d.allowGroupProfile !== false,
       /* H4 — 슬라이더로 고른 나이 범위. ageLimit 은 배지·옛 코드 호환용 id. */
       ageMin: ageRange.min,
       ageMax: ageRange.max,
@@ -11116,6 +11122,7 @@ class Store {
   /** 그 모임에 처음 들어왔을 때 '모임 전용 프로필' 안내를 한 번 띄운다. */
   needsGroupProfileSetup(groupId) {
     if (!groupId || !this.isGroupJoined(groupId)) return false;
+    if (!this.getGroupAllowProfile(groupId)) return false;
     const cu = this.currentUser || {};
     const pending = Array.isArray(cu.pendingGroupProfile) ? cu.pendingGroupProfile : [];
     if (pending.indexOf(groupId) < 0) return false;
@@ -11125,6 +11132,8 @@ class Store {
   /** 방금 가입한 모임 — 다음 입장에서 '모임 전용 프로필'을 한 번 묻는다. */
   markGroupProfilePending(groupId) {
     if (!groupId) return false;
+    /* v38.5 — 이 모임이 전용 프로필을 허용하지 않으면 묻지 않는다. */
+    if (!this.getGroupAllowProfile(groupId)) return false;
     const cu = this.currentUser || {};
     if (!Array.isArray(cu.pendingGroupProfile)) cu.pendingGroupProfile = [];
     if (this.getGroupProfile(groupId).profileAsked === true) return false;
@@ -13398,6 +13407,26 @@ class Store {
     g.memberBoardWrite = !!enabled;
     this.saveState();
     return { ok: true, memberCanWrite: g.memberBoardWrite, policy: this.getGroupBoardPolicy(groupId) };
+  }
+
+  /* ------------------------------------ v38.5. 모임 내 프로필 허용 */
+  /**
+   * 모임 전용 프로필을 이 모임에서 쓸 수 있는지 — 모임장이 5단계(또는 모임 설정)에서 정한 값.
+   * 옛 모임(값 없음)은 허용으로 본다(예전엔 모두에게 물었으므로).
+   */
+  getGroupAllowProfile(groupId) {
+    const g = this.getGroup(groupId);
+    return !!g && g.allowGroupProfile !== false;
+  }
+
+  /** 모임장만 — 모임 전용 프로필 허용을 켜고 끈다. */
+  updateGroupAllowProfile(groupId, enabled) {
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
+    const g = this.getGroup(groupId);
+    if (!g) return { ok: false, reason: 'not_found' };
+    g.allowGroupProfile = !!enabled;
+    this.saveState();
+    return { ok: true, allowGroupProfile: g.allowGroupProfile };
   }
 
   /* ------------------------------------ v35.2. 모임 알림 설정 (모임마다) */

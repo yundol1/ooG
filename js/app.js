@@ -706,10 +706,19 @@ document.addEventListener('DOMContentLoaded', () => {
     createGroupCats: $('#create-group-cats'),
     createGroupHobbyPicked: $('#create-group-hobby-picked'),
     createGroupCoverCircle: $('#create-group-cover-circle'),
-    createGroupCrop: $('#create-group-crop'),
-    createGroupCropStage: $('#create-group-crop-stage'),
-    createGroupCropImg: $('#create-group-crop-img'),
-    createGroupCropBox: $('#create-group-crop-box'),
+    createGroupProfilePolicy: $('#create-group-profile-policy'),
+    createGroupProfileHint: $('#create-group-profile-hint'),
+    createGroupHostProfile: $('#create-group-host-profile'),
+    createGroupHostProfilePick: $('#create-group-host-profile-pick'),
+    /* v38.5 — 풀스크린 원형 크롭(모임 대표 · 회원가입 대표 · 모임 전용 프로필이 함께 쓴다) */
+    photoCropFull: $('#photo-crop-full'),
+    pcfStage: $('#pcf-stage'),
+    pcfImg: $('#pcf-img'),
+    pcfRing: $('#pcf-ring'),
+    pcfZoom: $('#pcf-zoom'),
+    pcfOk: $('#pcf-ok'),
+    pcfCancel: $('#pcf-cancel'),
+    pcfTitle: $('#pcf-title'),
     createGroupRegionSido: $('#create-group-region-sido'),
     createGroupRegionSigungu: $('#create-group-region-sigungu'),
     createGroupRegionPicked: $('#create-group-region-picked'),
@@ -7052,7 +7061,9 @@ document.addEventListener('DOMContentLoaded', () => {
         gsRow({ label: '운영진 관리', value: `${staff}/${GROUP_STAFF_MAX_UI}명`, action: 'data-gs-view="staff"', chev: true }),
         gsSwitchRow('모임 내 1:1 대화 허용', 'gs-dm', dm.enabled),
         gsSwitchRow('운영진에게 멤버 관리까지', 'gs-deputymod', mod, '끄면 운영진은 공지·일정만'),
-        gsSwitchRow('게시판 멤버 작성 허용', 'gs-boardwrite', board.memberCanWrite, '끄면 운영진만 공지·일정을 써요')
+        gsSwitchRow('게시판 멤버 작성 허용', 'gs-boardwrite', board.memberCanWrite, '끄면 운영진만 공지·일정을 써요'),
+        /* v38.5 — 5단계에서 정한 모임 내 프로필 정책을 나중에 바꾼다. */
+        gsSwitchRow('모임 전용 프로필 허용', 'gs-allowprofile', grp.allowGroupProfile !== false, '끄면 모두 기본 프로필로')
       ].join('')));
       parts.push(gsGroup('위험 영역', [
         gsRow({ label: '모임장 위임', action: 'data-gs-view="transfer"', chev: true, danger: true }),
@@ -7107,6 +7118,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             </div>
           </div>
+          ${store.getGroupAllowProfile(pid) ? '' : '<p class="gs-note">모임장이 전용 프로필을 허용하지 않았어요 · 지금 쓰는 프로필은 그대로예요</p>'}
           <label class="gs-field">
             <span class="gs-field-label">이 모임에서 쓸 이름</span>
             <input class="gs-input" id="gs-profile-nick" type="text" maxlength="12"
@@ -7564,6 +7576,13 @@ document.addEventListener('DOMContentLoaded', () => {
         res.ok ? 'success' : 'warning');
       return;
     }
+    if (t.dataset.gsToggle === 'gs-allowprofile') {
+      const on = !store.getGroupAllowProfile(gid);
+      const res = store.updateGroupAllowProfile(gid, on);
+      gsToastAndRender(res.ok ? (on ? '모임 전용 프로필을 허용했어요' : '이제 모두 기본 프로필로 참여해요') : '모임장만 바꿀 수 있어요',
+        res.ok ? 'success' : 'warning');
+      return;
+    }
     if (t.dataset.gsToggle === 'defaultGuestEvents' || t.dataset.gsToggle === 'defaultFeedRecommend') {
       const key = t.dataset.gsToggle;
       const cur = store.getGroupSettings(gid)[key];
@@ -7905,7 +7924,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.4';
+  const APP_VERSION = 'v38.5';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -9350,11 +9369,16 @@ document.addEventListener('DOMContentLoaded', () => {
       input.value = '';
       if (!file) return;
       collectOnboardingInputs();
+      /* v38.5 (#26011) — "회원가입할때 프로필 이미지에도 해당돼": 모임 대표와 같은
+         풀스크린 원형 크롭을 거친다. 확인을 누르면 원 그대로 잘린 사진이 대표 사진이 된다. */
       readImageFile(file, (url) => {
-        const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
-        d.photoUrl = url;
-        renderOnboarding();
-        showToast('프로필 사진을 준비했어요', 'success');
+        openCircleCrop({ src: url, out: 1024, title: '대표 사진을 원형으로 맞춰 주세요' }).then((out) => {
+          if (!out) return;
+          const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
+          d.photoUrl = out;
+          renderOnboarding();
+          showToast('프로필 사진을 원형으로 만들었어요', 'success');
+        });
       }, PROFILE_PHOTO_MAX, PROFILE_PHOTO_QUALITY);
     });
     el.onboardingBody.addEventListener('input', (e) => {
@@ -15049,7 +15073,11 @@ document.addEventListener('DOMContentLoaded', () => {
       ageMin: AGE_MIN,
       ageMax: AGE_MAX,
       ageLimit: 'all',
-      question: ''
+      question: '',
+      /* v38.5 (11/26 #25999) — 모임 내 프로필 정책. 허용하면 멤버(과 모임장)가 그 모임에서만
+         쓸 이름·사진을 따로 둘 수 있다. hostGroupProfile: 'base'(기본 그대로) | 'own'(전용 만들기). */
+      allowGroupProfile: true,
+      hostGroupProfile: 'base'
     };
   }
 
@@ -15066,6 +15094,8 @@ document.addEventListener('DOMContentLoaded', () => {
       hangoutIds: d.hangoutIds, privacyType: d.privacyType, ageLimit: d.ageLimit,
       ageMin: d.ageMin, ageMax: d.ageMax,
       question: d.question,
+      allowGroupProfile: d.allowGroupProfile !== false,
+      hostGroupProfile: d.hostGroupProfile === 'own' ? 'own' : 'base',
       savedAt: new Date().toISOString()
     };
     try {
@@ -15137,179 +15167,305 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.createGroupCoverRemove) el.createGroupCoverRemove.hidden = !(c.circle || c.src);
   }
 
-  /* ------------------------------------------------ 크롭 (v34.2 · 사각 박스 드래그)
-   *  · 확대 슬라이더를 없애고, 사진 위의 **사각 크롭 박스**를 손가락·마우스로 조절한다.
-   *  · 모서리(4개)를 끌면 박스가 커지고 작아진다(정사각형 유지). 안쪽을 끌면 통째로 옮긴다.
-   *  · 박스 안에는 원형 가이드가 있어, 원형 대표 이미지에 무엇이 들어갈지 그대로 보인다.
+  /* ------------------------------------------------ v38.5 — 풀스크린 원형 크롭
+   *  윤루키 님(11/26 #25999 · #26011):
+   *    "사진을 선택하면 그 사진을 풀스크린으로 띄어서 원형을 맞추잖아 그렇게 해주고
+   *     확인버튼을 누르면 설정되게" · "회원가입할때 프로필 이미지에도 해당돼"
+   *
+   *  · 화면 전체(100vw × 100dvh)를 어두운 판으로 덮고, 가운데 원 안만 밝게 보여 준다.
+   *  · 사진은 손가락으로 끌어 옮기고(팬), 두 손가락·휠·아래 슬라이더로 확대한다(1~4배).
+   *  · `확인` 을 누르면 원 안을 정사각으로 잘라 JPEG 로 다시 그린다(EXIF 위치 정보 제거).
+   *  · 모임 대표 이미지 · 회원가입 대표 사진 · 모임 전용 프로필 사진이 같은 판을 쓴다.
    * ======================================================================== */
-  const CROP_BOX_MIN = 56;
+  const PCF_MIN_ZOOM = 1;
+  const PCF_MAX_ZOOM = 4;
+  const PCF_DEFAULT_OUT = 720;
+  ui.circleCrop = ui.circleCrop || {
+    open: false, src: '', natW: 0, natH: 0, zoom: 1, panX: 0, panY: 0,
+    out: PCF_DEFAULT_OUT, title: '', resolve: null
+  };
+  let pcfPointers = new Map();
+  let pcfDrag = null;
+  let pcfPinch = null;
+  let pcfRestoreFocus = null;
 
-  function cropStageSize() {
-    const stage = el.createGroupCropStage;
-    const w = stage && stage.clientWidth ? stage.clientWidth : 320;
-    return Math.max(120, Math.round(w));
+  function pcfState() { return ui.circleCrop; }
+
+  /** 원의 자리 — 화면 가운데, 아래 조작 줄(확대·확인)을 비워 둔다. */
+  function pcfMetrics() {
+    const node = el.photoCropFull;
+    const W = (node && node.clientWidth) || window.innerWidth || 390;
+    const H = (node && node.clientHeight) || window.innerHeight || 844;
+    const D = Math.max(140, Math.round(Math.min(W * 0.78, H * 0.5)));
+    const cx = Math.round(W / 2);
+    const cy = Math.round(H / 2);
+    return { W, H, D, cx, cy, left: Math.round(cx - D / 2), top: Math.round(cy - D / 2) };
   }
 
-  /** 사진이 스테이지 안에서 실제로 그려지는 사각형 — 남는 여백은 레터박스. */
-  function cropImageRect() {
-    const c = ui.groupDraft.cover;
-    const S = cropStageSize();
-    const natW = c.natW || 1;
-    const natH = c.natH || 1;
-    const scale = Math.min(S / natW, S / natH);
-    const dw = natW * scale;
-    const dh = natH * scale;
-    return { S, scale, dw, dh, left: (S - dw) / 2, top: (S - dh) / 2 };
+  /** 처음 배율 — 사진이 **화면 전체**를 덮게(cover). 원은 그 안의 가운데 창이다. */
+  function pcfBaseScale(m) {
+    const s = pcfState();
+    return Math.max(m.W / (s.natW || 1), m.H / (s.natH || 1));
   }
 
-  function defaultCropBox() {
-    const r = cropImageRect();
-    const size = Math.max(CROP_BOX_MIN, Math.min(r.dw, r.dh));
-    return { x: r.left + (r.dw - size) / 2, y: r.top + (r.dh - size) / 2, size };
+  /** 사진이 지금 화면에서 차지하는 사각형(px). 끌 수 있는 범위도 여기서 나온다. */
+  function pcfImageRect(m) {
+    const s = pcfState();
+    const mm = m || pcfMetrics();
+    const scale = pcfBaseScale(mm) * (s.zoom || 1);
+    const w = (s.natW || 1) * scale;
+    const h = (s.natH || 1) * scale;
+    const ox = Math.max(0, (w - mm.D) / 2);
+    const oy = Math.max(0, (h - mm.D) / 2);
+    s.panX = Math.min(ox, Math.max(-ox, s.panX || 0));
+    s.panY = Math.min(oy, Math.max(-oy, s.panY || 0));
+    return {
+      scale, w, h, ox, oy,
+      left: mm.cx - w / 2 + s.panX,
+      top: mm.cy - h / 2 + s.panY
+    };
   }
 
-  function clampCropBox(box) {
-    const r = cropImageRect();
-    const maxSize = Math.min(r.dw, r.dh);
-    const size = Math.min(Math.max(CROP_BOX_MIN, box.size), maxSize);
-    const x = Math.min(Math.max(r.left, box.x), r.left + r.dw - size);
-    const y = Math.min(Math.max(r.top, box.y), r.top + r.dh - size);
-    return { x, y, size };
-  }
-
-  function layoutCreateCrop() {
-    const img = el.createGroupCropImg;
-    const c = ui.groupDraft.cover;
-    if (!img || !c.src) return;
-    const r = cropImageRect();
-    img.style.width = `${r.dw}px`;
-    img.style.height = `${r.dh}px`;
-    img.style.left = `${r.left}px`;
-    img.style.top = `${r.top}px`;
-    if (el.createGroupCropBox) {
-      if (!c.box) c.box = defaultCropBox();
-      c.box = clampCropBox(c.box);
-      el.createGroupCropBox.style.left = `${c.box.x}px`;
-      el.createGroupCropBox.style.top = `${c.box.y}px`;
-      el.createGroupCropBox.style.width = `${c.box.size}px`;
-      el.createGroupCropBox.style.height = `${c.box.size}px`;
-      el.createGroupCropBox.dataset.cropSize = String(Math.round(c.box.size));
+  function layoutPhotoCrop() {
+    const s = pcfState();
+    if (!s.open || !el.pcfImg || !el.pcfRing) return;
+    const m = pcfMetrics();
+    const r = pcfImageRect(m);
+    el.pcfImg.style.width = `${r.w}px`;
+    el.pcfImg.style.height = `${r.h}px`;
+    el.pcfImg.style.left = `${r.left}px`;
+    el.pcfImg.style.top = `${r.top}px`;
+    el.pcfRing.style.left = `${m.left}px`;
+    el.pcfRing.style.top = `${m.top}px`;
+    el.pcfRing.style.width = `${m.D}px`;
+    el.pcfRing.style.height = `${m.D}px`;
+    if (el.photoCropFull) {
+      el.photoCropFull.dataset.zoom = String(Math.round((s.zoom || 1) * 100));
+      el.photoCropFull.dataset.circle = String(m.D);
+    }
+    if (el.pcfZoom && document.activeElement !== el.pcfZoom) {
+      el.pcfZoom.value = String(Math.round((s.zoom || 1) * 100));
     }
   }
 
-  /** 사진을 고르자마자 — 크롭 조절 창이 바로 뜬다. */
-  function openCreateCrop(src) {
-    const c = ui.groupDraft.cover;
-    c.src = src;
-    c.circle = null;
-    c.card = null;
-    c.presetId = null;
-    c.box = null;
-    if (el.createGroupCrop) el.createGroupCrop.hidden = false;
-    if (el.createGroupCoverCircle) {
-      el.createGroupCoverCircle.classList.add('is-cropping');
-    }
-    if (el.createGroupCropImg) {
-      el.createGroupCropImg.onload = () => {
-        c.natW = el.createGroupCropImg.naturalWidth || 1;
-        c.natH = el.createGroupCropImg.naturalHeight || 1;
-        c.box = defaultCropBox();
-        layoutCreateCrop();
-      };
-      el.createGroupCropImg.src = src;
-      if (el.createGroupCropImg.complete && el.createGroupCropImg.naturalWidth) {
-        c.natW = el.createGroupCropImg.naturalWidth;
-        c.natH = el.createGroupCropImg.naturalHeight;
-        c.box = defaultCropBox();
-        layoutCreateCrop();
-      }
-    }
-    renderCreateCover();
-    queueCreateDraftSave();
-    if (el.createGroupCrop) el.createGroupCrop.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }
-
-  function closeCreateCrop() {
-    if (el.createGroupCrop) el.createGroupCrop.hidden = true;
-    if (el.createGroupCropImg) el.createGroupCropImg.removeAttribute('src');
-    if (el.createGroupCoverCircle) el.createGroupCoverCircle.classList.remove('is-cropping');
-  }
-
-  /** 박스 하나를 드래그 — mode 'move' | 'nw' | 'ne' | 'sw' | 'se'. */
-  function dragCropBox(start, dx, dy) {
-    const c = ui.groupDraft.cover;
-    if (!c.box) return;
-    const b = start.box;
-    if (start.mode === 'move') {
-      c.box = clampCropBox({ x: b.x + dx, y: b.y + dy, size: b.size });
-    } else {
-      /* 모서리를 끌면 반대편 모서리는 고정 — 정사각형을 지키며 크기만 바뀐다. */
-      const right = b.x + b.size;
-      const bottom = b.y + b.size;
-      let size;
-      let x = b.x;
-      let y = b.y;
-      if (start.mode === 'se') {
-        size = Math.max(b.size + Math.max(dx, dy), CROP_BOX_MIN);
-        size = Math.min(size, Math.min(right - cropImageRect().left, bottom - cropImageRect().top));
-        x = right - size;
-        y = bottom - size;
-      } else if (start.mode === 'nw') {
-        size = Math.max(b.size + Math.max(-dx, -dy), CROP_BOX_MIN);
-        size = Math.min(size, Math.min(right - cropImageRect().left, bottom - cropImageRect().top));
-        x = right - size;
-        y = bottom - size;
-      } else if (start.mode === 'ne') {
-        size = Math.max(b.size + Math.max(dx, -dy), CROP_BOX_MIN);
-        size = Math.min(size, Math.min(bottom - cropImageRect().top, cropImageRect().S - b.x));
-        x = b.x;
-        y = bottom - size;
-      } else { /* sw */
-        size = Math.max(b.size + Math.max(-dx, dy), CROP_BOX_MIN);
-        size = Math.min(size, Math.min(right - cropImageRect().left, cropImageRect().S - b.y));
-        x = right - size;
-        y = b.y;
-      }
-      c.box = clampCropBox({ x, y, size });
-    }
-    layoutCreateCrop();
+  function setPcfZoom(z) {
+    const s = pcfState();
+    s.zoom = Math.min(PCF_MAX_ZOOM, Math.max(PCF_MIN_ZOOM, Number(z) || 1));
+    layoutPhotoCrop();
   }
 
   /**
-   * 크롭 확정 — 박스 안의 사각형을 720×720 JPEG 로 다시 그린다(EXIF 위치 정보 제거).
-   * 카드용 이미지도 같은 사진에서 만들어 두어 목록 카드에서도 사진이 보인다.
+   * 풀스크린 원형 크롭을 연다.
+   * @param {{src:string, out?:number, title?:string}} opts
+   * @returns {Promise<string|null>} 확인 → 잘린 data URL · 취소 → null
    */
-  function applyCreateCrop() {
-    const c = ui.groupDraft.cover;
-    const img = el.createGroupCropImg;
-    if (!c.src || !img || !img.naturalWidth) return null;
-    const r = cropImageRect();
-    const b = c.box ? clampCropBox(c.box) : defaultCropBox();
-    const natW = img.naturalWidth;
-    const natH = img.naturalHeight;
-    const square = b.size / r.scale;
-    const sx = Math.max(0, Math.min(natW - square, (b.x - r.left) / r.scale));
-    const sy = Math.max(0, Math.min(natH - square, (b.y - r.top) / r.scale));
-    const draw = (rx, ry, rw, rh, outW, outH) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = outW;
-      canvas.height = outH;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#0D1117';
-      ctx.fillRect(0, 0, outW, outH);
-      ctx.drawImage(img, rx, ry, rw, rh, 0, 0, outW, outH);
-      return canvas.toDataURL('image/jpeg', 0.84);
+  function openCircleCrop(opts) {
+    const o = opts || {};
+    const s = pcfState();
+    if (!o.src || !el.photoCropFull || !el.pcfImg) return Promise.resolve(null);
+    /* 앞서 열어 둔 판이 있으면 먼저 취소로 닫는다(약속이 겹치지 않게). */
+    if (s.open && s.resolve) { const prev = s.resolve; s.resolve = null; prev(null); }
+    s.open = true;
+    s.src = String(o.src);
+    s.natW = 0;
+    s.natH = 0;
+    s.zoom = 1;
+    s.panX = 0;
+    s.panY = 0;
+    s.out = Math.max(160, Math.min(1600, Number(o.out) || PCF_DEFAULT_OUT));
+    s.title = String(o.title || '원형으로 맞춰 주세요');
+    pcfPointers = new Map();
+    pcfDrag = null;
+    pcfPinch = null;
+    if (el.pcfTitle) el.pcfTitle.textContent = s.title;
+    el.photoCropFull.hidden = false;
+    el.photoCropFull.classList.add('is-open');
+    if (el.pcfZoom) el.pcfZoom.value = '100';
+    el.pcfStage && el.pcfStage.classList.remove('is-dragging');
+    pcfRestoreFocus = document.activeElement;
+    document.body.classList.add('is-photo-crop');
+    const done = new Promise((resolve) => { s.resolve = resolve; });
+    el.pcfImg.onload = () => {
+      s.natW = el.pcfImg.naturalWidth || 1;
+      s.natH = el.pcfImg.naturalHeight || 1;
+      layoutPhotoCrop();
     };
-    const out = draw(sx, sy, square, square, 720, 720);
-    c.circle = out;
-    c.card = out;
-    c.src = null;
-    c.box = null;
-    closeCreateCrop();
-    renderGroupWizard();
-    queueCreateDraftSave();
-    showToast('대표 사진을 원형으로 만들었어요 · 위치 정보는 지웠어요');
-    return { circle: c.circle, card: c.card };
+    el.pcfImg.src = s.src;
+    if (el.pcfImg.complete && el.pcfImg.naturalWidth) {
+      s.natW = el.pcfImg.naturalWidth;
+      s.natH = el.pcfImg.naturalHeight;
+    }
+    layoutPhotoCrop();
+    window.requestAnimationFrame(layoutPhotoCrop);
+    try { el.pcfOk && el.pcfOk.focus({ preventScroll: true }); } catch (e) { /* noop */ }
+    return done;
+  }
+
+  /** 원 안을 정사각으로 잘라 JPEG data URL 로 — 위치 정보(EXIF)는 따라오지 않는다. */
+  function pcfCropDataUrl() {
+    const s = pcfState();
+    const img = el.pcfImg;
+    if (!s.src || !img || !img.naturalWidth) return null;
+    const m = pcfMetrics();
+    const r = pcfImageRect(m);
+    const square = Math.max(1, Math.min(s.natW, s.natH, m.D / r.scale));
+    const sx = Math.max(0, Math.min(s.natW - square, (m.left - r.left) / r.scale));
+    const sy = Math.max(0, Math.min(s.natH - square, (m.top - r.top) / r.scale));
+    const out = Math.round(s.out || PCF_DEFAULT_OUT);
+    const canvas = document.createElement('canvas');
+    canvas.width = out;
+    canvas.height = out;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#0D1117';
+    ctx.fillRect(0, 0, out, out);
+    ctx.drawImage(img, sx, sy, square, square, 0, 0, out, out);
+    return canvas.toDataURL('image/jpeg', 0.86);
+  }
+
+  function closeCircleCrop(result) {
+    const s = pcfState();
+    const out = result || null;
+    const resolve = s.resolve;
+    s.open = false;
+    s.src = '';
+    s.resolve = null;
+    pcfPointers = new Map();
+    pcfDrag = null;
+    pcfPinch = null;
+    if (el.photoCropFull) {
+      el.photoCropFull.classList.remove('is-open');
+      el.photoCropFull.hidden = true;
+    }
+    if (el.pcfImg) {
+      el.pcfImg.onload = null;
+      el.pcfImg.removeAttribute('src');
+      el.pcfImg.style.width = '';
+      el.pcfImg.style.height = '';
+      el.pcfImg.style.left = '';
+      el.pcfImg.style.top = '';
+    }
+    if (el.pcfZoom) el.pcfZoom.value = '100';
+    if (el.pcfStage) el.pcfStage.classList.remove('is-dragging');
+    document.body.classList.remove('is-photo-crop');
+    const back = pcfRestoreFocus;
+    pcfRestoreFocus = null;
+    if (back && back.focus) { try { back.focus({ preventScroll: true }); } catch (e) { /* noop */ } }
+    if (resolve) resolve(out);
+  }
+
+  /** `확인` — 원 그대로 잘라 저장하고 판을 닫는다. */
+  function applyPhotoCrop() {
+    const s = pcfState();
+    if (!s.open) return null;
+    const url = pcfCropDataUrl();
+    closeCircleCrop(url);
+    return url;
+  }
+
+  function pcfPinchDistance() {
+    if (pcfPointers.size < 2) return 0;
+    const pts = [...pcfPointers.values()];
+    return Math.max(1, Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y));
+  }
+
+  function bindPhotoCrop() {
+    const stage = el.pcfStage;
+    if (stage) {
+      stage.addEventListener('pointerdown', (e) => {
+        const s = pcfState();
+        if (!s.open) return;
+        pcfPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        try { stage.setPointerCapture(e.pointerId); } catch (err) { /* noop */ }
+        if (pcfPointers.size === 1) {
+          pcfDrag = { id: e.pointerId, x: e.clientX, y: e.clientY, panX: s.panX || 0, panY: s.panY || 0 };
+          stage.classList.add('is-dragging');
+        } else if (pcfPointers.size === 2) {
+          pcfDrag = null;
+          pcfPinch = { dist: pcfPinchDistance(), zoom: s.zoom || 1 };
+        }
+        e.preventDefault();
+      });
+      stage.addEventListener('pointermove', (e) => {
+        const s = pcfState();
+        if (!s.open || !pcfPointers.has(e.pointerId)) return;
+        pcfPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        if (pcfPointers.size >= 2 && pcfPinch) {
+          const dist = pcfPinchDistance();
+          if (pcfPinch.dist > 4) setPcfZoom(pcfPinch.zoom * (dist / pcfPinch.dist));
+          return;
+        }
+        if (!pcfDrag || pcfDrag.id !== e.pointerId) return;
+        s.panX = pcfDrag.panX + (e.clientX - pcfDrag.x);
+        s.panY = pcfDrag.panY + (e.clientY - pcfDrag.y);
+        layoutPhotoCrop();
+      });
+      const end = (e) => {
+        pcfPointers.delete(e.pointerId);
+        if (pcfPointers.size < 2) pcfPinch = null;
+        if (pcfPointers.size === 0) {
+          pcfDrag = null;
+          stage.classList.remove('is-dragging');
+        }
+      };
+      stage.addEventListener('pointerup', end);
+      stage.addEventListener('pointercancel', end);
+      /* 데스크톱 — 휠로도 확대한다(슬라이더가 같은 값을 보여 준다). */
+      stage.addEventListener('wheel', (e) => {
+        const s = pcfState();
+        if (!s.open) return;
+        e.preventDefault();
+        setPcfZoom((s.zoom || 1) * (e.deltaY < 0 ? 1.08 : 0.92));
+      }, { passive: false });
+    }
+    if (el.pcfOk) el.pcfOk.addEventListener('click', () => applyPhotoCrop());
+    if (el.pcfCancel) el.pcfCancel.addEventListener('click', () => closeCircleCrop(null));
+    if (el.pcfZoom) el.pcfZoom.addEventListener('input', () => setPcfZoom(Number(el.pcfZoom.value) / 100));
+    document.addEventListener('keydown', (e) => {
+      if (!ui.circleCrop || !ui.circleCrop.open) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        /* 이 판이 열려 있을 때 Esc 는 **이 판만** 닫는다(뒤의 모달·화면까지 닫지 않게). */
+        e.stopImmediatePropagation();
+        closeCircleCrop(null);
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (ui.circleCrop && ui.circleCrop.open) layoutPhotoCrop();
+    });
+  }
+
+  /** 옛 이름 — 판이 열려 있으면 취소로 닫는다(화면을 새로 시작할 때·판을 걷어낼 때). */
+  function closeCreateCrop() {
+    if (ui.circleCrop && ui.circleCrop.open) closeCircleCrop(null);
+  }
+
+  /**
+   * 모임 대표 이미지 — 고른 사진으로 풀스크린 원형 크롭을 연다.
+   * 확인하면 원형(720px)으로 잘라 초안에 넣고, 취소하면 이번 사진만 버린다.
+   */
+  function openCreateCrop(src) {
+    const d = ui.groupDraft;
+    if (!d || !src) return Promise.resolve(null);
+    const c = d.cover;
+    c.src = String(src);
+    return openCircleCrop({ src: String(src), out: 720, title: '대표 이미지를 원형으로 맞춰 주세요' }).then((url) => {
+      if (!url) {
+        c.src = null;
+        renderCreateCover();
+        queueCreateDraftSave();
+        return null;
+      }
+      c.circle = url;
+      c.card = url;
+      c.src = null;
+      c.box = null;
+      closeCreateCrop();
+      renderCreateCover();
+      renderGroupWizard();
+      queueCreateDraftSave();
+      showToast('대표 사진을 원형으로 만들었어요 · 위치 정보는 지웠어요');
+      return { circle: c.circle, card: c.card };
+    });
   }
 
   /* ------------------------------------------------ v33.5 · 2단계 자동 추천 */
@@ -15561,6 +15717,45 @@ document.addEventListener('DOMContentLoaded', () => {
     return '';
   }
 
+  /**
+   * v38.5 (11/26 #25999) — 5단계 '모임 내 프로필'.
+   *  ① 모임 전용 프로필을 허용할지(기본 프로필만 / 모임 전용 프로필 허용)
+   *  ② 허용하면 **모임장인 나도** 그 프로필을 쓸지(기본 프로필 그대로 / 모임 전용 프로필 만들기)
+   *     — 모임장을 본인 프로필로 강제하지 않는다.
+   */
+  function renderCreateProfilePolicy() {
+    const d = ui.groupDraft;
+    const allow = d.allowGroupProfile !== false;
+    if (el.createGroupProfilePolicy) {
+      const opts = [
+        { id: 'base', label: '기본 프로필만' },
+        { id: 'group', label: '모임 전용 프로필 허용' }
+      ];
+      el.createGroupProfilePolicy.innerHTML = opts.map((o) => {
+        const on = (o.id === 'group') === allow;
+        return `<button class="tag-pick ${on ? 'active' : ''}" data-create-profile="${o.id}" type="button"
+                aria-pressed="${on ? 'true' : 'false'}">${o.label}</button>`;
+      }).join('');
+    }
+    if (el.createGroupProfileHint) {
+      /* 5단계 안내는 짧은 한 줄(16자 이하) — v38.4 기준을 지킨다. */
+      el.createGroupProfileHint.textContent = allow
+        ? '멤버별로 따로 쓰는 프로필'
+        : '모두 기본 프로필로 참여해요';
+    }
+    if (el.createGroupHostProfile) el.createGroupHostProfile.hidden = !allow;
+    if (allow && el.createGroupHostProfilePick) {
+      const host = d.hostGroupProfile === 'own' ? 'own' : 'base';
+      const opts = [
+        { id: 'base', label: '기본 프로필 그대로' },
+        { id: 'own', label: '모임 전용 프로필 만들기' }
+      ];
+      el.createGroupHostProfilePick.innerHTML = opts.map((o) => `
+        <button class="tag-pick ${host === o.id ? 'active' : ''}" data-create-host-profile="${o.id}" type="button"
+                aria-pressed="${host === o.id ? 'true' : 'false'}">${o.label}</button>`).join('');
+    }
+  }
+
   /** 위자드 전체를 지금 상태로 그린다. */
   function renderGroupWizard() {
     const d = ui.groupDraft;
@@ -15592,15 +15787,8 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCreateCover();
     renderCreateRegion();
     renderCreateHangouts();
-    /* v38.2 (11/26 #25771) — 만들기 화면에는 미리보기 화면이 없다(1단계 박스·마지막 카드 모두 거뒀다). */
-    /* 크롭 창은 3단계에서만 — 다른 단계로 가면 접고, 3단계로 돌아오면 다시 맞춰 그린다. */
-    if (el.createGroupCrop) {
-      if (d.step !== 3) el.createGroupCrop.hidden = true;
-      else if (d.cover.src && el.createGroupCropImg && el.createGroupCropImg.complete && el.createGroupCropImg.naturalWidth) {
-        el.createGroupCrop.hidden = false;
-        layoutCreateCrop();
-      }
-    }
+    /* v38.2 (11/26 #25771) — 만들기 화면에는 미리보기 화면이 없다(1단계 박스·마지막 카드 모두 거뒀다).
+       v38.5 — 사진 자르기는 화면 안 상자가 아니라 풀스크린 판(`#photo-crop-full`)에서 한다. */
 
     if (el.createGroupPrivacy) {
       const options = [
@@ -15621,6 +15809,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (questionField) {
       questionField.classList.toggle('policy-field-hidden', d.privacyType !== 'approval_private');
     }
+    /* v38.5 — 모임 내 프로필: 허용 여부 + (허용 시) 모임장인 나도 전용 프로필을 쓸지. */
+    renderCreateProfilePolicy();
 
     const ready = createStepReady(d.step);
     const last = d.step === CREATE_STEPS.length;
@@ -15682,6 +15872,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ['name', 'desc', 'hobbyId', 'categoryId', 'sidoId', 'sigunguId', 'privacyType', 'ageLimit', 'question'].forEach((k) => {
         if (saved[k] != null) d[k] = saved[k];
       });
+      if (saved.allowGroupProfile != null) d.allowGroupProfile = saved.allowGroupProfile !== false;
+      if (saved.hostGroupProfile != null) d.hostGroupProfile = saved.hostGroupProfile === 'own' ? 'own' : 'base';
       if (saved.autoHobby) d.autoHobby = saved.autoHobby;
       if (saved.manualHobby === true) d.manualHobby = true;
       /* H4 — 슬라이더 범위를 우선 복원하고, 옛 임시저장(ageLimit id)은 같은 범위로 바꿔 준다. */
@@ -15699,6 +15891,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       d.hangoutIds = Array.isArray(saved.hangoutIds) ? saved.hangoutIds.filter((id) => !!store.findAzit(id)) : [];
       d.cover = Object.assign(d.cover, saved.cover || {});
+      /* v38.5 — 자르던 중에 앱을 닫았으면 잘리지 않은 사진은 버린다(풀스크린 판은 다시 자동으로 열지 않는다). */
+      if (d.cover.src && !d.cover.circle) d.cover.src = null;
       d.step = Math.max(1, Math.min(CREATE_STEPS.length, Number(saved.step) || 1));
       d.touched = true;
       resumed = true;
@@ -15710,7 +15904,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.createGroupAzitSearch) el.createGroupAzitSearch.value = '';
     if (el.createGroupResume) el.createGroupResume.hidden = !resumed;
     closeCreateCrop();
-    if (d.cover.src) openCreateCrop(d.cover.src);
     resetCreateNarration();
     renderGroupWizard();
     openModal(el.groupCreateModal);
@@ -15843,6 +16036,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const chip = e.target.closest('[data-create-privacy]');
     if (!chip) return;
     ui.groupDraft.privacyType = chip.dataset.createPrivacy;
+    renderGroupWizard();
+    queueCreateDraftSave();
+  });
+
+  /* v38.5 — 5단계 모임 내 프로필 정책 · 모임장 몫 */
+  el.createGroupProfilePolicy && el.createGroupProfilePolicy.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-create-profile]');
+    if (!chip) return;
+    ui.groupDraft.allowGroupProfile = chip.dataset.createProfile !== 'base';
+    renderGroupWizard();
+    queueCreateDraftSave();
+  });
+  el.createGroupHostProfilePick && el.createGroupHostProfilePick.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-create-host-profile]');
+    if (!chip) return;
+    ui.groupDraft.hostGroupProfile = chip.dataset.createHostProfile === 'own' ? 'own' : 'base';
     renderGroupWizard();
     queueCreateDraftSave();
   });
@@ -15987,51 +16196,8 @@ document.addEventListener('DOMContentLoaded', () => {
     queueCreateDraftSave();
   });
 
-  /* 크롭 박스 드래그 — 모서리는 크기, 안쪽은 위치. 마우스·터치 모두 pointer 이벤트 하나로. */
-  const cropBox = el.createGroupCropBox;
-  if (cropBox && el.createGroupCropStage) {
-    let drag = null;
-    const begin = (e) => {
-      const c = ui.groupDraft.cover;
-      if (!c.src || !c.box) return null;
-      const handle = e.target.closest('[data-crop-handle]');
-      drag = {
-        id: e.pointerId,
-        x: e.clientX,
-        y: e.clientY,
-        mode: handle ? handle.dataset.cropHandle : 'move',
-        box: { x: c.box.x, y: c.box.y, size: c.box.size }
-      };
-      try { el.createGroupCropStage.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-      cropBox.classList.add('is-dragging');
-      return drag;
-    };
-    cropBox.addEventListener('pointerdown', (e) => {
-      if (begin(e)) e.preventDefault();
-    });
-    el.createGroupCropStage.addEventListener('pointermove', (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      dragCropBox(drag, e.clientX - drag.x, e.clientY - drag.y);
-    });
-    const end = (e) => {
-      if (!drag || (e && e.pointerId !== drag.id)) return;
-      drag = null;
-      cropBox.classList.remove('is-dragging');
-      queueCreateDraftSave();
-    };
-    el.createGroupCropStage.addEventListener('pointerup', end);
-    el.createGroupCropStage.addEventListener('pointercancel', end);
-  }
-  const btnCropCancel = $('#btn-create-group-crop-cancel');
-  if (btnCropCancel) btnCropCancel.addEventListener('click', () => {
-    const c = ui.groupDraft.cover;
-    c.src = null;
-    c.box = null;
-    closeCreateCrop();
-    renderCreateCover();
-  });
-  const btnCropApply = $('#btn-create-group-crop-apply');
-  if (btnCropApply) btnCropApply.addEventListener('click', () => applyCreateCrop());
+  /* v38.5 — 풀스크린 원형 크롭의 팬·확대·확인·취소 배선(위 모듈에서 한 번만 건다). */
+  bindPhotoCrop();
 
   el.createGroupPrev && el.createGroupPrev.addEventListener('click', () => {
     if (ui.groupDraft.step <= 1) return;
@@ -16061,11 +16227,6 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(createFootHint(), 'warning');
       return;
     }
-    /* v34.2 — 사진을 골라 자르던 중에 '다음'을 눌러도 고른 사진을 버리지 않는다. */
-    if (d.step === 3 && d.cover.src && !d.cover.circle) {
-      const made = applyCreateCrop();
-      if (!made) { showToast('사진을 자르지 못했어요 · 다시 골라 주세요', 'warning'); return; }
-    }
     if (d.step < CREATE_STEPS.length) {
       goCreateStep(d.step + 1);
       return;
@@ -16087,7 +16248,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ageLimit: d.ageLimit,
       ageMin: d.ageMin,
       ageMax: d.ageMax,
-      joinQuestions: d.question ? [d.question] : []
+      joinQuestions: d.question ? [d.question] : [],
+      allowGroupProfile: d.allowGroupProfile !== false
     });
     if (!result.ok) {
       const messages = {
@@ -16109,7 +16271,8 @@ document.addEventListener('DOMContentLoaded', () => {
       joinMode: result.group.joinMode,
       ageMin: result.group.ageMin,
       ageMax: result.group.ageMax,
-      joinQuestions: result.group.joinQuestions || []
+      joinQuestions: result.group.joinQuestions || [],
+      allowGroupProfile: result.group.allowGroupProfile !== false
     }).then((env) => {
       if (env.ok) return;
       store.deleteGroup(result.group.id);
@@ -16132,6 +16295,10 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(result.group.joinMode === 'approval'
       ? `'${result.group.name}' 승인제 모임을 만들었어요 · 신청서를 보고 직접 고를게요`
       : `'${result.group.name}' 모임을 만들었어요 · 모임장이 되었습니다`);
+    /* v38.5 — 모임장이 '모임 전용 프로필 만들기'를 골랐으면 만든 직후 그 자리에서 연다. */
+    if (result.group.allowGroupProfile !== false && d.hostGroupProfile === 'own') {
+      openGroupProfileSetup(result.group.id, { manual: true });
+    }
   });
 
   const btnCreateGroupCancel = $('#btn-create-group-cancel');
@@ -20677,6 +20844,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ageMin: ui.groupDraft.ageMin,
       ageMax: ui.groupDraft.ageMax,
       question: ui.groupDraft.question || '',
+      allowGroupProfile: ui.groupDraft.allowGroupProfile !== false,
+      hostGroupProfile: ui.groupDraft.hostGroupProfile === 'own' ? 'own' : 'base',
       draft: readCreateDraft(),
       ready: CREATE_STEPS.map((x) => createStepReady(x.id))
     }),
@@ -20716,16 +20885,16 @@ document.addEventListener('DOMContentLoaded', () => {
       renderGroupWizard();
       return { ...ui.groupDraft.cover };
     },
-    /* 테스트·미리보기 — 파일 선택 대신 사진을 바로 넣고 크롭을 확정한다. */
+    /* 테스트·미리보기 — 파일 선택 대신 사진을 바로 넣는다(사람 대신 곧바로 `확인`을 누른다). */
     setCreateCoverPhoto: (dataUrl) => {
-      openCreateCrop(String(dataUrl || ''));
-      return new Promise((resolve) => {
-        const img = el.createGroupCropImg;
-        const done = () => resolve(applyCreateCrop() || { ...ui.groupDraft.cover });
-        if (img && img.complete && img.naturalWidth) done();
-        else if (img) img.addEventListener('load', done, { once: true });
-        else resolve(null);
-      });
+      const done = openCreateCrop(String(dataUrl || ''));
+      const confirm = () => {
+        if (ui.circleCrop && ui.circleCrop.open) applyPhotoCrop();
+      };
+      const img = el.pcfImg;
+      if (img && img.complete && img.naturalWidth) setTimeout(confirm, 0);
+      else if (img) img.addEventListener('load', () => setTimeout(confirm, 0), { once: true });
+      return done.then((res) => res || { ...ui.groupDraft.cover });
     },
     resetCreateDraft: () => { resetCreateWizard(); return readCreateDraft(); },
     reloadCreateDraft: () => readCreateDraft(),

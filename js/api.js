@@ -503,6 +503,8 @@
         joinQuestions: { type: 'array', optional: true, maxItems: 2, itemMax: 200 },
         coverCircle: { type: 'string', optional: true, max: 8000000 },
         coverCard: { type: 'string', optional: true, max: 8000000 },
+        /* v38.5 — 모임 내 프로필(모임 전용 프로필) 허용 여부. */
+        allowGroupProfile: { type: 'boolean', optional: true },
         groupId: { type: 'string', optional: true, max: 80 },
         id: { type: 'string', optional: true, max: 80 }
       },
@@ -523,6 +525,7 @@
           ageMin: p.ageMin,
           ageMax: p.ageMax,
           joinQuestions: p.joinQuestions || [],
+          allowGroupProfile: p.allowGroupProfile !== false,
           coverImage: { circle: p.coverCircle || null, card: p.coverCard || null }
         });
         if (!res || !res.ok) {

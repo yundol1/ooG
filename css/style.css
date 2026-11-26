@@ -22134,56 +22134,7 @@ body.subscreen-open { overflow: hidden; }
 }
 .cover-pick-preview.is-card { width: 100%; aspect-ratio: 4 / 3; }
 .cover-pick-img.is-circle { border-radius: 999px; }
-.cover-crop {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--divider);
-}
-.cover-crop[hidden] { display: none; }
-.cover-crop-stage {
-  position: relative;
-  width: 100%;
-  max-width: 320px;
-  aspect-ratio: 1 / 1;
-  margin: 0 auto;
-  border-radius: var(--r-card);
-  background: var(--bg-soft);
-  overflow: hidden;
-  touch-action: none;
-  cursor: grab;
-}
-.cover-crop-stage img {
-  position: absolute;
-  max-width: none;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-.cover-crop-frame {
-  position: absolute;
-  inset: 0;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: var(--r-card);
-  box-shadow: 0 0 0 999px rgba(13, 17, 23, 0.35) inset;
-  pointer-events: none;
-}
-.cover-crop-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.cover-crop-zoom-label {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  color: var(--text-muted);
-}
-.cover-crop-controls input[type="range"] {
-  width: 100%;
-  min-height: 44px;
-  accent-color: var(--green);
-}
-.cover-crop-actions { width: 100%; }
+/* v38.5 — 화면 안 사각 크롭 상자(`.cover-crop*`)는 풀스크린 원형 크롭으로 바꾸며 걷어냈다. */
 
 /* ---------------------------------------- 4) 활동 지역: 시·도 → 시·군·구 */
 .region-pick {
@@ -24856,7 +24807,8 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   padding-top: 3px;
 }
 
-/* 공개 사진 1번 — 큰 사진은 모서리만 둥근 사각(원형 아바타와 구분) */
+/* 공개 사진 1번 — v38.5 (11/26): 사각 박스 → **원형**(사용자: "이미지가 지금 사각형박스로
+   되어있는데 원형으로 바꿔주고"). 모임 안 내정보의 큰 사진(#profile-avatar-large)도 같은 클래스를 쓴다. */
 .myprofile-avatar {
   flex: 0 0 clamp(96px, 36vw, 140px);
   width: clamp(96px, 36vw, 140px);
@@ -24864,7 +24816,7 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   aspect-ratio: 1 / 1;
   padding: 0;
   border: 0;
-  border-radius: 18px;
+  border-radius: 50%;
   overflow: hidden;
   position: relative;
   display: grid;
@@ -25437,62 +25389,7 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   justify-content: center;
 }
 
-.cover-crop-head { display: flex; flex-direction: column; gap: 2px; }
-.cover-crop-title { font-size: var(--fs-small); font-weight: var(--fw-label); color: var(--text-strong); }
-.cover-crop-hint { font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-muted); }
-
-.cover-crop-stage {
-  position: relative;
-  width: 100%;
-  max-width: 320px;
-  aspect-ratio: 1 / 1;
-  margin: 0 auto;
-  border-radius: var(--r-card);
-  background: #0D1117;
-  overflow: hidden;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.cover-crop-stage img {
-  position: absolute;
-  max-width: none;
-  user-select: none;
-  -webkit-user-drag: none;
-  pointer-events: none;
-}
-/* 크롭 박스 — 모서리를 끌면 크기, 안쪽을 끌면 위치. 바깥은 어둡게 가린다. */
-.cover-crop-box {
-  position: absolute;
-  box-sizing: border-box;
-  border: 2px solid #FFFFFF;
-  border-radius: 4px;
-  box-shadow: 0 0 0 999px rgba(6, 12, 18, 0.55);
-  cursor: move;
-  touch-action: none;
-}
-.cover-crop-box.is-dragging { cursor: grabbing; }
-.cover-crop-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1.5px dashed rgba(255, 255, 255, 0.9);
-  pointer-events: none;
-}
-.cover-crop-handle {
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: #FFFFFF;
-  border: 2px solid rgba(6, 78, 59, 0.35);
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
-}
-.cover-crop-handle[data-crop-handle="nw"] { left: -11px; top: -11px; cursor: nwse-resize; }
-.cover-crop-handle[data-crop-handle="ne"] { right: -11px; top: -11px; cursor: nesw-resize; }
-.cover-crop-handle[data-crop-handle="sw"] { left: -11px; bottom: -11px; cursor: nesw-resize; }
-.cover-crop-handle[data-crop-handle="se"] { right: -11px; bottom: -11px; cursor: nwse-resize; }
-
+/* v38.5 — 사각 크롭 박스와 모서리 손잡이는 풀스크린 원형 크롭으로 대체했다. */
 
 :root[data-theme="dark"] .myprofile-avatar { box-shadow: none; }
 :root[data-theme="dark"] .myprofile-secret { background: var(--bg-subtle); }
@@ -25848,13 +25745,14 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   align-items: flex-start;
   gap: 16px;
 }
+/* v38.5 — 사람 프로필의 큰 사진도 원형(내 프로필과 같은 결). */
 .detail-top .detail-photo {
   flex: 0 0 116px;
   width: 116px;
   height: 116px;
   margin: 0;
   aspect-ratio: auto;
-  border-radius: 18px;
+  border-radius: 50%;
   overflow: hidden;
 }
 .detail-id-col {
@@ -25913,11 +25811,12 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   word-break: keep-all;
 }
 
-/* 대표 사진 미리보기는 동그라미가 아니라 **프로필에 놓일 모양(둥근 네모)** 으로 보여 준다. */
+/* 대표 사진 미리보기는 **원형** — v38.5 (11/26 #26011): "회원가입할때도 원형으로 바꿔줘".
+   (예전에는 '프로필에 놓일 모양'이라며 24px 둥근 네모로 보여 줬다.) */
 .ob-photo-preview-lg {
   width: 148px;
   height: 148px;
-  border-radius: 24px;
+  border-radius: 50%;
   font-size: 40px;
 }
 
@@ -27808,3 +27707,150 @@ body.group-mode .push-permission-banner { display: none !important; }
 .my-sched-del:active { transform: scale(0.94); }
 
 .chat-msg-avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+
+/* ============================================================================
+   v38.5 (2026-11-26 · #26011) — 풀스크린 원형 크롭 · 5단계 모임 내 프로필
+   ----------------------------------------------------------------------------
+   윤루키 님: "사진을 선택하면 그 사진을 풀스크린으로 띄어서 원형을 맞추잖아 그렇게 해주고
+   확인버튼을 누르면 설정되게" · "회원가입할때 프로필 이미지에도 해당돼"
+   · 화면 전체를 어두운 판으로 덮고, 가운데 원 안만 밝게 — 원 바깥은 어둡게 가린다.
+   · 사진은 끌어 옮기고(팬) 두 손가락·휠·슬라이더로 확대한다.
+   · 위 왼쪽 `취소` · 아래 `확인`(간단한 두 글자).
+   ============================================================================ */
+.photo-crop-full {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  z-index: 9600;
+  background: #0A0F14;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: contain;
+}
+.photo-crop-full[hidden] { display: none !important; }
+body.is-photo-crop { overflow: hidden; }
+
+.pcf-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+.pcf-stage.is-dragging { cursor: grabbing; }
+.pcf-img {
+  position: absolute;
+  max-width: none;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+/* 원 안은 그대로, 바깥은 어둡게 — 큰 box-shadow 한 겹으로 가린다. */
+.pcf-ring {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  box-shadow: 0 0 0 9999px rgba(4, 8, 12, 0.66);
+  pointer-events: none;
+}
+
+.pcf-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 12px;
+}
+.pcf-cancel {
+  flex: 0 0 auto;
+  min-width: 56px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #FFFFFF;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  letter-spacing: -0.01em;
+}
+.pcf-cancel:active { background: rgba(255, 255, 255, 0.26); }
+.pcf-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 56px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  letter-spacing: -0.01em;
+}
+
+.pcf-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+}
+.pcf-zoom-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+}
+.pcf-zoom-ic { display: inline-flex; color: rgba(255, 255, 255, 0.72); }
+.pcf-zoom-ic .oo-ic { font-size: 18px; }
+.pcf-zoom {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  accent-color: var(--green-solid);
+}
+.pcf-ok {
+  width: 100%;
+  max-width: 340px;
+  height: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--green-grad);
+  color: #FFFFFF;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+  letter-spacing: -0.01em;
+}
+.pcf-ok:active { transform: scale(0.99); }
+
+@media (prefers-reduced-motion: reduce) {
+  .pcf-ok:active { transform: none; }
+}
+
+/* 5단계 — 모임 내 프로필: 허용을 고르면 모임장 몫까지 그 자리에서 묻는다. */
+.wizard-host-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: var(--r-card);
+  background: var(--bg-subtle);
+}
+.wizard-host-profile[hidden] { display: none !important; }
+.wizard-host-profile .field-label { margin: 0; }
+.wizard-host-profile .policy-hint { margin: 0; }
