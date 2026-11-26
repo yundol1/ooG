@@ -21346,7 +21346,20 @@ body.subscreen-open { overflow: hidden; }
 /* H2 — 단계가 6개로 늘어 시트가 화면 밖으로 나가지 않게 88vh 로 묶고, 본문만 안에서 스크롤한다. */
 .group-wizard { display: flex; flex-direction: column; max-height: 88vh; }
 .wizard-header .composer-title { white-space: nowrap; }
-.wizard-header .btn-publish { min-width: 64px; }
+/* v38.4 (11/26) — 머리말 오른쪽은 '새로만들기'. 예전 '다음' 자리 그대로, 44px 터치. */
+.wizard-new {
+  flex: 0 0 auto;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 4px 0 10px;
+  border: none;
+  background: none;
+  color: var(--green-text);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-label);
+  cursor: pointer;
+}
+.wizard-new:active { opacity: 0.6; }
 .wizard-progress { padding: 4px 18px 0; }
 .wizard-track {
   display: flex;
@@ -21404,27 +21417,27 @@ body.subscreen-open { overflow: hidden; }
 #group-create-modal.is-narrating .wizard-panel { opacity: 0; visibility: hidden; pointer-events: none; }
 #group-create-modal .wizard-panel.is-revealed { opacity: 1; visibility: visible; pointer-events: auto; }
 #group-create-modal .wizard-panel.is-arriving { animation: obAnswerIn 0.46s var(--spring, cubic-bezier(0.34, 1.56, 0.64, 1)) both; }
-/* 문구를 읽는 동안에는 아래 단추·안내도 함께 숨긴다 — 카드와 같이 나타난다. */
-#group-create-modal .wizard-foot,
-#group-create-modal .wizard-header .btn-publish { transition: opacity 0.24s ease; }
-#group-create-modal.is-narrating .wizard-foot,
-#group-create-modal.is-narrating .wizard-header .btn-publish { opacity: 0; pointer-events: none; }
+/* 문구를 읽는 동안에는 발치 단추·안내도 함께 숨긴다 — 카드와 같이 나타난다. */
+#group-create-modal .wizard-foot { transition: opacity 0.24s ease; }
+#group-create-modal.is-narrating .wizard-foot { opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) {
   #group-create-modal .wizard-panel { transition: none; }
   #group-create-modal .wizard-panel.is-arriving { animation: none; }
 }
+/* v38.4 (11/26) — 이전·다음이 발치에 나란히. 단계를 못 넘길 때만 안내 한 줄. */
 .wizard-foot {
   flex: 0 0 auto;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 18px calc(14px + env(safe-area-inset-bottom));
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 18px calc(12px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--divider);
 }
+.wizard-actions { display: flex; align-items: stretch; gap: 10px; }
 .wizard-prev {
   flex: 0 0 auto;
-  min-height: 44px;
-  min-width: 64px;
+  min-height: 48px;
+  min-width: 84px;
   padding: 0 16px;
   border: 1px solid var(--border);
   border-radius: var(--r-control);
@@ -21435,14 +21448,37 @@ body.subscreen-open { overflow: hidden; }
   cursor: pointer;
 }
 .wizard-prev[hidden] { display: none; }
-.wizard-foot-hint {
+.btn-publish.wizard-next {
   flex: 1 1 auto;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--r-control);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-label);
+}
+/* 글로벌 .btn-publish 는 항상 진초록이라, 아직 못 넘기는 단계는 흐린 회색으로 둔다. */
+.btn-publish.wizard-next:disabled,
+.btn-publish.wizard-next.ready[disabled] {
+  background: var(--bg-soft);
+  background-image: none;
+  color: var(--text-muted);
+  box-shadow: none;
+}
+.btn-publish.wizard-next:not([disabled]) {
+  background: var(--green-solid);
+  background-image: none;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px -3px rgba(5, 150, 105, 0.45);
+}
+.wizard-foot-hint {
   min-width: 0;
   font-size: var(--fs-caption);
   font-weight: var(--fw-meta);
   color: var(--text-muted);
-  text-align: right;
+  text-align: center;
 }
+.wizard-foot-hint:empty { display: none; }
 
 /* 대표 이미지 */
 .cover-pick {

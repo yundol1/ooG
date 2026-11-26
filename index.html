@@ -1236,10 +1236,12 @@
     <div class="modal-overlay" id="group-create-modal" role="dialog" aria-modal="true" aria-label="새 모임 만들기">
       <div class="modal-sheet group-wizard" tabindex="-1">
         <div class="sheet-grabber"></div>
-        <div class="composer-header wizard-header">
-          <button class="text-btn ghost" id="btn-create-group-cancel">취소</button>
+        <!-- v38.4 (11/26) — 머리말에는 취소(왼쪽)와 새로만들기(오른쪽)만 둔다.
+             '이전 / 다음'은 아래 발치(.wizard-foot)로 내려 손이 닿는 자리에 나란히 붙였다. -->
+        <div class="composer-header wizard-header" data-own-head="1">
+          <button class="text-btn ghost" id="btn-create-group-cancel" type="button">취소</button>
           <h3 class="composer-title">새 모임 만들기</h3>
-          <button class="btn-publish" id="btn-create-group-submit">다음</button>
+          <button class="wizard-new" id="btn-create-group-new" type="button">새로만들기</button>
         </div>
 
         <div class="wizard-progress">
@@ -1251,25 +1253,23 @@
           </div>
           <p class="wizard-step" id="create-group-step-label">1 / 5 · 이름</p>
           <h4 class="wizard-step-title" id="create-group-step-title">모임 이름을 정해 주세요</h4>
-          <p class="wizard-step-desc" id="create-group-step-desc">이름과 한 줄 소개면 충분해요. 나머지는 다음 단계에서 하나씩 물을게요.</p>
+          <p class="wizard-step-desc" id="create-group-step-desc">이름과 한 줄 소개만 있으면 돼요.</p>
         </div>
 
-        <!-- H2 — 중간에 나가도 이어 쓸 수 있게 임시저장(localStorage)해 두고, 새로 시작할 수 있다. -->
+        <!-- v38.4 — 이어 쓰는 안내만 짧게. 처음부터 다시 하려면 머리말의 '새로만들기'. -->
         <div class="wizard-resume" id="create-group-resume" hidden>
-          <p class="wizard-resume-text">쓰던 모임이 있어 이어서 열었어요</p>
-          <button class="text-btn" id="btn-create-group-restart" type="button">새로 시작</button>
+          <p class="wizard-resume-text">쓰던 모임을 이어서 열었어요</p>
         </div>
-
         <div class="composer-body wizard-body">
           <!-- 1. 이름 · 한 줄 소개 -->
           <section class="wizard-panel" data-create-step="1">
             <div class="field-group">
               <label class="field-label" for="create-group-name">모임명 <span class="field-hint">2~30자</span></label>
-              <input type="text" class="text-input" id="create-group-name" maxlength="30" autocomplete="off" placeholder="예: 성수 주말 러닝 번개">
+              <input type="text" class="text-input" id="create-group-name" maxlength="30" autocomplete="off" placeholder="예: 주말 러닝 번개">
             </div>
             <div class="field-group">
               <label class="field-label" for="create-group-desc">한 줄 소개 <span class="field-hint">선택</span></label>
-              <textarea id="create-group-desc" class="text-area" maxlength="300" placeholder="어떤 사람들이 모이는 모임인지 짧게 적어주세요"></textarea>
+              <textarea id="create-group-desc" class="text-area" maxlength="300" placeholder="한 줄로 소개해 주세요"></textarea>
             </div>
 
             <!-- v38.2 (11/26 #25771) — 1단계의 폰 목업 미리보기 박스는 없앴다.
@@ -1289,7 +1289,7 @@
             <div class="hobby-custom hobby-custom-inline" data-hobby-custom-scope="group">
               <div class="hobby-custom-row">
                 <input class="hobby-custom-input" data-hobby-custom-input="group" type="text" maxlength="12"
-                       placeholder="목록에 없으면 직접 쓰기 (예: 파쿠르)" autocomplete="off">
+                       placeholder="없으면 직접 쓰기" autocomplete="off">
                 <button class="hobby-custom-add" data-hobby-custom-add="group" type="button">추가</button>
               </div>
             </div>
@@ -1315,7 +1315,6 @@
                 <input type="file" id="create-group-cover-camera" accept="image/*" capture="environment" hidden>
                 <button class="cover-pick-btn ghost" id="btn-create-group-cover-remove" type="button" hidden>지우기</button>
               </div>
-              <p class="cover-pick-note">사진을 고르면 바로 자를 수 있어요. 고르지 않고 넘어가면 모임명 첫 글자로 원형 아이콘을 만들어요. 위치 정보(EXIF)는 지우고 다시 저장해요.</p>
             </div>
 
             <!-- 크롭 — 확대 슬라이더 대신 사각 크롭 박스를 손가락·마우스로 조절한다(원형 가이드 포함). -->
@@ -1344,7 +1343,7 @@
           <!-- 4. 아지트 — v34.2: 4단계(활동 지역)와 5단계(아지트)를 하나로 합쳤다.
                권역(시·도 → 시·군·구)을 고르면 그 근처 아지트가 먼저 보이고, 아지트를 1~3곳 고른다. -->
           <section class="wizard-panel" data-create-step="4" hidden>
-            <p class="wizard-panel-lead">어디서 만날지 권역을 먼저 고르면 가까운 아지트부터 보여드려요.</p>
+            <p class="wizard-panel-lead">권역을 고르면 가까운 아지트부터 보여요.</p>
             <div class="region-pick">
               <div class="region-pick-row" id="create-group-region-sido" role="group" aria-label="시·도"><!-- JS --></div>
               <div class="region-pick-grid" id="create-group-region-sigungu" role="group" aria-label="시·군·구"><!-- JS --></div>
@@ -1374,7 +1373,7 @@
               <!-- H4 — 나이 제한은 4개 칩이 아니라 **19~99세 듀얼 레인지 슬라이더**로 고른다.
                    양끝이면 '제한 없음'. 끌면 위쪽 문구가 실시간으로 바뀌고, 요약에도 바로 반영된다. -->
               <div class="field-group">
-                <span class="field-label" id="create-group-age-title">나이 제한 <span class="field-hint">끌어서 범위를 정해요</span></span>
+                <span class="field-label" id="create-group-age-title">나이 제한 <span class="field-hint">끌어서 정해요</span></span>
                 <div class="age-range" id="create-group-age" data-age-slider="wizard"
                      role="group" aria-labelledby="create-group-age-title">
                   <div class="age-range-head">
@@ -1391,21 +1390,26 @@
                   </div>
                   <div class="age-range-foot" aria-hidden="true"><span>19세</span><span>99세</span></div>
                 </div>
-                <p class="policy-hint">양끝이면 나이 제한이 없어요. 나이를 모르는 신청자는 막지 않아요.</p>
+                <p class="policy-hint">양끝이면 제한 없음</p>
               </div>
               <div class="field-group">
-                <label class="field-label" for="create-group-question">가입 질문 <span class="field-hint">승인제일 때 신청자에게 물어요</span></label>
+                <label class="field-label" for="create-group-question">가입 질문 <span class="field-hint">승인제일 때 물어요</span></label>
                 <div class="composer-tag-list" id="create-group-question-presets"><!-- JS --></div>
                 <input type="text" class="text-input" id="create-group-question" maxlength="60" autocomplete="off" placeholder="예: 취미 구력이나 선호 요일을 적어주세요!">
-                <p class="policy-hint">비워두면 기본 질문을 씁니다. 질문은 모임 설정에서 더 바꿀 수 있어요.</p>
+                <p class="policy-hint">비우면 기본 질문</p>
               </div>
             </div>
           </section>
         </div>
 
+        <!-- v38.4 (11/26) — 버튼은 발치에 나란히: 이전(왼쪽) · 다음/모임 만들기(오른쪽, 넓게).
+             단계를 못 넘길 때만 발치에 짧은 안내 한 줄을 띄운다. -->
         <div class="wizard-foot">
-          <button class="wizard-prev" id="btn-create-group-prev" type="button">이전</button>
           <p class="wizard-foot-hint" id="create-group-foot-hint"></p>
+          <div class="wizard-actions">
+            <button class="wizard-prev" id="btn-create-group-prev" type="button">이전</button>
+            <button class="btn-publish wizard-next" id="btn-create-group-submit" type="button">다음</button>
+          </div>
         </div>
       </div>
     </div>

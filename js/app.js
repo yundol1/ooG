@@ -1123,10 +1123,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function narrationEnabled() {
-    if (!ui.narration || ui.narration.enabled === false) return false;
+    /* v38.4 (11/26 #25949) — `ui.narration` 은 처음 연출할 때 만들어진다. 그 전에는 없어서
+       첫 화면(1단계)만 '연출 꺼짐'으로 판정되던 버그가 있었다. 상태를 먼저 만들어 놓고 본다. */
+    const st = narrationState();
+    if (st.enabled === false) return false;
     /* 동작 줄이기는 강제 설정보다 먼저다 — 기다림 없이 바로 답을 보여준다. */
     if (prefersReducedMotion()) return false;
-    if (ui.narration.force === true) return true;
+    if (st.force === true) return true;
     if (typeof navigator !== 'undefined' && navigator.webdriver) return false;
     return true;
   }
@@ -7902,7 +7905,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.3';
+  const APP_VERSION = 'v38.4';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -14872,29 +14875,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* v34.2 (#22537) — 4단계(지역)와 5단계(아지트)를 '아지트' 하나로 합쳤다.
-     1 이름 → 2 취미 → 3 대표 이미지 → 4 아지트 → 5 최종 확인. */
+     1 이름 → 2 취미 → 3 대표 이미지 → 4 아지트 → 5 가입 설정.
+     v38.4 (#25949) — 단계마다 제목 + 한 줄만. 설명을 길게 늘어놓지 않는다("어차피 알아"). */
   const CREATE_STEPS = [
-    {
-      id: 1, label: '이름', title: '모임 이름을 정해 주세요',
-      desc: '이름과 한 줄 소개면 충분해요. 나머지는 다음 단계에서 하나씩 물을게요.'
-    },
-    {
-      id: 2, label: '취미', title: '어떤 취미 모임인가요?',
-      desc: '큰 분류를 고르면 세부 취미가 나와요. 없으면 직접 적어도 돼요.'
-    },
-    {
-      id: 3, label: '대표 이미지', title: '대표 이미지를 골라 주세요',
-      desc: '사진을 고르면 바로 자를 수 있어요. 고르지 않아도 그냥 넘어갈 수 있어요.'
-    },
-    {
-      id: 4, label: '아지트', title: '어디서 만날까요?',
-      desc: '권역을 골라 가까운 아지트를 보고, 1~3곳을 골라 주세요. 정확한 주소는 받지 않아요.'
-    },
-    {
-      id: 5, label: '가입 설정', title: '가입 설정을 정해 주세요',
-      desc: '가입 방식·나이 제한·가입 질문이에요. 그대로 두고 바로 만들어도 되고, 나중에 모임 설정에서 바꿀 수 있어요.'
-    }
+    { id: 1, label: '이름', title: '모임 이름을 정해 주세요', desc: '이름과 한 줄 소개만 있으면 돼요.' },
+    { id: 2, label: '취미', title: '어떤 취미 모임인가요?', desc: '취미를 하나 골라 주세요.' },
+    { id: 3, label: '대표 이미지', title: '대표 이미지를 골라 주세요', desc: '없으면 그냥 넘어가도 돼요.' },
+    { id: 4, label: '아지트', title: '어디서 만날까요?', desc: '아지트를 1~3곳 골라 주세요.' },
+    { id: 5, label: '가입 설정', title: '가입 설정을 정해 주세요', desc: '그대로 두고 만들어도 돼요.' }
   ];
+  /** 한 단계 설명이 이보다 길면 v38.4 기준을 벗어난 것 — 검증(ui_smoke_v38_4)이 본다. */
+  const CREATE_DESC_MAX = 24;
 
   const CREATE_DRAFT_KEY = 'oog.groupDraft.v2';
 
@@ -14913,24 +14904,48 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · ?narr=1 로 강제 · ?narr=0 으로 끔 · 동작 줄이기·자동 테스트에서는 바로 보여 준다.
    * ------------------------------------------------------------------ */
   const CREATE_NARRATION_TIMING = {
-    char: 42, brHold: 160, commaHold: 110, periodHold: 180,
+    char: 46, brHold: 160, commaHold: 110, periodHold: 180,
     breath: 220, descFade: 260,
-    descRead: 18, descMin: 520, descMax: 1400
+    descRead: 20, descMin: 560, descMax: 1400
   };
 
   function createNarrState() {
-    return ui.createNarr || (ui.createNarr = { step: 0, shown: false, active: false });
+    return ui.createNarr || (ui.createNarr = { step: 0, shown: false, active: false, start: null });
   }
 
   /** 새 모임을 열 때 — 지금 단계부터 다시 연출한다. */
   function resetCreateNarration() {
     clearNarrationTimers();
     const st = createNarrState();
-    st.step = 0; st.shown = false; st.active = false;
+    st.step = 0; st.shown = false; st.active = false; st.start = null;
     const modal = el.groupCreateModal;
     if (!modal) return;
     modal.classList.remove('is-narrating', 'narr-done', 'narr-desc-in');
     modal.querySelectorAll('.wizard-panel.is-revealed').forEach((p) => p.classList.remove('is-revealed'));
+  }
+
+  /**
+   * v38.4 (#25949) — 첫 글자는 시트가 화면에 오른 뒤에 찍는다.
+   *  예전에는 화면이 열리기 전에 타이핑이 시작돼, 열리는 순간 엔 제목이 이미 다 차 있었다.
+   *  (윈석반 님: "그룹만들기할때 첫 페이지인 이름및 소개쓸때는 와 스토리 텔링이 안돼")
+   */
+  function startCreateNarrationWhenVisible(wasOpen) {
+    const st = createNarrState();
+    if (!st.active || typeof st.start !== 'function') return;
+    const start = st.start;
+    st.start = null;
+    const modal = el.groupCreateModal;
+    const delay = wasOpen ? 60 : 150;
+    const begin = () => setTimeout(() => { if (st.active) start(); }, delay);
+    if (!modal) { begin(); return; }
+    const t0 = performance.now();
+    const wait = () => {
+      if (!st.active) return;
+      const box = modal.getBoundingClientRect();
+      if ((modal.classList.contains('active') && box.height > 0) || performance.now() - t0 > 900) { begin(); return; }
+      requestAnimationFrame(wait);
+    };
+    requestAnimationFrame(wait);
   }
 
   /** 그 단계의 입력·조작 카드를 연다 — 문구를 다 읽은 뒤, 또는 화면을 눌러 건너뛸 때. */
@@ -14973,7 +14988,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     if (st.shown) return;                       /* 이 단계는 이미 연출했다 */
     if (!narrationEnabled()) { instant(); return; }
+    const wasOpen = modal.classList.contains('active');
     st.active = true;
+    st.at = performance.now();
     modal.classList.add('is-narrating');
     modal.classList.remove('narr-done', 'narr-desc-in');
     panel.classList.remove('is-revealed', 'is-arriving');
@@ -14988,17 +15005,25 @@ document.addEventListener('DOMContentLoaded', () => {
       timing: CREATE_NARRATION_TIMING,
       hold,
       onDescIn: () => modal.classList.add('narr-desc-in'),
-      onReveal: revealCreateStepPanel
+      onReveal: revealCreateStepPanel,
+      /* 첫 글자는 화면이 다 열린 뒤에 — 열리자마자 이미 다 짜인 제목을 보지 않게. */
+      startGate: (start) => { st.start = start; }
     });
     narrationState().step = `create:${d.step}`;
+    startCreateNarrationWhenVisible(wasOpen);
   }
 
-  /** 문구를 읽는 동안 화면을 누르면 바로 카드가 나온다(입력·버튼을 누를 때는 그대로). */
+  /**
+   * 문구를 읽는 동안 **문구(제목·설명)를** 누르면 바로 카드가 나온다.
+   *  v38.4 — 예전에는 화면 어디를 눌러도 건너뛰어서, 열자마자 손이 닿는 순간 연출이 사라졌다.
+   *  이제는 문구를 눌렀을 때만 건너뛴다(입력·버튼·빈 자리 탭은 그대로).
+   */
   function createNarrationSkip(e) {
     const st = createNarrState();
     if (!st.active) return;
     const t = e && e.target;
-    if (t && t.closest && t.closest('input, textarea, select, button, label, .wizard-panel')) return;
+    if (!t || !t.closest || !t.closest('.wizard-progress')) return;
+    if (t.closest('input, textarea, select, button, label')) return;
     if (e) e.preventDefault();
     if (typeof ui.narrationReveal === 'function') ui.narrationReveal();
   }
@@ -15527,13 +15552,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const d = ui.groupDraft;
     if (d.step === 1) return createStepReady(1) ? '' : '모임명을 2자 이상 적어 주세요';
     if (d.step === 2) return createStepReady(2) ? '' : '취미를 하나 골라 주세요';
-    if (d.step === 3) return d.cover.circle ? '' : '사진 없이 넘어가면 모임명 첫 글자로 원형 아이콘을 만들어요';
+    if (d.step === 3) return '';
     if (d.step === 4) {
       if (!(d.sidoId && d.sigunguId)) return '시·도와 시·군·구를 골라 주세요';
       if (!d.hangoutIds.length) return '아지트를 1곳 이상 골라 주세요';
-      return '아지트는 3곳까지 고를 수 있어요';
+      return d.hangoutIds.length >= 3 ? '아지트는 3곳까지' : '';
     }
-    return '만들면 모임장이 되고, 모임 안에서 바로 시작해요';
+    return '';
   }
 
   /** 위자드 전체를 지금 상태로 그린다. */
@@ -16013,8 +16038,19 @@ document.addEventListener('DOMContentLoaded', () => {
     goCreateStep(ui.groupDraft.step - 1);
   });
 
-  const btnCreateRestart = $('#btn-create-group-restart');
-  btnCreateRestart && btnCreateRestart.addEventListener('click', () => resetCreateWizard({ toast: true }));
+  /* v38.4 (11/26 #25949) — 머리말 오른쪽 '새로만들기': 쓰던 내용을 지우고 1단계부터 새로 쓴다.
+     적어 둔 것이 있을 때만 한 번 물어본다(빈 화면에서는 곰바로). */
+  const btnCreateNew = $('#btn-create-group-new');
+  btnCreateNew && btnCreateNew.addEventListener('click', () => {
+    syncCreateFields();
+    const d = ui.groupDraft;
+    const dirty = !!d && (d.step > 1
+      || !!String(d.name || '').trim() || !!String(d.desc || '').trim()
+      || !!(d.cover && (d.cover.circle || d.cover.src)) || !!d.hobbyId || (d.hangoutIds || []).length > 0);
+    const start = () => resetCreateWizard({ toast: true });
+    if (!dirty) { start(); return; }
+    askConfirm('새로 만들까요?', '쓰던 내용은 지워져요.', '새로만들기', start);
+  });
 
   const btnCreateGroupSubmit = $('#btn-create-group-submit');
   btnCreateGroupSubmit && btnCreateGroupSubmit.addEventListener('click', () => {
