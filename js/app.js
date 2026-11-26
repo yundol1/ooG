@@ -14042,6 +14042,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  /* 열어 둔 참석 메뉴는 바깥을 누르면 닫는다(화면에 하나만). */
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.profile-event-rsvp-menu') || e.target.closest('[data-profile-rsvp-toggle]')) return;
+    document.querySelectorAll('.profile-event-rsvp-menu:not([hidden])').forEach((m) => {
+      m.hidden = true;
+      const item = m.closest('.profile-event-item');
+      const t = item && item.querySelector('[data-profile-rsvp-toggle]');
+      if (t) t.setAttribute('aria-expanded', 'false');
+    });
+  });
+
   /**
    * v39.0 — 모임 안 내정보의 일정 줄에서 참석 표시를 바꾼다.
    *  · 모임 멤버만(`store.can(gid, 'view_feed')`) · 지난 일정은 바꿀 수 없다.
@@ -18285,9 +18296,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const my = ev.myRsvp || null;
       const found = rsvps.find((r) => r.id === my);
       const label = found ? found.label : '미정';
-      /* 게스트로 들어온 일정은 내가 참석 표시를 바꿀 수 없다 — 상태만 보여 준다. */
-      const canChange = !past && store.isGroupJoined(ev.groupId) && store.can(ev.groupId, 'view_feed');
+      /* 게스트로 들어온 일정은 참석 표시를 바꿀 수 없다 — 상태만 보여 준다.
+         (모임 안 내정보는 내가 가입한 모임의 화면이라 게스트 일정은 바깥 '내 일정'에서 본다.) */
       const guest = !store.isGroupJoined(ev.groupId);
+      const canChange = !past && !guest && store.can(ev.groupId, 'view_feed');
       const pill = canChange
         ? `<button class="profile-event-rsvp-pill rs-${escapeHtml(my || 'none')}" data-profile-rsvp-toggle="${escapeHtml(ev.id)}"
                    type="button" aria-expanded="false"
