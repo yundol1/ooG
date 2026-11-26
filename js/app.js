@@ -841,12 +841,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 헤더·내정보 아바타를 내 사진/이니셜로 맞춘다.
    *  v38.1 — 모임 안에서는 그 모임에서만 쓰는 사진·이니셜로 칠한다. */
+  /**
+   * v39.0 — 사진이 이제 '서버 주소(URL)'라, 주소가 죽었거나(정리된 파일·옛 주소) 오프라인이면
+   * 브라우저는 빈 네모를 그린다. 그때는 **이름 글자**로 돌아간다(깨진 이미지 아이콘 대신).
+   */
+  function bindAvatarFallback(img, letter, textOf) {
+    if (!img) return;
+    img.onerror = () => {
+      img.hidden = true;
+      img.removeAttribute('src');
+      if (letter) {
+        letter.textContent = String((typeof textOf === 'function' ? textOf() : textOf) || '나').charAt(0);
+        letter.hidden = false;
+      }
+    };
+  }
+
   function paintMyAvatars() {
     const u = store.currentUser || {};
     const grp = isGroupMode() ? homeGroup() : null;
     const ident = grp ? store.groupIdentity(grp.id) : null;
     const photo = ident ? ident.photoUrl : u.photoUrl;
     const text = ident ? ident.avatarText : myAvatarText();
+    bindAvatarFallback(el.profileAvatarImg, el.profileAvatarLetter, () => text);
     /* H1 — 헤더에는 로고·검색·알림만 둔다(프로필 아바타는 하단 '내 프로필' 탭이 맡는다). */
     if (el.profileAvatarLetter) {
       el.profileAvatarLetter.hidden = !!photo;
@@ -3046,6 +3063,16 @@ document.addEventListener('DOMContentLoaded', () => {
       face.classList.add('has-photo');
       face.innerHTML = `<img class="group-header-me-img" src="${escapeHtml(ident.photoUrl)}" alt="" decoding="async">`;
       face.style.background = 'transparent';
+      /* v39.0 — 서버 사진 주소가 죽어 있으면 이니셜로 돌아간다(깨진 이미지 대신). */
+      const img = face.querySelector('img');
+      if (img) {
+        img.onerror = () => {
+          face.classList.remove('has-photo');
+          face.innerHTML = '';
+          face.textContent = ident.avatarText;
+          face.style.background = ident.gradient || '';
+        };
+      }
     } else {
       face.classList.remove('has-photo');
       face.innerHTML = '';
@@ -19230,7 +19257,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.myProfileAvatarLetter) el.myProfileAvatarLetter.textContent = me.avatarText || (me.nickname || '나').charAt(0);
     if (el.myProfileAvatarImg) {
       /* v38.9 (#26318) — 대표 사진은 공개 앨범 1번 하나. 모두 지우면 **이름 글자만** 남기고
-         img 의 src 도 지운다(숨긴 img 에 옛 사진 주소가 남아 있지 않게). */
+         img 의 src 도 지운다(숨긴 img 에 옛 사진 주소가 남아 있지 않게).
+         v39.0 — 주소가 죽은 사진(404·오프라인)도 이름 글자로 돌아간다. */
+      bindAvatarFallback(el.myProfileAvatarImg, el.myProfileAvatarLetter,
+        () => me.avatarText || (me.nickname || '나').charAt(0));
       const photo = (store.getMyAlbum('public')[0] || {}).url || me.photoUrl || '';
       el.myProfileAvatarImg.hidden = !photo;
       if (photo) el.myProfileAvatarImg.src = photo;
