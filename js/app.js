@@ -898,6 +898,36 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsDataURL(file);
   }
 
+  /* ------------------------------------------------------------------
+   * v38.7 (#26108 · #26120) — **프로필 사진류는 원형 크롭을 거친다.**
+   *   윤루키 님(11/26): "내 프로필에서 사진바꾸기/사진 등록할때 왜 원형 구역 편집하게해야지
+   *                     왜 안돼.." · "응 비밀앨범도 같이"
+   *   · 공개 사진(추가·바꾸기) · 비밀앨범(추가·바꾸기) · 프로필 편집의 사진 ·
+   *     모임 전용 프로필 사진이 모두 같은 풀스크린 원형 크롭(`확인`/`취소`)을 쓴다.
+   *   · 고른 사진은 먼저 화면 크기로 줄여(EXIF 위치 정보 제거) 크롭 판에 넘기고,
+   *     `확인` 이면 원 안을 1440px 정사각 JPEG 로 잘라 돌려준다. `취소` 면 null.
+   * ------------------------------------------------------------------ */
+  const PHOTO_CROP_OUT = 1440;
+
+  function circleCropPhotoFile(file, opts) {
+    const o = opts || {};
+    return new Promise((resolve) => {
+      if (!file) { resolve(null); return; }
+      if (!/^image\//.test(file.type || '')) {
+        showToast('이미지 파일만 올릴 수 있어요', 'warning');
+        resolve(null);
+        return;
+      }
+      readImageFile(file, (url) => {
+        openCircleCrop({
+          src: url,
+          out: o.out || PHOTO_CROP_OUT,
+          title: o.title || '사진을 원형으로 맞춰 주세요'
+        }).then((cropped) => resolve(cropped || null)).catch(() => resolve(null));
+      }, o.max || PROFILE_PHOTO_MAX, o.quality || PROFILE_PHOTO_QUALITY);
+    });
+  }
+
   /** Sprint 26.5 — 앨범 사진의 업로드 스펙(화질을 올릴 때 store 한 곳만 고치면 된다). */
   function albumUploadSpec() {
     const fallback = { maxDimension: 720, jpegQuality: 0.84, max: 4 };
@@ -2588,6 +2618,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Tab') return;
+    /* v38.7 — 풀스크린 원형 크롭이 떠 있으면 Tab 은 그 판 안에서만 돌아야 한다
+       (뒤에 열린 시트·모달로 포커스가 빠지지 않게). */
+    if (ui.circleCrop && ui.circleCrop.open) return;
     const activeModal = document.querySelector('.modal-overlay.active');
     if (!activeModal) return;
     const nodes = Array.from(activeModal.querySelectorAll(FOCUSABLE))
@@ -7924,7 +7957,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.6';
+  const APP_VERSION = 'v38.7';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -9250,9 +9283,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   el.profilePhotoInput && el.profilePhotoInput.addEventListener('change', () => {
     const file = el.profilePhotoInput.files && el.profilePhotoInput.files[0];
+    el.profilePhotoInput.value = '';
     if (!file) return;
-    readImageFile(file, (url) => {
-      store.updateProfilePhoto(url);
+    /* v38.7 (#26108) — 등록이든 변경이든 풀스크린 원형 크롭에서 원을 맞춘 뒤에 저장한다.
+       `취소`면 아무것도 바꾸지 않는다(예전 사진 그대로). */
+    circleCropPhotoFile(file, { title: '프로필 사진을 원형으로 맞춰 주세요' }).then((out) => {
+      if (!out) return;
+      store.updateProfilePhoto(out);
       paintMyAvatars();
       paintProfileEditPhoto();
       renderProfileHeader();
@@ -9261,8 +9298,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderExploreWithSkeleton();
       if (isSettingsOpen()) renderSettingsPage();
       showToast('프로필 사진을 등록했어요');
-    }, PROFILE_PHOTO_MAX, PROFILE_PHOTO_QUALITY);
-    el.profilePhotoInput.value = '';
+    });
   });
   el.confirmOk && el.confirmOk.addEventListener('click', () => {
     const fn = ui.confirmAction;
@@ -15176,6 +15212,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 사진은 손가락으로 끌어 옮기고(팬), 두 손가락·휠·아래 슬라이더로 확대한다(1~4배).
    *  · `확인` 을 누르면 원 안을 정사각으로 잘라 JPEG 로 다시 그린다(EXIF 위치 정보 제거).
    *  · 모임 대표 이미지 · 회원가입 대표 사진 · 모임 전용 프로필 사진이 같은 판을 쓴다.
+   *    v38.7 (#26108 · #26120) — 프로필 편집 사진 · 공개 사진 · 비밀앨범까지 이 판으로 넓혔다.
    * ======================================================================== */
   const PCF_MIN_ZOOM = 1;
   const PCF_MAX_ZOOM = 4;
@@ -19204,7 +19241,11 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function pickAlbumPhoto(kind, file) {
     if (!file) return;
-    readImageFile(file, (url) => {
+    /* v38.7 (#26120 "응 비밀앨범도 같이") — 공개 사진·비밀앨범 모두 원형 크롭을 거친다. */
+    circleCropPhotoFile(file, {
+      title: kind === 'secret' ? '비밀 사진을 원형으로 맞춰 주세요' : '공개 사진을 원형으로 맞춰 주세요'
+    }).then((out) => {
+      if (!out) return;
       const done = () => {
         afterAlbumChange(kind);
         showToast(kind === 'secret' ? '비밀앨범에 사진을 넣었어요' : '공개 사진에 넣었어요', 'success');
@@ -19213,16 +19254,16 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast(reason === 'full' ? '사진은 4장까지 올릴 수 있어요' : '사진을 올리지 못했어요', 'warning');
       };
       if (window.OOGAPI) {
-        window.OOGAPI.call('album.add', { kind, dataUrl: url }).then((env) => {
+        window.OOGAPI.call('album.add', { kind, dataUrl: out }).then((env) => {
           if (!env.ok) { fail((env.error && env.error.details && env.error.details.reason) || ''); return; }
           done();
         }).catch(() => fail(''));
         return;
       }
-      const res = store.addMyAlbumPhoto(kind, url);
+      const res = store.addMyAlbumPhoto(kind, out);
       if (!res.ok) { fail(res.reason); return; }
       done();
-    }, albumUploadSpec().maxDimension, albumUploadSpec().jpegQuality);
+    });
   }
 
   function openAlbumPicker(kind, camera) {
@@ -19467,14 +19508,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const photo = photos[albumViewer.index];
     if (!photo) return { ok: false, reason: 'not_found' };
     const kind = albumViewer.kind;
-    readImageFile(file, (url) => {
+    /* v38.7 (#26108 · #26120) — 바꾸기도 원형 크롭을 거친다(공개 사진·비밀앨범 모두).
+       `취소`면 이 칸의 예전 사진이 그대로 남는다. */
+    circleCropPhotoFile(file, {
+      title: kind === 'secret' ? '비밀 사진을 원형으로 맞춰 주세요' : '공개 사진을 원형으로 맞춰 주세요'
+    }).then((out) => {
+      if (!out) return;
       const apply = () => {
         afterAlbumChange(kind);
         renderAlbumViewer();
         showToast('사진을 바꿨어요', 'success');
       };
       if (window.OOGAPI) {
-        window.OOGAPI.call('album.replace', { kind, photoId: photo.id, dataUrl: url })
+        window.OOGAPI.call('album.replace', { kind, photoId: photo.id, dataUrl: out })
           .then((env) => {
             if (!env.ok) { showToast('사진을 바꾸지 못했어요', 'warning'); return; }
             apply();
@@ -19482,10 +19528,10 @@ document.addEventListener('DOMContentLoaded', () => {
           .catch(() => showToast('사진을 바꾸지 못했어요', 'warning'));
         return;
       }
-      const res = store.replaceMyAlbumPhoto(kind, photo.id, url);
+      const res = store.replaceMyAlbumPhoto(kind, photo.id, out);
       if (!res.ok) { showToast('사진을 바꾸지 못했어요', 'warning'); return; }
       apply();
-    }, albumUploadSpec().maxDimension, albumUploadSpec().jpegQuality);
+    });
     return { ok: true };
   }
 
@@ -19837,10 +19883,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    readImageFile(file, (url) => {
-      ui.gp.photoUrl = url;
+    /* v38.7 (#26108) — 모임 전용 프로필 사진도 풀스크린 원형 크롭(확인/취소)을 거친다.
+       `취소`면 고르기 전 상태(빈 원 또는 지난 사진) 그대로다. */
+    circleCropPhotoFile(file, { title: '이 모임에서 쓸 사진을 원형으로 맞춰 주세요' }).then((out) => {
+      if (!out || !ui.gp) return;
+      ui.gp.photoUrl = out;
       renderGroupProfileModal();
-    }, PROFILE_PHOTO_MAX, PROFILE_PHOTO_QUALITY);
+      showToast('모임 프로필 사진을 원형으로 만들었어요');
+    });
   });
   $('#gp-nickname') && $('#gp-nickname').addEventListener('input', (e) => {
     ui.gp.nickname = String(e.target.value || '').slice(0, 12);
