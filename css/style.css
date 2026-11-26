@@ -27530,9 +27530,14 @@ body.group-mode .push-permission-banner { display: none !important; }
   background: #FEF3C7;
   color: #92400E;
 }
-.profile-event-rsvp-pill.rs-none,
-.profile-event-rsvp-pill.is-static { cursor: default; }
-.profile-event-rsvp-pill.is-static { opacity: 0.9; }
+.profile-event-rsvp-pill.rs-none { cursor: default; }
+/* 지난 일정·게스트는 '상태 표시'일 뿐 — 초록 단추처럼 보이지 않게 회색 면으로. */
+.profile-event-rsvp-pill.is-static {
+  cursor: default;
+  border-color: var(--divider);
+  background: var(--fill-subtle);
+  color: var(--text-muted);
+}
 .profile-event-rsvp-menu {
   display: flex;
   gap: 5px;
