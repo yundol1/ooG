@@ -108,6 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
     postSheetId: null,           // 열린 게시글 상세
     exploreCompose: { hobbyId: null, regionId: null, meetStyle: null, photoUrl: null },
     edit: { hobbyIds: [], activity: '' },   // 프로필 수정 드래프트
+    /* v38.3 — 만들기(그룹 생성) 화면의 스토리텔링 연출 상태. 한 단계는 한 번만 연출한다. */
+    createNarr: { step: 0, shown: false, active: false },
     groupDraft: {
       /* Sprint 32.5 — 한 단계씩(5단계) + 대표 이미지 + 아지트 */
       step: 1, hobbyId: null, privacyType: 'open', ageLimit: 'all', question: '',
@@ -1142,6 +1144,8 @@ document.addEventListener('DOMContentLoaded', () => {
    *  반환값 finish(true) 는 남은 글자를 채우되 다음 단계는 부르지 않는다(스킵). */
   function typeNarrationTitle(node, onDone, opts) {
     const o = opts || {};
+    /* v38.3 — 화면마다 속도를 달리할 수 있다(만들기 화면은 단계가 짧아 조금 빠르게). */
+    const T = o.timing || NARRATION_TIMING;
     if (!node) { if (onDone) onDone(); return { finish: () => {}, chars: 0, start: () => {} }; }
     const raw = node.innerHTML;
     const tokens = raw.match(/<br\s*\/?>|&[a-zA-Z#0-9]+;|[\s\S]/g) || [];
@@ -1166,10 +1170,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const token = tokens[i];
       chars[i].classList.add('on');
       i += 1;
-      let wait = NARRATION_TIMING.char;
-      if (/^<br/i.test(token)) wait = NARRATION_TIMING.brHold;
-      else if (/^[,，·、]$/.test(token)) wait = NARRATION_TIMING.commaHold;
-      else if (/^[.!?…]$/.test(token)) wait = NARRATION_TIMING.periodHold;
+      let wait = T.char;
+      if (/^<br/i.test(token)) wait = T.brHold;
+      else if (/^[,，·、]$/.test(token)) wait = T.commaHold;
+      else if (/^[.!?…]$/.test(token)) wait = T.periodHold;
       timer = setTimeout(() => {
         timer = null;
         if (i >= chars.length) finish();
@@ -1215,16 +1219,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     st.active = true; st.done = false; st.answerShown = false;
     if (cfg.onStart) cfg.onStart();
+    const T = cfg.timing || NARRATION_TIMING;
     const descChars = cfg.descNode ? String(cfg.descNode.textContent || '').replace(/\s/g, '').length : 0;
-    const descHold = Math.max(NARRATION_TIMING.descMin,
-      Math.min(NARRATION_TIMING.descMax, Math.round(descChars * NARRATION_TIMING.descRead)));
+    const descHold = Math.max(T.descMin,
+      Math.min(T.descMax, Math.round(descChars * T.descRead)));
     const typing = typeNarrationTitle(cfg.titleNode, () => {
-      after(NARRATION_TIMING.breath, () => {
+      after(T.breath, () => {
         if (st.done) return;
         if (cfg.onDescIn) cfg.onDescIn();
-        after(cfg.hold != null ? cfg.hold : descHold + NARRATION_TIMING.descFade, reveal);
+        after(cfg.hold != null ? cfg.hold : descHold + T.descFade, reveal);
       });
-    }, { paused: true });
+    }, { paused: true, timing: T });
     /* 제목 글자는 이미 감싸 두었다(보이지 않음). 이제 시작만 기다린다. */
     if (cfg.startGate) cfg.startGate(() => typing.start());
     else typing.start();
@@ -7897,7 +7902,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.2';
+  const APP_VERSION = 'v38.3';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -14897,6 +14902,108 @@ document.addEventListener('DOMContentLoaded', () => {
     return CREATE_STEPS.find((s) => s.id === step) || CREATE_STEPS[0];
   }
 
+  /* ---------------------------------------------------------------- v38.3 — 만들기 스토리텔링
+   * 11/26 #25889 윤루키 님: "그룹 생성또한 회원가입할때처럼 스토리텔링식으로
+   *  말이끝나면 텍스트 입력창이 나오게 해줘 지금 해"
+   *  · 회원가입(applyOnboardingNarration)과 같은 결: 단계 제목을 한 글자씩 찍고 → 설명이 떠오르고
+   *    → 다 읽으면 **그 단계의 입력·조작 카드가 나타난다**(그 전에는 카드가 보이지 않는다).
+   *  · 만드는 화면은 단계가 다섯이라 회원가입보다 조금 빠르게 찍는다(글자 42ms · 한 단계 약 1.5~2초).
+   *  · 화면 아무 곳이나 누르면 기다리지 않고 바로 나타난다.
+   *  · 한 단계는 한 번만 — 입력·칩 선택으로 다시 그려도 연출이 되감기지 않는다.
+   *  · ?narr=1 로 강제 · ?narr=0 으로 끔 · 동작 줄이기·자동 테스트에서는 바로 보여 준다.
+   * ------------------------------------------------------------------ */
+  const CREATE_NARRATION_TIMING = {
+    char: 42, brHold: 160, commaHold: 110, periodHold: 180,
+    breath: 220, descFade: 260,
+    descRead: 18, descMin: 520, descMax: 1400
+  };
+
+  function createNarrState() {
+    return ui.createNarr || (ui.createNarr = { step: 0, shown: false, active: false });
+  }
+
+  /** 새 모임을 열 때 — 지금 단계부터 다시 연출한다. */
+  function resetCreateNarration() {
+    clearNarrationTimers();
+    const st = createNarrState();
+    st.step = 0; st.shown = false; st.active = false;
+    const modal = el.groupCreateModal;
+    if (!modal) return;
+    modal.classList.remove('is-narrating', 'narr-done', 'narr-desc-in');
+    modal.querySelectorAll('.wizard-panel.is-revealed').forEach((p) => p.classList.remove('is-revealed'));
+  }
+
+  /** 그 단계의 입력·조작 카드를 연다 — 문구를 다 읽은 뒤, 또는 화면을 눌러 건너뛸 때. */
+  function revealCreateStepPanel() {
+    const modal = el.groupCreateModal;
+    const d = ui.groupDraft;
+    const st = createNarrState();
+    st.active = false; st.shown = true;
+    if (!modal || !d) return;
+    modal.classList.remove('is-narrating');
+    modal.classList.add('narr-done');
+    /* 찍느라 잘라 둔 제목·설명을 원래 글자로 되돌린다(줄바꿈·선택이 자연스럽게). */
+    const meta = createStepMeta(d.step);
+    if (el.createGroupStepTitle) el.createGroupStepTitle.textContent = meta.title;
+    if (el.createGroupStepDesc) el.createGroupStepDesc.textContent = meta.desc;
+    const panel = modal.querySelector(`.wizard-panel[data-create-step="${d.step}"]`);
+    if (!panel) return;
+    panel.classList.add('is-revealed');
+    panel.classList.add('is-arriving');
+    setTimeout(() => panel.classList.remove('is-arriving'), 560);
+  }
+
+  /** 단계가 바뀌었거나 처음 열렸을 때만 — 제목을 찍고 카드를 늦게 연다. */
+  function applyCreateStepNarration() {
+    const modal = el.groupCreateModal;
+    const d = ui.groupDraft;
+    if (!modal || !d || !el.createGroupStepTitle) return;
+    const st = createNarrState();
+    const panel = modal.querySelector(`.wizard-panel[data-create-step="${d.step}"]`);
+    if (!panel) return;
+    if (st.step !== d.step) { st.step = d.step; st.shown = false; st.active = false; }
+    const instant = () => {
+      clearNarrationTimers();
+      st.active = false; st.shown = true;
+      modal.classList.remove('is-narrating', 'narr-desc-in');
+      modal.classList.add('narr-done');
+      panel.classList.add('is-revealed');
+      const nst = narrationState();
+      nst.active = false; nst.done = true; nst.answerShown = true; nst.step = `create:${d.step}`;
+    };
+    if (st.shown) return;                       /* 이 단계는 이미 연출했다 */
+    if (!narrationEnabled()) { instant(); return; }
+    st.active = true;
+    modal.classList.add('is-narrating');
+    modal.classList.remove('narr-done', 'narr-desc-in');
+    panel.classList.remove('is-revealed', 'is-arriving');
+    const descChars = el.createGroupStepDesc
+      ? String(el.createGroupStepDesc.textContent || '').replace(/\s/g, '').length : 0;
+    const hold = Math.max(CREATE_NARRATION_TIMING.descMin,
+      Math.min(CREATE_NARRATION_TIMING.descMax, Math.round(descChars * CREATE_NARRATION_TIMING.descRead)))
+      + CREATE_NARRATION_TIMING.descFade;
+    playNarration({
+      titleNode: el.createGroupStepTitle,
+      descNode: el.createGroupStepDesc,
+      timing: CREATE_NARRATION_TIMING,
+      hold,
+      onDescIn: () => modal.classList.add('narr-desc-in'),
+      onReveal: revealCreateStepPanel
+    });
+    narrationState().step = `create:${d.step}`;
+  }
+
+  /** 문구를 읽는 동안 화면을 누르면 바로 카드가 나온다(입력·버튼을 누를 때는 그대로). */
+  function createNarrationSkip(e) {
+    const st = createNarrState();
+    if (!st.active) return;
+    const t = e && e.target;
+    if (t && t.closest && t.closest('input, textarea, select, button, label, .wizard-panel')) return;
+    if (e) e.preventDefault();
+    if (typeof ui.narrationReveal === 'function') ui.narrationReveal();
+  }
+  el.groupCreateModal && el.groupCreateModal.addEventListener('click', createNarrationSkip);
+
   function freshGroupDraft() {
     const my = store.getMyArea();
     return {
@@ -15446,8 +15553,11 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
     if (el.createGroupStepLabel) el.createGroupStepLabel.textContent = `${d.step} / ${CREATE_STEPS.length} · ${meta.label}`;
-    if (el.createGroupStepTitle) el.createGroupStepTitle.textContent = meta.title;
-    if (el.createGroupStepDesc) el.createGroupStepDesc.textContent = meta.desc;
+    /* v38.3 — 제목을 찍는 중이면 덮어쓰지 않는다(다시 그려도 연출이 끊기지 않게). */
+    const narrNow = createNarrState();
+    const narrTyping = narrNow.active && narrNow.step === d.step;
+    if (el.createGroupStepTitle && !narrTyping) el.createGroupStepTitle.textContent = meta.title;
+    if (el.createGroupStepDesc && !narrTyping) el.createGroupStepDesc.textContent = meta.desc;
     if (el.createGroupPrev) el.createGroupPrev.hidden = d.step === 1;
 
     /* v33.5 — 2단계로 들어올 때 이름·소개에서 취미를 찾아 미리 골라 둔다. */
@@ -15496,6 +15606,8 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.classList.toggle('ready', ready);
     }
     if (el.createGroupFootHint) el.createGroupFootHint.textContent = createFootHint();
+    /* v38.3 — 문구를 다 읽은 뒤에 그 단계의 입력·조작 카드가 나타난다. */
+    applyCreateStepNarration();
     hydrateIcons(el.groupCreateModal || document);
   }
 
@@ -15522,6 +15634,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /** 위자드를 처음 상태로 — 새로 시작. */
   function resetCreateWizard(options = {}) {
     clearCreateDraft();
+    resetCreateNarration();
     ui.regionEdit = false;
     ui.groupDraft = freshGroupDraft();
     if (el.createGroupName) el.createGroupName.value = '';
@@ -15573,6 +15686,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.createGroupResume) el.createGroupResume.hidden = !resumed;
     closeCreateCrop();
     if (d.cover.src) openCreateCrop(d.cover.src);
+    resetCreateNarration();
     renderGroupWizard();
     openModal(el.groupCreateModal);
   }
