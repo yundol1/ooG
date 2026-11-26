@@ -7547,6 +7547,7 @@ class Store {
     const metro = (!q && o.metroId && o.metroId !== 'all') ? this.getHangoutMetro(o.metroId) : null;
     const metroSido = metro ? metro.sidoIds : null;
     const my = this.getMyArea();
+    const preferSido = o.preferSido && o.preferSido !== 'all' ? o.preferSido : null;
     return AZIT_SPOTS
       .filter((s) => {
         if (s.legacy && o.includeLegacy !== true) return false;
@@ -7567,6 +7568,9 @@ class Store {
         }).length
       }))
       .sort((a, b) => ((b.isMyArea ? 1 : 0) - (a.isMyArea ? 1 : 0))
+        /* v38.9 — 전국 목록의 첫 화면은 **내 시·도**(모르면 서울)부터 보여 준다.
+           이름순으로만 두면 처음 여는 사람에게 경남 '가야역'부터 나온다. */
+        || ((b.sidoId === preferSido ? 1 : 0) - (a.sidoId === preferSido ? 1 : 0))
         || (b.groupCount - a.groupCount)
         || ((b.id === (my && my.id) ? 1 : 0) - (a.id === (my && my.id) ? 1 : 0))
         || String(a.name).localeCompare(String(b.name), 'ko'))

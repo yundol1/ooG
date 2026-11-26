@@ -14361,8 +14361,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </span>
         <span class="azit-row-check" aria-hidden="true">${!selected ? ic('check') : ''}</span>
       </button>`;
-    /* 한 줄 더 받아 보고, 더 있으면 '더 보기'를 붙인다. */
-    const rows = store.getHangouts({ query: q, metroId, limit: limit + 1 });
+    /* 한 줄 더 받아 보고, 더 있으면 '더 보기'를 붙인다.
+       v38.9 — 첫 화면(검색 전·권역 전체)은 내 시·도(모르면 서울)부터 — 전국 이름순이면
+       경남 '가야역'이 맨 위에 온다. */
+    const myArea = store.getMyArea();
+    const preferSido = (!q && metroId === 'all') ? ((myArea && myArea.sidoId) || 'seoul') : null;
+    const rows = store.getHangouts({ query: q, metroId, limit: limit + 1, preferSido });
     const shown = rows.slice(0, limit);
     const more = rows.length > limit;
     if (!shown.length) {
