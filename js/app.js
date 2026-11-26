@@ -712,18 +712,8 @@ document.addEventListener('DOMContentLoaded', () => {
     createGroupRegionSigungu: $('#create-group-region-sigungu'),
     createGroupRegionPicked: $('#create-group-region-picked'),
     createGroupHangoutLead: $('#create-group-hangout-lead'),
-    createGroupFinal: $('#create-group-final'),
     createGroupResume: $('#create-group-resume'),
-    /* v33.5 — 1단계 실시간 미리보기 · 2단계 자동 추천 */
-    createGroupPreview: $('#create-group-preview'),
-    createPreviewCover: $('#create-preview-cover'),
-    createPreviewTile: $('#create-preview-tile'),
-    createPreviewCardName: $('#create-preview-card-name'),
-    createPreviewCardDesc: $('#create-preview-card-desc'),
-    createPreviewTag: $('#create-preview-tag'),
-    createPreviewName: $('#create-preview-name'),
-    createPreviewMeta: $('#create-preview-meta'),
-    createPreviewDesc: $('#create-preview-desc'),
+    /* v33.5 — 2단계 자동 추천 (v38.2 에서 1단계 미리보기는 없앴다) */
     createGroupSuggest: $('#create-group-suggest'),
     createGroupSuggestText: $('#create-group-suggest-text'),
     createGroupSuggestApply: $('#btn-create-group-suggest-apply'),
@@ -7907,7 +7897,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v38.1';
+  const APP_VERSION = 'v38.2';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -14896,8 +14886,8 @@ document.addEventListener('DOMContentLoaded', () => {
       desc: '권역을 골라 가까운 아지트를 보고, 1~3곳을 골라 주세요. 정확한 주소는 받지 않아요.'
     },
     {
-      id: 5, label: '최종 확인', title: '이대로 만들까요?',
-      desc: '만들어질 모임이에요. 카드와 모임 화면을 한 번 보고 아래 버튼을 누르면 끝나요.'
+      id: 5, label: '가입 설정', title: '가입 설정을 정해 주세요',
+      desc: '가입 방식·나이 제한·가입 질문이에요. 그대로 두고 바로 만들어도 되고, 나중에 모임 설정에서 바꿀 수 있어요.'
     }
   ];
 
@@ -15190,20 +15180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return { circle: c.circle, card: c.card };
   }
 
-  /* ------------------------------------------------ v33.5 · 1단계 실시간 미리보기 */
-  /* 11/22 01:02 루키 님: "이름이나 한 줄 소개를 적게 되면 ... 쓰는 그대로 미리보기 화면에
-     노출되었으면 좋겠어". 글자를 입력할 때마다 **글자만** 갈아 끼운다 — 입력창·커서는 건드리지
-     않고, 무거운 재렌더(취미 80행·아지트 80행)도 하지 않는다. */
-  const PREVIEW_NAME_HINT = '모임 이름이 여기에 보여요';
-  const PREVIEW_DESC_HINT = '한 줄 소개가 여기에 보여요';
-
-  function setPreviewText(node, value, hint) {
-    if (!node) return;
-    const text = value || hint;
-    if (node.textContent !== text) node.textContent = text;
-    node.classList.toggle('is-empty', !value);
-  }
-
+  /* ------------------------------------------------ v33.5 · 2단계 자동 추천 */
   function currentDraftName() {
     const d = ui.groupDraft;
     const v = el.createGroupName ? el.createGroupName.value : (d ? d.name : '');
@@ -15216,47 +15193,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return String(v == null ? '' : v).trim();
   }
 
-  /** 이름·한 줄 소개가 실제로 보이는 두 곳(모임 카드 · 모임 화면 상단)을 지금 글자로 그린다. */
-  function renderCreatePreview() {
-    if (!ui.groupDraft) return;
-    const d = ui.groupDraft;
-    const name = currentDraftName();
-    const desc = currentDraftDesc();
-    setPreviewText(el.createPreviewCardName, name, PREVIEW_NAME_HINT);
-    setPreviewText(el.createPreviewName, name, PREVIEW_NAME_HINT);
-    setPreviewText(el.createPreviewCardDesc, desc, PREVIEW_DESC_HINT);
-    setPreviewText(el.createPreviewDesc, desc, PREVIEW_DESC_HINT);
-
-    /* 취미를 골랐다면 그 취미의 색·아이콘으로 — 아직이면 중립 점토.
-       (1단계로 돌아와도 2단계에서 고른 취미가 그대로 보인다.) */
-    const chip = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
-    if (el.createPreviewCover) {
-      const tone = `tone-${(chip && chip.tone) || 'neutral'}`;
-      Array.from(el.createPreviewCover.classList).forEach((c) => {
-        if (c.indexOf('tone-') === 0 && c !== tone) el.createPreviewCover.classList.remove(c);
-      });
-      el.createPreviewCover.classList.add(tone);
-    }
-    if (el.createPreviewTile) {
-      const iconName = (chip && chip.icon) || 'sparkle';
-      if (el.createPreviewTile.dataset.icon !== iconName) {
-        el.createPreviewTile.dataset.icon = iconName;
-        el.createPreviewTile.innerHTML = ic(iconName);
-      }
-    }
-    if (el.createPreviewTag) {
-      const tag = chip ? chip.categoryName : '취미';
-      if (el.createPreviewTag.textContent !== tag) el.createPreviewTag.textContent = tag;
-      el.createPreviewTag.classList.toggle('is-empty', !chip);
-    }
-    if (el.createPreviewMeta) {
-      const azit = (d.hangoutIds || []).length ? store.findAzit(d.hangoutIds[0]) : null;
-      const meta = `${azit ? azit.name : '아지트'} · 멤버 1명`;
-      if (el.createPreviewMeta.textContent !== meta) el.createPreviewMeta.textContent = meta;
-    }
-  }
-
-  /* ------------------------------------------------ v33.5 · 2단계 자동 추천 */
   /**
    * 이름·소개에서 취미를 찾아 2단계 선택을 미리 맞춘다.
    *  · 아직 아무것도 안 골랐으면 찾은 취미를 골라 둔다(자동 선택).
@@ -15465,51 +15401,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 6단계 확인 — 만든 내용을 한 번에. */
-  /**
-   * v34.2 (#22537) — 마지막 5단계는 표가 아니라 **실제 모임 카드 + 모임 상단 헤더 미리보기**다.
-   * 방금 적은 이름·한 줄 소개·원형 대표 이미지·취미·아지트가 그대로 들어간다.
-   */
-  function renderCreateFinal() {
-    if (!el.createGroupFinal) return;
-    const d = ui.groupDraft;
-    const chip = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
-    const area = d.sigunguId ? store.findSigungu(d.sigunguId) : null;
-    const hangouts = d.hangoutIds.map((id) => store.findAzit(id)).filter(Boolean);
-    const name = currentDraftName() || '모임 이름';
-    const desc = currentDraftDesc();
-    /* v34.2 — 카드에는 취미 이름을 그대로(대분류보다 정확하게). */
-    const tag = chip ? chip.name : '취미';
-    const azitName = hangouts.length ? hangouts[0].name : (area ? area.name : '아지트');
-    const azitLine = hangouts.length > 1 ? `${azitName} 외 ${hangouts.length - 1}곳` : azitName;
-    const tone = chip ? chip.tone : 'neutral';
-    const cover = d.cover.circle
-      ? `<img class="wz-final-cover-img" src="${escapeHtml(d.cover.circle)}" alt="">`
-      : `<span class="wz-final-cover-initial tone-${escapeHtml(tone)}" aria-hidden="true">${escapeHtml(name.charAt(0))}</span>`;
-    el.createGroupFinal.innerHTML = `
-      <div class="wz-final-card">
-        <span class="wz-final-card-cover${d.cover.circle ? ' has-photo' : ''}">${cover}</span>
-        <span class="wz-final-card-body">
-          <span class="wz-final-chip">${escapeHtml(tag)}</span>
-          <strong class="wz-final-name">${escapeHtml(name)}</strong>
-          <span class="wz-final-desc">${escapeHtml(desc || '한 줄 소개를 적으면 여기에 보여요')}</span>
-          <span class="wz-final-meta">${ic('pin')} ${escapeHtml(azitLine)} · 멤버 1명</span>
-        </span>
-      </div>
-      <div class="wz-final-header">
-        <span class="wz-final-header-label">모임 화면 상단</span>
-        <div class="wz-final-header-bar">
-          <span class="wz-final-header-cover${d.cover.circle ? ' has-photo' : ''}">${cover}</span>
-          <span class="wz-final-header-text">
-            <strong class="wz-final-header-name">${escapeHtml(name)}</strong>
-            <span class="wz-final-header-meta">${escapeHtml(tag)} · ${escapeHtml(azitLine)} · 멤버 1명</span>
-          </span>
-        </div>
-        <p class="wz-final-header-desc">${escapeHtml(desc || '한 줄 소개를 적으면 여기에 보여요')}</p>
-      </div>`;
-    hydrateIcons(el.createGroupFinal);
-  }
-
   /** 지금 단계를 넘어갈 수 있는지. */
   function createStepReady(step) {
     const d = ui.groupDraft;
@@ -15566,8 +15457,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCreateCover();
     renderCreateRegion();
     renderCreateHangouts();
-    renderCreateFinal();
-    renderCreatePreview();
+    /* v38.2 (11/26 #25771) — 만들기 화면에는 미리보기 화면이 없다(1단계 박스·마지막 카드 모두 거뒀다). */
     /* 크롭 창은 3단계에서만 — 다른 단계로 가면 접고, 3단계로 돌아오면 다시 맞춰 그린다. */
     if (el.createGroupCrop) {
       if (d.step !== 3) el.createGroupCrop.hidden = true;
@@ -15913,28 +15803,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /**
-   * v34.2 (#22537) — 입력하는 자리에 해당하는 미리보기 조각만 은은하게 반짝인다.
-   * (모임명을 적으면 이름 두 곳, 한 줄 소개를 적으면 소개 두 곳)
+   * v38.2 (11/26 #25771) — 1단계 미리보기 박스를 없앴다. 입력할 때는 버튼 상태만 새로 고친다.
+   * (v34.2 의 미리보기 반짝임 · v33.5 의 실시간 미리보기는 함께 거뒀다.)
    */
-  function flashPreview(nodes) {
-    nodes.forEach((node) => {
-      if (!node) return;
-      node.classList.remove('is-flash');
-      void node.offsetWidth;   // 애니메이션을 다시 시작하려고 한 번 강제로 되감는다
-      node.classList.add('is-flash');
-      clearTimeout(node.flashTimer);
-      node.flashTimer = setTimeout(() => node.classList.remove('is-flash'), 720);
-    });
-  }
-
-  /** 1단계에서 글자를 적을 때 — 무거운 재렌더 대신 미리보기·버튼 상태만 새로 고친다. */
-  function refreshCreateStep1(field) {
+  function refreshCreateStep1() {
     const d = ui.groupDraft;
     if (!d) return;
-    renderCreatePreview();
     renderCreateCover();
-    if (field === 'name') flashPreview([el.createPreviewCardName, el.createPreviewName]);
-    if (field === 'desc') flashPreview([el.createPreviewCardDesc, el.createPreviewDesc]);
     const btn = $('#btn-create-group-submit');
     if (btn) {
       const ready = createStepReady(d.step);
@@ -15946,12 +15821,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.createGroupName && el.createGroupName.addEventListener('input', () => {
     syncDraftText();
-    if (ui.groupDraft.step === 1) refreshCreateStep1('name');
+    if (ui.groupDraft.step === 1) refreshCreateStep1();
     queueCreateDraftSave();
   });
   el.createGroupDesc && el.createGroupDesc.addEventListener('input', () => {
     syncDraftText();
-    if (ui.groupDraft.step === 1) refreshCreateStep1('desc');
+    if (ui.groupDraft.step === 1) refreshCreateStep1();
     queueCreateDraftSave();
   });
   if (el.createGroupQuestion) el.createGroupQuestion.addEventListener('input', () => { ui.groupDraft.question = el.createGroupQuestion.value; queueCreateDraftSave(); });

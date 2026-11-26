@@ -68,7 +68,7 @@
    디엠 2건(보낸 사람 사진 2장)을 채워 안내하고, 끝내거나 건너뛰면 즉시 실제 화면으로 돌아간다
    (저장소·DB에는 아무것도 쓰지 않는다). 스포트라이트도 그 임시 구역을 비춘다.
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v38-1';
+const CACHE_VERSION = 'oog-shell-v38-2';
 const SHELL_ASSETS = [
   './',
   './index.html',

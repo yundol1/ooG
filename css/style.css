@@ -21976,9 +21976,7 @@ body.subscreen-open { overflow: hidden; }
 .wizard-ops {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--divider);
+  gap: 14px;
 }
 .wizard-summary-wrap {
   display: flex;
@@ -23204,146 +23202,6 @@ button.caption-author::after {
    · 새 컴포넌트만 둔다(기존 규칙을 덮는 층을 만들지 않는다).
    · 상자는 테두리·그림자 없이 --fill-subtle 면 하나 — 30일차 '박스 걷어내기' 그대로. */
 
-/* ---------------------------------------- 1) 1단계 미리보기 */
-.wizard-preview {
-  display: flex;
-  flex-direction: column;
-  padding: 10px 12px 12px;
-  border-radius: var(--r-card);
-  background: var(--fill-subtle);
-}
-.wizard-preview[hidden] { display: none; }
-.wizard-preview-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.wizard-preview-title {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  letter-spacing: 0.02em;
-  color: var(--text-strong);
-}
-.wizard-preview-note {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  color: var(--text-muted);
-}
-.wizard-preview-grid {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-}
-.pv-label {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  color: var(--text-muted);
-}
-.pv-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.pv-card-cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  margin-top: 5px;
-  border-radius: 10px;
-  background: var(--tone-from, var(--bg-soft));
-  color: var(--tone-ink, var(--text-muted));
-  overflow: hidden;
-}
-.pv-card-tile { display: inline-flex; }
-.pv-card-tile .oo-ic { font-size: 26px; }
-.pv-card-name {
-  margin-top: 2px;
-  font-size: var(--fs-sub);
-  font-weight: var(--fw-title);
-  line-height: 1.32;
-  color: var(--text-strong);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-  text-overflow: ellipsis;
-}
-.pv-card-desc {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-body);
-  line-height: 1.34;
-  color: var(--text-sub);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-  text-overflow: ellipsis;
-}
-.pv-detail {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.pv-detail-tag {
-  align-self: flex-start;
-  margin-top: 5px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--bg-base);
-  color: var(--green-text);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-}
-.pv-detail-name {
-  font-size: var(--fs-section);
-  font-weight: var(--fw-display);
-  line-height: 1.28;
-  letter-spacing: -0.2px;
-  color: var(--text-strong);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-  text-overflow: ellipsis;
-}
-.pv-detail-meta {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  color: var(--text-muted);
-}
-.pv-detail-desc {
-  font-size: var(--fs-small);
-  font-weight: var(--fw-body);
-  line-height: 1.4;
-  color: var(--text-sub);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-  text-overflow: ellipsis;
-}
-/* 아직 안 적은 자리 — 같은 위치에 은은한 안내만 */
-.wizard-preview .is-empty,
-.pv-detail-name.is-empty {
-  font-weight: var(--fw-body);
-  color: var(--text-muted);
-}
-
 /* ---------------------------------------- 2) 2단계 자동 추천 */
 .wizard-suggest {
   display: flex;
@@ -23416,7 +23274,6 @@ button.caption-author::after {
 :root[data-theme="dark"] .wizard-suggest { background: rgba(52, 211, 153, 0.12); }
 :root[data-theme="dark"] .tag-pick.active .pick-badge { background: #0D1117; color: var(--green); }
 :root[data-theme="dark"] .create-cat.active .pick-badge { background: var(--green); color: #0D1117; }
-:root[data-theme="dark"] .pv-detail-tag { background: var(--bg-app); }
 
 /* 추천 배지가 붙은 칩은 낱말 중간에서 줄을 바꾸지 않는다(칩 목록은 가로로 넘겨 본다). */
 #create-group-hobbies .tag-pick,
@@ -24862,7 +24719,8 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
    ① 내 프로필: 큰 대표 사진(공개 사진 1번) + 작은 2~4번 미리보기 · 우측 상단 삼선바 설정 ·
       카드 우측 비밀 사진 버튼 · 하단 내 피드(격자/피드 전환)
    ② 피드 카드 댓글 미리보기: 아이디 + 본문만(아바타·닉네임은 댓글 시트에서만)
-   ③ 새 모임 만들기: 폰 목업 미리보기 · 취미 즉시 추가 · 원형 1개 + 드래그 크롭 · 5단계
+   ③ 새 모임 만들기: 취미 즉시 추가 · 원형 1개 + 드래그 크롭 · 5단계
+      (v38.2 — 1단계 폰 목업 미리보기 · 5단계 카드 미리보기는 없앴다)
    ========================================================================== */
 
 /* ---------------------------------------------------------------------------
@@ -25481,71 +25339,6 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 .ig-comment-line .ig-comment-text { flex: 1 1 auto; min-width: 0; }
 
 /* ---------------------------------------------------------------------------
-   ③ 새 모임 만들기 1단계 — 폰 목업 미리보기
-   --------------------------------------------------------------------------- */
-.wz-phone {
-  width: 232px;
-  max-width: 100%;
-  margin: 16px auto 2px;
-  padding: 9px 8px 11px;
-  border-radius: 30px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  box-shadow: inset 0 0 0 2px var(--bg-base), var(--shadow-sm, 0 2px 8px rgba(15, 23, 42, 0.08));
-}
-.wz-phone-speaker {
-  display: block;
-  width: 44px;
-  height: 4px;
-  margin: 0 auto 8px;
-  border-radius: 999px;
-  background: var(--border-strong, var(--border));
-  opacity: 0.7;
-}
-.wz-phone-screen {
-  padding: 10px;
-  border-radius: 22px;
-  background: var(--bg-base);
-  overflow: hidden;
-}
-/* 미리보기는 '보여 주기만' 한다 — 입력창으로 오해하지 않게 누를 수 없다. */
-.wizard-preview {
-  pointer-events: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-.wz-phone .wizard-preview {
-  padding: 8px 9px 9px;
-  border-radius: 14px;
-}
-.wz-phone .wizard-preview-grid {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 9px;
-}
-.wz-phone .pv-card-cover { aspect-ratio: 16 / 10; }
-.wz-preview-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--green-soft);
-  color: var(--green-text);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-}
-.wz-phone .wizard-preview-note { font-size: 10px; }
-
-/* 적는 위치가 은은하게 반짝인다 */
-.wizard-preview .is-flash {
-  animation: wzFlash 0.72s ease both;
-  border-radius: 6px;
-}
-@keyframes wzFlash {
-  0% { background-color: var(--green-soft); box-shadow: 0 0 0 2px var(--green-soft); }
-  100% { background-color: transparent; box-shadow: 0 0 0 2px transparent; }
-}
-
-/* ---------------------------------------------------------------------------
    ③-2 3단계 — 원형 미리보기 1개 + 드래그 크롭 박스
    --------------------------------------------------------------------------- */
 .cover-single {
@@ -25645,152 +25438,11 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
 .cover-crop-handle[data-crop-handle="sw"] { left: -11px; bottom: -11px; cursor: nesw-resize; }
 .cover-crop-handle[data-crop-handle="se"] { right: -11px; bottom: -11px; cursor: nwse-resize; }
 
-/* ---------------------------------------------------------------------------
-   ③-3 5단계 — 실제 모임 카드 + 모임 화면 상단 미리보기
-   --------------------------------------------------------------------------- */
-.wz-final { display: flex; flex-direction: column; gap: 12px; }
-.wz-final-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: var(--r-3, 16px);
-  background: var(--bg-base);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 10px 24px rgba(6, 78, 59, 0.08);
-}
-.wz-final-card-cover {
-  flex: 0 0 76px;
-  width: 76px;
-  height: 76px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--tone-from, var(--bg-soft));
-}
-.wz-final-card-cover.has-photo { box-shadow: 0 0 0 3px var(--bg-base), 0 6px 16px rgba(6, 78, 59, 0.16); }
-.wz-final-cover-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-.wz-final-cover-initial {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: var(--tone-from, var(--bg-soft));
-  color: var(--tone-ink, var(--text-muted));
-  font-size: 30px;
-  font-weight: var(--fw-display);
-}
-.wz-final-card-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.wz-final-chip {
-  align-self: flex-start;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--green-soft);
-  color: var(--green-text);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-}
-.wz-final-name {
-  font-size: var(--fs-section);
-  font-weight: var(--fw-display);
-  letter-spacing: -0.3px;
-  color: var(--text-strong);
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-.wz-final-desc {
-  font-size: var(--fs-small);
-  font-weight: var(--fw-body);
-  line-height: 1.4;
-  color: var(--text-sub);
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-.wz-final-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  color: var(--text-muted);
-}
-.wz-final-meta .oo-ic { width: 12px; height: 12px; }
 
-.wz-final-header {
-  padding: 12px;
-  border-radius: var(--r-3, 16px);
-  background: linear-gradient(160deg, var(--green-soft) 0%, var(--bg-base) 72%);
-  border: 1px solid var(--divider);
-}
-.wz-final-header-label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-label);
-  color: var(--green-text);
-}
-.wz-final-header-bar { display: flex; align-items: center; gap: 10px; }
-.wz-final-header-cover {
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  overflow: hidden;
-  background: var(--tone-from, var(--bg-soft));
-}
-.wz-final-header-cover.has-photo { box-shadow: 0 0 0 2px var(--bg-base); }
-.wz-final-header-cover .wz-final-cover-initial { font-size: 19px; }
-.wz-final-header-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.wz-final-header-name {
-  font-size: var(--fs-body);
-  font-weight: var(--fw-title);
-  color: var(--text-strong);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wz-final-header-meta {
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-meta);
-  color: var(--text-sub);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wz-final-header-desc {
-  margin-top: 8px;
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-body);
-  line-height: 1.45;
-  color: var(--text-sub);
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-
-.wz-final-settings {
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid var(--divider);
-}
-.wz-final-settings-title {
-  margin-bottom: 10px;
-  font-size: var(--fs-small);
-  font-weight: var(--fw-label);
-  color: var(--text-strong);
-}
-
-/* 다크 테마 — 폰 목업과 흰 테두리 그림자만 살짝 눌러 준다 */
-:root[data-theme="dark"] .wz-phone { background: var(--bg-subtle); }
-:root[data-theme="dark"] .wz-phone-screen { background: var(--bg-base); }
 :root[data-theme="dark"] .myprofile-avatar { box-shadow: none; }
-:root[data-theme="dark"] .wz-final-card { box-shadow: none; border: 1px solid var(--divider); }
 :root[data-theme="dark"] .myprofile-secret { background: var(--bg-subtle); }
 
 @media (prefers-reduced-motion: reduce) {
-  .wizard-preview .is-flash { animation: none; background-color: var(--green-soft); }
   .myprofile-avatar,
   .mp-feed-tile,
   .myprofile-secret,
@@ -25847,21 +25499,6 @@ body.tabbar-scroll-down #fab-write { bottom: calc(18px + var(--safe-b)); }
   margin-right: calc(-1 * var(--sheet-pad-x));
 }
 
-/* v34.2 — 1단계 폰 목업을 조금 낮게: 한 화면에서 입력과 미리보기가 같이 보이도록. */
-.wz-phone { width: 214px; padding: 8px 7px 10px; }
-.wz-phone-screen { padding: 8px; }
-.wz-phone .wizard-preview { padding: 7px 8px 8px; }
-.wz-phone .wizard-preview-head { margin-bottom: 6px; }
-.wz-phone .wizard-preview-grid { gap: 7px; }
-.wz-phone .pv-card { gap: 2px; }
-.wz-phone .pv-card-cover { aspect-ratio: 2.2 / 1; margin-top: 3px; }
-.wz-phone .pv-card-tile .oo-ic { font-size: 20px; }
-.wz-phone .pv-card-name { font-size: var(--fs-caption); }
-.wz-phone .pv-card-desc { font-size: 10px; -webkit-line-clamp: 1; }
-.wz-phone .pv-detail { gap: 2px; }
-.wz-phone .pv-detail-name { font-size: var(--fs-body); }
-.wz-phone .pv-detail-desc { font-size: var(--fs-caption); -webkit-line-clamp: 2; }
-.wz-phone .pv-detail-tag { margin-top: 2px; padding: 1px 7px; }
 
 /* ============================================================================
    v34.4 (2026-11-22, #22760 · #22772 · #22806)

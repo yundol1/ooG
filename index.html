@@ -1272,41 +1272,8 @@
               <textarea id="create-group-desc" class="text-area" maxlength="300" placeholder="어떤 사람들이 모이는 모임인지 짧게 적어주세요"></textarea>
             </div>
 
-            <!-- v33.5 — 11/22 01:02 루키 님: "이름이나 한 줄 소개를 적게 되면 ... 쓰는 그대로
-                 미리보기 화면에 노출되었으면 좋겠어". 탐색·홈의 모임 카드와 모임 첫 화면
-                 (가입 화면 상단) 두 곳을 나란히 두고, 입력하는 대로 글자만 바꾼다. -->
-            <!-- v34.2 (#22537 · IMG_4579) — 미리보기 박스가 입력창과 헷갈리지 않도록
-                 작은 폰 목업 프레임 + '미리보기' 배지 + 누를 수 없음(pointer-events: none).
-                 이름·한 줄 소개를 적으면 해당 위치만 은은하게 반짝이며 그대로 바뀐다. -->
-            <div class="wz-phone" role="presentation">
-              <span class="wz-phone-speaker" aria-hidden="true"></span>
-              <div class="wz-phone-screen">
-                <div class="wizard-preview" id="create-group-preview" role="group"
-                     aria-label="모임 카드와 모임 화면 미리보기 · 누를 수 없는 미리보기">
-                  <div class="wizard-preview-head">
-                    <span class="wz-preview-badge">미리보기</span>
-                    <span class="wizard-preview-note">적는 그대로 보여요</span>
-                  </div>
-                  <div class="wizard-preview-grid">
-                    <div class="pv-card">
-                      <span class="pv-label">모임 카드</span>
-                      <span class="pv-card-cover tone-neutral" id="create-preview-cover" aria-hidden="true">
-                        <span class="pv-card-tile" id="create-preview-tile"></span>
-                      </span>
-                      <span class="pv-card-name is-empty" id="create-preview-card-name">모임 이름이 여기에 보여요</span>
-                      <span class="pv-card-desc is-empty" id="create-preview-card-desc">한 줄 소개가 여기에 보여요</span>
-                    </div>
-                    <div class="pv-detail">
-                      <span class="pv-label">모임 화면</span>
-                      <span class="pv-detail-tag" id="create-preview-tag">취미</span>
-                      <span class="pv-detail-name is-empty" id="create-preview-name">모임 이름이 여기에 보여요</span>
-                      <span class="pv-detail-meta" id="create-preview-meta">아지트 · 멤버 1명</span>
-                      <span class="pv-detail-desc is-empty" id="create-preview-desc">한 줄 소개가 여기에 보여요</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <!-- v38.2 (11/26 #25771) — 1단계의 폰 목업 미리보기 박스는 없앴다.
+                 "그룹만들때 미리보기 화면은 그냥 없애줘" · 이름과 소개만 적고 바로 다음으로 간다. -->
           </section>
 
           <!-- 2. 취미 — 대분류 → 세부, 직접 입력도 허용 -->
@@ -1396,17 +1363,13 @@
             <div class="azit-list" id="create-group-azit-list" aria-live="polite"><!-- JS --></div>
           </section>
 
-          <!-- 5. 최종 확인 — v34.2: 딱딱한 표 대신 실제 모임 카드 + 모임 상단 헤더 미리보기 -->
+          <!-- 5. 가입 설정 — v38.2 (11/26 #25771): 마지막 단계의 모임 카드·헤더 미리보기는 없앴다.
+               가입 방식 · 나이 제한 · 가입 질문만 남기고, '모임 만들기'를 누르면 바로 만들어진다. -->
           <section class="wizard-panel" data-create-step="5" hidden>
-            <div class="wz-final" id="create-group-final" aria-live="polite"><!-- JS --></div>
-
-            <div class="wz-final-settings">
-              <h5 class="wz-final-settings-title">가입 설정 <span class="field-hint">나중에 바꿀 수 있어요</span></h5>
-              <div class="field-group">
-                <label class="field-label">가입 방식</label>
-                <div class="composer-tag-list" id="create-group-privacy"><!-- JS --></div>
-              </div>
-
+            <div class="field-group">
+              <label class="field-label">가입 방식</label>
+              <div class="composer-tag-list" id="create-group-privacy"><!-- JS --></div>
+            </div>
             <div class="wizard-ops">
               <!-- H4 — 나이 제한은 4개 칩이 아니라 **19~99세 듀얼 레인지 슬라이더**로 고른다.
                    양끝이면 '제한 없음'. 끌면 위쪽 문구가 실시간으로 바뀌고, 요약에도 바로 반영된다. -->
@@ -1436,7 +1399,6 @@
                 <input type="text" class="text-input" id="create-group-question" maxlength="60" autocomplete="off" placeholder="예: 취미 구력이나 선호 요일을 적어주세요!">
                 <p class="policy-hint">비워두면 기본 질문을 씁니다. 질문은 모임 설정에서 더 바꿀 수 있어요.</p>
               </div>
-            </div>
             </div>
           </section>
         </div>
