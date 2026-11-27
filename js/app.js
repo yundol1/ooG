@@ -10554,7 +10554,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 글의 만남 스타일 — meetStyleLabel → (옛 글) 취미 라벨 순으로 읽는다. */
   function postStyleLabel(post) {
-    return (post && (post.meetStyleLabel || post.hobbyLabel)) || '동네 글';
+    return (post && (post.meetStyleLabel || post.hobbyLabel)) || '아지트 글';
   }
 
   /** 글의 동네 이름 — '서울 · 성수·성동·동작' 처럼 큰 분류까지. */
@@ -14189,7 +14189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* v35.1 (#23087) — 동네 글도 글쓴이의 '좋아요 비공개'를 따른다. */
     const likesHidden = !!post.likesHidden;
     const likesHiddenForViewer = likesHidden && !isMineExplore;
-    setPostDetailTitle('동네 글');
+    setPostDetailTitle('아지트 글');
     el.postBody.innerHTML = `
       <div class="post-detail-head">
         <button class="post-detail-avatar" type="button" style="${avatarStyle(author)}"
@@ -14448,7 +14448,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ready = !!(regionId && (caption || ui.exploreCompose.photoUrl));
     el.explorePublish.disabled = !ready;
     el.explorePublish.classList.toggle('ready', ready);
-    el.explorePublish.setAttribute('aria-label', ready ? '동네 글 게시' : '동네와 내용을 먼저 골라주세요');
+    el.explorePublish.setAttribute('aria-label', ready ? '아지트 글 게시' : '지역과 내용을 먼저 골라주세요');
   }
 
   /** 글쓰기 시트의 동네 select — 큰 분류(서울·경기 …)로 묶어 optgroup 으로 보여준다. */
@@ -14669,7 +14669,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function regionSelectHTML(selectedId) {
     const selected = selectedId || '';
-    return `<option value="">동네 선택</option>` + store.getRegionGroups().map((g) => {
+    return `<option value="">지역 선택</option>` + store.getRegionGroups().map((g) => {
       const leaves = store.getSubRegions(g.id);
       if (leaves.length <= 1) {
         const r = leaves[0];
@@ -14822,7 +14822,7 @@ document.addEventListener('DOMContentLoaded', () => {
       photoUrl: ui.exploreCompose.photoUrl
     });
     if (!result.ok) {
-      showToast(result.reason === 'region' ? '동네를 먼저 골라주세요' : '내용이나 사진을 넣어주세요', 'warning');
+      showToast(result.reason === 'region' ? '지역(아지트)을 먼저 골라주세요' : '내용이나 사진을 넣어주세요', 'warning');
       return;
     }
     closeModal(el.exploreComposeModal);
