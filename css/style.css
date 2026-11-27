@@ -95,6 +95,22 @@
   --cat-7: #0891B2;  --cat-7-soft: #ECFEFF;   /* 스카이 */
   --cat-neutral: #6B7280;  --cat-neutral-soft: var(--bg-soft);   /* 대분류를 모르는 취미 */
 
+  /* v39.3 — 이름만 보이는 모임 얼굴(.group-name-face)의 랜덤 바탕 13색.
+     라이트는 파스텔 바탕 + 진한 같은 계열 글자. 13조합 모두 글자 대비 5.9:1 이상. */
+  --gface-1-bg: #DCE9FD;  --gface-1-ink: #1E40AF;   /* 블루 */
+  --gface-2-bg: #E2E1FD;  --gface-2-ink: #3730A3;   /* 인디고 */
+  --gface-3-bg: #EADCFD;  --gface-3-ink: #5B21B6;   /* 바이올렛 */
+  --gface-4-bg: #F7DCFB;  --gface-4-ink: #86198F;   /* 푸시아 */
+  --gface-5-bg: #FBDCEC;  --gface-5-ink: #9D174D;   /* 핑크 */
+  --gface-6-bg: #FBDCDC;  --gface-6-ink: #991B1B;   /* 로즈 */
+  --gface-7-bg: #FBE4D5;  --gface-7-ink: #9A3412;   /* 오렌지 */
+  --gface-8-bg: #FBEECF;  --gface-8-ink: #854D0E;   /* 앰버 */
+  --gface-9-bg: #EDF7CF;  --gface-9-ink: #3F6212;   /* 라임 */
+  --gface-10-bg: #D7F5E4; --gface-10-ink: #065F46;  /* 그린 */
+  --gface-11-bg: #D2F2ED; --gface-11-ink: #115E59;  /* 틸 */
+  --gface-12-bg: #D6F0F9; --gface-12-ink: #155E75;  /* 시안 */
+  --gface-13-bg: #F2E5D8; --gface-13-ink: #78350F;  /* 브라운 */
+
   /* 옛 점토 이름 → 새 토큰 별칭 (컴포넌트 규칙은 그대로 두고 값만 한 곳으로 모은다) */
   --clay-page: var(--bg-app);
   --clay-page-deep: var(--bg-app);
@@ -173,6 +189,22 @@
   --cat-6: #FB923C;  --cat-6-soft: #3A1D0E;   /* 코랄 */
   --cat-7: #22D3EE;  --cat-7-soft: #0E2C33;   /* 스카이 */
   --cat-neutral: #A8B1BD;  --cat-neutral-soft: #1E242C;
+
+  /* v39.3 — 이름만 보이는 모임 얼굴의 랜덤 바탕 13색(다크). 깊은 바탕 + 밝은 같은 계열 글자.
+     13조합 모두 글자 대비 7.9:1 이상. */
+  --gface-1-bg: #172741;  --gface-1-ink: #93C5FD;   /* 블루 */
+  --gface-2-bg: #1B1B3F;  --gface-2-ink: #A5B4FC;   /* 인디고 */
+  --gface-3-bg: #271A41;  --gface-3-ink: #C4B5FD;   /* 바이올렛 */
+  --gface-4-bg: #38173B;  --gface-4-ink: #F0ABFC;   /* 푸시아 */
+  --gface-5-bg: #3B1730;  --gface-5-ink: #F9A8D4;   /* 핑크 */
+  --gface-6-bg: #3E1C1E;  --gface-6-ink: #FCA5A5;   /* 로즈 */
+  --gface-7-bg: #3E2415;  --gface-7-ink: #FDBA74;   /* 오렌지 */
+  --gface-8-bg: #3A2E14;  --gface-8-ink: #FCD34D;   /* 앰버 */
+  --gface-9-bg: #313B16;  --gface-9-ink: #BEF264;   /* 라임 */
+  --gface-10-bg: #123528; --gface-10-ink: #6EE7B7;  /* 그린 */
+  --gface-11-bg: #103230; --gface-11-ink: #5EEAD4;  /* 틸 */
+  --gface-12-bg: #10303A; --gface-12-ink: #67E8F9;  /* 시안 */
+  --gface-13-bg: #33251A; --gface-13-ink: #E7C9A9;  /* 브라운 */
 
   /* 상태색 */
   --red: #F87171;
@@ -28122,3 +28154,39 @@ body.is-photo-crop { overflow: hidden; }
 
 /* 모임 소개·진입 로딩에서 사진 판이 없을 때 이름만 크게 */
 .group-splash-name.is-only { font-size: 24px; font-weight: var(--fw-title); }
+
+/* ============================================================================
+   v39.3 (11/28) — 사진 없이 **모임 이름만** 보이는 얼굴의 바탕색은 모임마다 다르게(랜덤).
+   ────────────────────────────────────────────────────────────────────────────
+   · .group-name-face 가 .gface-1~13 의 --gface-bg / --gface-ink 를 칠한다.
+     (예전에는 취미 대분류 색 하나 — 목록에 없는 취미는 회색 하나뿐이었다)
+   · 색 번호는 app.js groupFaceColorIndex() 가 **모임 이름 해시**로 정한다 →
+     다시 그려도, 앱을 다시 열어도 같은 모임은 같은 색(번쩍임 없음).
+   · 라이트는 파스텔 바탕 + 진한 글자, 다크는 깊은 바탕 + 밝은 글자.
+     두 테마 26조합 모두 글자 대비 4.5:1 을 넘는다(라이트 최저 5.9 · 다크 최저 7.9).
+   · 동그라미·카드 모서리는 칸의 모양을 그대로 물려받는다(border-radius: inherit).
+   ========================================================================== */
+.group-name-face {
+  border-radius: inherit;
+  background: var(--gface-bg, var(--bg-soft));
+  color: var(--gface-ink, var(--text-sub));
+}
+.gface-1  { --gface-bg: var(--gface-1-bg);  --gface-ink: var(--gface-1-ink); }
+.gface-2  { --gface-bg: var(--gface-2-bg);  --gface-ink: var(--gface-2-ink); }
+.gface-3  { --gface-bg: var(--gface-3-bg);  --gface-ink: var(--gface-3-ink); }
+.gface-4  { --gface-bg: var(--gface-4-bg);  --gface-ink: var(--gface-4-ink); }
+.gface-5  { --gface-bg: var(--gface-5-bg);  --gface-ink: var(--gface-5-ink); }
+.gface-6  { --gface-bg: var(--gface-6-bg);  --gface-ink: var(--gface-6-ink); }
+.gface-7  { --gface-bg: var(--gface-7-bg);  --gface-ink: var(--gface-7-ink); }
+.gface-8  { --gface-bg: var(--gface-8-bg);  --gface-ink: var(--gface-8-ink); }
+.gface-9  { --gface-bg: var(--gface-9-bg);  --gface-ink: var(--gface-9-ink); }
+.gface-10 { --gface-bg: var(--gface-10-bg); --gface-ink: var(--gface-10-ink); }
+.gface-11 { --gface-bg: var(--gface-11-bg); --gface-ink: var(--gface-11-ink); }
+.gface-12 { --gface-bg: var(--gface-12-bg); --gface-ink: var(--gface-12-ink); }
+.gface-13 { --gface-bg: var(--gface-13-bg); --gface-ink: var(--gface-13-ink); }
+
+/* 표지(4:3) — 이름 칸이 표지 전체를 칠한다(예전 14px 안쪽 여백은 칸이 대신 갖는다).
+   사진 위에 깔던 위쪽 스크림은 이름 판에는 필요 없어 지운다. */
+.group-tile-cover .group-tile-emoji { padding: 0; background: transparent; }
+.group-tile-cover:has(.group-name-face)::after { display: none; }
+

@@ -3163,10 +3163,76 @@ document.addEventListener('DOMContentLoaded', () => {
    *    아주 작은 자리(하단 탭 26px 등)는 5px 바닥까지 줄인다 — 말줄임(…)은 쓰지 않는다.
    *  · 화면이 다시 그려질 때마다(MutationObserver) 새 칸만 맞춘다.
    * ======================================================================== */
+  /* ==========================================================================
+   * v39.3 (11/28 루키 님: "응 그룹명으로만 된 프로필닐경우 배경색은 랜덤으로해")
+   * ------------------------------------------------------------------------
+   *  · 이름만 보이는 모임 얼굴의 바탕색을 **모임마다 다른 색**으로 칠한다.
+   *    (그전에는 취미 대분류 색 한 가지 — 목록에 없는 취미는 회색 하나였다)
+   *  · 팔레트 13색(gface-1~13). 바탕·글자색은 css/style.css 의 --gface-N-bg/-ink 가
+   *    라이트(파스텔 바탕 + 진한 글자)·다크(깊은 바탕 + 밝은 글자)로 각각 정한다.
+   *  · 색은 **모임 이름 해시**로 정한다 — 다시 그려도, 앱을 다시 열어도 같은 색이고
+   *    화면이 바뀔 때 색이 번쩍이며 바뀌지 않는다.
+   *  · 같은 화면에 여러 모임이 나란히 서므로, 저장된 모임 이름을 이름 순으로 훑으며
+   *    이미 쓰인 색은 다음 색으로 밀어 배정한다(같은 데이터면 언제나 같은 결과 →
+   *    모임 13곳까지는 서로 다른 색). 이름만 있는 자리(지역 이름·'자유 피드')는
+   *    해시값 그대로 쓴다.
+   * ======================================================================== */
+  const GROUP_FACE_COLOR_COUNT = 13;
+
+  /** 32비트 FNV-1a — 같은 이름이면 언제나 같은 수. */
+  function groupFaceHash(text) {
+    let h = 2166136261;
+    for (let i = 0; i < text.length; i += 1) {
+      h ^= text.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    h ^= h >>> 15;
+    h = Math.imul(h, 2246822507);
+    h ^= h >>> 13;
+    return h >>> 0;
+  }
+
+  let groupFaceColorCache = { groups: null, count: -1, map: new Map() };
+
+  /** 모임 이름 → 색 번호(0~12). 저장된 모임들이 서로 다른 색을 받도록 겹치면 다음 색으로. */
+  function groupFaceColorMap() {
+    const state = window.appStore && window.appStore.state;
+    const groups = state && Array.isArray(state.groups) ? state.groups : [];
+    if (groupFaceColorCache.groups === groups && groupFaceColorCache.count === groups.length) {
+      return groupFaceColorCache.map;
+    }
+    const map = new Map();
+    const used = new Set();
+    groups
+      .map((g) => String(g && g.name || '').replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+      .forEach((name) => {
+        if (map.has(name)) return;
+        let index = groupFaceHash(name) % GROUP_FACE_COLOR_COUNT;
+        let guard = 0;
+        while (used.has(index) && guard < GROUP_FACE_COLOR_COUNT) {
+          index = (index + 1) % GROUP_FACE_COLOR_COUNT;
+          guard += 1;
+        }
+        used.add(index);
+        map.set(name, index);
+      });
+    groupFaceColorCache = { groups, count: groups.length, map };
+    return map;
+  }
+
+  function groupFaceColorIndex(label) {
+    const map = groupFaceColorMap();
+    if (map.has(label)) return map.get(label);
+    return groupFaceHash(label) % GROUP_FACE_COLOR_COUNT;
+  }
+
   function groupNameFace(name) {
     const label = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
     if (!label) return '';
-    return `<span class="group-name-face"><span class="gnf-in">${escapeHtml(label)}</span></span>`;
+    /* v39.3 — 모임마다 다른 바탕색(이름 해시 · 1~13) */
+    return `<span class="group-name-face gface-${groupFaceColorIndex(label) + 1}"><span class="gnf-in">${escapeHtml(label)}</span></span>`;
   }
 
   let groupNameFitQueued = false;
@@ -8100,7 +8166,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.2';
+  const APP_VERSION = 'v39.3';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
