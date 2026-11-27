@@ -7823,18 +7823,26 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast('대표 사진은 모임장만 바꿀 수 있어요', 'warning');
       return { ok: false, reason: 'permission' };
     }
+    /* 파일 선택창은 **DOM 에 붙은 input** 으로 연다 — 사파리에서 떼어 낸 input 은
+       선택창이 뜨지 않는 경우가 있다. 고르고 나면 바로 지운다. */
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
+    input.className = 'sr-only';
     input.setAttribute('aria-label', '모임 대표 사진 고르기');
+    input.setAttribute('tabindex', '-1');
+    const cleanup = () => { if (input.parentNode) input.parentNode.removeChild(input); };
     input.addEventListener('change', () => {
       const file = input.files && input.files[0];
+      cleanup();
       if (!file) return;
       circleCropPhotoFile(file, { title: '모임 대표 사진을 원형으로 맞춰 주세요' }).then((out) => {
         if (!out) return;
         applyGroupCoverPhoto(gid, out);
       });
     });
+    input.addEventListener('cancel', cleanup);
+    document.body.appendChild(input);
     input.click();
     return { ok: true };
   }
