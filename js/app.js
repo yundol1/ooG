@@ -33,9 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const SCROLL_NAV_SHOW_AFTER = 10;   // 위로 이만큼 올라오면 다시 올라온다
   const SCROLL_NAV_TOP_EDGE = 10;     // 맨 위(<=10)로 돌아오면 무조건 보인다
   const scrollNav = { lastTop: 0, down: 0, up: 0, hidden: false, bound: false, raf: 0 };
-  /* Sprint R4 — 모임 카드 표지는 대분류 7종의 **단색 문양**을 쓴다(색조 → 문양 이름).
-     세부 취미 아이콘은 목록·칩·메타 줄에 그대로 남는다. */
-  const coverIc = (tone) => ic(window.OOGIcons.emblemName(tone));
+  /* v39.2 — 취미 문양(대분류 표지 아이콘)은 없앴다. 사진 없는 모임 표지는 모임 이름이 채운다. */
   /* 정적 마크업(index.html)의 [data-oog-icon] 도 같은 아이콘으로 채운다 — HTML 에 이모지를 두지 않기 위함. */
   function hydrateIcons(root) {
     (root || document).querySelectorAll('[data-oog-icon]').forEach((node) => {
@@ -2954,26 +2952,27 @@ document.addEventListener('DOMContentLoaded', () => {
     node.setAttribute('role', 'status');
     node.setAttribute('aria-live', 'polite');
     node.setAttribute('aria-label', `${grp.name} 여는 중`);
+    /* v39.2 — 사진이 없으면 빈 아이콘 판 대신 이름만 크게(아래 이름과 겹치지 않게 판은 그리지 않는다). */
     node.innerHTML = `
       <div class="group-splash-card tone-${escapeHtml(vis.tone)}">
-        <span class="group-splash-media${photo ? ' has-photo' : ''}">
-          ${photo
-            ? `<img class="group-splash-img" src="${escapeHtml(photo)}" alt="" decoding="async">`
-            : `<span class="group-splash-icon" aria-hidden="true">${ic(vis.icon)}</span>`}
-        </span>
-        <span class="group-splash-name">${escapeHtml(grp.name)}</span>
+        ${photo
+          ? `<span class="group-splash-media has-photo">
+               <img class="group-splash-img" src="${escapeHtml(photo)}" alt="" decoding="async">
+             </span>`
+          : ''}
+        <span class="group-splash-name${photo ? '' : ' is-only'}">${escapeHtml(grp.name)}</span>
         <span class="group-splash-sub">${escapeHtml(grp.categoryName || '모임')} · 멤버 ${grp.memberCount}명</span>
         <span class="group-splash-bar" aria-hidden="true"><i></i></span>
       </div>`;
     document.body.appendChild(node);
-    /* 사진을 못 불러오면 색+아이콘으로 조용히 바꾼다. */
+    /* 사진을 못 불러오면 사진 판을 걷고 이름만 남긴다(아이콘으로 되돌아가지 않는다). */
     const img = node.querySelector('.group-splash-img');
     if (img) {
       img.addEventListener('error', () => {
         const media = node.querySelector('.group-splash-media');
-        if (!media) return;
-        media.classList.remove('has-photo');
-        media.innerHTML = `<span class="group-splash-icon" aria-hidden="true">${ic(vis.icon)}</span>`;
+        if (media) media.remove();
+        const nameEl = node.querySelector('.group-splash-name');
+        if (nameEl) nameEl.classList.add('is-only');
       });
     }
     requestAnimationFrame(() => node.classList.add('is-in'));
@@ -3081,23 +3080,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  /** 모임 하단 1번 탭 아이콘 자리 — 원형 대표 이미지(없으면 모임 이름 첫 글자 + 취미 색). */
+  /** 모임 하단 1번 탭 아이콘 자리 — 원형 대표 이미지(없으면 **모임 이름**, v39.2). */
   function renderGroupNavAvatar(grp) {
     if (!el.groupNavAvatar || !grp) return;
     const vis = groupCoverVisual(grp, 'circle');
     const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
+    const face = groupNameFace(grp.name);
     el.groupNavAvatar.className = `nav-tab-avatar tone-${tone}`;
     if (vis.photoUrl) {
       el.groupNavAvatar.innerHTML = `<img class="nav-tab-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" decoding="async">`;
       const img = el.groupNavAvatar.querySelector('img');
       if (img) img.addEventListener('error', () => {
         el.groupNavAvatar.classList.remove('has-photo');
-        el.groupNavAvatar.textContent = (grp.name || '?').charAt(0);
+        el.groupNavAvatar.innerHTML = face;
       });
       el.groupNavAvatar.classList.add('has-photo');
     } else {
       el.groupNavAvatar.classList.remove('has-photo');
-      el.groupNavAvatar.textContent = (grp.name || '?').charAt(0);
+      el.groupNavAvatar.innerHTML = face;
     }
   }
 
@@ -3138,21 +3138,76 @@ document.addEventListener('DOMContentLoaded', () => {
    * 모임의 대표 그림 — H2 는 두 장을 쓴다.
    *  · 카드(4:3) = coverImage.card (예전 모임은 photoUrl)
    *  · 원형(1:1) = coverImage.circle (없으면 카드로 대신)
-   *  사진이 없으면 기본 프리셋 → 취미 아이콘 순.
+   *  v39.2 — 사진이 없을 때 그리던 '기본 아이콘'(취미 아이콘·프리셋 문양)은 없앴다.
+   *  그 자리는 groupNameFace() 가 **모임 이름**으로 채운다. 색(tone)은 그대로 쓴다.
    */
   function groupCoverVisual(group, variant) {
     const preset = group.coverIconPreset || null;
-    const chip = store.getHobbyChip(group.hobbyId || group.category);
     const img = group.coverImage || {};
     const circle = group.coverCircle || img.circle || null;
     const card = group.photoUrl || img.card || circle || null;
     return {
       photoUrl: variant === 'circle' ? (circle || card) : card,
       preset,
-      tone: (preset && preset.tone) || store.getHobbyTone(group.hobbyId || group.category),
-      icon: (preset && preset.icon) || group.icon || (chip && chip.icon) || 'sparkle'
+      tone: (preset && preset.tone) || store.getHobbyTone(group.hobbyId || group.category)
     };
   }
+
+  /* ==========================================================================
+   * v39.2 (11/27 루키 님: "그룹 이미지를 설정안했을때는 기본 아이콘이 아니라 그냥
+   * 그룹명으로 해주소 앞으로 취미 아이콘은 다 없애")
+   * ------------------------------------------------------------------------
+   *  · 모임 대표 이미지가 없으면 아이콘 대신 **모임 이름**을 그 자리에 넣는다.
+   *    (원형·카드·배지 어디든 같은 부품 groupNameFace() 하나를 쓴다)
+   *  · 이름은 칸을 넘치면 글자 크기를 0.5px 씩 줄여 **잘리지 않게** 맞춘다.
+   *    아주 작은 자리(하단 탭 26px 등)는 5px 바닥까지 줄인다 — 말줄임(…)은 쓰지 않는다.
+   *  · 화면이 다시 그려질 때마다(MutationObserver) 새 칸만 맞춘다.
+   * ======================================================================== */
+  function groupNameFace(name) {
+    const label = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
+    if (!label) return '';
+    return `<span class="group-name-face"><span class="gnf-in">${escapeHtml(label)}</span></span>`;
+  }
+
+  let groupNameFitQueued = false;
+
+  function fitGroupNameFaces() {
+    document.querySelectorAll('.group-name-face').forEach((face) => {
+      const label = face.querySelector('.gnf-in');
+      if (!label || !face.offsetParent) return;
+      const boxW = Math.round(face.clientWidth);
+      const boxH = Math.round(face.clientHeight);
+      if (boxW < 8 || boxH < 8) return;
+      const key = `${boxW}x${boxH}:${label.textContent.length}`;
+      if (face.dataset.gnfFit === key) return;
+      label.style.fontSize = '';
+      const base = parseFloat(getComputedStyle(label).fontSize) || 12;
+      let size = base;
+      let guard = 0;
+      while (guard++ < 80) {
+        const need = label.getBoundingClientRect().height;
+        if (need <= boxH - 2 || size <= 5) break;
+        size = Math.max(5, size - 0.5);
+        label.style.fontSize = `${size}px`;
+      }
+      face.dataset.gnfFit = key;
+    });
+  }
+
+  function queueGroupNameFit() {
+    if (groupNameFitQueued) return;
+    groupNameFitQueued = true;
+    requestAnimationFrame(() => { groupNameFitQueued = false; fitGroupNameFaces(); });
+  }
+
+  try {
+    new MutationObserver(queueGroupNameFit).observe(document.body, {
+      childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'class']
+    });
+    window.addEventListener('resize', queueGroupNameFit);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(queueGroupNameFit).catch(() => {});
+  } catch (e) { /* 옛 브라우저 — CSS 크기 그대로 */ }
+  queueGroupNameFit();
 
   /** 바깥 홈 — H1의 네 영역만 그린다. */
   function renderGallery() {
@@ -3196,7 +3251,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const vis = groupCoverVisual(g, 'circle');
       const face = vis.photoUrl
         ? `<img class="my-group-img" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
-        : `<span class="my-group-tile tone-${escapeHtml(vis.tone)}" aria-hidden="true">${ic(vis.icon)}</span>`;
+        : `<span class="my-group-tile tone-${escapeHtml(vis.tone)}" aria-hidden="true">${groupNameFace(g.name)}</span>`;
       return `
         <button class="my-group-item" data-my-group="${g.id}" type="button"
                 aria-label="${escapeHtml(g.name)}${it.updateDot ? ' · 새 소식' : ''}">
@@ -3241,7 +3296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="group-card-cover">
           ${vis.photoUrl
             ? `<img class="group-card-photo" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span class="group-card-tile" aria-hidden="true">${ic(vis.icon)}</span>`}
+            : `<span class="group-card-tile" aria-hidden="true">${groupNameFace(g.name)}</span>`}
           ${item.isLeader ? '<span class="group-card-badge">모임장</span>' : ''}
         </div>
         <h4 class="group-card-name">${escapeHtml(g.name)}</h4>
@@ -3451,10 +3506,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return post && post.photoUrl ? [post.photoUrl] : [];
   }
 
-  /** 사진이 2장 이상이면 캐러셀, 1장이면 한 장, 없으면 취미 색 타일. */
-  function igMediaInnerHTML(images, tone, hobbyIcon) {
+  /** 사진이 2장 이상이면 캐러셀, 1장이면 한 장, 없으면 모임 이름 타일(v39.2 — 취미 아이콘 없음). */
+  function igMediaInnerHTML(images, tone, plainLabel) {
     if (!images.length) {
-      return `<span class="ig-media-tile tone-${escapeHtml(tone)}" aria-hidden="true">${ic(hobbyIcon || 'sparkle')}</span>`;
+      return `<span class="ig-media-tile tone-${escapeHtml(tone)}" aria-hidden="true">${groupNameFace(plainLabel)}</span>`;
     }
     if (images.length === 1) {
       return `<img class="ig-media-img" src="${escapeHtml(images[0])}" alt="" loading="lazy" decoding="async">`;
@@ -3551,7 +3606,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const author = personFor(p.authorId, p.authorName);
     if (p.authorPhotoUrl) author.photoUrl = p.authorPhotoUrl;   // v38.1 — 모임 전용 사진
     const images = postImages(p);
-    const media = igMediaInnerHTML(images, tone, it.hobbyIcon);
+    const media = igMediaInnerHTML(images, tone, it.groupName);
     const mediaClass = images.length === 0 ? ' is-plain' : (images.length > 1 ? ' has-carousel' : '');
     const comments = (p.comments || []);
     /* 모임명은 위 헤더에 이미 있으니, 아래 줄에는 만나는 곳(아지트)만 적는다 — 정확한 주소는 쓰지 않는다.
@@ -4277,7 +4332,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.findCats.innerHTML = store.getGroupBrowseCategories().map((c) => {
         const on = s.categoryId === c.id;
         return `<button class="find-chip ${on ? 'active' : ''}" data-find-cat="${escapeHtml(c.id)}"
-                  type="button" aria-pressed="${on}">${ic(c.icon)}<span>${escapeHtml(c.name)}</span></button>`;
+                  type="button" aria-pressed="${on}"><span>${escapeHtml(c.name)}</span></button>`;
       }).join('');
     }
     if (el.findSorts) {
@@ -4329,10 +4384,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const grp = store.getGroup(post.groupId);
     const img = (post.images && post.images[0]) || post.photoUrl || '';
     const tone = grp ? store.getHobbyTone(grp.hobbyId || grp.category) : 'neutral';
-    const icon = grp ? ((store.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle';
     const thumb = img
       ? `<img src="${escapeHtml(img)}" alt="" loading="lazy" decoding="async">`
-      : `<span class="find-post-tone tone-${escapeHtml(tone)}" aria-hidden="true">${ic(icon)}</span>`;
+      : `<span class="find-post-tone tone-${escapeHtml(tone)}" aria-hidden="true">${groupNameFace(grp ? grp.name : '자유 피드')}</span>`;
     const line = String(post.caption || '').replace(/\s+/g, ' ').trim() || '사진을 올렸어요';
     const where = grp ? grp.name : '자유 피드';
     return `<button class="find-post-row" type="button" data-find-post="${escapeHtml(post.id)}"
@@ -4992,7 +5046,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return GUIDE_PREVIEW_GROUPS.map((g) => {
       const face = g.image
         ? `<img class="my-group-img" src="${escapeHtml(g.image)}" alt="" decoding="async">`
-        : `<span class="my-group-tile tone-${escapeHtml(g.tone)}" aria-hidden="true">${ic(g.icon)}</span>`;
+        : `<span class="my-group-tile tone-${escapeHtml(g.tone)}" aria-hidden="true">${groupNameFace(g.name)}</span>`;
       return `
         <div class="my-group-item" data-guide-preview="group" data-guide-group="${g.id}"
              role="img" aria-label="${escapeHtml(g.name)} · 가이드 예시 모임">
@@ -5439,7 +5493,6 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="guide-cats guide-cats-cards" role="group" aria-label="취미 대분류">
         ${cats.map((c) => `<button class="guide-cat-card tone-${escapeHtml(c.tone)} ${c.id === g.category ? 'on' : ''}" data-guide-cat="${c.id}"
             type="button" aria-pressed="${c.id === g.category}">
-            <span class="guide-cat-icon" aria-hidden="true">${ic(c.icon)}</span>
             <span class="guide-cat-name">${escapeHtml(c.name)}</span>
             <span class="guide-cat-count">${c.hobbies.length}가지</span>
           </button>`).join('')}
@@ -5900,7 +5953,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="ginfo-avatar tone-${escapeHtml(tone)}">
           ${vis.photoUrl
             ? `<img class="ginfo-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" decoding="async">`
-            : `<span class="ginfo-avatar-initial">${escapeHtml((grp.name || '?').charAt(0))}</span>`}
+            : groupNameFace(grp.name)}
         </span>
         <h2 class="ginfo-name">${escapeHtml(grp.name)}</h2>
         <p class="ginfo-meta">${escapeHtml(grp.categoryName || '모임')} · 아지트 ${escapeHtml(azitLabel)} · 멤버 ${grp.memberCount}명</p>
@@ -6519,7 +6572,6 @@ document.addEventListener('DOMContentLoaded', () => {
       azit,
       region: grp ? store.getGroupRegion(grp) : null,
       hobbyName: grp ? grp.categoryName : '자유 피드',
-      hobbyIcon: grp ? ((store.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle',
       tone: grp ? store.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
       uid: `${post.id}#group`,
       round: 0
@@ -6534,7 +6586,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : '아직 대화가 없어요 · 첫 인사를 남겨보세요';
     el.homeChatPreview.innerHTML = `
       <button class="home-chat-open" data-home-chat="${grp.id}" type="button">
-        <span class="home-chat-icon" aria-hidden="true">${ic(grp.icon)}</span>
+        <span class="home-chat-icon" aria-hidden="true">${groupNameFace(grp.name)}</span>
         <span class="home-chat-body">
           <span class="home-chat-title">${escapeHtml(grp.name)} 단체방</span>
           <span class="home-chat-last">${escapeHtml(last)}</span>
@@ -6568,7 +6620,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const infoBtn = $('#btn-group-chat-info');
     if (infoBtn) infoBtn.textContent = '모임 정보';
     if (el.groupChatInput) el.groupChatInput.placeholder = '모임원에게 한마디';
-    el.groupChatAvatar.innerHTML = ic(grp.icon);
+    el.groupChatAvatar.innerHTML = groupNameFace(grp.name);
     /* R3 — 인라인 그라디언트 대신 대분류 색 토큰(--cat-N-soft) 이름을 넣는다 */
     el.groupChatAvatar.style.background = store.getHobbyToneColors(grp.hobbyId || grp.category).from;
     el.groupChatName.textContent = grp.name;
@@ -6827,7 +6879,7 @@ document.addEventListener('DOMContentLoaded', () => {
     el.chatGroupRooms.innerHTML = groups.map(({ group, chat, nextEvent }) => `
       <article class="chat-group-item" data-home-chat="${group.id}" role="button" tabindex="0"
                aria-label="${escapeHtml(group.name)} 단체 채팅방 열기">
-        <span class="chat-group-emoji tone-${escapeHtml(store.getHobbyTone(group.hobbyId || group.category))}">${escapeHtml((group.name || '?').charAt(0))}</span>
+        <span class="chat-group-emoji tone-${escapeHtml(store.getHobbyTone(group.hobbyId || group.category))}">${groupNameFace(group.name)}</span>
         <span class="chat-group-body">
           <span class="chat-group-name-row">
             <span class="chat-group-name">${escapeHtml(group.name)}</span>
@@ -8048,7 +8100,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.1';
+  const APP_VERSION = 'v39.2';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -8398,7 +8450,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="event-guest-badge">게스트 참여</span>
           </div>
           <h2 class="sheet-title">${escapeHtml(ev.title)}</h2>
-          ${grp ? `<p class="event-detail-group">${ic(grp.icon)} ${escapeHtml(grp.name)}</p>` : ''}
+          ${grp ? `<p class="event-detail-group">${escapeHtml(grp.name)}</p>` : ''}
           ${azit ? `<p class="event-detail-place">${ic('map')} ${escapeHtml(azit.name)}</p>` : ''}
           ${ev.note ? `<p class="event-detail-note">${escapeHtml(ev.note)}</p>` : ''}
           <div class="event-detail-stats">
@@ -8424,7 +8476,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${ev.guestOpen ? '<span class="event-guest-badge">게스트 참여</span>' : ''}
         </div>
         <h2 class="sheet-title">${escapeHtml(ev.title)}</h2>
-        ${grp ? `<p class="event-detail-group">${ic(grp.icon)} ${escapeHtml(grp.name)}</p>` : ''}
+        ${grp ? `<p class="event-detail-group">${escapeHtml(grp.name)}</p>` : ''}
         ${ev.place ? `<p class="event-detail-place">${escapeHtml(ev.place)}</p>` : ''}
         ${ev.note ? `<p class="event-detail-note">${escapeHtml(ev.note)}</p>` : ''}
         <div class="event-detail-stats">
@@ -8713,7 +8765,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${post.authorId === store.currentUser.id ? '<span class="me-badge">나</span>' : ''}
           </div>
           <div class="post-detail-sub">
-            ${grp ? `${ic(grp.icon)} ${escapeHtml(grp.name)} · ` : ''}
+            ${grp ? `${escapeHtml(grp.name)} · ` : ''}
             <span data-created="${post.createdAt}">${timeAgo(post.createdAt)}</span>
           </div>
         </div>
@@ -10456,7 +10508,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${p.photoUrl
             ? `<img class="person-photo-img" src="${escapeHtml(p.photoUrl)}" alt="${escapeHtml(p.nickname)} 프로필 사진" loading="lazy" decoding="async">`
             : `<span class="person-photo-empty" style="background:${p.avatarGradient || 'linear-gradient(135deg,#10B981,#047857)'}" aria-hidden="true">${escapeHtml(p.avatarText || String(p.nickname).charAt(0))}</span>`}
-          <span class="person-badge">${p.badge ? escapeHtml(p.badge) : `${ic(p.hobbyIcon)} ${escapeHtml(p.hobbyLabel)}`}</span>
+          <span class="person-badge">${escapeHtml(p.badge || p.hobbyLabel || '')}</span>
           <span class="person-fade" aria-hidden="true"></span>
           <div class="person-info">
             <div class="person-name-row">
@@ -10507,7 +10559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="group-tile-cover">
           ${g.photoUrl
             ? `<img class="group-tile-photo" src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy" decoding="async">`
-            : `<span class="group-tile-emoji" aria-hidden="true">${coverIc(tone)}</span>`}
+            : `<span class="group-tile-emoji" aria-hidden="true">${groupNameFace(g.name)}</span>`}
           <span class="group-tile-badge">소모임</span>
           ${ageBadge
             ? `<span class="group-age-badge age-${escapeHtml(ageBadge.tone)} ${ageEligible ? '' : 'is-blocked'}"
@@ -10527,7 +10579,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ${joinState === 'pending' ? `<span class="group-tile-pill pending-pill">${ic('hourglass')} 승인 대기</span>` : ''}
           </div>
           <div class="group-tile-foot">
-            <span class="group-tile-cat">${ic(g.icon)} ${escapeHtml(g.categoryName)}</span>
+            <span class="group-tile-cat">${escapeHtml(g.categoryName)}</span>
             <button class="group-tile-join ${joinState !== 'none' ? 'joined' : ''}" data-group-open="${g.id}" type="button">
               ${joinLabel}
             </button>
@@ -10828,7 +10880,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="hot-card-meta">${ic('heart')} ${fmtCount(it.likes)} · ${ic('comment')} ${it.comments} · ${timeAgo(p.createdAt)}</span>
         </span>
         <span class="hot-card-media">
-          ${p.photoUrl ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">` : `<span class="hot-card-noimg" aria-hidden="true">${ic(p.hobbyIcon || 'note')}</span>`}
+          ${p.photoUrl
+            ? `<img class="media-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`
+            : `<span class="hot-card-noimg" aria-hidden="true">${groupNameFace(it.groupName || it.regionName || '')}</span>`}
         </span>
         <span class="hot-heat" aria-hidden="true"><span class="hot-heat-bar" style="width:${it.heat}%"></span></span>
       </button>`;
@@ -11564,7 +11618,6 @@ document.addEventListener('DOMContentLoaded', () => {
       groupName: grp ? grp.name : (post.groupId ? '모임 피드' : '자유 피드'),
       uid: `personfeed-${post.id}`,
       tone: chip ? chip.tone : 'neutral',
-      hobbyIcon: chip ? chip.icon : 'sparkle',
       azitName: grp ? (grp.azitName || '') : '',
       regionName: '',
       round: 0
@@ -12113,7 +12166,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="ginfo-avatar tone-${escapeHtml(tone)}">
             ${vis.photoUrl
               ? `<img class="ginfo-avatar-img" src="${escapeHtml(vis.photoUrl)}" alt="" decoding="async">`
-              : `<span class="ginfo-avatar-initial">${escapeHtml((grp.name || '?').charAt(0))}</span>`}
+              : groupNameFace(grp.name)}
           </span>
           <h2 class="ginfo-name">${escapeHtml(grp.name)}</h2>
           <p class="ginfo-meta">${escapeHtml(grp.categoryName || '모임')} · 아지트 ${escapeHtml(azitLabel)} · 멤버 ${total}명</p>
@@ -12239,7 +12292,7 @@ document.addEventListener('DOMContentLoaded', () => {
        모임 설정 한 화면으로 옮겼다 — 같은 일을 두 곳에서 하지 않는다. */
     el.groupModalBody.innerHTML = `
       <div class="sheet-group-header">
-        <div class="sheet-emoji-badge">${ic(grp.icon)}</div>
+        <div class="sheet-emoji-badge">${groupNameFace(grp.name)}</div>
         <span class="group-category-tag">
           <span>${grp.categoryName}</span>
         </span>
@@ -12364,7 +12417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     html += joined.map((g) => {
       const count = store.state.feedPosts.filter((p) => p.groupId === g.id).length;
       return `<button class="feed-chip ${ui.feedGroupId === g.id ? 'active' : ''}" data-feed-group="${g.id}">
-                <span class="chip-emoji">${ic(g.icon)}</span> ${escapeHtml(g.categoryName)}
+                ${escapeHtml(g.categoryName)}
                 <span class="chip-count">${count}</span>
               </button>`;
     }).join('');
@@ -12434,7 +12487,7 @@ document.addEventListener('DOMContentLoaded', () => {
               ${post.authorId === store.currentUser.id ? '<span class="me-badge">나</span>' : ''}
             </div>
             <button class="feed-group-badge" data-open-group="${post.groupId}">
-              ${grp ? ic(grp.icon) : ic('folder')} ${grp ? escapeHtml(grp.name) : '모임'}
+              ${grp ? '' : ic('folder')} ${grp ? escapeHtml(grp.name) : '모임'}
             </button>
           </div>
           <div class="feed-header-right">
@@ -12962,7 +13015,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const vis = groupCoverVisual(g, 'circle');
         const face = vis.photoUrl
           ? `<img src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
-          : ic(vis.icon);
+          : groupNameFace(g.name);
         const on = c.groupId === g.id;
         const meta = [g.categoryName, `멤버 ${g.memberCount}명`].filter(Boolean).join(' · ');
         return `
@@ -13994,7 +14047,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.joinedBody.innerHTML = joined.map((g) => `
       <div class="joined-item" data-joined-id="${g.id}">
-        <span class="joined-emoji">${ic(g.icon)}</span>
+        <span class="joined-emoji">${groupNameFace(g.name)}</span>
         <div class="joined-info">
           <div class="joined-name">${escapeHtml(g.name)}</div>
           <div class="joined-meta">
@@ -14223,7 +14276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 aria-label="댓글 ${comments.length}개">${COMMENT_SVG()}</button>
         <button class="post-detail-count ${comments.length ? '' : 'is-zero'}" data-post-comments="${post.id}" type="button"
                 data-feed-comment-count="${post.id}" aria-label="댓글 ${comments.length}개 보기">${comments.length}</button>
-        ${group ? `<span class="post-detail-group-chip">${ic(group.icon)} ${escapeHtml(group.name)}</span>` : ''}
+        ${group ? `<span class="post-detail-group-chip">${escapeHtml(group.name)}</span>` : ''}
       </div>
       <div class="post-detail-actions">
         ${group ? `<button class="post-detail-group" data-post-group="${group.id}" type="button">모임 보기</button>` : ''}
@@ -14692,12 +14745,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const customTag = options.customTag || scope;
     return store.getHobbyCategories().map((cat) => `
       <div class="hobby-pick-group">
-        <span class="hobby-pick-cat">${ic(cat.icon)}<span>${escapeHtml(cat.name)}</span></span>
+        <span class="hobby-pick-cat"><span>${escapeHtml(cat.name)}</span></span>
         <div class="hobby-pick-row">
           ${cat.hobbies.map((h) => `
             <button class="tag-pick ${selectedId === h.id ? 'active' : ''}" data-hobby-pick="${h.id}"
                     data-hobby-scope="${scope}" type="button">
-              ${ic(h.icon || 'sparkle')} ${escapeHtml(h.name)}
+              ${escapeHtml(h.name)}
             </button>`).join('')}
         </div>
       </div>`).join('')
@@ -14883,11 +14936,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!el.editHobbies) return;
     el.editHobbies.innerHTML = store.getHobbyCategories().map((cat) => `
       <div class="hobby-pick-group">
-        <span class="hobby-pick-cat">${ic(cat.icon)}<span>${escapeHtml(cat.name)}</span></span>
+        <span class="hobby-pick-cat"><span>${escapeHtml(cat.name)}</span></span>
         <div class="hobby-pick-row">
           ${cat.hobbies.map((h) => `
             <button class="tag-pick ${ui.edit.hobbyIds.includes(h.id) ? 'active' : ''}"
-                    data-edit-hobby="${h.id}" type="button">${ic(h.icon || 'sparkle')} ${escapeHtml(h.name)}</button>`).join('')}
+                    data-edit-hobby="${h.id}" type="button">${escapeHtml(h.name)}</button>`).join('')}
         </div>
       </div>`).join('')
       + `<div class="hobby-custom hobby-custom-inline">
@@ -15466,10 +15519,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const chip = d.hobbyId ? store.getHobbyChip(d.hobbyId) : null;
     const tone = chip ? chip.tone : 'neutral';
     const name = currentDraftName();
-    const initial = name ? name.charAt(0) : '';
-    return initial
-      ? `<span class="cover-initial tone-${escapeHtml(tone)}" aria-hidden="true">${escapeHtml(initial)}</span>`
-      : `<span class="cover-initial tone-${escapeHtml(tone)}" aria-hidden="true">${ic(chip ? chip.icon : 'sparkle')}</span>`;
+    /* v39.2 — 사진이 없으면 첫 글자·아이콘 대신 **모임 이름**을 원 안에 넣는다(이름이 비면 빈 원). */
+    return `<span class="cover-initial tone-${escapeHtml(tone)}" aria-hidden="true">${groupNameFace(name)}</span>`;
   }
 
   function renderCreateCover() {
@@ -15989,7 +16040,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <button class="create-cat ${catId === c.id ? 'active' : ''} ${sugCat === c.id ? 'is-suggest' : ''}"
                 data-create-cat="${c.id}"
                 type="button" aria-pressed="${catId === c.id}">
-          ${ic(c.icon)}<span>${escapeHtml(c.name.split('·')[0])}</span>${sugCat === c.id ? '<span class="pick-badge">추천</span>' : ''}
+          <span>${escapeHtml(c.name.split('·')[0])}</span>${sugCat === c.id ? '<span class="pick-badge">추천</span>' : ''}
         </button>`).join('');
     }
     const cat = cats.find((c) => c.id === catId) || cats[0];
@@ -15997,7 +16048,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.createGroupHobbies.innerHTML = cat.hobbies.map((h) => `
         <button class="tag-pick ${d.hobbyId === h.id ? 'active' : ''} ${sugHobby === h.id ? 'is-suggest' : ''}"
                 data-hobby-pick="${h.id}" data-hobby-scope="group" type="button">
-          ${ic(h.icon || 'sparkle')} ${escapeHtml(h.name)}${sugHobby === h.id ? '<span class="pick-badge">추천</span>' : ''}
+          ${escapeHtml(h.name)}${sugHobby === h.id ? '<span class="pick-badge">추천</span>' : ''}
         </button>`).join('');
     }
     if (el.createGroupHobbyPicked) {
@@ -17682,7 +17733,6 @@ document.addEventListener('DOMContentLoaded', () => {
       el.activityBody.innerHTML = groups.map((g) => `
         <section class="activity-group" data-activity-group="${escapeHtml(g.groupId || g.groupName)}">
           <header class="activity-group-head">
-            <span class="activity-group-emoji" aria-hidden="true">${ic(g.icon || 'users')}</span>
             <span class="activity-group-name">${escapeHtml(g.groupName)}</span>
             <span class="activity-group-count">${g.count}건</span>
           </header>
@@ -18073,7 +18123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     el.groupApplyBody.innerHTML = `
       <div class="apply-modal-head">
-        <span class="apply-modal-emoji">${ic(grp.icon)}</span>
+        <span class="apply-modal-emoji">${groupNameFace(grp.name)}</span>
         <h2 class="sheet-title">가입 신청서</h2>
         <p class="apply-modal-group">${escapeHtml(grp.name)}</p>
         <div class="join-policy-badges">${policyBadgesHTML(grp.id)}</div>
@@ -19541,7 +19591,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <button class="my-sched-item profile-group-row" data-profile-group="${escapeHtml(g.id)}" type="button"
               aria-label="${escapeHtml(g.name)} 모임 열기">
         <span class="mp-group-cover tone-${escapeHtml(chip ? chip.tone : 'neutral')}" aria-hidden="true">
-          ${g.photoUrl ? `<img src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy">` : ic(chip ? chip.icon : 'sparkle')}
+          ${g.photoUrl ? `<img src="${escapeHtml(g.photoUrl)}" alt="" loading="lazy">` : groupNameFace(g.name)}
         </span>
         <span class="my-sched-main">
           <span class="my-sched-title">${escapeHtml(g.name)}</span>
@@ -19593,7 +19643,6 @@ document.addEventListener('DOMContentLoaded', () => {
       groupName: grp ? grp.name : '자유 피드',
       uid: `myfeed-${post.id}`,
       tone: chip ? chip.tone : 'neutral',
-      hobbyIcon: chip ? chip.icon : 'sparkle',
       azitName: grp ? (grp.azitName || '') : '',
       regionName: '',
       round: 0

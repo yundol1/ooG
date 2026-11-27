@@ -390,14 +390,7 @@ const STORY_SEED = [
    금지 사례를 하나 둬서 OFF 안내가 어떻게 보이는지 홈에서 바로 볼 수 있게 한다. */
 const GROUP_DM_SEED = { grp_climbing_1: false };
 
-/* 멤버 아바타의 기본 색조 — 이름을 지어내지 않고, 실제 멤버의 이니셜 원에만 쓴다. */
-const GROUP_ROSTER_HOBBIES = [
-  { name: '크로스핏', icon: 'dumbbell' }, { name: '러닝', icon: 'run' },
-  { name: '클라이밍', icon: 'climb' }, { name: '헬스', icon: 'barbell' },
-  { name: '수영', icon: 'swim' }, { name: '보드게임', icon: 'dice' },
-  { name: '영화', icon: 'movie' }, { name: '카페', icon: 'cup' },
-  { name: '게임', icon: 'gamepad' }, { name: '등산', icon: 'mountain' }
-];
+/* v39.2 — 취미 아이콘 목록(GROUP_ROSTER_HOBBIES)은 없앴다. 멤버 아바타는 이름 글자만 쓴다. */
 const GROUP_ROSTER_GRADIENTS = [
   'linear-gradient(135deg, #16EBA4 0%, #06AE7E 100%)',
   'linear-gradient(135deg, #AFE3FA 0%, #7994E2 100%)',
@@ -1523,7 +1516,7 @@ const SIMULATED_PERSONAS = [
  *                 createdAt }               ← createdAt 은 ISO 문자열
  * comment     : { id, authorId, authorName, text, createdAt }
  * matchProfile: { id, nickname, age, distanceKm, location,
- *                 hobbyIds[], hobbyLabel, hobbyIcon,   ← 탐색 취미 필터의 기준
+ *                 hobbyIds[], hobbyLabel,   ← 탐색 취미 필터의 기준
  *                 badge,                                ← 카드 좌상단 감각 배지 (아이콘 + '롤 다이아몬드')
  *                 hobbyStyle,                           ← A: 취미 스타일·구력 ("롤 다이아 · 원딜")
  *                 cycle, cycleIcon,                    ← 선호 활동 주기·시간대
@@ -1567,87 +1560,87 @@ const SIMULATED_PERSONAS = [
  * ------------------------------------------------------------------------- */
 const HOBBY_TAXONOMY = [
   {
-    id: 'sports', name: '운동·스포츠', icon: 'dumbbell', tone: 'green',
+    id: 'sports', name: '운동·스포츠', tone: 'green',
     hobbies: [
-      { id: 'fitness', name: '헬스·크로스핏', icon: 'dumbbell', core: true },
-      { id: 'run', name: '러닝', icon: 'run', core: true },
-      { id: 'swim', name: '수영', icon: 'swim', core: true },
-      { id: 'climb', name: '클라이밍', icon: 'climb', core: true },
-      { id: 'hike', name: '등산·트레킹', icon: 'mountain' },
-      { id: 'yoga', name: '요가·필라테스', icon: 'yoga' },
-      { id: 'tennis', name: '테니스', icon: 'tennis' },
-      { id: 'badminton', name: '배드민턴', icon: 'shuttle' },
-      { id: 'soccer', name: '축구', icon: 'soccer' },
-      { id: 'basketball', name: '농구', icon: 'basketball' },
-      { id: 'bike', name: '자전거', icon: 'bike' },
-      { id: 'golf', name: '골프', icon: 'golf' },
-      { id: 'bowling', name: '볼링', icon: 'bowling' },
+      { id: 'fitness', name: '헬스·크로스핏', core: true },
+      { id: 'run', name: '러닝', core: true },
+      { id: 'swim', name: '수영', core: true },
+      { id: 'climb', name: '클라이밍', core: true },
+      { id: 'hike', name: '등산·트레킹' },
+      { id: 'yoga', name: '요가·필라테스' },
+      { id: 'tennis', name: '테니스' },
+      { id: 'badminton', name: '배드민턴' },
+      { id: 'soccer', name: '축구' },
+      { id: 'basketball', name: '농구' },
+      { id: 'bike', name: '자전거' },
+      { id: 'golf', name: '골프' },
+      { id: 'bowling', name: '볼링' },
       /* v33.5 — 11/22 01:02 루키 님: "이름이나 설명에 영화나 당구, 롤, 하스스톤 같은 게
          언급되면 다음에 자동 추천" — 당구는 목록에 없어 운동·스포츠의 '볼링'으로 밀리던 것을
          제 취미로 세웠다(당구·포켓볼). */
-      { id: 'billiards', name: '당구·포켓볼', icon: 'circleDot' },
-      { id: 'ski', name: '스키·보드', icon: 'ski' }
+      { id: 'billiards', name: '당구·포켓볼' },
+      { id: 'ski', name: '스키·보드' }
     ]
   },
   {
-    id: 'game', name: '게임', icon: 'gamepad', tone: 'violet',
+    id: 'game', name: '게임', tone: 'violet',
     hobbies: [
-      { id: 'game', name: '게임', icon: 'gamepad', core: true },
-      { id: 'pcgame', name: 'PC·e스포츠', icon: 'pcgame' },
-      { id: 'boardgame', name: '보드게임', icon: 'dice', core: true },
-      { id: 'console', name: '콘솔 게임', icon: 'gamepad' },
-      { id: 'trpg', name: 'TRPG', icon: 'dice' }
+      { id: 'game', name: '게임', core: true },
+      { id: 'pcgame', name: 'PC·e스포츠' },
+      { id: 'boardgame', name: '보드게임', core: true },
+      { id: 'console', name: '콘솔 게임' },
+      { id: 'trpg', name: 'TRPG' }
     ]
   },
   {
-    id: 'read', name: '독서·글', icon: 'book', tone: 'teal',
+    id: 'read', name: '독서·글', tone: 'teal',
     hobbies: [
-      { id: 'novel', name: '소설', icon: 'book' },
-      { id: 'essay', name: '에세이', icon: 'note' },
-      { id: 'bookclub', name: '독서모임', icon: 'book' },
-      { id: 'comics', name: '만화·웹툰', icon: 'image' },
-      { id: 'writing', name: '글쓰기', icon: 'pencil' }
+      { id: 'novel', name: '소설' },
+      { id: 'essay', name: '에세이' },
+      { id: 'bookclub', name: '독서모임' },
+      { id: 'comics', name: '만화·웹툰' },
+      { id: 'writing', name: '글쓰기' }
     ]
   },
   {
-    id: 'food', name: '맛집·카페', icon: 'cup', tone: 'amber',
+    id: 'food', name: '맛집·카페', tone: 'amber',
     hobbies: [
-      { id: 'cafe', name: '카페·맛집', icon: 'cup', core: true },
-      { id: 'cooking', name: '요리', icon: 'cook' },
-      { id: 'baking', name: '베이킹', icon: 'cake' },
-      { id: 'wine', name: '와인·술', icon: 'wine' },
-      { id: 'brunch', name: '브런치', icon: 'meal' }
+      { id: 'cafe', name: '카페·맛집', core: true },
+      { id: 'cooking', name: '요리' },
+      { id: 'baking', name: '베이킹' },
+      { id: 'wine', name: '와인·술' },
+      { id: 'brunch', name: '브런치' }
     ]
   },
   {
-    id: 'travel', name: '여행·야외', icon: 'globe', tone: 'sky',
+    id: 'travel', name: '여행·야외', tone: 'sky',
     hobbies: [
-      { id: 'domestic', name: '국내여행', icon: 'train' },
-      { id: 'travel', name: '해외여행', icon: 'globe' },
-      { id: 'camping', name: '캠핑', icon: 'tent' },
-      { id: 'drive', name: '드라이브', icon: 'car' },
-      { id: 'fishing', name: '낚시', icon: 'fishing' },
-      { id: 'photo', name: '사진', icon: 'camera' }
+      { id: 'domestic', name: '국내여행' },
+      { id: 'travel', name: '해외여행' },
+      { id: 'camping', name: '캠핑' },
+      { id: 'drive', name: '드라이브' },
+      { id: 'fishing', name: '낚시' },
+      { id: 'photo', name: '사진' }
     ]
   },
   {
-    id: 'culture', name: '문화·예술', icon: 'palette', tone: 'coral',
+    id: 'culture', name: '문화·예술', tone: 'coral',
     hobbies: [
-      { id: 'movie', name: '영화·전시', icon: 'movie', core: true },
-      { id: 'performance', name: '공연·뮤지컬', icon: 'theater' },
-      { id: 'music', name: '음악·밴드', icon: 'music' },
-      { id: 'dance', name: '댄스', icon: 'dance' },
-      { id: 'gallery', name: '미술·전시', icon: 'palette' }
+      { id: 'movie', name: '영화·전시', core: true },
+      { id: 'performance', name: '공연·뮤지컬' },
+      { id: 'music', name: '음악·밴드' },
+      { id: 'dance', name: '댄스' },
+      { id: 'gallery', name: '미술·전시' }
     ]
   },
   {
-    id: 'daily', name: '일상·기타', icon: 'sparkle', tone: 'mint',
+    id: 'daily', name: '일상·기타', tone: 'mint',
     hobbies: [
-      { id: 'pet', name: '반려동물', icon: 'paw' },
-      { id: 'plant', name: '식물·정원', icon: 'leaf' },
-      { id: 'fashion', name: '패션', icon: 'shirt' },
-      { id: 'volunteer', name: '봉사', icon: 'handshake' },
-      { id: 'study', name: '스터디·언어', icon: 'study' }
+      { id: 'pet', name: '반려동물' },
+      { id: 'plant', name: '식물·정원' },
+      { id: 'fashion', name: '패션' },
+      { id: 'volunteer', name: '봉사' },
+      { id: 'study', name: '스터디·언어' }
     ]
   }
 ];
@@ -1664,7 +1657,7 @@ const TONE_CAT = {
 /** 세부 취미 한 줄 — 대분류 id 를 붙인 평면 목록(필터·칩·프로필 공용). */
 const HOBBY_FLAT = HOBBY_TAXONOMY.reduce((list, cat) => list.concat(
   cat.hobbies.map((h) => ({
-    id: h.id, name: h.name, icon: h.icon, categoryId: cat.id,
+    id: h.id, name: h.name, categoryId: cat.id,
     categoryName: cat.name, tone: cat.tone, core: h.core === true
   }))
 ), []);
@@ -2005,7 +1998,6 @@ function regionSeedProfileOf(p, index) {
     location: p.location,
     hobbyIds: [p.hobbyId],
     hobbyLabel: hobby.name,
-    hobbyIcon: hobby.icon,
     hobbyStyle: p.hobbyStyle,
     cycle: p.cycle,
     cycleIcon: 'repeat',
@@ -3261,7 +3253,6 @@ const defaultInitialState = {
       location: '성수동',
       hobbyIds: ['fitness'],
       hobbyLabel: '크로스핏',
-      hobbyIcon: '',
       hobbyStyle: '레벨업 박스 성수점 코치 · 8년차',
       cycle: '평일 19시',
       cycleIcon: '',
@@ -3288,7 +3279,6 @@ const defaultInitialState = {
       location: '전국 / 디스코드',
       hobbyIds: ['game'],
       hobbyLabel: '게임',
-      hobbyIcon: '',
       hobbyStyle: '롤 골드 · 미드 · 칼바람 전문',
       cycle: '평일 심야',
       cycleIcon: '',
@@ -3339,7 +3329,6 @@ const defaultInitialState = {
       location: '성수동',
       hobbyIds: ['game'],
       hobbyLabel: '게임',
-      hobbyIcon: '',
       hobbyStyle: '롤 다이아몬드 · 원딜',
       cycle: '평일 심야',
       cycleIcon: '',
@@ -3365,7 +3354,6 @@ const defaultInitialState = {
       location: '뚝섬한강',
       hobbyIds: ['run'],
       hobbyLabel: '러닝',
-      hobbyIcon: '',
       hobbyStyle: '한강 나이트런 · 10K 5분 20초',
       cycle: '화·목 저녁',
       cycleIcon: '',
@@ -3391,7 +3379,6 @@ const defaultInitialState = {
       location: '한양대',
       hobbyIds: ['cafe'],
       hobbyLabel: '카페/맛집',
-      hobbyIcon: '',
       hobbyStyle: '성수·연남 카페투어 · 핸드드립',
       cycle: '주말 낮',
       cycleIcon: '',
@@ -3417,7 +3404,6 @@ const defaultInitialState = {
       location: '대치동',
       hobbyIds: ['movie'],
       hobbyLabel: '영화·전시',
-      hobbyIcon: '',
       hobbyStyle: '독립영화관 · 국립현대미술관',
       cycle: '금요 심야',
       cycleIcon: '',
@@ -3443,7 +3429,6 @@ const defaultInitialState = {
       location: '왕십리동',
       hobbyIds: ['boardgame'],
       hobbyLabel: '보드게임',
-      hobbyIcon: '',
       hobbyStyle: '아그리콜라 · 테라포밍마스',
       cycle: '주말 오후',
       cycleIcon: '',
@@ -3469,7 +3454,6 @@ const defaultInitialState = {
       location: '성수동',
       hobbyIds: ['fitness', 'run'],
       hobbyLabel: '헬스/크로스핏',
-      hobbyIcon: '',
       hobbyStyle: '성수박스 6개월차 · 19시반',
       cycle: '평일 19시',
       cycleIcon: '',
@@ -3495,7 +3479,6 @@ const defaultInitialState = {
       location: '뚝섬',
       hobbyIds: ['swim'],
       hobbyLabel: '수영',
-      hobbyIcon: '',
       hobbyStyle: '성동구민센터 상급반 · 자유형 1,500m',
       cycle: '평일 06시',
       cycleIcon: '',
@@ -3521,7 +3504,6 @@ const defaultInitialState = {
       location: '신논현',
       hobbyIds: ['climb'],
       hobbyLabel: '클라이밍',
-      hobbyIcon: '',
       hobbyStyle: '블록스 V4 · 주 3회',
       cycle: '주 3회 저녁',
       cycleIcon: '',
@@ -3547,7 +3529,6 @@ const defaultInitialState = {
       location: '성수동',
       hobbyIds: ['cafe', 'boardgame'],
       hobbyLabel: '카페/맛집',
-      hobbyIcon: '',
       hobbyStyle: '동네 맛집 탐방 · 보드게임 카페',
       cycle: '주말 오후',
       cycleIcon: '',
@@ -3573,7 +3554,6 @@ const defaultInitialState = {
       location: '강남역',
       hobbyIds: ['fitness', 'hike'],
       hobbyLabel: '헬스/크로스핏',
-      hobbyIcon: '',
       hobbyStyle: '3대 420 · 주말 아차산',
       cycle: '주말 오전',
       cycleIcon: '',
@@ -3601,7 +3581,6 @@ const defaultInitialState = {
       regionId: 'mapo',
       hobbyIds: ['movie'],
       hobbyLabel: '영화·전시',
-      hobbyIcon: '',
       hobbyStyle: '합정 아트하우스 · 홍대 전시',
       cycle: '금요 심야',
       cycleIcon: '',
@@ -3628,7 +3607,6 @@ const defaultInitialState = {
       regionId: 'seongdong',
       hobbyIds: ['cafe'],
       hobbyLabel: '카페/맛집',
-      hobbyIcon: '',
       hobbyStyle: '성수 카페 도장깨기 · 핸드드립 5년',
       cycle: '주말 낮',
       cycleIcon: '',
@@ -3655,7 +3633,6 @@ const defaultInitialState = {
       regionId: 'mapo',
       hobbyIds: ['boardgame', 'game'],
       hobbyLabel: '보드게임',
-      hobbyIcon: '',
       hobbyStyle: '홍대 보드게임카페 · 전략게임',
       cycle: '주말 오후',
       cycleIcon: '',
@@ -3682,7 +3659,6 @@ const defaultInitialState = {
       regionId: 'seongdong',
       hobbyIds: ['run'],
       hobbyLabel: '러닝',
-      hobbyIcon: '',
       hobbyStyle: '건대 러닝크루 · 10K 5분 40초',
       cycle: '화·목 아침',
       cycleIcon: '',
@@ -3709,7 +3685,6 @@ const defaultInitialState = {
       regionId: 'jongno',
       hobbyIds: ['boardgame', 'movie'],
       hobbyLabel: '보드게임',
-      hobbyIcon: '',
       hobbyStyle: '을지로 전략게임 · 고전명작',
       cycle: '일요 오후',
       cycleIcon: '',
@@ -3736,7 +3711,6 @@ const defaultInitialState = {
       regionId: 'yongsan',
       hobbyIds: ['climb'],
       hobbyLabel: '클라이밍',
-      hobbyIcon: '',
       hobbyStyle: '이태원 클라이밍 · V3',
       cycle: '평일 저녁',
       cycleIcon: '',
@@ -3763,7 +3737,6 @@ const defaultInitialState = {
       regionId: 'gyeonggi',
       hobbyIds: ['fitness', 'run'],
       hobbyLabel: '헬스/크로스핏',
-      hobbyIcon: '',
       hobbyStyle: '판교 헬스 · 3대 380',
       cycle: '평일 20시',
       cycleIcon: '',
@@ -3790,7 +3763,6 @@ const defaultInitialState = {
       regionId: 'yeongdeungpo',
       hobbyIds: ['swim'],
       hobbyLabel: '수영',
-      hobbyIcon: '',
       hobbyStyle: '여의도 수영장 · 자유형 1,000m',
       cycle: '평일 저녁',
       cycleIcon: '',
@@ -7385,7 +7357,7 @@ class Store {
   /** 홈 모임 둘러보기의 취미 대분류 칩 — [전체] + 큰틀 7개. */
   getGroupBrowseCategories() {
     return [{ id: 'all', name: '전체', icon: 'grid' }].concat(this.getHobbyCategories().map((c) => ({
-      id: c.id, name: c.name.split('·')[0], icon: c.icon
+      id: c.id, name: c.name.split('·')[0]
     })));
   }
 
@@ -7988,7 +7960,6 @@ class Store {
           hangouts,
           region: grp ? this.getGroupRegion(grp) : null,
           hobbyName: grp ? grp.categoryName : '자유 피드',
-          hobbyIcon: grp ? ((this.getHobbyChip(grp.hobbyId) || {}).icon || grp.icon || 'sparkle') : 'sparkle',
           tone: grp ? this.getHobbyTone(grp.hobbyId || grp.category) : 'neutral',
           likeCount: p.likes || 0,
           likedByMe: p.likedByMe === true,
@@ -8654,7 +8625,6 @@ class Store {
       authorPhotoUrl: user.photoUrl || null,
       hobbyId: chip ? chip.id : null,
       hobbyLabel: chip ? chip.name : (style ? style.name : '지역만남'),
-      hobbyIcon: chip ? chip.icon : '',
       /* Sprint 23 — 모임과 무관하게 올리는 '동네 글' */
       scope: 'region',
       tag: String(d.tag || '').trim().slice(0, 8) || (style ? style.name : null),
@@ -8975,7 +8945,6 @@ class Store {
     const custom = (this.state.customHobbies || []).map((h) => ({
       id: h.id,
       name: h.name,
-      icon: h.icon || 'sparkle',
       categoryId: h.categoryId || 'daily',
       categoryName: h.categoryName || '일상·기타',
       tone: h.tone || this.getHobbyTone(h.categoryId === 'daily' ? 'pet' : h.categoryId),
@@ -8989,17 +8958,16 @@ class Store {
     const cats = HOBBY_TAXONOMY.map((cat) => ({
       id: cat.id,
       name: cat.name,
-      icon: cat.icon,
       tone: cat.tone,
       hobbies: cat.hobbies.map((h) => ({
-        id: h.id, name: h.name, icon: h.icon, core: h.core === true,
+        id: h.id, name: h.name, core: h.core === true,
         categoryId: cat.id, categoryName: cat.name, tone: cat.tone
       }))
     }));
     (this.state.customHobbies || []).forEach((h) => {
       const cat = cats.find((c) => c.id === h.categoryId) || cats[cats.length - 1];
       cat.hobbies.push({
-        id: h.id, name: h.name, icon: h.icon || 'sparkle',
+        id: h.id, name: h.name,
         categoryId: cat.id, categoryName: cat.name, tone: cat.tone, custom: true
       });
     });
@@ -9061,7 +9029,6 @@ class Store {
     const hobby = {
       id: `custom_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
       name: label,
-      icon: 'sparkle',
       categoryId: cat.id,
       categoryName: cat.name,
       tone: cat.tone,
@@ -9314,8 +9281,7 @@ class Store {
       distanceKm: null,
       location: '',
       hobbyIds: [],
-      hobbyLabel: (room.partnerHobby || '').replace(/^[^\s]+\s*/, ''),
-      hobbyIcon: (room.partnerHobby || '').trim().charAt(0) || '',
+      hobbyLabel: room.partnerHobby || '',
       hobbyStyle: room.partnerHobby || '취미 메이트',
       cycle: '',
       cycleIcon: '',
@@ -9423,7 +9389,6 @@ class Store {
       location: me.location || '',
       hobbyIds: [],
       hobbyLabel: hobbies[0] || '내 취미',
-      hobbyIcon: '',
       hobbyStyle: hobbies.slice(0, 2).join(' · ') || '내 프로필',
       cycle: '',
       cycleIcon: '',
@@ -9453,7 +9418,6 @@ class Store {
       location: location || '',
       hobbyIds: [],
       hobbyLabel: hobbyLabel || '',
-      hobbyIcon: '',
       hobbyStyle: hobbyLabel || '모임에서 만난 사람',
       cycle: '',
       cycleIcon: '',
@@ -9737,7 +9701,6 @@ class Store {
     const coverCircle = dataUrlOk(coverIn.circle || d.coverCircle) || coverCard;
     const photoUrl = coverCard;
     const preset = d.coverIconPresetId ? this.getCoverIconPreset(d.coverIconPresetId) : null;
-    const coverIcon = (preset && preset.icon) || chip.icon;
 
     const group = {
       id: wantedId || `grp_new_${Date.now()}`,
@@ -9747,7 +9710,6 @@ class Store {
       hobbyId: chip.id,
       meetLabel,
       ratio: 'wide',
-      icon: coverIcon,
       coverGradient: 'linear-gradient(135deg, #0E814A 0%, #0E8146 100%)',
       /* 아지트 1~3곳 — 이름·종류만 저장한다(집 주소·정확한 위치 없음). */
       hangouts: hangouts.map((h) => ({ id: h.id, name: h.name, kind: h.kind })),
@@ -9899,7 +9861,7 @@ class Store {
       id: `chat_${profileId}_${Date.now()}`,
       partnerId: profileId,
       partnerName: profile ? profile.nickname : '새 메이트',
-      partnerHobby: profile ? `${profile.hobbyIcon || ''} ${profile.hobbyLabel || ''}`.trim() || '모임 사람' : '취미 메이트',
+      partnerHobby: profile ? (profile.hobbyLabel || '모임 사람') : '취미 메이트',
       partnerAvatarText: profile ? profile.avatarText || profile.nickname.charAt(0) : '?',
       partnerGradient: profile ? profile.avatarGradient : 'linear-gradient(135deg, #0FB57E, #06AE7E)',
       lastMessage: profile && profile.isMe ? '나와의 대화' : '먼저 인사해 보세요',
@@ -11781,7 +11743,7 @@ class Store {
       const p = this.getMatchProfile(s.profileId);
       const room = this.findChatRoomByPartner(s.profileId);
       const meta = p
-        ? [[p.hobbyIcon, p.hobbyLabel].filter(Boolean).join(' '), p.location,
+        ? [[p.hobbyLabel].filter(Boolean).join(' '), p.location,
           p.distanceKm != null ? `${p.distanceKm}km` : ''].filter(Boolean).join(' · ')
         : '';
       push({
@@ -11813,7 +11775,7 @@ class Store {
         icon: 'note',
         tone: 'green',
         title: '취미 게시글을 올렸어요',
-        body: `${p.hobbyIcon || ''} ${preview || '사진을 공유했어요'}`.trim().slice(0, 70),
+        body: `${preview || '사진을 공유했어요'}`.trim().slice(0, 70),
         at: p.createdAt,
         targetType: 'explore_post',
         targetId: p.id,

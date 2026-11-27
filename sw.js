@@ -74,7 +74,7 @@
    원 테두리(모서리 손잡이 네 개)를 끌어 자를 원의 지름을 직접 바꾼다(140~min(vw,vh)-32) ·
    축소해 원 밖이 빈 자리는 어두운 바탕(#0D1117)으로 채워 왜곡 없이 저장한다.
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v39-1';
+const CACHE_VERSION = 'oog-shell-v39-2';
 const SHELL_ASSETS = [
   './',
   './index.html',
