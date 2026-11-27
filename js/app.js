@@ -4787,10 +4787,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      /* v39.4 — 검색 중에는 '권역을 먼저 골라 주세요' 대신 무엇으로 찾는지 알린다. */
+      /* v39.4 — 검색 중에는 '권역을 먼저 골라 주세요' 대신 무엇으로 몇 곳을 찾았는지 알린다. */
       if (listOnly && el.findHangoutSigungu && !sidoId) {
+        const total = query ? store.getHangouts({ query }).length : 0;   /* 988곳 한 번 훑기(~7ms) */
         el.findHangoutSigungu.innerHTML = query
-          ? `<p class="azit-empty">'${escapeHtml(query)}' · 전국 아지트에서 찾는 중</p>`
+          ? `<p class="azit-empty">'${escapeHtml(query)}' · 전국 아지트 ${total}곳에서 찾았어요</p>`
           : '<p class="azit-empty">권역(시·도)을 먼저 골라 주세요.</p>';
       }
 
