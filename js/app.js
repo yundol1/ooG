@@ -4787,6 +4787,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
+      /* v39.4 — 검색 중에는 '권역을 먼저 골라 주세요' 대신 무엇으로 찾는지 알린다. */
+      if (listOnly && el.findHangoutSigungu && !sidoId) {
+        el.findHangoutSigungu.innerHTML = query
+          ? `<p class="azit-empty">'${escapeHtml(query)}' · 전국 아지트에서 찾는 중</p>`
+          : '<p class="azit-empty">권역(시·도)을 먼저 골라 주세요.</p>';
+      }
+
       if (el.findHangoutList) {
         const limit = s2.hangoutLimit || FIND_AZIT_PAGE;
         const oldTop = el.findHangoutList.scrollTop;
@@ -4820,7 +4827,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="azit-row-ic" aria-hidden="true">${ic(h.icon)}</span>
             <span class="azit-row-text">
               <span class="azit-row-name">${escapeHtml(h.name)}</span>
-              <span class="azit-row-meta">${escapeHtml(h.sigunguName || '')} · ${escapeHtml(h.kindLabel)}${h.groupCount ? ` · 모임 ${h.groupCount}` : ''}</span>
+              <span class="azit-row-meta">${azitRowMeta(h)}</span>
             </span>
             ${h.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
             <span class="azit-row-check" aria-hidden="true">${s2.hangoutId === h.id ? ic('check') : ''}</span>
@@ -4839,6 +4846,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (!listOnly) {
           el.findHangoutList.scrollTop = 0;
         }
+        /* v39.4 — '더 보기'가 화면에 들어오면 이어서 붙인다(지연 로드). */
+        watchAzitMore(el.findHangoutList.querySelector('[data-find-hangout-more]'), () => {
+          const s3 = findState();
+          s3.hangoutLimit = (s3.hangoutLimit || FIND_AZIT_PAGE) + FIND_AZIT_PAGE;
+          renderFindHangoutSheet({ listOnly: true });
+        });
       }
     }
     if (el.findHangoutBtn) el.findHangoutBtn.addEventListener('click', openFindHangoutSheet);
@@ -4894,6 +4907,7 @@ document.addEventListener('DOMContentLoaded', () => {
       el.findHangoutList.addEventListener('click', (e) => {
         /* v39.0 — '더 보기': 보던 자리를 지키며 40곳씩 더 */
         if (e.target.closest('[data-find-hangout-more]')) {
+          stopAzitMoreWatch();
           const s2 = findState();
           const from = s2.hangoutLimit || FIND_AZIT_PAGE;
           s2.hangoutLimit = from + FIND_AZIT_PAGE;
@@ -7590,9 +7604,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const gid = grp.id;
     const chips = store.getHobbyChips ? store.getHobbyChips() : [];
     const azits = store.getGroupHangouts(grp);
+    const coverFace = groupCoverVisual(grp, 'circle');
+    const hasCover = !!coverFace.photoUrl;
     return `
       <div class="gs-view">
         <div class="gs-form">
+          <!-- v39.4 (37일차) — 대표 사진: 사진이 있으면 사진, 지우면 모임 이름 + 무작위 바탕색(v39.3). -->
+          <div class="gs-cover-edit" data-gs-cover-edit="${gid}">
+            <span class="gs-cover-face${hasCover ? ' has-photo' : ''}" id="gs-cover-face" aria-hidden="true">${hasCover
+              ? `<img src="${escapeHtml(coverFace.photoUrl)}" alt="">`
+              : groupNameFace(grp.name)}</span>
+            <div class="gs-cover-copy">
+              <strong class="gs-cover-title">대표 사진</strong>
+              <span class="gs-cover-note" id="gs-cover-note">${hasCover
+                ? '카드·원형·하단 탭에 이 사진이 보여요.'
+                : '사진이 없어요 · 모임 이름으로 보여요.'}</span>
+              <div class="gs-cover-actions">
+                <button class="btn-secondary gs-mini" type="button" data-gs-cover-photo="1">사진 바꾸기</button>
+                ${hasCover ? '<button class="gs-link is-danger" type="button" data-gs-cover-clear="1">사진 지우기</button>' : ''}
+              </div>
+            </div>
+          </div>
           <label class="gs-field">
             <span class="gs-field-label">모임 이름</span>
             <input class="gs-input" id="gs-edit-name" type="text" maxlength="24" value="${gsEsc(grp.name)}">
@@ -7778,6 +7810,54 @@ document.addEventListener('DOMContentLoaded', () => {
     if (message) showToast(message, type || 'info');
   }
 
+  /**
+   * v39.4 (37일차) — 모임 대표 사진 바꾸기(모임 정보 수정).
+   *  고른 사진을 풀스크린 원형 크롭으로 맞춰 저장하고, 화면의 모든 모임 얼굴을 다시 칠한다.
+   */
+  function gsPickCoverPhoto(groupId) {
+    const gid = groupId || groupSettingsGroupId();
+    if (!gid) return { ok: false, reason: 'no_group' };
+    if (!store.can(gid, 'edit_group')) {
+      showToast('대표 사진은 모임장만 바꿀 수 있어요', 'warning');
+      return { ok: false, reason: 'permission' };
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.setAttribute('aria-label', '모임 대표 사진 고르기');
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      circleCropPhotoFile(file, { title: '모임 대표 사진을 원형으로 맞춰 주세요' }).then((out) => {
+        if (!out) return;
+        applyGroupCoverPhoto(gid, out);
+      });
+    });
+    input.click();
+    return { ok: true };
+  }
+
+  /** 대표 사진을 저장하고 화면 곳곳의 모임 얼굴을 다시 칠한다. */
+  function applyGroupCoverPhoto(groupId, dataUrl) {
+    const res = store.setGroupCirclePhoto(groupId, dataUrl);
+    if (!res.ok) { showToast('대표 사진을 바꾸지 못했어요', 'warning'); return res; }
+    afterGroupCoverChange(groupId);
+    showToast('대표 사진을 바꿨어요 · 위치 정보는 지웠어요');
+    return res;
+  }
+
+  function afterGroupCoverChange(groupId) {
+    const grp = groupId ? store.getGroup(groupId) : null;
+    try { renderGroupSettings(); } catch (e) { /* 설정 화면이 아닐 때 */ }
+    if (grp) { try { renderGroupHeader(grp); } catch (e) { /* 모임 화면이 아닐 때 */ } }
+    try { renderMyGroupsRail && renderMyGroupsRail(); } catch (e) { /* noop */ }
+    try { renderFeed(); } catch (e) { /* noop */ }
+    try { renderMyProfileTab(); } catch (e) { /* noop */ }
+    if (grp && typeof renderHomeHero === 'function' && isGroupMode() && homeGroup() && homeGroup().id === groupId) {
+      try { renderHomeHero(grp); } catch (e) { /* noop */ }
+    }
+  }
+
   function gsHandleClick(e) {
     const gid = groupSettingsGroupId();
     const grp = gid ? store.getGroup(gid) : null;
@@ -7789,6 +7869,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (t.dataset.gsView) { ui.gsView = t.dataset.gsView; renderGroupSettings(); return; }
     if (t.dataset.gsNotice) { openNoticeSheet(gid); return; }
     if (t.dataset.gsAzit) { openGroupAzitEditor(gid); return; }
+    if (t.dataset.gsCoverPhoto) { gsPickCoverPhoto(gid); return; }
+    if (t.dataset.gsCoverClear) {
+      const res = store.clearGroupCirclePhoto(gid);
+      if (!res.ok) { showToast('대표 사진을 지우지 못했어요', 'warning'); return; }
+      gsToastAndRender('대표 사진을 지웠어요 · 모임 이름으로 보여요', 'info');
+      return;
+    }
     if (t.dataset.gsCover) { openCoverPicker(gid); return; }
     if (t.dataset.gsPost) {
       closeGroupSettings();
@@ -8166,7 +8253,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.3';
+  const APP_VERSION = 'v39.4';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -9585,6 +9672,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       if (target.closest('[data-ob-azit-more]')) {
+        stopAzitMoreWatch();
         const from = ui.obAzitLimit || OB_AZIT_PAGE;
         ui.obAzitLimit = from + OB_AZIT_PAGE;
         obAzitRepaint({ startAt: from });
@@ -10612,8 +10700,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const ageEligible = store.isAgeEligible(g.id).ok;
     const joinLabel = joinState === 'member' ? `${ic('check')} 가입중`
       : joinState === 'pending' ? `${ic('hourglass')} 승인 대기`
-        : (store.isGroupFull(g.id) ? '정원 마감'
-          : (store.getGroupJoinMode(g) === 'approval' ? '가입 신청' : '참여하기'));
+        : joinState === 'rejected' ? '다시 신청'
+          : (store.isGroupFull(g.id) ? '정원 마감'
+            : (store.getGroupJoinMode(g) === 'approval' ? '가입 신청' : '참여하기'));
     /* Sprint 21 — 사진 없는 모임 표지는 취미 대분류 색조로 (한눈에 모임 성격이 드러나게).
        R3 — 색은 인라인 style 이 아니라 .tone-* 클래스가 CSS 토큰(--cat-N)으로 칠한다. */
     const tone = store.getHobbyTone(g.hobbyId || g.category);
@@ -14629,7 +14718,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="azit-search">
             <span class="azit-search-icon" aria-hidden="true">${ic('search')}</span>
             <span class="input-shrink">
-              <input type="search" id="ob-azit-search" placeholder="아지트 이름으로 찾기 (예: 성수 · 강남 · 홍대)"
+              <input type="search" id="ob-azit-search" placeholder="이름·초성(ㅅㄹ)·노선(2호선)"
                      aria-label="아지트 검색" autocomplete="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
             </span>
             <button class="azit-search-clear hide" id="ob-azit-clear" type="button" aria-label="검색어 지우기">&times;</button>
@@ -14700,7 +14789,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="azit-row-ic" aria-hidden="true">${ic(h.icon)}</span>
         <span class="azit-row-text">
           <span class="azit-row-name">${escapeHtml(h.name)}</span>
-          <span class="azit-row-meta">${escapeHtml([h.sigunguName || h.areaName, h.kindLabel].filter(Boolean).join(' · '))}</span>
+          <span class="azit-row-meta">${azitRowMeta({ ...h, sigunguName: h.sigunguName || h.areaName })}</span>
         </span>
         ${h.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
         <span class="azit-row-check" aria-hidden="true">${selected === h.id ? ic('check') : ''}</span>
@@ -14709,7 +14798,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ? `<button class="azit-row azit-more" data-ob-azit-more="1" type="button">
            <span class="azit-row-ic" aria-hidden="true">${ic('chevronDown')}</span>
            <span class="azit-row-text"><span class="azit-row-name">더 보기</span>
-             <span class="azit-row-meta">${limit}곳까지 봤어요 · 이름으로 찾으면 더 빨라요</span></span>
+             <span class="azit-row-meta">${limit}곳까지 봤어요 · 이름·초성·노선으로 찾으면 더 빨라요</span></span>
          </button>`
       : '');
   }
@@ -14722,6 +14811,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!list) return;
     const oldTop = list.scrollTop;
     list.innerHTML = obAzitRowsHTML(obField('ob-azit-search') ? obField('ob-azit-search').value : '');
+    /* v39.4 — '더 보기'가 화면에 들어오면 이어서 붙인다(지연 로드). */
+    watchAzitMore(list.querySelector('[data-ob-azit-more]'), () => {
+      ui.obAzitLimit = (ui.obAzitLimit || OB_AZIT_PAGE) + OB_AZIT_PAGE;
+      obAzitRepaint({ startAt: (ui.obAzitLimit || OB_AZIT_PAGE) - OB_AZIT_PAGE });
+    });
     if (typeof options.startAt === 'number') {
       /* '더 보기' — 새로 붙은 첫 줄을 목록 맨 위로(이어서 읽는다). */
       const first = list.children[options.startAt + 1];
@@ -15726,6 +15820,101 @@ document.addEventListener('DOMContentLoaded', () => {
     layoutPhotoCrop();
   }
 
+  /* ==========================================================================
+   * v39.4 (37일차) — 원형 크롭 판의 **키보드·보조기기** 조절.
+   * --------------------------------------------------------------------------
+   *  · 판이 열린 동안 화살표 키로 사진을 옮기고(기본 8px · Shift 를 함께 누르면 2px),
+   *    더하기·빼기로 0.35~4배 확대·축소, 대괄호([ · ])로 원 지름을 16px씩 바꿔다.
+   *    0 은 처음 자리(1배 · 가운데 · 기본 원)로 되돌린다. `Esc` 는 취소(그대로).
+   *  · 바뀔 때마다 눈에 보이는 글자가 없으므로, 읽어 주는 안내를 `#pcf-status`
+   *    (role="status" aria-live="polite") 에 적는다 — 스크린리더가 지금 상태를 읽는다.
+   *  · 터치/마우스가 잡는 순간에는 짧은 진동(있으면)과 원·손잡이의 시각 반응을 준다.
+   * ========================================================================== */
+  const PCF_KEY_PAN = 8;
+  const PCF_KEY_PAN_FINE = 2;
+  const PCF_KEY_DIA = 16;
+
+  /** 읽어 주는 상태 — ‘확대 120% · 원 320px · 사진 가운데’. */
+  function pcfStatusText(s) {
+    const m = pcfMetrics();
+    const zoom = Math.round((s.zoom || 1) * 100);
+    const dx = Math.round(s.panX || 0);
+    const dy = Math.round(s.panY || 0);
+    const where = Math.abs(dx) < 2 && Math.abs(dy) < 2
+      ? '사진 가운데'
+      : `사진 ${dy < 0 ? '위' : '아래'} ${Math.abs(dy)}px · ${dx < 0 ? '왼쪽' : '오른쪽'} ${Math.abs(dx)}px`;
+    return `확대 ${zoom}% · 원 ${m.D}px · ${where}`;
+  }
+
+  function pcfAnnounce(prefix) {
+    const node = document.getElementById('pcf-status');
+    if (!node) return '';
+    const s = pcfState();
+    if (!s.open) { node.textContent = ''; return ''; }
+    const text = `${prefix ? `${prefix} · ` : ''}${pcfStatusText(s)}`;
+    node.textContent = text;
+    return text;
+  }
+
+  /** 키 하나를 처리한다 — 처리했으면 true. */
+  function pcfHandleKey(e) {
+    const s = pcfState();
+    if (!s.open) return false;
+    const key = e.key;
+    const step = e.shiftKey ? PCF_KEY_PAN_FINE : PCF_KEY_PAN;
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    if (arrows[key]) {
+      const [ax, ay] = arrows[key];
+      s.panX = (s.panX || 0) + ax * step;
+      s.panY = (s.panY || 0) + ay * step;
+      layoutPhotoCrop();
+      pcfAnnounce('사진 옮김');
+      return true;
+    }
+    if (key === '+' || key === '=' || key === 'Add') {
+      setPcfZoom((s.zoom || 1) * 1.1);
+      pcfAnnounce('확대');
+      return true;
+    }
+    if (key === '-' || key === '_' || key === 'Subtract') {
+      setPcfZoom((s.zoom || 1) / 1.1);
+      pcfAnnounce('축소');
+      return true;
+    }
+    if (key === ']' || key === '}') {
+      const m = pcfMetrics();
+      s.dia = Math.min(m.maxD, Math.max(PCF_MIN_DIA, m.D + PCF_KEY_DIA));
+      layoutPhotoCrop();
+      pcfAnnounce('원 키움');
+      return true;
+    }
+    if (key === '[' || key === '{') {
+      const m = pcfMetrics();
+      s.dia = Math.min(m.maxD, Math.max(PCF_MIN_DIA, m.D - PCF_KEY_DIA));
+      layoutPhotoCrop();
+      pcfAnnounce('원 줄임');
+      return true;
+    }
+    if (key === '0') {
+      s.zoom = 1;
+      s.panX = 0;
+      s.panY = 0;
+      s.dia = pcfDefaultDia(
+        (el.photoCropFull && el.photoCropFull.clientWidth) || window.innerWidth || 390,
+        (el.photoCropFull && el.photoCropFull.clientHeight) || window.innerHeight || 844
+      );
+      layoutPhotoCrop();
+      pcfAnnounce('처음 자리');
+      return true;
+    }
+    return false;
+  }
+
+  /** 짧은 진동 — 잡는 순간·두 번 두드리기. 없는 기기면 조용히 지나간다. */
+  function pcfHaptic(ms) {
+    try { if (navigator && navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* noop */ }
+  }
+
   /**
    * 풀스크린 원형 크롭을 연다.
    * @param {{src:string, out?:number, title?:string}} opts
@@ -15774,6 +15963,8 @@ document.addEventListener('DOMContentLoaded', () => {
     layoutPhotoCrop();
     window.requestAnimationFrame(layoutPhotoCrop);
     try { el.pcfOk && el.pcfOk.focus({ preventScroll: true }); } catch (e) { /* noop */ }
+    /* v39.4 — 판이 열리면 읽어 주는 안내(지금 배율·원 크기)를 한 번 적는다. */
+    pcfAnnounce('원형 자르기');
     return done;
   }
 
@@ -15828,7 +16019,10 @@ document.addEventListener('DOMContentLoaded', () => {
       el.pcfStage.classList.remove('is-dragging');
       el.pcfStage.classList.remove('is-resizing');
     }
+    if (el.pcfRing) el.pcfRing.classList.remove('is-active');
     document.body.classList.remove('is-photo-crop');
+    const status = document.getElementById('pcf-status');
+    if (status) status.textContent = '';
     const back = pcfRestoreFocus;
     pcfRestoreFocus = null;
     if (back && back.focus) { try { back.focus({ preventScroll: true }); } catch (e) { /* noop */ } }
@@ -15865,10 +16059,13 @@ document.addEventListener('DOMContentLoaded', () => {
           if (Math.abs(dist - m.D / 2) <= PCF_GRIP) {
             pcfDrag = { mode: 'resize', id: e.pointerId, cx: m.cx, cy: m.cy, dia: m.D, dist: Math.max(24, dist) };
             stage.classList.add('is-resizing');
+            el.pcfRing && el.pcfRing.classList.add('is-active');
           } else {
             pcfDrag = { mode: 'pan', id: e.pointerId, x: e.clientX, y: e.clientY, panX: s.panX || 0, panY: s.panY || 0 };
             stage.classList.add('is-dragging');
           }
+          /* v39.4 — 잡는 순간의 손맛: 짧은 진동(있으면)과 원 테두리 반짝임. */
+          pcfHaptic(6);
         } else if (pcfPointers.size === 2) {
           pcfDrag = null;
           pcfPinch = { dist: pcfPinchDistance(), zoom: s.zoom || 1 };
@@ -15914,12 +16111,15 @@ document.addEventListener('DOMContentLoaded', () => {
             s.panY = 0;
             pcfLastTap = 0;
             layoutPhotoCrop();
+            pcfHaptic(8);
+            pcfAnnounce('처음 자리');
           } else {
             pcfLastTap = tapped ? now : 0;
           }
           pcfDrag = null;
           stage.classList.remove('is-dragging');
           stage.classList.remove('is-resizing');
+          el.pcfRing && el.pcfRing.classList.remove('is-active');
         }
       };
       stage.addEventListener('pointerup', end);
@@ -15951,6 +16151,12 @@ document.addEventListener('DOMContentLoaded', () => {
         /* 이 판이 열려 있을 때 Esc 는 **이 판만** 닫는다(뒤의 모달·화면까지 닫지 않게). */
         e.stopImmediatePropagation();
         closeCircleCrop(null);
+        return;
+      }
+      /* v39.4 (37일차) — 화살표·더하기·빼기·대괄호·0 으로 보조기기에서도 맞춘다. */
+      if (pcfHandleKey(e)) {
+        e.preventDefault();
+        e.stopPropagation();
       }
     });
     window.addEventListener('resize', () => {
@@ -16155,6 +16361,59 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /** 아지트 — 4단계 지역 후보를 먼저 보여 주고, 검색하면 전체에서 찾는다. 1~3곳. */
+  /**
+   * v39.4 (37일차) — 아지트 목록의 '더 보기'를 **화면에 들어오면** 이어서 붙인다(지연 로드).
+   *  · 988곳(수도권 672곳)을 한 번에 그리지 않고 40곳씩 붙인다 — 스크롤·검색이 매끄럽다.
+   *  · '더 보기' 버튼은 그대로 남겨 둔다(키보드·스크린리더·스크롤을 못 보는 경우).
+   *  · **한 번 접히면 사용자가 스크롤을 해야 다시 붙는다** — 목록이 짧아 센티널이 화면에
+   *    계속 보이는 경우에도 끝없이 늘어나지 않게.
+   */
+  let azitMoreObserver = null;
+  /** 지금 걸린 '더 보기' 자동 이어붙이기를 멈춘다(단추를 직접 누를 때 겹치지 않게). */
+  function stopAzitMoreWatch() {
+    if (!azitMoreObserver) return;
+    try { azitMoreObserver.disconnect(); } catch (e) { /* noop */ }
+    azitMoreObserver = null;
+  }
+  function watchAzitMore(button, onMore) {
+    if (azitMoreObserver) { try { azitMoreObserver.disconnect(); } catch (e) { /* noop */ } azitMoreObserver = null; }
+    if (!button || typeof IntersectionObserver !== 'function' || typeof onMore !== 'function') return;
+    let armed = false;
+    let scroller = button.parentElement;
+    while (scroller && scroller !== document.body) {
+      const cs = getComputedStyle(scroller);
+      if (/(auto|scroll)/.test(`${cs.overflowY}${cs.overflow}`)) break;
+      scroller = scroller.parentElement;
+    }
+    if (!scroller || scroller === document.body) scroller = null;
+    /* 사람이 목록을 만진 뒤에만 이어 붙인다 — 코드로 scrollTop 을 바꾸는 화면(검증·복원)이
+       목록을 저절로 늘리지 않게. 휠·손가락·키보드로 내리는 순간이 '사람의 스크롤'이다. */
+    const arm = () => { armed = true; };
+    const armTypes = [['wheel', { passive: true }], ['touchmove', { passive: true }],
+      ['keydown', true], ['pointerdown', true]];
+    if (scroller) armTypes.forEach(([type, opts]) => scroller.addEventListener(type, arm, opts));
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((en) => en.isIntersecting)) return;
+      if (!armed) return;
+      io.disconnect();
+      if (scroller) armTypes.forEach(([type, opts]) => scroller.removeEventListener(type, arm, opts));
+      azitMoreObserver = null;
+      onMore();
+    }, { root: null, rootMargin: '180px 0px', threshold: 0 });
+    io.observe(button);
+    azitMoreObserver = io;
+  }
+
+  /** v39.4 — 아지트 한 줄의 둘째 줄. 노선으로 찾았으면 그 노선 이름을 앞에 붙인다. */
+  function azitRowMeta(h) {
+    const bits = [];
+    if (h.matchLine) bits.push(h.matchLine);
+    if (h.sigunguName) bits.push(h.sigunguName);
+    if (h.kindLabel) bits.push(h.kindLabel);
+    if (h.groupCount) bits.push(`모임 ${h.groupCount}`);
+    return escapeHtml(bits.join(' · '));
+  }
+
   function renderCreateHangouts() {
     const d = ui.groupDraft;
     const area = d.sigunguId ? store.findSigungu(d.sigunguId) : null;
@@ -16191,7 +16450,7 @@ document.addEventListener('DOMContentLoaded', () => {
          잘려 나갔다(성동구를 골라도 성수역이 목록에 없던 이유). 구·시·도로 **먼저 거른다**. */
       let rows;
       if (query) {
-        rows = store.getHangouts({ query, limit: 80 });
+        rows = store.getHangouts({ query, limit: (ui.createAzitLimit || 40) + 1 });
       } else {
         const inArea = d.sigunguId ? store.getHangouts({ sigunguId: d.sigunguId }) : [];
         const taken = new Set(inArea.map((h) => h.id));
@@ -16201,7 +16460,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const rest = store.getHangouts({ limit: 90 }).filter((h) => !taken.has(h.id));
         rows = inArea.concat(inSido, rest);
       }
-      rows = rows.slice(0, 80);
+      const limit = ui.createAzitLimit || 40;
+      const more = rows.length > limit;
+      rows = rows.slice(0, limit);
       el.createGroupAzitList.innerHTML = rows.length
         ? rows.map((h) => `
             <button class="azit-row ${d.hangoutIds.includes(h.id) ? 'active' : ''}" data-azit-pick="${h.id}"
@@ -16209,12 +16470,22 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="azit-row-ic" aria-hidden="true">${ic(h.icon)}</span>
               <span class="azit-row-text">
                 <span class="azit-row-name">${escapeHtml(h.name)}</span>
-                <span class="azit-row-meta">${escapeHtml(h.sigunguName || '')} · ${escapeHtml(h.kindLabel)}${h.groupCount ? ` · 모임 ${h.groupCount}` : ''}</span>
+                <span class="azit-row-meta">${azitRowMeta(h)}</span>
               </span>
               ${h.isMyArea ? '<span class="azit-row-mine">내 동네</span>' : ''}
               <span class="azit-row-check" aria-hidden="true">${d.hangoutIds.includes(h.id) ? ic('check') : ''}</span>
             </button>`).join('')
-        : `<p class="azit-empty">${query ? `'${escapeHtml(query)}'에 맞는 아지트가 없어요. 역·학교 이름으로 다시 찾아보세요.` : '보여 줄 아지트가 없어요.'}</p>`;
+          + (more ? `<button class="azit-row azit-more" data-azit-more="1" type="button">
+               <span class="azit-row-ic" aria-hidden="true">${ic('chevronDown')}</span>
+               <span class="azit-row-text"><span class="azit-row-name">더 보기</span>
+                 <span class="azit-row-meta">${limit}곳까지 봤어요 · 이름·초성·노선으로 찾으면 더 빨라요</span></span>
+             </button>` : '')
+        : `<p class="azit-empty">${query ? `'${escapeHtml(query)}'에 맞는 아지트가 없어요. 역 이름·초성(ㅅㄹ)·노선(2호선)으로 다시 찾아보세요.` : '보여 줄 아지트가 없어요.'}</p>`;
+      /* v39.4 — 더 보기가 화면에 들어오면 이어서 붙인다(지연 로드). 버튼은 키보드용으로 남긴다. */
+      watchAzitMore(el.createGroupAzitList.querySelector('[data-azit-more]'), () => {
+        ui.createAzitLimit = (ui.createAzitLimit || 40) + 40;
+        renderCreateHangouts();
+      });
     }
   }
 
@@ -16522,6 +16793,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   el.createGroupAzitList && el.createGroupAzitList.addEventListener('click', (e) => {
+    /* v39.4 — 더 보기(버튼·키보드)로 40곳씩 더 */
+    if (e.target.closest('[data-azit-more]')) {
+      stopAzitMoreWatch();
+      ui.createAzitLimit = (ui.createAzitLimit || 40) + 40;
+      renderCreateHangouts();
+      return;
+    }
     const btn = e.target.closest('[data-azit-pick]');
     if (!btn) return;
     const d = ui.groupDraft;
@@ -16549,11 +16827,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el.createGroupAzitSearch && el.createGroupAzitSearch.addEventListener('input', () => {
     ui.groupDraft.azitQuery = el.createGroupAzitSearch.value.trim();
+    ui.createAzitLimit = 40;
     renderCreateHangouts();
     queueCreateDraftSave();
   });
   el.createGroupAzitClear && el.createGroupAzitClear.addEventListener('click', () => {
     ui.groupDraft.azitQuery = '';
+    ui.createAzitLimit = 40;
     if (el.createGroupAzitSearch) {
       el.createGroupAzitSearch.value = '';
       el.createGroupAzitSearch.focus();
@@ -16723,9 +17003,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCreateCover();
     renderGroupWizard();
     queueCreateDraftSave();
+    /* v39.4 (37일차) — 지우면 그 자리에 모임 이름 + 무작위 바탕색(v39.3)이 바로 보인다. */
+    const face = el.createGroupCoverCircle ? el.createGroupCoverCircle.querySelector('.group-name-face') : null;
+    if (face) { queueGroupNameFit(); showToast('대표 사진을 지웠어요 · 모임 이름으로 보여요', 'info'); }
   });
-
-  /* v38.5 — 풀스크린 원형 크롭의 팬·확대·확인·취소 배선(위 모듈에서 한 번만 건다). */
   bindPhotoCrop();
 
   el.createGroupPrev && el.createGroupPrev.addEventListener('click', () => {
@@ -20329,7 +20610,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const afterName = gpNode('gp-after-name');
     if (afterName) {
       const nick = String(ui.gp.nickname || '').trim();
+      const uploading = !!(ui.gpUpload && ui.gpUpload.groupId === ui.gp.groupId);
       afterName.textContent = nick || (ui.gp.photoUrl ? (me.nickname || '새 프로필') : '사진을 골라 주세요');
+      afterName.classList.toggle('is-busy', uploading);
     }
     const nickInput = gpNode('gp-nickname');
     if (nickInput && nickInput.value !== (ui.gp.nickname || '')) nickInput.value = ui.gp.nickname || '';
@@ -20342,7 +20625,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!gid || !store.isGroupJoined(gid)) return { ok: false, reason: 'not_member' };
     if (!gpModalNode) return { ok: false, reason: 'no_modal' };
     const prof = store.getGroupProfile(gid);
-    ui.gp = { groupId: gid, photoUrl: prof.photoUrl || '', nickname: prof.nickname || '' };
+    ui.gp = { groupId: gid, photoUrl: prof.photoUrl || '', nickname: prof.nickname || '', photoPath: prof.photoPath || null };
+    ui.gpUpload = null;
     renderGroupProfileModal();
     openModal(gpModalNode);
     /* 한 번 물었으면 다시 묻지 않는다(건너뛰어도). 다만 설정에서 직접 열 때는 표시만 남긴다. */
@@ -20369,7 +20653,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (warn) { warn.hidden = false; warn.textContent = '이름은 12자까지 쓸 수 있어요'; }
       return { ok: false, reason: 'nickname' };
     }
-    const res = store.updateGroupProfile(gid, { nickname: nick, photoUrl: photo, profileAsked: true });
+    /* v39.4 — 이미 올라간 사진이면 그 경로를 함께 적는다(다음 저장이 다시 올리지 않게).
+       아직 data URL 이면(null) 비워 둔고 저장 뒤 동기화가 올린다. */
+    const path = (ui.gp.photoPath && /^https?:\/\//.test(photo)) ? ui.gp.photoPath : null;
+    const res = store.updateGroupProfile(gid, { nickname: nick, photoUrl: photo, photoPath: path, profileAsked: true });
     if (!res.ok) {
       const warn = gpNode('gp-warn');
       if (warn) { warn.hidden = false; warn.textContent = '저장하지 못했어요 — 잠시 뒤 다시 시도해 주세요'; }
@@ -20405,6 +20692,64 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!o.quiet) { try { renderChatRooms(); } catch (e) { /* 채팅 화면이 없을 때 */ } }
   }
 
+  /* ==========================================================================
+   * v39.4 (37일차) — 모임 전용 프로필 사진: **확인한 순간** 서버로 올린다.
+   * --------------------------------------------------------------------------
+   *  · 지금까지는 사진을 골라 `확인`을 눌러도 화면에 data URL 로만 담아 두고, `저장`을
+   *    누른 뒤 동기화(js/cloud.js `syncMyGroupProfiles`)에서야 Storage 로 올렸다.
+   *    그래서 저장이 늦어지거나 오프라인이면 큰 data URL 이 상태·서버 줄에 남았다.
+   *  · 이제 크롭 `확인` → 미리보기를 그리는 그 자리에서 비동기 업로드를 시작하고,
+   *    끝나면 미리보기 주소를 올린 URL 로 바꿔 다음 저장이 그대로 URL 만 적게 한다.
+   *  · 오프라인이거나 실패하면 예전그대로 data URL 을 들고 있다가 다음 저장에서 다시 시도한다.
+   * ========================================================================== */
+  let gpUploadSeq = 0;
+
+  function setGpUploadNote(text, tone) {
+    const note = gpNode('gp-upload-note');
+    if (!note) return;
+    note.textContent = text || '';
+    note.hidden = !text;
+    note.classList.toggle('is-busy', tone === 'busy');
+    note.classList.toggle('is-done', tone === 'done');
+    note.classList.toggle('is-fail', tone === 'fail');
+  }
+
+  function startGroupProfileUpload(groupId, dataUrl) {
+    const gid = groupId || (ui.gp && ui.gp.groupId);
+    const cloud = window.OOGCloud;
+    const src = String(dataUrl || '');
+    const seq = ++gpUploadSeq;
+    ui.gpUpload = { seq, groupId: gid, url: '' };
+    if (!gid || !cloud || typeof cloud.uploadPhoto !== 'function' || !/^data:image\//.test(src)) {
+      setGpUploadNote('', '');
+      return Promise.resolve({ ok: false, reason: 'no_cloud' });
+    }
+    if (typeof cloud.hasSession === 'function' && !cloud.hasSession()) {
+      setGpUploadNote('', '');
+      return Promise.resolve({ ok: false, reason: 'no_session' });
+    }
+    setGpUploadNote('사진 올리는 중…', 'busy');
+    return cloud.uploadPhoto(src, 'avatars', 'group-profile').then((up) => {
+      const mine = ui.gpUpload && ui.gpUpload.seq === seq;
+      if (!up || !up.ok) {
+        /* 오프라인·실패 — data URL 그대로 두고 다음 저장에서 다시 시도한다. */
+        if (mine) { ui.gpUpload = null; setGpUploadNote('', ''); }
+        return up || { ok: false };
+      }
+      if (mine && ui.gp && ui.gp.groupId === gid && String(ui.gp.photoUrl) === src) {
+        ui.gp.photoUrl = up.url;
+        ui.gp.photoPath = up.path;
+        renderGroupProfileModal();
+        setGpUploadNote('사진 준비됐어요 · 저장하면 바로 반영돼요', 'done');
+      }
+      if (mine) ui.gpUpload = null;
+      return { ok: true, url: up.url, path: up.path };
+    }).catch(() => {
+      if (ui.gpUpload && ui.gpUpload.seq === seq) { ui.gpUpload = null; setGpUploadNote('', ''); }
+      return { ok: false, reason: 'upload_failed' };
+    });
+  }
+
   $('#gp-pick-photo') && $('#gp-pick-photo').addEventListener('click', () => {
     const input = $('#gp-photo-input');
     if (input) input.click();
@@ -20418,7 +20763,10 @@ document.addEventListener('DOMContentLoaded', () => {
     circleCropPhotoFile(file, { title: '이 모임에서 쓸 사진을 원형으로 맞춰 주세요' }).then((out) => {
       if (!out || !ui.gp) return;
       ui.gp.photoUrl = out;
+      ui.gp.photoPath = null;       /* 새 사진 — 예전 파일 경로는 버린다(다음 저장이 옛 파일을 지운다) */
       renderGroupProfileModal();
+      /* v39.4 — 저장을 기다리지 않고 지금 올린다. */
+      startGroupProfileUpload(ui.gp.groupId, out);
       showToast('모임 프로필 사진을 원형으로 만들었어요');
     });
   });
@@ -21207,9 +21555,19 @@ document.addEventListener('DOMContentLoaded', () => {
     openGroupProfileSetup: (gid) => openGroupProfileSetup(gid, { manual: true }),
     getGroupProfileState: (gid) => ({
       open: !!(document.getElementById('group-profile-modal') || {}).classList?.contains('active'),
-      groupId: ui.gp.groupId, photoUrl: ui.gp.photoUrl, nickname: ui.gp.nickname,
+      groupId: ui.gp.groupId, photoUrl: ui.gp.photoUrl, photoPath: ui.gp.photoPath || null,
+      nickname: ui.gp.nickname, uploading: !!ui.gpUpload,
+      note: (gpNode('gp-upload-note') || {}).textContent || '',
       profile: gid ? store.getGroupProfile(gid) : null
     }),
+    /* v39.4 — 모임 전용 프로필 사진 즉시 업로드(테스트·미리보기용). */
+    setGroupProfilePhoto: (dataUrl) => {
+      if (!ui.gp) return Promise.resolve({ ok: false, reason: 'no_modal' });
+      ui.gp.photoUrl = String(dataUrl || '');
+      ui.gp.photoPath = null;
+      renderGroupProfileModal();
+      return startGroupProfileUpload(ui.gp.groupId, ui.gp.photoUrl);
+    },
     /* v33.7 — 모임 진입 로딩 · 사진 캐러셀 · #해시태그 · 우그 자체 갤러리 */
     groupSplash: (groupId, opts) => showGroupSplash(store.getGroup(groupId), opts || {}),
     clearGroupSplash,
@@ -21482,6 +21840,9 @@ document.addEventListener('DOMContentLoaded', () => {
     openCircleCrop: (opts) => openCircleCrop(opts),
     getPcfState: () => ({ ...(ui.circleCrop || {}) }),
     pcfSetZoom: (z) => setPcfZoom(z),
+    /* v39.4 — 키보드 조절(테스트·미리보기): 화살표·더하기·빼기·대괄호·0. */
+    pcfKey: (key, opts) => pcfHandleKey({ key, shiftKey: !!(opts && opts.shift) }),
+    pcfStatus: () => (document.getElementById('pcf-status') || {}).textContent || '',
     pcfConfirm: () => applyPhotoCrop(),
     pcfCancel: () => { if (ui.circleCrop && ui.circleCrop.open) closeCircleCrop(null); },
     /* H1 — 모임 찾기(옛 홈 '모임 둘러보기'). 테스트·미리보기가 한 번에 펼치던 이름을 그대로 둔다. */

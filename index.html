@@ -1314,7 +1314,7 @@
                   <span class="oo-icon-17" aria-hidden="true" data-oog-icon="camera"></span>사진 찍기
                 </label>
                 <input type="file" id="create-group-cover-camera" accept="image/*" capture="environment" hidden>
-                <button class="cover-pick-btn ghost" id="btn-create-group-cover-remove" type="button" hidden>지우기</button>
+                <button class="cover-pick-btn ghost" id="btn-create-group-cover-remove" type="button" hidden>사진 지우기</button>
               </div>
             </div>
 
@@ -1333,7 +1333,7 @@
             <div class="azit-search">
               <span class="azit-search-icon" aria-hidden="true" data-oog-icon="search"></span>
               <span class="input-shrink">
-                <input type="search" id="create-group-azit-search" placeholder="역·학교·랜드마크 이름으로 찾기" aria-label="아지트 검색" autocomplete="off">
+                <input type="search" id="create-group-azit-search" placeholder="이름·초성(ㅅㄹ)·노선(2호선)" aria-label="아지트 검색 — 이름, 초성, 노선 이름으로 찾기" autocomplete="off">
               </span>
               <button class="azit-search-clear hide" id="create-group-azit-clear" type="button" aria-label="검색어 지우기">&times;</button>
             </div>
@@ -1428,7 +1428,7 @@
         <div class="azit-search">
           <span class="azit-search-icon" aria-hidden="true" data-oog-icon="search"></span>
           <span class="input-shrink">
-            <input type="search" id="find-hangout-search" placeholder="역·학교·랜드마크 이름으로 찾기" aria-label="아지트 검색" autocomplete="off">
+            <input type="search" id="find-hangout-search" placeholder="이름·초성(ㅅㄹ)·노선(2호선)" aria-label="아지트 검색 — 이름, 초성, 노선 이름으로 찾기" autocomplete="off">
           </span>
           <button class="azit-search-clear hide" id="find-hangout-clear" type="button" aria-label="검색어 지우기">&times;</button>
         </div>
@@ -2051,6 +2051,7 @@
             </button>
             <span class="gp-name" id="gp-after-name">사진을 골라 주세요</span>
             <span class="gp-side-note">이 모임에서만 보여요</span>
+            <span class="gp-upload-note" id="gp-upload-note" role="status" aria-live="polite" hidden></span>
           </div>
         </div>
         <input type="file" id="gp-photo-input" accept="image/*" hidden>
@@ -2261,8 +2262,9 @@
   <!-- v38.8 (#26176) — 아래 확대 슬라이더를 없앴다. 사진은 두 손가락·휠로 확대·축소하고,
        원 테두리(모서리 손잡이)를 끌어 자를 원의 크기를, 원 안의 사진을 끌어 위치를 맞춘다. -->
   <div class="photo-crop-full" id="photo-crop-full" role="dialog" aria-modal="true"
-       aria-label="사진을 원형으로 자르기" hidden>
-    <div class="pcf-stage" id="pcf-stage">
+       aria-label="사진을 원형으로 자르기" aria-describedby="pcf-hint" hidden>
+    <div class="pcf-stage" id="pcf-stage" tabindex="0" role="application"
+         aria-label="자를 사진 — 화살표로 옮기기, 더하기·빼기로 확대·축소, 대괄호로 원 크기">
       <img class="pcf-img" id="pcf-img" alt="자를 사진" draggable="false">
       <span class="pcf-ring" id="pcf-ring" aria-hidden="true"></span>
       <span class="pcf-handle" data-pcf-handle="nw" aria-hidden="true"></span>
@@ -2270,6 +2272,9 @@
       <span class="pcf-handle" data-pcf-handle="sw" aria-hidden="true"></span>
       <span class="pcf-handle" data-pcf-handle="se" aria-hidden="true"></span>
     </div>
+    <p class="sr-only" id="pcf-hint">화살표 키로 사진을 옮기고, Shift 를 함께 누르면 조금씩 움직입니다.
+      더하기·빼기로 확대·축소, 대괄호로 원 크기를 바꾸고, 0 을 누르면 처음 자리로 돌아갑니다.</p>
+    <p class="sr-only" id="pcf-status" role="status" aria-live="polite"></p>
     <div class="pcf-bar">
       <button class="pcf-cancel" id="pcf-cancel" type="button">취소</button>
       <span class="pcf-title" id="pcf-title">원형으로 맞춰 주세요</span>

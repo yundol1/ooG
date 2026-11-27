@@ -28190,3 +28190,61 @@ body.is-photo-crop { overflow: hidden; }
 .group-tile-cover .group-tile-emoji { padding: 0; background: transparent; }
 .group-tile-cover:has(.group-name-face)::after { display: none; }
 
+
+/* ============================================================================
+ * v39.4 (37일차 · Sprint 37) — 모임 대표 사진 고치기 · 모임 프로필 사진 올리는 중 표시 ·
+ *                                원형 크롭 판의 키보드/터치 반응
+ * ============================================================================ */
+/* 모임 정보 수정 — 대표 사진(원형 미리보기 + 사진 바꾸기/지우기) */
+.gs-cover-edit {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 16px;
+  background: var(--bg-soft, var(--bg-base));
+  border: 1px solid var(--border-soft);
+}
+.gs-cover-face {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--green-soft);
+  color: var(--text-sub);
+  font-size: var(--fs-small);
+}
+.gs-cover-face img { width: 100%; height: 100%; object-fit: cover; }
+.gs-cover-face .group-name-face { width: 100%; height: 100%; display: grid; place-items: center; }
+.gs-cover-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 auto; }
+.gs-cover-title { font-size: var(--fs-small); font-weight: var(--fw-label); color: var(--text-strong); }
+.gs-cover-note { font-size: var(--fs-caption); font-weight: var(--fw-meta); color: var(--text-muted); line-height: 1.5; word-break: keep-all; }
+.gs-cover-actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
+.gs-cover-actions .gs-mini { min-height: 44px; }
+
+/* 모임 전용 프로필 — 사진을 올리는 중/준비됨 한 줄(읽어 주는 안내) */
+.gp-upload-note {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-meta);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.gp-upload-note.is-busy { color: var(--green-text); }
+.gp-upload-note.is-done { color: var(--green-text); }
+.gp-upload-note.is-fail { color: var(--red); }
+.gp-after-name.is-busy { opacity: 0.72; }
+
+/* 원형 크롭 판 — 키보드 초점·잡는 순간 반응 */
+.pcf-stage:focus-visible { outline: 2px solid var(--pcf-ring, rgba(255, 255, 255, 0.92)); outline-offset: -4px; }
+.pcf-ring.is-active {
+  border-color: var(--green-deco, #10B981);
+  box-shadow: 0 0 0 9999px var(--pcf-scrim, rgba(4, 8, 12, 0.66)), 0 0 0 4px rgba(16, 185, 129, 0.28);
+}
+.pcf-stage.is-dragging .pcf-ring,
+.pcf-stage.is-resizing .pcf-ring { transition: border-color 120ms ease-out; }

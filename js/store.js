@@ -1284,6 +1284,83 @@ function azitView(spot) {
   };
 }
 
+/* ==========================================================================
+ * v39.4 (37일차) — 아지트 검색: 역명 **초성** 과 **노선 이름**.
+ * --------------------------------------------------------------------------
+ *  · 초성 — 'ㅅㄹ' 로 '성수역' 을 찾는다(초성은 이름·별칭 어디서든 걸린다).
+ *    한글 음절이 아닌 글자(영문·숫자)는 그대로 두어 '2호선' 과 섞여도 검색된다.
+ *  · 노선 — '2호선'·'수인분당선' 은 아지트의 **별칭 표**와 맞춘다. 글자 일부만 쳐도
+ *    ('2호'·'수인분당') 노선 표에서 시작하는 이름을 찾아 그 노선 역만 남긴다.
+ *    '1호선' 이 '인천1호선' 까지 끌어오지 않도록 **노선 표에 있는 이름끼리** 비교한다.
+ * ========================================================================== */
+const HANGUL_CHO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ',
+  'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
+/** 한글 문자열의 초성 — '성수역' → 'ㅅㄹㅇ' (한글 음절만 바꾸고 나머지는 그대로). */
+function hangulInitials(text) {
+  const s = String(text == null ? '' : text);
+  let out = '';
+  for (let i = 0; i < s.length; i += 1) {
+    const code = s.charCodeAt(i);
+    if (code >= 0xAC00 && code <= 0xD7A3) {
+      out += HANGUL_CHO[Math.floor((code - 0xAC00) / 588)];
+    } else if (code >= 0x3131 && code <= 0x314E) {
+      out += s[i];                       /* 이미 초성(낱자)이면 그대로 */
+    } else if (/[0-9a-zA-Z]/.test(s[i])) {
+      out += s[i].toLowerCase();
+    }
+    /* 띄어쓰기·문장부호는 초성에서 뺀다 */
+  }
+  return out;
+}
+
+/** 초성만 친 검색인가 — 'ㅅㄹ' · 'ㅅㄹㅇ' (공백은 무시). */
+function isInitialsQuery(query) {
+  const q = String(query || '').replace(/\s+/g, '');
+  if (q.length < 1) return false;
+  return /^[\u3131-\u314E]+$/.test(q);
+}
+
+/** 아지트 별칭에 들어 있는 노선 이름 표 — 처음 한 번만 만든다. */
+let AZIT_LINE_LABELS = null;
+function azitLineLabels() {
+  if (AZIT_LINE_LABELS) return AZIT_LINE_LABELS;
+  const set = new Set();
+  AZIT_SPOTS.forEach((s) => {
+    (s.aliases || []).forEach((a) => {
+      const label = String(a || '').trim();
+      /* '2호선' · '수인분당선' · '부산김해경전철선' — 두 글자 이상이고 '선' 으로 끝난다.
+         역 이름 별칭('시청'·'익선동')은 노선이 아니다. */
+      if (label.length >= 2 && /(호선|선)$/.test(label) && /[가-힣0-9]/.test(label)) set.add(label);
+    });
+  });
+  AZIT_LINE_LABELS = [...set].sort((a, b) => a.localeCompare(b, 'ko'));
+  return AZIT_LINE_LABELS;
+}
+
+/** 검색어가 노선 이름(또는 그 앞부분)이면 그 노선 이름들 — 아니면 빈 배열. */
+function azitLineQuery(query) {
+  const q = String(query || '').replace(/\s+/g, '').toLowerCase();
+  if (q.length < 2) return [];
+  const labels = azitLineLabels();
+  const exact = labels.filter((l) => l.toLowerCase() === q);
+  if (exact.length) return exact;
+  /* '2호선'·'경춘선'처럼 '선'까지 쓴 검색은 앞부분만 쳐도 노선으로 본다. */
+  if (/(호선|선)$/.test(q)) {
+    const near = labels.filter((l) => {
+      const low = l.toLowerCase();
+      return low.indexOf(q) === 0 || (q.length >= 3 && low.indexOf(q) >= 0);
+    });
+    if (near.length) return near;
+  }
+  /* '수인분당'·'경의중앙'처럼 '선'을 빼고 세 글자 이상 쳐도 노선으로 본다.
+     ('성수' 두 글자는 '성수선'과도 겹처서 노선으로 보지 않는다 — 역 이름 검색이 먼저다) */
+  if (q.length >= 3 && /^[가-힣0-9]+$/.test(q)) {
+    return labels.filter((l) => l.toLowerCase().indexOf(q) === 0);
+  }
+  return [];
+}
+
 /** 지역 id → 동네 정의(옛 id 는 지금 id 로 바꿔 찾는다). */
 function regionDef(regionId) {
   const id = REGION_ALIASES[regionId] || regionId;
@@ -7144,6 +7221,13 @@ class Store {
   }
 
   /**
+   * v39.4 — 아지트 검색 도우미(테스트·화면 공용).
+   *  · `azitInitials('성수역')` → 'ㅅㄹㅇ'  ·  `azitSearchLines('2호')` → ['2호선']
+   */
+  azitInitials(text) { return hangulInitials(text); }
+  azitSearchLines(query) { return azitLineQuery(query); }
+
+  /**
    * v39.1 — 탐색 검색은 **아지트** 기준이다.
    *  · 아지트 이름·별칭(역·학교·랜드마크)으로 찾으면 그 아지트가 속한 권역의 사람·글을 보여 준다.
    *  · 시·도(서울·부산)와 시·군·구(성동구), 권역 이름(동작.성동)으로도 같은 자를 쓴다.
@@ -7165,10 +7249,20 @@ class Store {
       terms.forEach((t) => { if (t.length >= 2 && h.indexOf(t) >= 0) ok = true; });
       return ok;
     };
+    /* v39.4 (37일차) — 초성('ㅅㄹ') 과 노선 이름('2호선')으로도 아지트를 찾는다. */
+    const initQ = isInitialsQuery(raw) ? raw.replace(/\s+/g, '') : null;
+    const lineQ = azitLineQuery(raw).map((l) => l.toLowerCase());
+    const spotHit = (h) => {
+      if (hit(`${h.name} ${(h.aliases || []).join(' ')}`)) return true;
+      if (initQ && (hangulInitials(h.name).indexOf(initQ) >= 0
+        || (h.aliases || []).some((a) => hangulInitials(a).indexOf(initQ) >= 0))) return true;
+      if (lineQ.length && (h.aliases || []).some((a) => lineQ.indexOf(String(a || '').toLowerCase()) >= 0)) return true;
+      return false;
+    };
     const azitIds = [];
     const names = [];
     (GEO_HANGOUTS.hangouts || []).forEach((h) => {
-      if (!hit(`${h.name} ${(h.aliases || []).join(' ')}`)) return;
+      if (!spotHit(h)) return;
       if (azitIds.indexOf(h.id) >= 0) return;
       azitIds.push(h.id);
       if (names.length < 3) names.push(h.name);
@@ -7603,6 +7697,10 @@ class Store {
     const qStripped = qRaw.replace(/(특별시|광역시|특별자치시|특별자치도|시|군|구|동|역)$/, '').trim();
     if (qStripped.length >= 2 && qStripped !== qRaw) qTerms.add(qStripped);
     const q = qRaw;
+    /* v39.4 (37일차) — 초성('ㅅㄹ' → 성수역) · 노선('2호선'·'수인분당선') 검색. */
+    const qInit = isInitialsQuery(qRaw) ? qRaw.replace(/\s+/g, '') : null;
+    const qLines = qRaw ? azitLineQuery(qRaw) : [];
+    const qLinesLower = qLines.map((l) => l.toLowerCase());
     const sidoId = o.sidoId && o.sidoId !== 'all' ? o.sidoId : null;
     const sigunguId = o.sigunguId && o.sigunguId !== 'all' ? o.sigunguId : null;
     const areaId = (!q && o.areaId && o.areaId !== 'all') ? o.areaId : null;
@@ -7626,7 +7724,7 @@ class Store {
         if (sidoId && s.sidoId !== sidoId) return false;
         if (sigunguId && s.sigunguId !== sigunguId) return false;
         if (areaId && s.areaId !== areaId) return false;
-        if (!q) { s.__q = null; return true; }
+        if (!q) { s.__q = null; s.__line = null; return true; }
         /* v39.1 — 이름·별칭(역·노선) 0순위, 시·군·구·권역 이름은 1순위.
            '성수역'을 찾을 때 같은 권역의 다른 역보다 성수역이 먼저 오게 한다. */
         const area = s.sigunguId ? geoAreaView(s.sigunguId) : null;
@@ -7640,13 +7738,36 @@ class Store {
         const nm = String(s.name || '').toLowerCase();
         const nmCore = nm.replace(/역$/, '');
         const nameFirst = Array.from(qTerms).some((t) => t.length >= 2 && (nmCore === t || nmCore.indexOf(t) === 0));
-        s.__q = nameFirst ? 0 : (hitTerms(nameHay) ? 1 : (hitTerms(placeHay) ? 2 : null));
+        /* v39.4 — 노선 이름은 **노선 표에 있는 이름끼리** 맞춘다('1호선'이 '인천1호선'을
+           끌어오지 않게). 맞은 노선 이름은 목록의 한 줄에 그대로 보여 준다. */
+        let lineLabel = null;
+        if (qLinesLower.length) {
+          lineLabel = (s.aliases || []).map((a) => String(a || '').trim())
+            .find((a) => qLinesLower.indexOf(a.toLowerCase()) >= 0) || null;
+        }
+        /* v39.4 — 초성 — 'ㅅㄹ' → 성수역. 이름이 먼저, 별칭(역·학교 이름)도 뒤에 본다. */
+        let initialPrefix = false;
+        let initialHit = false;
+        if (qInit) {
+          const nmIni = hangulInitials(s.name);
+          initialPrefix = nmIni.indexOf(qInit) === 0;
+          initialHit = initialPrefix || nmIni.indexOf(qInit) >= 0
+            || (s.aliases || []).some((a) => hangulInitials(a).indexOf(qInit) >= 0);
+        }
+        s.__line = lineLabel;
+        s.__q = nameFirst ? 0
+          : (initialPrefix ? 1
+            : (lineLabel ? 2
+              : (initialHit ? 3 : (hitTerms(nameHay) ? 4 : (hitTerms(placeHay) ? 5 : null)))));
+        /* 초성·노선 검색은 글자 검색과 달리 걸린 곳이 있어도 '이름 일치'가 아니므로,
+           글자로 걸리는 같은 검색어가 아니면 그대로 둔다. */
         return s.__q != null;
       })
       .map((s) => ({
         ...azitView(s),
         isMyArea: !!(my && s.sigunguId === my.sigunguId),
         groupCount: groupCounts.get(s.id) || 0,
+        matchLine: s.__line || null,
         _q: s.__q
       }))
       .sort((a, b) =>
@@ -11264,7 +11385,8 @@ class Store {
     }
     const res = this.updateGroupMembership(groupId, {
       nickname: d.nickname, bio: d.bio, photoVisible: d.photoVisible,
-      photoUrl: d.photoUrl, profileAsked: d.profileAsked
+      /* v39.4 — 사진을 이미 Storage 에 올렸으면 그 경로도 함께 저장한다(다음 저장에서 다시 올리지 않게). */
+      photoUrl: d.photoUrl, photoPath: d.photoPath, profileAsked: d.profileAsked
     });
     return res;
   }
@@ -15318,6 +15440,39 @@ class Store {
     group.coverPhotos = list;
     this.saveState();
     return { ok: true, cover: this.getGroupCover(groupId) };
+  }
+
+  /**
+   * v39.4 (37일차) — 모임 대표 사진(원형·카드)을 모임장이 다시 고르거나 지운다.
+   *  · 만들기 3/5 에서만 정할 수 있던 대표 사진을 '모임 정보 수정'에서도 바꿀 수 있게.
+   *  · 지우면(`clearGroupCirclePhoto`) 사진을 통째로 걷어내 그 자리가 **모임 이름 + 무작위
+   *    바탕색**(v39.3 groupNameFace)으로 돌아간다 — 카드·원형·하단 탭·진입 화면 모두.
+   */
+  setGroupCirclePhoto(groupId, url) {
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
+    const group = this.getGroup(groupId);
+    if (!group) return { ok: false, reason: 'not_found' };
+    const src = String(url || '');
+    if (!/^data:image\//.test(src) && !/^https?:\/\//.test(src)) return this.clearGroupCirclePhoto(groupId);
+    group.coverCircle = src;
+    group.photoUrl = src;
+    group.coverImage = { circle: src, card: src };
+    this.saveState();
+    return { ok: true, group, circle: src };
+  }
+
+  /** 모임 대표 사진을 지워 모임 이름 얼굴(기본)로 되돌린다. */
+  clearGroupCirclePhoto(groupId) {
+    if (!this.can(groupId, 'edit_group')) return { ok: false, reason: 'permission' };
+    const group = this.getGroup(groupId);
+    if (!group) return { ok: false, reason: 'not_found' };
+    const had = !!(group.coverCircle || group.photoUrl
+      || (group.coverImage && (group.coverImage.circle || group.coverImage.card)));
+    delete group.coverCircle;
+    delete group.photoUrl;
+    delete group.coverImage;
+    if (had) this.saveState();
+    return { ok: true, group, cleared: had };
   }
 
   /** 표지를 기본(최근 글 사진)으로 되돌린다. */
