@@ -7645,7 +7645,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </label>
           <div class="settings-group">
             ${gsRow({ label: '아지트', value: `${azits.length}곳 · ${azits.map((a) => a.name).join(', ').slice(0, 18)}`, action: 'data-gs-azit="1"', chev: true })}
-            ${gsRow({ label: '대표 이미지', value: (store.getGroupCover(gid) || {}).custom ? '직접 고름' : '최근 사진', action: 'data-gs-cover="1"', chev: true })}
+            <!-- v39.4 — 위 '대표 사진'(원형)과 헷갈리지 않게 '카드 표지'로 부른다(4:3 카드에 깔리는 사진). -->
+            ${gsRow({ label: '카드 표지', value: (store.getGroupCover(gid) || {}).custom ? '직접 고름' : '최근 사진', action: 'data-gs-cover="1"', chev: true })}
           </div>
           <label class="gs-field">
             <span class="gs-field-label">규칙</span>
@@ -7664,7 +7665,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="btn-secondary gs-mini" type="submit">추가</button>
           </form>
           <p class="gs-note">말머리는 멤버가 글을 쓸 때 고를 수 있어요. 이미 올린 글의 태그는 그대로 남아요.</p>`)}
-        <p class="gs-note">아지트는 위 '아지트' 행에서, 대표 이미지는 모임 정보 화면에서 고를 수 있어요.</p>
+        <p class="gs-note">아지트는 위 '아지트' 행에서, 카드 표지는 '카드 표지' 행에서 고를 수 있어요.</p>
       </div>`;
   }
 
