@@ -7654,7 +7654,7 @@ class Store {
         if (sidoId && s.sidoId !== sidoId) return false;
         if (sigunguId && s.sigunguId !== sigunguId) return false;
         if (areaId && s.areaId !== areaId) return false;
-        if (!q) return true;
+        if (!q) { s.__q = null; return true; }
         /* v39.1 — 이름·별칭(역·노선) 0순위, 시·군·구·권역 이름은 1순위.
            '성수역'을 찾을 때 같은 권역의 다른 역보다 성수역이 먼저 오게 한다. */
         const area = s.sigunguId ? geoAreaView(s.sigunguId) : null;
