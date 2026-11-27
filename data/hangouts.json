@@ -319,6 +319,7 @@
     "1호선",
     "경의중앙",
     "KTX",
+    "경의중앙선",
     "경춘선",
     "수인분당선"
    ]
@@ -375,7 +376,8 @@
     "상봉",
     "7호선",
     "경의중앙",
-    "경춘선"
+    "경춘선",
+    "경의중앙선"
    ]
   },
   {
@@ -389,7 +391,8 @@
    "aliases": [
     "망우",
     "경의중앙",
-    "경춘선"
+    "경춘선",
+    "경의중앙선"
    ]
   },
   {
@@ -829,7 +832,7 @@
     "5호선",
     "9호선",
     "공항철도",
-    "김포 골드라인",
+    "김포골드라인",
     "서해선"
    ]
   },
@@ -1002,15 +1005,29 @@
    ]
   },
   {
+   "id": "azit-sadang",
+   "name": "사당역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.476,
+   "lng": 126.981,
+   "aliases": [
+    "사당",
+    "2호선",
+    "4호선"
+   ]
+  },
+  {
    "id": "azit-boramae",
-   "name": "뚝섬한강공원",
+   "name": "보라매공원",
    "kind": "landmark",
    "sidoId": "seoul",
    "sigunguId": "seoul-dongjak",
    "lat": 37.492,
    "lng": 126.925,
    "aliases": [
-    "뚝섬한강",
+    "보라매",
     "공원",
     "신대방"
    ]
@@ -1025,7 +1042,7 @@
    "lng": 126.957,
    "aliases": [
     "중앙대",
-    "옥수"
+    "흑석"
    ]
   },
   {
@@ -1039,6 +1056,62 @@
    "aliases": [
     "숭실대",
     "상도"
+   ]
+  },
+  {
+   "id": "azit-sillim",
+   "name": "신림역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.484,
+   "lng": 126.929,
+   "aliases": [
+    "신림",
+    "신림동",
+    "2호선",
+    "신림선"
+   ]
+  },
+  {
+   "id": "azit-seouluniv",
+   "name": "서울대입구역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.481,
+   "lng": 126.953,
+   "aliases": [
+    "서울대입구",
+    "봉천",
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-snu",
+   "name": "서울대학교",
+   "kind": "university",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.46,
+   "lng": 126.952,
+   "aliases": [
+    "서울대",
+    "관악",
+    "샤로수길"
+   ]
+  },
+  {
+   "id": "azit-nakseongdae",
+   "name": "낙성대역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.477,
+   "lng": 126.964,
+   "aliases": [
+    "낙성대",
+    "2호선"
    ]
   },
   {
@@ -1109,6 +1182,20 @@
     "강남",
     "2호선",
     "신분당선"
+   ]
+  },
+  {
+   "id": "azit-yeoksam",
+   "name": "역삼역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangnam",
+   "lat": 37.5,
+   "lng": 127.036,
+   "aliases": [
+    "역삼",
+    "2호선",
+    "테헤란로"
    ]
   },
   {
@@ -1390,7 +1477,8 @@
    "aliases": [
     "수원",
     "1호선",
-    "수인분당"
+    "수인분당",
+    "수인분당선"
    ]
   },
   {
@@ -1619,7 +1707,8 @@
    "aliases": [
     "다산",
     "남양주",
-    "경의중앙"
+    "경의중앙",
+    "8호선"
    ]
   },
   {
@@ -2160,7 +2249,9 @@
    "sigunguId": "busan-buk",
    "lat": 35.281,
    "lng": 129.018,
-   "aliases": []
+   "aliases": [
+    "2호선"
+   ]
   },
   {
    "id": "azit-st-012",
@@ -2560,7 +2651,9 @@
    "sigunguId": "busan-gangseo",
    "lat": 35.222,
    "lng": 128.928,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-045",
@@ -2582,7 +2675,9 @@
    "sigunguId": "busan-gangseo",
    "lat": 35.228,
    "lng": 128.924,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-047",
@@ -2989,7 +3084,9 @@
    "sigunguId": "busan-jung",
    "lat": 35.101,
    "lng": 129.02,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-081",
@@ -3047,7 +3144,9 @@
    "sigunguId": "busan-nam",
    "lat": 35.135,
    "lng": 129.085,
-   "aliases": []
+   "aliases": [
+    "2호선"
+   ]
   },
   {
    "id": "azit-st-086",
@@ -3506,7 +3605,9 @@
    "sigunguId": "chungnam-asan",
    "lat": 36.777,
    "lng": 127.052,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-124",
@@ -3516,7 +3617,9 @@
    "sigunguId": "chungnam-asan",
    "lat": 36.769,
    "lng": 126.951,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-125",
@@ -3526,7 +3629,9 @@
    "sigunguId": "chungnam-asan",
    "lat": 36.792,
    "lng": 127.105,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-126",
@@ -3536,7 +3641,9 @@
    "sigunguId": "chungnam-asan",
    "lat": 36.78,
    "lng": 127.004,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-127",
@@ -3546,7 +3653,9 @@
    "sigunguId": "chungnam-asan",
    "lat": 36.788,
    "lng": 127.084,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-128",
@@ -3556,7 +3665,9 @@
    "sigunguId": "chungnam-cheonan",
    "lat": 36.833,
    "lng": 127.149,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-129",
@@ -3566,7 +3677,9 @@
    "sigunguId": "chungnam-cheonan",
    "lat": 36.801,
    "lng": 127.135,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-130",
@@ -3576,7 +3689,9 @@
    "sigunguId": "chungnam-cheonan",
    "lat": 36.915,
    "lng": 127.127,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-131",
@@ -3586,7 +3701,9 @@
    "sigunguId": "chungnam-cheonan",
    "lat": 36.793,
    "lng": 127.121,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-132",
@@ -3596,7 +3713,9 @@
    "sigunguId": "chungnam-cheonan",
    "lat": 36.872,
    "lng": 127.143,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-133",
@@ -3606,7 +3725,9 @@
    "sigunguId": "chungnam-cheonan",
    "lat": 36.811,
    "lng": 127.147,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-134",
@@ -4024,7 +4145,9 @@
    "sigunguId": "daegu-dong",
    "lat": 35.872,
    "lng": 128.751,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-169",
@@ -4046,7 +4169,9 @@
    "sigunguId": "daegu-dong",
    "lat": 35.884,
    "lng": 128.632,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-171",
@@ -5343,7 +5468,9 @@
    "sigunguId": "gyeongbuk-gyeongsan",
    "lat": 35.909,
    "lng": 128.818,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-279",
@@ -5506,6 +5633,18 @@
    "aliases": [
     "4호선",
     "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-292",
+   "name": "관악역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-anyang",
+   "lat": 37.42,
+   "lng": 126.909,
+   "aliases": [
+    "1호선"
    ]
   },
   {
@@ -5674,7 +5813,10 @@
    "sigunguId": "gyeonggi-bucheon",
    "lat": 37.493,
    "lng": 126.825,
-   "aliases": []
+   "aliases": [
+    "1호선",
+    "7호선"
+   ]
   },
   {
    "id": "azit-st-307",
@@ -6207,7 +6349,9 @@
    "sigunguId": "gyeonggi-guri",
    "lat": 37.612,
    "lng": 127.138,
-   "aliases": []
+   "aliases": [
+    "8호선"
+   ]
   },
   {
    "id": "azit-st-351",
@@ -6217,7 +6361,9 @@
    "sigunguId": "gyeonggi-guri",
    "lat": 37.588,
    "lng": 127.138,
-   "aliases": []
+   "aliases": [
+    "8호선"
+   ]
   },
   {
    "id": "azit-st-352",
@@ -6347,7 +6493,9 @@
    "sigunguId": "gyeonggi-gwangmyeong",
    "lat": 37.494,
    "lng": 126.843,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-363",
@@ -6525,7 +6673,9 @@
    "sigunguId": "gyeonggi-namyangju",
    "lat": 37.667,
    "lng": 127.115,
-   "aliases": []
+   "aliases": [
+    "4호선"
+   ]
   },
   {
    "id": "azit-st-378",
@@ -6547,7 +6697,9 @@
    "sigunguId": "gyeonggi-namyangju",
    "lat": 37.705,
    "lng": 127.19,
-   "aliases": []
+   "aliases": [
+    "4호선"
+   ]
   },
   {
    "id": "azit-st-380",
@@ -6569,7 +6721,9 @@
    "sigunguId": "gyeonggi-namyangju",
    "lat": 37.721,
    "lng": 127.203,
-   "aliases": []
+   "aliases": [
+    "4호선"
+   ]
   },
   {
    "id": "azit-st-382",
@@ -6627,7 +6781,9 @@
    "sigunguId": "gyeonggi-osan",
    "lat": 37.196,
    "lng": 127.052,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-387",
@@ -7063,7 +7219,9 @@
    "sigunguId": "gyeonggi-suwon",
    "lat": 37.245,
    "lng": 127.013,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-423",
@@ -7073,7 +7231,9 @@
    "sigunguId": "gyeonggi-suwon",
    "lat": 37.285,
    "lng": 126.989,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-424",
@@ -7095,7 +7255,9 @@
    "sigunguId": "gyeonggi-uijeongbu",
    "lat": 37.751,
    "lng": 127.072,
-   "aliases": []
+   "aliases": [
+    "의정부선"
+   ]
   },
   {
    "id": "azit-st-426",
@@ -7754,7 +7916,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.267,
    "lng": 128.865,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-481",
@@ -7764,7 +7928,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.229,
    "lng": 128.916,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-482",
@@ -7774,7 +7940,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.227,
    "lng": 128.89,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-483",
@@ -7784,7 +7952,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.24,
    "lng": 128.872,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-484",
@@ -7794,7 +7964,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.227,
    "lng": 128.874,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-485",
@@ -7804,7 +7976,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.226,
    "lng": 128.884,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-486",
@@ -7814,7 +7988,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.233,
    "lng": 128.872,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-487",
@@ -7824,7 +8000,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.25,
    "lng": 128.869,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-488",
@@ -7834,7 +8012,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.228,
    "lng": 128.902,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-489",
@@ -7844,7 +8024,9 @@
    "sigunguId": "gyeongnam-gimhae",
    "lat": 35.26,
    "lng": 128.867,
-   "aliases": []
+   "aliases": [
+    "부산김해경전철선"
+   ]
   },
   {
    "id": "azit-st-490",
@@ -7854,7 +8036,9 @@
    "sigunguId": "gyeongnam-yangsan",
    "lat": 35.325,
    "lng": 129.019,
-   "aliases": []
+   "aliases": [
+    "2호선"
+   ]
   },
   {
    "id": "azit-st-491",
@@ -7864,7 +8048,9 @@
    "sigunguId": "gyeongnam-yangsan",
    "lat": 35.317,
    "lng": 129.014,
-   "aliases": []
+   "aliases": [
+    "2호선"
+   ]
   },
   {
    "id": "azit-st-492",
@@ -7874,7 +8060,9 @@
    "sigunguId": "gyeongnam-yangsan",
    "lat": 35.339,
    "lng": 129.026,
-   "aliases": []
+   "aliases": [
+    "2호선"
+   ]
   },
   {
    "id": "azit-st-493",
@@ -7884,7 +8072,9 @@
    "sigunguId": "gyeongnam-yangsan",
    "lat": 35.344,
    "lng": 129.033,
-   "aliases": []
+   "aliases": [
+    "2호선"
+   ]
   },
   {
    "id": "azit-st-494",
@@ -8123,7 +8313,9 @@
    "sigunguId": "incheon-gyeyang",
    "lat": 37.592,
    "lng": 126.713,
-   "aliases": []
+   "aliases": [
+    "인천1호선"
+   ]
   },
   {
    "id": "azit-st-514",
@@ -8385,7 +8577,9 @@
    "sigunguId": "incheon-namdong",
    "lat": 37.457,
    "lng": 126.71,
-   "aliases": []
+   "aliases": [
+    "인천2호선"
+   ]
   },
   {
    "id": "azit-st-536",
@@ -8563,7 +8757,9 @@
    "sigunguId": "incheon-seo",
    "lat": 37.602,
    "lng": 126.689,
-   "aliases": []
+   "aliases": [
+    "인천1호선"
+   ]
   },
   {
    "id": "azit-st-551",
@@ -8621,7 +8817,9 @@
    "sigunguId": "incheon-seo",
    "lat": 37.603,
    "lng": 126.699,
-   "aliases": []
+   "aliases": [
+    "인천1호선"
+   ]
   },
   {
    "id": "azit-st-556",
@@ -8976,6 +9174,43 @@
    ]
   },
   {
+   "id": "azit-st-585",
+   "name": "보라매공원역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.495,
+   "lng": 126.918,
+   "aliases": [
+    "신림선"
+   ]
+  },
+  {
+   "id": "azit-st-586",
+   "name": "보라매병원역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.493,
+   "lng": 126.924,
+   "aliases": [
+    "신림선"
+   ]
+  },
+  {
+   "id": "azit-st-587",
+   "name": "보라매역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.5,
+   "lng": 126.921,
+   "aliases": [
+    "7호선",
+    "신림선"
+   ]
+  },
+  {
    "id": "azit-st-588",
    "name": "상도역",
    "kind": "station",
@@ -9046,6 +9281,18 @@
    "lng": 126.939,
    "aliases": [
     "7호선"
+   ]
+  },
+  {
+   "id": "azit-st-594",
+   "name": "흑석역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-dongjak",
+   "lat": 37.509,
+   "lng": 126.963,
+   "aliases": [
+    "9호선"
    ]
   },
   {
@@ -9428,7 +9675,9 @@
    "sigunguId": "seoul-gangdong",
    "lat": 37.557,
    "lng": 127.137,
-   "aliases": []
+   "aliases": [
+    "8호선"
+   ]
   },
   {
    "id": "azit-st-627",
@@ -9438,7 +9687,9 @@
    "sigunguId": "seoul-gangdong",
    "lat": 37.528,
    "lng": 127.148,
-   "aliases": []
+   "aliases": [
+    "9호선"
+   ]
   },
   {
    "id": "azit-st-628",
@@ -9908,7 +10159,9 @@
    "sigunguId": "seoul-guro",
    "lat": 37.495,
    "lng": 126.858,
-   "aliases": []
+   "aliases": [
+    "1호선"
+   ]
   },
   {
    "id": "azit-st-667",
@@ -9979,7 +10232,57 @@
    "sigunguId": "seoul-guro",
    "lat": 37.486,
    "lng": 126.839,
-   "aliases": []
+   "aliases": [
+    "7호선"
+   ]
+  },
+  {
+   "id": "azit-st-673",
+   "name": "관악산역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.469,
+   "lng": 126.945,
+   "aliases": [
+    "신림선"
+   ]
+  },
+  {
+   "id": "azit-st-674",
+   "name": "봉천역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.483,
+   "lng": 126.942,
+   "aliases": [
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-st-675",
+   "name": "서울대벤처타운역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.472,
+   "lng": 126.934,
+   "aliases": [
+    "신림선"
+   ]
+  },
+  {
+   "id": "azit-st-676",
+   "name": "서원역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.498,
+   "lng": 126.944,
+   "aliases": [
+    "신림선"
+   ]
   },
   {
    "id": "azit-st-677",
@@ -10347,7 +10650,9 @@
    "sigunguId": "seoul-jungnang",
    "lat": 37.581,
    "lng": 127.088,
-   "aliases": []
+   "aliases": [
+    "7호선"
+   ]
   },
   {
    "id": "azit-st-707",
@@ -10359,7 +10664,7 @@
    "lng": 127.103,
    "aliases": [
     "6호선",
-    "경의중앙",
+    "경의중앙선",
     "경춘선"
    ]
   },
@@ -10372,7 +10677,7 @@
    "lat": 37.607,
    "lng": 127.108,
    "aliases": [
-    "경의중앙"
+    "경의중앙선"
    ]
   },
   {
@@ -10396,7 +10701,7 @@
    "lat": 37.595,
    "lng": 127.076,
    "aliases": [
-    "경의중앙",
+    "경의중앙선",
     "경춘선"
    ]
   },
@@ -10469,7 +10774,9 @@
    "sigunguId": "seoul-mapo",
    "lat": 37.54,
    "lng": 126.946,
-   "aliases": []
+   "aliases": [
+    "5호선"
+   ]
   },
   {
    "id": "azit-st-717",
@@ -10564,7 +10871,9 @@
    "sigunguId": "seoul-nowon",
    "lat": 37.67,
    "lng": 127.078,
-   "aliases": []
+   "aliases": [
+    "4호선"
+   ]
   },
   {
    "id": "azit-st-725",
@@ -10710,7 +11019,9 @@
    "sigunguId": "seoul-seocho",
    "lat": 37.466,
    "lng": 126.988,
-   "aliases": []
+   "aliases": [
+    "4호선"
+   ]
   },
   {
    "id": "azit-st-737",
@@ -11417,6 +11728,18 @@
    ]
   },
   {
+   "id": "azit-st-795",
+   "name": "국회의사당역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-yeongdeungpo",
+   "lat": 37.528,
+   "lng": 126.917,
+   "aliases": [
+    "9호선"
+   ]
+  },
+  {
    "id": "azit-st-796",
    "name": "대방역",
    "kind": "station",
@@ -11438,7 +11761,7 @@
    "lng": 126.929,
    "aliases": [
     "9호선",
-    "성수역"
+    "신림선"
    ]
   },
   {
@@ -11450,7 +11773,7 @@
    "lat": 37.506,
    "lng": 126.923,
    "aliases": [
-    "성수선"
+    "신림선"
    ]
   },
   {
@@ -11498,7 +11821,9 @@
    "sigunguId": "seoul-yeongdeungpo",
    "lat": 37.527,
    "lng": 126.933,
-   "aliases": []
+   "aliases": [
+    "5호선"
+   ]
   },
   {
    "id": "azit-st-803",
@@ -11695,6 +12020,246 @@
    "lng": 129.293,
    "aliases": [
     "동해선"
+   ]
+  },
+  {
+   "id": "azit-st-819",
+   "name": "가좌역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-seodaemun",
+   "lat": 37.569,
+   "lng": 126.915,
+   "aliases": [
+    "경의중앙선"
+   ]
+  },
+  {
+   "id": "azit-st-820",
+   "name": "서강대역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-mapo",
+   "lat": 37.552,
+   "lng": 126.935,
+   "aliases": [
+    "경의중앙선"
+   ]
+  },
+  {
+   "id": "azit-st-821",
+   "name": "고색역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.25,
+   "lng": 126.98,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-822",
+   "name": "오목천역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.243,
+   "lng": 126.964,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-823",
+   "name": "어천역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-hwaseong",
+   "lat": 37.25,
+   "lng": 126.909,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-824",
+   "name": "야목역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-hwaseong",
+   "lat": 37.261,
+   "lng": 126.884,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-825",
+   "name": "망포역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.246,
+   "lng": 127.057,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-826",
+   "name": "매교역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.265,
+   "lng": 127.016,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-827",
+   "name": "매탄권선역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.253,
+   "lng": 127.04,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-828",
+   "name": "수원시청역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.262,
+   "lng": 127.031,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-829",
+   "name": "영통역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.252,
+   "lng": 127.071,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-830",
+   "name": "청명역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.259,
+   "lng": 127.079,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-831",
+   "name": "압구정로데오역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gangnam",
+   "lat": 37.528,
+   "lng": 127.041,
+   "aliases": [
+    "수인분당선"
+   ]
+  },
+  {
+   "id": "azit-st-832",
+   "name": "광교역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.302,
+   "lng": 127.045,
+   "aliases": [
+    "신분당선"
+   ]
+  },
+  {
+   "id": "azit-st-833",
+   "name": "광교중앙역",
+   "kind": "station",
+   "sidoId": "gyeonggi",
+   "sigunguId": "gyeonggi-suwon",
+   "lat": 37.288,
+   "lng": 127.052,
+   "aliases": [
+    "신분당선"
+   ]
+  },
+  {
+   "id": "azit-st-834",
+   "name": "당곡역",
+   "kind": "station",
+   "sidoId": "seoul",
+   "sigunguId": "seoul-gwanak",
+   "lat": 37.489,
+   "lng": 126.928,
+   "aliases": [
+    "신림선"
+   ]
+  },
+  {
+   "id": "azit-st-835",
+   "name": "구명역",
+   "kind": "station",
+   "sidoId": "busan",
+   "sigunguId": "busan-buk",
+   "lat": 35.203,
+   "lng": 128.999,
+   "aliases": [
+    "2호선"
+   ]
+  },
+  {
+   "id": "azit-st-836",
+   "name": "부산진역",
+   "kind": "station",
+   "sidoId": "busan",
+   "sigunguId": "busan-dong",
+   "lat": 35.128,
+   "lng": 129.048,
+   "aliases": [
+    "1호선"
+   ]
+  },
+  {
+   "id": "azit-st-837",
+   "name": "기장역",
+   "kind": "station",
+   "sidoId": "busan",
+   "sigunguId": "busan-gijang",
+   "lat": 35.243,
+   "lng": 129.219,
+   "aliases": [
+    "동해선"
+   ]
+  },
+  {
+   "id": "azit-st-838",
+   "name": "부호역",
+   "kind": "station",
+   "sidoId": "gyeongbuk",
+   "sigunguId": "gyeongbuk-gyeongsan",
+   "lat": 35.9,
+   "lng": 128.803,
+   "aliases": [
+    "1호선"
    ]
   }
  ]

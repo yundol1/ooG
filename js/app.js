@@ -8048,7 +8048,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.0';
+  const APP_VERSION = 'v39.1';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -10260,11 +10260,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ui.filterChipKeys = chips.map((c) => c.key);
   }
 
-  /** Sprint 28.5 — 탐색 상단의 '내 동네' 칩과 지역 시트 머리 글자를 지금 선택에 맞춘다. */
+  /** Sprint 28.5 — 탐색 상단의 '내 아지트' 칩과 지역 시트 머리 글자를 지금 선택에 맞춘다. */
   function syncExploreNearbyChip() {
     if (!el.exploreNearbyLabel) return;
     const id = ui.exploreRegion;
-    const label = id === 'all' ? '내 동네 전체' : (id === 'nearby' ? '내 주변 5km' : store.getRegionLabel(id));
+    const label = id === 'all' ? '내 아지트 전체' : (id === 'nearby' ? '내 주변 5km' : store.getRegionLabel(id));
     el.exploreNearbyLabel.textContent = label;
     el.exploreNearbyChip && el.exploreNearbyChip.classList.toggle('is-set', id !== 'all');
     if (el.regionSheetCurrent) el.regionSheetCurrent.textContent = label;
@@ -10953,10 +10953,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const radiusOn = false;   // Sprint 25 — 반경 칩은 탐색에서 뺐다(지역이 그 역할을 한다)
 
     const regionLabel = region ? store.getRegionLabel(ui.exploreRegion) : '';
+    /* v39.1 — 검색은 아지트 기준 — 검색어가 아지트(역·학교·랜드마크)를 가리키면 그 이름을 보여 준다. */
+    const azitLookup = ui.exploreQuery && store.isAzitOnlyQuery(ui.exploreQuery)
+      ? store.resolveAzitQuery(ui.exploreQuery) : null;
+    const azitLabel = azitLookup
+      ? (azitLookup.placeName || azitLookup.names[0]
+        || (azitLookup.regionIds.size ? store.getRegionLabel(Array.from(azitLookup.regionIds)[0]) : ''))
+      : '';
     if (el.exploreCount) {
       /* Sprint 28.5 — '사람 N · 글 N' 대신 '방금 올라온' 으로 말한다. */
       if (ui.exploreQuery) {
-        el.exploreCount.textContent = `'${ui.exploreQuery}' 결과 · 방금 올라온 ${people + posts}개`;
+        el.exploreCount.textContent = azitLabel
+          ? `‘${azitLabel}’ 아지트 · 방금 올라온 ${people + posts}개`
+          : `'${ui.exploreQuery}' 결과 · 방금 올라온 ${people + posts}개`;
       } else if (ui.exploreFilter === 'people') {
         el.exploreCount.textContent = `방금 올라온 사람 ${people}명`;
       } else if (ui.exploreFilter === 'posts') {
@@ -10976,7 +10985,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? (ui.exploreRegion === 'nearby' ? '내 주변' : regionLabel)
         : '';
       if (ui.exploreQuery) {
-        el.exploreTitle.textContent = '검색 결과';
+        el.exploreTitle.textContent = azitLabel ? `${azitLabel} 아지트` : '검색 결과';
       } else if (ageOn && ageFilter) {
         el.exploreTitle.textContent = `${baseLabel ? `${baseLabel} · ` : ''}${ageFilter.name} 사람과 번개`;
       } else if (baseLabel) {
@@ -10984,7 +10993,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (activeFilter && activeFilter.id !== 'all') {
         el.exploreTitle.textContent = `${activeFilter.name === 'people' ? '사람' : '글'}만 모아 보기`;
       } else {
-        el.exploreTitle.textContent = '우리 동네 사람과 번개';
+        el.exploreTitle.textContent = '아지트 사람과 번개';
       }
     }
 
@@ -11001,9 +11010,9 @@ document.addEventListener('DOMContentLoaded', () => {
            이때 접히므로(CSS .is-field-empty), 같은 행동을 두 곳에서 권하지 않는다. */
         el.exploreMasonry.innerHTML = `
           <div class="empty-state explore-empty is-field-empty">
-            <p class="empty-kicker">비어 있는 우리 동네</p>
+            <p class="empty-kicker">비어 있는 우리 아지트</p>
             <p class="empty-title">첫 글을 남겨 볼까요?</p>
-            <p class="empty-desc">동네 인사나 지금 만나고 싶은 이야기를 한 줄 남기면<br>이 자리에서 사람들이 보이기 시작해요.</p>
+            <p class="empty-desc">아지트 인사나 지금 만나고 싶은 이야기를 한 줄 남기면<br>이 자리에서 사람들이 보이기 시작해요.</p>
             <div class="empty-actions">
               <button class="btn-primary empty-primary" data-explore-compose-here="1" type="button">첫 글 쓰기</button>
             </div>
@@ -11014,20 +11023,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const nearest = store.nearestDistanceKm(ui.exploreFilter, ui.exploreQuery, ui.exploreAge, ui.exploreRegion);
       const reason = ui.exploreRegion === 'nearby'
         ? (nearest != null
-          ? `가장 가까운 카드가 ${distLabel(nearest)} 거리에 있어요. 다른 동네를 골라보세요.`
-          : '다른 동네를 골라보세요.')
+          ? `가장 가까운 카드가 ${distLabel(nearest)} 거리에 있어요. 다른 아지트를 골라보세요.`
+          : '다른 아지트를 골라보세요.')
         : (ageOn
-          ? `‘${escapeHtml((ageFilter || {}).name || '')}’ 조건을 풀거나 다른 동네를 골라보세요.`
-          : (region ? `‘${escapeHtml(store.getRegionLabel(ui.exploreRegion))}’에는 아직 글이 없어요. 첫 글을 남기거나 다른 동네를 골라보세요.` : '검색어를 짧게 바꾸거나 다른 동네를 골라보세요.'));
+          ? `‘${escapeHtml((ageFilter || {}).name || '')}’ 조건을 풀거나 다른 아지트를 골라보세요.`
+          : (azitLabel ? `‘${escapeHtml(azitLabel)}’ 아지트에서 만날 사람을 첫 글로 불러 보세요. 다른 아지트를 골라볼 수도 있어요.`
+            : (region ? `‘${escapeHtml(store.getRegionLabel(ui.exploreRegion))}’에는 아직 글이 없어요. 첫 글을 남기거나 다른 아지트를 골라보세요.` : '검색어를 짧게 바꾸거나 다른 아지트를 골라보세요.')));
       el.exploreMasonry.innerHTML = `
         <div class="empty-state explore-empty">
           ${emptyArt(ui.exploreQuery ? 'search' : 'explore')}
-          <p class="empty-title">${region
-            ? `${escapeHtml(store.getRegionLabel(ui.exploreRegion))}는 아직 조용해요`
-            : '조건에 맞는 카드가 없어요'}</p>
+          <p class="empty-title">${azitLabel
+            ? `${escapeHtml(azitLabel)} 아지트는 아직 조용해요`
+            : (region ? `${escapeHtml(store.getRegionLabel(ui.exploreRegion))}는 아직 조용해요`
+              : '조건에 맞는 카드가 없어요')}</p>
           <p class="empty-desc">${reason}</p>
           <div class="empty-actions">
-            <button class="btn-primary" data-explore-create="1" type="button">이 동네에 모임 만들기</button>
+            <button class="btn-primary" data-explore-create="1" type="button">이 아지트에 모임 만들기</button>
             <button class="btn-secondary" data-explore-compose-here="1" type="button">첫 글 쓰기</button>
             <button class="btn-secondary" data-explore-reset="1" type="button">필터 초기화</button>
           </div>
@@ -11124,7 +11135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* 필터 시트 열기 · 적용 · 초기화 · 닫기 */
   el.exploreFilterBtn && el.exploreFilterBtn.addEventListener('click', openFilterSheet);
-  /* Sprint 28.5 — 지역 시트(내 동네 칩 · 전체 보기) */
+  /* Sprint 28.5 — 지역 시트(내 아지트 칩 · 전체 보기) */
   el.exploreNearbyChip && el.exploreNearbyChip.addEventListener('click', openRegionSheet);
   el.btnRegionSheet && el.btnRegionSheet.addEventListener('click', openRegionSheet);
   const btnCloseRegion = $('#btn-close-region');

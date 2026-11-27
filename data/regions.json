@@ -150,6 +150,13 @@
      "lng": 126.939
     },
     {
+     "id": "seoul-gwanak",
+     "name": "관악구",
+     "regionId": "seoul-dongjak-gwanak",
+     "lat": 37.478,
+     "lng": 126.952
+    },
+    {
      "id": "seoul-seocho",
      "name": "서초구",
      "regionId": "seoul-seocho-gangnam",

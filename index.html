@@ -406,18 +406,18 @@
           <div class="explore-search">
             <span class="oo-icon-17" aria-hidden="true" data-oog-icon="search"></span>
             <span class="input-shrink">
-              <input type="search" id="explore-search-input" aria-label="동네나 닉네임, #태그로도 찾기" placeholder="동네나 닉네임으로 찾기" autocomplete="off">
+              <input type="search" id="explore-search-input" aria-label="아지트(역·학교·랜드마크)나 닉네임, #태그로도 찾기" placeholder="아지트나 닉네임으로 찾기" autocomplete="off">
             </span>
             <button class="explore-search-clear hide" id="explore-search-clear" aria-label="검색어 지우기">&times;</button>
           </div>
-          <!-- Sprint 28.5 — 탐색 상단은 **검색 + 내 동네 칩 + 필터** 세 가지만 남긴다.
+          <!-- Sprint 28.5 — 탐색 상단은 **검색 + 내 아지트 칩 + 필터** 세 가지만 남긴다.
                49개 지역 칩과 종류 세그먼트는 각각 '지역' 시트와 '관심 유형' 필터로 접었다. -->
           <div class="explore-toolbar explore-toolbar-slim">
             <button class="explore-nearby-chip" id="explore-nearby-chip" type="button"
                     aria-haspopup="dialog" aria-controls="region-modal" aria-expanded="false"
-                    aria-label="내 동네 바꾸기">
+                    aria-label="내 아지트 바꾸기">
               <span aria-hidden="true" data-oog-icon="pin"></span>
-              <span id="explore-nearby-label">내 동네</span>
+              <span id="explore-nearby-label">내 아지트</span>
               <span class="explore-nearby-caret" aria-hidden="true" data-oog-icon="chevronDown"></span>
             </button>
             <button class="explore-region-all-btn" id="btn-region-sheet" type="button"
@@ -443,7 +443,7 @@
 
         <div class="explore-head" id="explore-head">
           <div class="explore-head-text">
-            <h2 class="explore-title" id="explore-title">우리 동네 사람과 번개</h2>
+            <h2 class="explore-title" id="explore-title">아지트 사람과 번개</h2>
             <p class="explore-count" id="explore-count">사람 18 · 글 20</p>
           </div>
         </div>
@@ -1537,7 +1537,7 @@
     </div>
 
     <!-- ==================== 모달 14-B. 지역 선택 시트 (Sprint 28.5) ====================
-         탐색 상단에는 '내 동네' 칩만 두고, 49개 지역은 이 시트에서 고른다. -->
+         탐색 상단에는 '내 아지트' 칩만 두고, 49개 지역은 이 시트에서 고른다. -->
     <div class="modal-overlay" id="region-modal" role="dialog" aria-modal="true" aria-label="지역 선택">
       <div class="modal-sheet region-sheet" tabindex="-1">
         <div class="sheet-grabber"></div>
