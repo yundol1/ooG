@@ -20653,8 +20653,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (warn) { warn.hidden = false; warn.textContent = '이름은 12자까지 쓸 수 있어요'; }
       return { ok: false, reason: 'nickname' };
     }
+    /* v39.4 — 올리는 중이면 끝날 때까지 기다렸다 저장한다(같은 사진을 두 번 올리지 않게). */
+    if (ui.gpUpload && ui.gpUpload.groupId === gid && ui.gpUpload.promise) {
+      const pending = ui.gpUpload.promise;
+      const btn = $('#gp-save');
+      if (btn) btn.disabled = true;
+      setGpUploadNote('사진 올리는 중… 조금만 기다려 주세요', 'busy');
+      return pending.then(() => {
+        if (btn) btn.disabled = false;
+        return saveGroupProfileSetup();
+      });
+    }
     /* v39.4 — 이미 올라간 사진이면 그 경로를 함께 적는다(다음 저장이 다시 올리지 않게).
-       아직 data URL 이면(null) 비워 둔고 저장 뒤 동기화가 올린다. */
+       아직 data URL 이면(null) 비워 두고 저장 뒤 동기화가 올린다. */
     const path = (ui.gp.photoPath && /^https?:\/\//.test(photo)) ? ui.gp.photoPath : null;
     const res = store.updateGroupProfile(gid, { nickname: nick, photoUrl: photo, photoPath: path, profileAsked: true });
     if (!res.ok) {
@@ -20729,7 +20740,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return Promise.resolve({ ok: false, reason: 'no_session' });
     }
     setGpUploadNote('사진 올리는 중…', 'busy');
-    return cloud.uploadPhoto(src, 'avatars', 'group-profile').then((up) => {
+    const task = cloud.uploadPhoto(src, 'avatars', 'group-profile').then((up) => {
       const mine = ui.gpUpload && ui.gpUpload.seq === seq;
       if (!up || !up.ok) {
         /* 오프라인·실패 — data URL 그대로 두고 다음 저장에서 다시 시도한다. */
@@ -20748,6 +20759,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ui.gpUpload && ui.gpUpload.seq === seq) { ui.gpUpload = null; setGpUploadNote('', ''); }
       return { ok: false, reason: 'upload_failed' };
     });
+    /* 저장이 올리는 중에 눌리면 끝날 때까지 기다릴 수 있게 약속을 들고 있는다. */
+    if (ui.gpUpload && ui.gpUpload.seq === seq) ui.gpUpload.promise = task;
+    return task;
   }
 
   $('#gp-pick-photo') && $('#gp-pick-photo').addEventListener('click', () => {
