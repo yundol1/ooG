@@ -7742,8 +7742,14 @@ class Store {
            끌어오지 않게). 맞은 노선 이름은 목록의 한 줄에 그대로 보여 준다. */
         let lineLabel = null;
         if (qLinesLower.length) {
-          lineLabel = (s.aliases || []).map((a) => String(a || '').trim())
-            .find((a) => qLinesLower.indexOf(a.toLowerCase()) >= 0) || null;
+          const labels = (s.aliases || []).map((a) => String(a || '').trim());
+          lineLabel = labels.find((a) => qLinesLower.indexOf(a.toLowerCase()) >= 0) || null;
+          /* v39.4 — 다른 노선 이름에만 걸리는 곳은 뺀다('1호선' 검색에 '인천1호선' 역이 섞이지 않게). */
+          if (!lineLabel && labels.some((a) => azitLineLabels().indexOf(a) >= 0)) {
+            s.__line = null;
+            s.__q = null;
+            return false;
+          }
         }
         /* v39.4 — 초성 — 'ㅅㄹ' → 성수역. 이름이 먼저, 별칭(역·학교 이름)도 뒤에 본다. */
         let initialPrefix = false;
