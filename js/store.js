@@ -7431,7 +7431,20 @@ class Store {
     });
 
     const sort = ['recommend', 'near', 'members', 'new', 'name'].includes(o.sort) ? o.sort : 'recommend';
+    /* v40.0 — 검색어가 있으면 **모임명이 맞는 곳부터**. (이름 정확 = 0 · 이름 시작 = 1 · 이름 포함 = 2 · 그 밖 = 3) */
+    const nameRank = (g) => {
+      if (!q) return 0;
+      const name = String(g.name || '').toLowerCase();
+      if (name === q) return 0;
+      if (name.startsWith(q)) return 1;
+      if (name.includes(q)) return 2;
+      return 3;
+    };
     list.sort((a, b) => {
+      if (q) {
+        const r = nameRank(a.group) - nameRank(b.group);
+        if (r) return r;
+      }
       if (sort === 'near') return ((a.distanceKm == null ? 99 : a.distanceKm) - (b.distanceKm == null ? 99 : b.distanceKm))
         || ((b.group.memberCount || 0) - (a.group.memberCount || 0));
       if (sort === 'members') return (b.group.memberCount || 0) - (a.group.memberCount || 0);
@@ -8194,9 +8207,11 @@ class Store {
     }
 
     const groups = [];
-    /* Sprint 22 — 탐색에는 모임이 없다(홈의 '모임 둘러보기'가 맡는다).
-       홈이 모임 목록이 필요할 때만 kind === 'groups' 로 직접 부른다(getGroupBrowse). */
-    if (kind === 'groups') {
+    /* Sprint 22 — 탐색 기본 화면에는 모임이 없다(홈 추천·모임 찾기가 맡는다).
+       홈이 모임 목록이 필요할 때만 kind === 'groups' 로 직접 부른다(getGroupBrowse).
+       v40.0 (38일차 · 사용자: "모임 찾기에 왜 아지트밖에 검색이 안 돼? 모임명으로 검색이 가능해야지")
+       — **검색어가 있을 때는 모임도 함께 찾는다**(모임명이 먼저). */
+    if (kind === 'groups' || (kind === 'all' && q)) {
       (this.state.groups || []).forEach((g) => {
         if (isHobby && g.hobbyId !== kind) return;
         if (!this.ageFilterAllowsGroup(age, g)) return;
@@ -8261,6 +8276,29 @@ class Store {
     [people, groups, posts].forEach((arr) => arr.forEach((it) => { delete it._azitOnly; }));
 
     const total = people.length + groups.length + posts.length;
+
+    /* v40.0 — 검색 결과는 **모임 → 사람 → 글** 순서로 한 번만 보여 준다.
+       (예전에는 종류를 번갈아 섞고 라운드를 돌려 같은 카드가 반복됐다 — 검색에는 맞지 않는다.) */
+    if (q) {
+      const ordered = groups.concat(people, posts);
+      const seen = new Set();
+      const uniq = ordered.filter((it) => {
+        const key = `${it.type}:${it.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      if (!options || typeof options !== 'object') {
+        return uniq.map((it) => Object.assign({}, it, { uid: `${it.id}#0`, round: 0 }));
+      }
+      const qLimit = Math.max(1, Math.min(40, Number(options.limit) || 12));
+      const qPage = Math.max(0, Number(options.page) || 0);
+      const slice = uniq.slice(qPage * qLimit, qPage * qLimit + qLimit);
+      return {
+        items: slice.map((it) => Object.assign({}, it, { uid: `${it.id}#0`, round: 0 })),
+        page: qPage, hasMore: (qPage + 1) * qLimit < uniq.length, total: uniq.length, round: 0
+      };
+    }
 
     /* 한 라운드 = 세 풀을 p·g·글 순서로 엮은 목록. 라운드마다 각 풀을 다르게 회전시켜
        같은 카드가 이웃하지 않으면서도 계속 새로운 배열로 이어진다. */
@@ -13719,9 +13757,15 @@ class Store {
     };
     const fromRoster = () => {
       const roster = this.getGroupRoster(groupId);
-      (roster.members || []).forEach((m) => {
-        add(m.id, m.photoUrl ? m.name : '', m.photoUrl, m.name, null, m.avatarText, m.gradient);
-      });
+      /* v40.0 — 카드 얼굴 순서와 모임 상세 멤버 목록 순서를 같게: 모임장 → 운영진 → 멤버. */
+      const rank = { owner: 0, staff: 1, member: 2 };
+      (roster.members || [])
+        .map((m, i) => ({ m, i, r: rank[m.groupRole] == null ? 3 : rank[m.groupRole] }))
+        .sort((a, b) => (a.r - b.r) || (a.i - b.i))
+        .forEach((entry) => {
+          const m = entry.m;
+          add(m.id, m.photoUrl ? m.name : '', m.photoUrl, m.name, null, m.avatarText, m.gradient);
+        });
     };
     /* 1) 내가 멤버면 명단에서(모임장 → 멤버 순) */
     if (this.isGroupJoined(groupId)) fromRoster();
@@ -13747,10 +13791,12 @@ class Store {
     const me = this.currentUser || {};
     if (!g.leaderId || g.leaderId !== me.id) return false;
     const rows = [];
-    if (g.leaderId) rows.push({ id: g.leaderId, name: g.leaderName || '', photoUrl: null });
+    if (g.leaderId) rows.push({ id: g.leaderId, name: g.leaderName || '', photoUrl: null, rank: 0 });
     (g.members || []).forEach((m) => {
-      if (m && m.id) rows.push({ id: m.id, name: m.name || '', photoUrl: m.photoUrl || null });
+      if (m && m.id) rows.push({ id: m.id, name: m.name || '', photoUrl: m.photoUrl || null, rank: m.role === 'staff' ? 1 : 2 });
     });
+    /* v40.0 — 카드 얼굴 순서(모임장 → 운영진 → 멤버)를 모임장 기기에서도 그대로 맞춘다. */
+    rows.sort((a, b) => a.rank - b.rank);
     const next = rows.slice(0, 3).map((r) => ({
       id: r.id, name: r.name, photoUrl: r.photoUrl || null
     }));
@@ -14398,6 +14444,9 @@ class Store {
     /* 가입 사진과 같은 data URL 이 대표로 남아 있으면 그대로 쓴다(업로드 뒤 https 로 바뀐다). */
     const url = (cover && cover.url) || null;
     u.photoUrl = url;
+    /* v40.0 — **사용자가 사진을 지웠다**는 표식. 서버(profiles.data.avatarCleared)에 함께 올려
+       다른 기기·새 기기가 '사진 없음'을 알 수 있게 한다(빈 앨범만 보고 지우지 않는다). */
+    u.avatarCleared = !url;
     (this.state.feedPosts || []).forEach((p) => { if (p.authorId === u.id) p.authorPhotoUrl = url; });
     (this.state.explorePosts || []).forEach((p) => { if (p.authorId === u.id) p.authorPhotoUrl = url; });
     (this.state.stories || []).filter((s) => s.authorId === u.id).forEach((s) => { s.authorPhotoUrl = url; });

@@ -266,7 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
     homeRecEvents: $('#home-rec-events'),
     homeRecFade: $('#home-rec-fade'),
     btnHomeRecExpand: $('#btn-home-rec-expand'),
-    homeRecExpandLabel: $('#home-rec-expand-label'),
     btnHomeRecommendMore: $('#btn-home-recommend-more'),
     homeSuggestEvents: $('#home-suggest-events'),
     homeSuggestEventsSub: $('#home-suggest-events-sub'),
@@ -843,9 +842,46 @@ document.addEventListener('DOMContentLoaded', () => {
     return u.avatarText || (u.nickname || '?').charAt(0) || '?';
   }
 
-  function avatarImgHTML(photoUrl, alt) {
+  /**
+   * 아바타 사진 한 장 — `letter` 를 주면 **못 불러왔을 때 그 글자로 바뀐다**(v40.0).
+   *  · 서버 주소가 죽었거나(지운 파일·정리된 파일·오프라인) 주소가 어긋나면 브라우저는
+   *    파란 [?] 자리표시자를 그린다. 좋아요 줄 아바타처럼 작은 원에는 그게 가장 눈에 거슬렸다
+   *    (사용자 11/28 22:43 · IMG_4643 "좋아요 아바타가 파란 엑박").
+   *  · error 는 버블하지 않으므로 문서 캡처(`bindAvatarErrorFallback`)에서 한 번에 받는다.
+   */
+  function avatarImgHTML(photoUrl, alt, letter) {
     if (!photoUrl) return '';
-    return `<img class="avatar-img" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(alt || '')}" loading="lazy" decoding="async">`;
+    const ch = letter == null ? '' : String(letter).trim().charAt(0);
+    return `<img class="avatar-img" src="${escapeHtml(photoUrl)}" alt="${escapeHtml(alt || '')}"`
+      + ` loading="lazy" decoding="async"${ch ? ` data-avatar-letter="${escapeHtml(ch)}"` : ''}>`;
+  }
+
+  /**
+   * v40.0 — 사진을 못 불러온 모든 <img> 를 **이름 첫 글자**로 바꾼다.
+   *  `data-avatar-letter` 가 붙은 사진(우리가 그린 아바타)만 손댄다 — 글·모임 사진은 그대로 둔다.
+   */
+  function bindAvatarErrorFallback() {
+    document.addEventListener('error', (ev) => {
+      const img = ev.target;
+      if (!img || img.tagName !== 'IMG') return;
+      const raw = img.getAttribute && img.getAttribute('data-avatar-letter');
+      if (raw == null) return;
+      const host = img.parentElement;
+      const span = document.createElement('span');
+      span.className = 'avatar-letter';
+      span.setAttribute('aria-hidden', 'true');
+      span.textContent = String(raw).charAt(0) || '?';   /* 글자가 비어도 [?] 를 그리지 않는다 */
+      if (host) {
+        host.classList.add('is-letter');
+        /* 사진과 같이 있던 배경(그라데이션)이 없으면 이름에서 만든 색을 깔아 준다. */
+        try {
+          if (!host.style.background || /transparent/.test(host.style.background)) {
+            host.style.background = commentAvatarTint((img.getAttribute('alt') || '').trim() || '?');
+          }
+        } catch (e) { /* noop */ }
+      }
+      img.replaceWith(span);
+    }, true);
   }
 
   /** 헤더·내정보 아바타를 내 사진/이니셜로 맞춘다.
@@ -1426,8 +1462,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body = `
         <div class="ob-hero">
           <h1 class="ob-title">인증 메일을<br>보냈어요</h1>
-          <p class="ob-desc"><b>${escapeHtml(d.email || (ob.email || ''))}</b> 메일함에서 <b>인증 링크</b>를 눌러 주세요.<br>
-            링크를 누르면 가입이 끝나고 바로 우그를 시작할 수 있어요.</p>
+          <p class="ob-desc"><b>${escapeHtml(d.email || (ob.email || ''))}</b>로 인증 링크를 보냈어요.</p>
         </div>
         <div class="ob-mailcard" data-ob-mailcard="verify" aria-label="인증 메일 안내">
           <div class="ob-mailcard-top">
@@ -1436,7 +1471,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <p class="ob-mailcard-row">받는 사람 <b>${escapeHtml(d.email || (ob.email || ''))}</b></p>
           <p class="ob-mailcard-row">제목 · ooG 이메일 주소를 확인해 주세요</p>
-          <p class="ob-mailcard-note">메일이 안 보이면 스팸함도 확인해 주세요. 아래 버튼으로 다시 보낼 수 있어요(잠시 기다려야 할 수 있어요).</p>
+          <p class="ob-mailcard-note">메일이 안 보이면 스팸함도 확인해 주세요.</p>
         </div>
         ${errHTML}
         <div class="ob-actions">
@@ -1523,8 +1558,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="ob-hero">
           <h1 class="ob-title">${reset ? '비밀번호를<br>잊으셨나요?' : '어떤 이메일로<br>시작할까요?'}</h1>
           <p class="ob-desc">${reset
-            ? '가입한 이메일로 재설정 링크를 보내 드려요. 링크를 누르면 새 비밀번호를 정할 수 있어요.'
-            : '이 주소로 인증 메일을 보내 드려요. 계정을 찾거나 비밀번호를 잊었을 때도 같은 주소를 씁니다.'}</p>
+            ? '이 주소로 재설정 링크를 보내요.'
+            : '이 주소로 인증 메일을 보내요.'}</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-email">이메일</label>
@@ -1532,9 +1567,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  value="${escapeHtml(d.email)}" placeholder="me@example.com">
         </div>
         ${errHTML}
-        <p class="ob-note">${reset
-          ? '가입한 이메일과 같은 주소를 넣어 주세요.'
-          : '인증 메일은 가입을 마친 뒤에 보내 드려요. 메일의 링크를 눌러야 계정이 열립니다.'}</p>
+        ${reset ? '<p class="ob-note">가입한 이메일과 같은 주소를 넣어 주세요.</p>' : ''}
         <div class="ob-actions">
           <button class="ob-btn primary" id="ob-next" type="button">${d.busy ? '확인 중…' : '계속'}</button>
           ${reset
@@ -1552,7 +1585,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ${obKicker(stepId)}
         <div class="ob-hero">
           <h1 class="ob-title">${reset ? '새 비밀번호를<br>정해주세요' : '비밀번호를<br>정해주세요'}</h1>
-          <p class="ob-desc">8자리 이상, 특수기호 1개 이상이면 돼요. 비밀번호를 잊으면 이메일로 다시 찾을 수 있어요.</p>
+          <p class="ob-desc">8자 이상, 특수기호 1개면 돼요.</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-password">비밀번호 <span class="ob-hint">8자 이상 + 특수기호</span></label>
@@ -1577,12 +1610,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ${obKicker('nickname')}
         <div class="ob-hero">
           <h1 class="ob-title">뭐라고<br>부를까요?</h1>
-          <p class="ob-desc">당신의 이름(닉네임)은 무엇인가요? 다른 사람들이 어떻게 불렀으면 좋겠나요?<br>
-            피드·스토리·디엠·탐색 카드에 이 이름이 보여요.</p>
+          <p class="ob-desc">피드와 채팅에 이 이름이 보여요.</p>
         </div>
         <div class="ob-name-row">
           <span class="ob-name-avatar" id="ob-name-avatar" style="background:${d.photoUrl ? 'transparent' : d.avatarGradient}">
-            ${d.photoUrl ? avatarImgHTML(d.photoUrl, '내 사진') : escapeHtml((d.nickname || '').charAt(0) || '?')}
+            ${d.photoUrl ? avatarImgHTML(d.photoUrl, '내 사진', (d.nickname || '').charAt(0)) : escapeHtml((d.nickname || '').charAt(0) || '?')}
           </span>
           <div class="ob-field ob-field-grow">
             <label class="ob-label" for="ob-nickname">닉네임 <span class="ob-hint">2~12자</span></label>
@@ -1601,7 +1633,7 @@ document.addEventListener('DOMContentLoaded', () => {
                    value="${escapeHtml(d.handle || '')}" placeholder="예: runningjun"
                    aria-describedby="ob-handle-hint">
           </div>
-          <p class="ob-handle-hint" id="ob-handle-hint">프로필·피드·댓글에 보이는 나만의 아이디예요.</p>
+          <p class="ob-handle-hint" id="ob-handle-hint">나만의 아이디예요.</p>
         </div>
         ${errHTML}
         <div class="ob-actions">
@@ -1618,8 +1650,8 @@ document.addEventListener('DOMContentLoaded', () => {
       body = `
         ${obKicker('me')}
         <div class="ob-hero">
-          <h1 class="ob-title">마지막으로<br>나이와 아지트예요</h1>
-          <p class="ob-desc">나이 제한이 있는 모임을 가려내고, 가까운 모임을 먼저 보여드리는 데만 써요. 나중에 내정보에서 바꿀 수 있어요.</p>
+          <h1 class="ob-title">나이와<br>아지트</h1>
+          <p class="ob-desc">나이 제한 모임과 가까운 모임에 써요.</p>
         </div>
         <div class="ob-field">
           <label class="ob-label" for="ob-age">나이 <span class="ob-hint">선택</span></label>
@@ -1632,8 +1664,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         ${errHTML}
         <p class="ob-note" id="ob-azit-note">${azit
-          ? `${escapeHtml(azit.name)} 근처 모임을 먼저 보여드릴게요.`
-          : '아지트를 고르면 가까운 모임과 이웃을 먼저 보여드려요.'}</p>
+          ? `${escapeHtml(azit.name)} 근처 모임부터 보여드려요.`
+          : '아지트를 고르면 가까운 모임부터 보여드려요.'}</p>
         <div class="ob-actions">
           <button class="ob-btn primary" id="ob-submit" type="button">우그 시작하기</button>
           <button class="ob-btn ghost" id="ob-back" type="button">이전</button>
@@ -1648,18 +1680,15 @@ document.addEventListener('DOMContentLoaded', () => {
       body = `
         ${obKicker('photo')}
         <div class="ob-hero">
-          <h1 class="ob-title">프로필에 크게 보일<br>대표 사진이에요</h1>
-          <p class="ob-desc">내 프로필 맨 위에 큰 1번 사진으로 보여요. 얼굴이 아니어도 괜찮아요 —
-            좋아하는 취미 사진이면 충분하고, 나중에 내 프로필에서 바꿀 수 있어요.</p>
+          <h1 class="ob-title">대표<br>사진</h1>
+          <p class="ob-desc">내 프로필에 크게 보여요.</p>
         </div>
         <div class="ob-photo-stage ob-photo-stage-lg">
           <div class="ob-photo-preview ob-photo-preview-lg ${d.avatarGradient === SIGNUP_FALLBACK_GRADIENT ? 'brand' : ''}" id="ob-photo-preview"
                style="background:${d.photoUrl ? 'transparent' : d.avatarGradient}">
-            ${d.photoUrl ? avatarImgHTML(d.photoUrl, '대표 사진 미리보기') : escapeHtml((d.nickname || '').charAt(0) || 'ooG')}
+            ${d.photoUrl ? avatarImgHTML(d.photoUrl, '대표 사진 미리보기', (d.nickname || '').charAt(0)) : escapeHtml((d.nickname || '').charAt(0) || 'ooG')}
           </div>
-          <p class="ob-photo-caption" id="ob-photo-caption">${picked
-            ? '공개 사진 1번 · 대표 사진으로 등록돼요'
-            : '아직 사진을 고르지 않았어요 · 사진 없이도 시작할 수 있어요'}</p>
+          <p class="ob-photo-caption" id="ob-photo-caption">${picked ? '' : '사진 없이도 시작할 수 있어요'}</p>
           <div class="ob-photo-btns">
             <button class="ob-btn ghost" id="ob-photo-album" type="button">${picked ? '다른 사진 고르기' : '앨범에서 고르기'}</button>
             <button class="ob-btn ghost" id="ob-photo-camera-btn" type="button">사진 찍기</button>
@@ -3378,9 +3407,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const faces = group ? store.getGroupPreviewFaces(group.id, max || 3) : [];
     if (!faces.length) return '';
     const items = faces.map((f) => {
-      const inner = f.photoUrl
-        ? avatarImgHTML(f.photoUrl, f.name || '멤버')
-        : escapeHtml(fnAvatarText(f));
+      const text = fnAvatarText(f);
+      const inner = f.photoUrl ? avatarImgHTML(f.photoUrl, f.name || '', text) : escapeHtml(text);
       return `<span class="group-card-face" style="background:${escapeHtml(f.gradient || 'var(--bg-subtle)')}">${inner}</span>`;
     }).join('');
     return `<span class="group-card-faces" aria-hidden="true">${items}</span>`;
@@ -3615,36 +3643,52 @@ document.addEventListener('DOMContentLoaded', () => {
     applyHomeRecCollapse();
   }
 
-  /** 접힘/펼침 — 2개만 보이고 둘째 줄 하단이 흐려진다. 화살표를 누르면 전체가 펼쳐진다. */
+  /**
+   * 접힘/펼침 — 화살표 하나로 오간다(v40.0 · 11/28 22:45 사용자:
+   * "추천 모임은 3,4번째 모임부터는 반쯤이 가린 흐릿한 그라데이션으로 처리해서 궁금증을 유발해야지
+   *  일정도 3번째부터 흐릿한 그라데이션을 처리해 그리고 더보기, 접기는 빼고 화살표만 남겨줘").
+   *  · 그룹(2열): 1·2번째는 온전히, **둘째 줄(3·4번째)이 반쯤** 보이며 아래로 흐려진다.
+   *  · 일정(1열): 1·2번째는 온전히, **3번째가 반쯤** 보이며 아래로 흐려진다.
+   *  · 버튼 글자는 없앴다 — 화살표 하나만. 읽어 주는 이름은 aria-label 로 남긴다.
+   */
   function applyHomeRecCollapse() {
     const box = el.homeRecCollapse;
     if (!box) return;
     const open = ui.homeRecOpen === true;
-    const list = homeRecView() === 'event' ? el.homeRecEvents : el.homeRecommendGrid;
+    const isEvent = homeRecView() === 'event';
+    const list = isEvent ? el.homeRecEvents : el.homeRecommendGrid;
     const items = list ? [...list.children].filter((n) => n.nodeType === 1 && !n.classList.contains('home-empty-line')) : [];
-    /* 그룹은 2열이라 '2개'가 한 줄이다 — 펼칠 것이 있을 때만 화살표를 둔다. */
-    const canExpand = items.length > 2;
+    /* 온전히 보여 줄 카드 수 — 그룹은 두 칸이 한 줄이라 2개, 일정도 앞의 두 줄(2개)까지. */
+    const fullCount = 2;
+    const canExpand = items.length > fullCount;
     const opened = open && canExpand;
     box.classList.toggle('is-open', opened);
     box.classList.toggle('is-collapsed', !opened);
+    box.setAttribute('data-rec-view', isEvent ? 'event' : 'group');
     if (el.btnHomeRecExpand) {
       el.btnHomeRecExpand.classList.toggle('is-open', opened);
       el.btnHomeRecExpand.hidden = !canExpand;
       el.btnHomeRecExpand.setAttribute('aria-expanded', open && canExpand ? 'true' : 'false');
-      el.btnHomeRecExpand.setAttribute('aria-label', open && canExpand ? '추천 모임 접기' : '추천 모임 더 보기');
+      el.btnHomeRecExpand.setAttribute('aria-label', open && canExpand
+        ? (isEvent ? '추천 일정 접기' : '추천 모임 접기')
+        : (isEvent ? '추천 일정 더 보기' : '추천 모임 더 보기'));
     }
-    if (el.homeRecExpandLabel) el.homeRecExpandLabel.textContent = open && canExpand ? '접기' : '더 보기';
-    if (el.homeRecFade) el.homeRecFade.hidden = !canExpand || (open && canExpand);
+    if (el.homeRecFade) {
+      el.homeRecFade.hidden = !canExpand || (open && canExpand);
+      /* v40.0 — 흐림 높이도 보기마다: 한 줄이 낮은 일정은 얕게(반쯤 남기고), 카드는 넉넉히. */
+      el.homeRecFade.style.height = isEvent ? '26px' : '88px';
+    }
     if (!canExpand || open) {
       box.style.maxHeight = 'none';
       return;
     }
-    const second = items[1];
+    const nextCard = items[fullCount];
+    if (!nextCard) { box.style.maxHeight = 'none'; return; }
     const listTop = list.getBoundingClientRect().top;
-    /* 둘째 카드 아래에 16px 여유를 두고 자른다 — 이름은 살아 있고, 그 아래(설명 줄)가
-       흐림에 잠기며 화살표가 그 자리에 걸린다. */
-    const cut = second.getBoundingClientRect().bottom - listTop + 16;
-    box.style.maxHeight = `${Math.max(110, Math.round(cut))}px`;
+    const rect = nextCard.getBoundingClientRect();
+    /* 반쯤 보일 카드에서 자른다 — 사진 절반과 이름 첫 줄(일정은 날짜·제목)이 남아 궁금해진다. */
+    const cut = (rect.top - listTop) + rect.height * (isEvent ? 0.62 : 0.55);
+    box.style.maxHeight = `${Math.max(120, Math.round(cut))}px`;
   }
 
   /* ---------------------------------------- H1-③ 추천 일정 */
@@ -5975,7 +6019,7 @@ document.addEventListener('DOMContentLoaded', () => {
               aria-label="${escapeHtml(ring.isMine ? '내' : ring.authorName + '님의')} 스토리 ${ring.count}개 보기">
         <span class="story-ring ${ring.isMine ? 'mine' : ''}">
           <span class="story-avatar" ${ring.photoUrl ? 'data-photo="1"' : `style="background:${ring.gradient || 'linear-gradient(135deg,#10B981,#047857)'}"`}>
-            ${ring.photoUrl ? avatarImgHTML(ring.photoUrl, ring.authorName) : escapeHtml(ring.avatarText || ring.authorName.charAt(0))}
+            ${ring.photoUrl ? avatarImgHTML(ring.photoUrl, ring.authorName, ring.avatarText || ring.authorName.charAt(0)) : escapeHtml(ring.avatarText || ring.authorName.charAt(0))}
           </span>
         </span>
         ${ring.count > 1 ? `<span class="story-count">${ring.count}</span>` : ''}
@@ -6126,7 +6170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.storyViewerAvatar) {
       el.storyViewerAvatar.innerHTML = story.authorPhotoUrl
-        ? avatarImgHTML(story.authorPhotoUrl, story.authorName)
+        ? avatarImgHTML(story.authorPhotoUrl, story.authorName, story.authorName.charAt(0))
         : escapeHtml(story.authorAvatarText || story.authorName.charAt(0));
       el.storyViewerAvatar.style.background = story.authorPhotoUrl ? 'transparent' : (story.authorGradient || 'linear-gradient(135deg,#10B981,#047857)');
     }
@@ -6268,7 +6312,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .map((entry) => entry.m);
     if (!people.length) return '';
     const faces = people.map((m) => {
-      const inner = m.photoUrl ? avatarImgHTML(m.photoUrl, m.name) : escapeHtml(m.avatarText || String(m.name || '').charAt(0));
+      const inner = m.photoUrl ? avatarImgHTML(m.photoUrl, m.name, m.avatarText || String(m.name || '').charAt(0)) : escapeHtml(m.avatarText || String(m.name || '').charAt(0));
       return `<span class="ginfo-face" style="background:${escapeHtml(m.gradient || 'var(--bg-subtle)')}">${inner}</span>`;
     }).join('');
     return `<span class="ginfo-faces" aria-hidden="true">${faces}</span>`;
@@ -6485,7 +6529,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="notice-read-people">
           ${read && read.readers.length ? read.readers.map((r) => `
             <span class="notice-reader">
-              <span class="notice-reader-avatar" style="background:${r.gradient || '#10B981'}">${r.photoUrl ? avatarImgHTML(r.photoUrl, r.name) : escapeHtml(r.avatarText || r.name.charAt(0))}</span>
+              <span class="notice-reader-avatar" style="background:${r.gradient || '#10B981'}">${r.photoUrl ? avatarImgHTML(r.photoUrl, r.name, r.avatarText || r.name.charAt(0)) : escapeHtml(r.avatarText || r.name.charAt(0))}</span>
               <span class="notice-reader-name">${escapeHtml(r.name)}</span>
             </span>`).join('')
             : '<p class="board-empty">아직 읽은 사람이 없어요.</p>'}
@@ -7208,7 +7252,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? others.map((m) => `
             <button class="group-chat-member" data-group-chat-member="${m.id}" type="button"
                     aria-label="${escapeHtml(m.name)}님과 1:1 대화 열기">
-              <span class="group-chat-member-avatar" style="background:${m.gradient}">${m.photoUrl ? avatarImgHTML(m.photoUrl, m.name) : escapeHtml(m.avatarText)}</span>
+              <span class="group-chat-member-avatar" style="background:${m.gradient}">${m.photoUrl ? avatarImgHTML(m.photoUrl, m.name, m.avatarText || m.name.charAt(0)) : escapeHtml(m.avatarText)}</span>
               <span class="group-chat-member-name">${escapeHtml(m.name)}</span>
               <span class="group-chat-member-hint">1:1</span>
             </button>`).join('')
@@ -7303,7 +7347,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="member-row-wrap ${open ? 'is-open' : ''}">
         <button class="member-row" data-member-open="${member.id}" type="button"
                 aria-expanded="${open}">
-          <span class="member-row-avatar" style="background:${member.gradient}">${member.photoUrl ? avatarImgHTML(member.photoUrl, member.name) : escapeHtml(member.avatarText)}</span>
+          <span class="member-row-avatar" style="background:${member.gradient}">${member.photoUrl ? avatarImgHTML(member.photoUrl, member.name, member.avatarText || member.name.charAt(0)) : escapeHtml(member.avatarText)}</span>
           <span class="member-row-body">
             <span class="member-row-name">${escapeHtml(member.name)} ${roleBadge}</span>
             <span class="member-row-meta">${hobbyTags || `<span class="member-hobby">${escapeHtml(groupName)} 멤버</span>`}</span>
@@ -8535,7 +8579,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.9';
+  const APP_VERSION = 'v40.0';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -9647,6 +9691,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const ginfoChat = e.target.closest('[data-ginfo-chat]');
     if (ginfoChat) { switchTab('tab-chat'); return; }
+    /* v40.0 — 가입 전 모임 소개의 멤버 목록을 누르면 → 가입해야 보인다고 알려 준다. */
+    const lockedMembers = e.target.closest('[data-gintro-members-locked]');
+    if (lockedMembers) { showToast('모임에 가입하면 전체 멤버를 볼 수 있어요'); return; }
     const ginfoMembers = e.target.closest('[data-ginfo-members]');
     if (ginfoMembers) { openGroupMembers(ginfoMembers.dataset.ginfoMembers || ui.groupSpaceId); return; }
     const ginfoEdit = e.target.closest('[data-ginfo-edit]');
@@ -9658,6 +9705,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+  });
+  /* v40.0 — 가입 전 모임 소개의 멤버 목록은 키보드(Enter·Space)로도 같은 안내를 띄운다. */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const locked = e.target.closest && e.target.closest('[data-gintro-members-locked]');
+    if (!locked) return;
+    e.preventDefault();
+    showToast('모임에 가입하면 전체 멤버를 볼 수 있어요');
   });
 
   /* v35.2 — 활동 아지트 바꾸기 시트 */
@@ -9992,8 +10047,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const note = obField('ob-azit-note');
         if (note) {
           note.textContent = azit
-            ? `${azit.name} 근처 모임을 먼저 보여드릴게요.`
-            : '아지트를 고르면 가까운 모임과 이웃을 먼저 보여드려요.';
+            ? `${azit.name} 근처 모임부터 보여드려요.`
+            : '아지트를 고르면 가까운 모임부터 보여드려요.';
         }
         return;
       }
@@ -10011,7 +10066,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const d = ui.onboardingDraft || (ui.onboardingDraft = newOnboardingDraft());
           d.photoUrl = out;
           renderOnboarding();
-          showToast('프로필 사진을 원형으로 만들었어요', 'success');
+          showToast('대표 사진을 넣었어요', 'success');
         });
       }, PROFILE_PHOTO_MAX, PROFILE_PHOTO_QUALITY);
     });
@@ -11144,12 +11199,16 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   function resetExploreColumns() {
     if (!el.exploreMasonry) return;
-    el.exploreMasonry.innerHTML = `
-      <div class="explore-board" id="explore-board"></div>
+    /* v40.0 — **검색 중에는 모임·사람 카드가 글보다 위**다(사용자: "모임명으로 검색이 가능해야지").
+       평소에는 글 목록(보드)이 먼저, 검색에서는 카드가 먼저 온다. */
+    const searching = !!ui.exploreQuery;
+    const board = '<div class="explore-board" id="explore-board"></div>';
+    const cols = `
       <div class="masonry-cols">
         <div class="masonry-col" data-column="0"></div>
         <div class="masonry-col" data-column="1"></div>
       </div>`;
+    el.exploreMasonry.innerHTML = searching ? `${cols}${board}` : `${board}${cols}`;
     ui.exploreCols = Array.from(el.exploreMasonry.querySelectorAll('.masonry-col'))
       .map((node) => ({ node, height: 0 }));
     ui.exploreBoardNode = el.exploreMasonry.querySelector('.explore-board');
@@ -11436,6 +11495,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const { items, people, groups, posts } = exploreTotals();
+    /* v40.0 — 검색 중에는 글쓰기·프로필 올리기·실시간 베스트를 접어 **결과(모임)가 바로** 보이게. */
+    const exploreTab = document.getElementById('tab-explore');
+    if (exploreTab) exploreTab.classList.toggle('is-searching', !!ui.exploreQuery);
     const activeFilter = store.getExploreFilters().find((f) => f.id === ui.exploreFilter);
     const ageRange = store.getExploreAgeRange();
     const ageOn = ageRange.active;
@@ -11454,9 +11516,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.exploreCount) {
       /* Sprint 28.5 — '사람 N · 글 N' 대신 '방금 올라온' 으로 말한다. */
       if (ui.exploreQuery) {
+        /* v40.0 — 모임명으로도 찾는다. 검색 결과는 모임 · 사람 · 글을 함께 센다. */
+        const qLabels = [];
+        if (groups) qLabels.push(`모임 ${groups}`);
+        qLabels.push(`사람 ${people}`, `글 ${posts}`);
         el.exploreCount.textContent = azitLabel
           ? `‘${azitLabel}’ 아지트 · 방금 올라온 ${people + posts}개`
-          : `'${ui.exploreQuery}' 결과 · 방금 올라온 ${people + posts}개`;
+          : `'${ui.exploreQuery}' 결과 · ${qLabels.join(' · ')}`;
       } else if (ui.exploreFilter === 'people') {
         el.exploreCount.textContent = `방금 올라온 사람 ${people}명`;
       } else if (ui.exploreFilter === 'posts') {
@@ -11476,7 +11542,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ? (ui.exploreRegion === 'nearby' ? '내 주변' : regionLabel)
         : '';
       if (ui.exploreQuery) {
-        el.exploreTitle.textContent = azitLabel ? `${azitLabel} 아지트` : '검색 결과';
+        el.exploreTitle.textContent = azitLabel
+          ? `${azitLabel} 아지트`
+          : (groups ? `'${ui.exploreQuery}' 모임과 사람` : '검색 결과');
       } else if (ageOn && ageFilter) {
         el.exploreTitle.textContent = `${baseLabel ? `${baseLabel} · ` : ''}${ageFilter.name} 사람과 번개`;
       } else if (baseLabel) {
@@ -12173,16 +12241,14 @@ document.addEventListener('DOMContentLoaded', () => {
   /** 사람 아바타의 내용(사진이 있으면 사진, 없으면 이니셜). */
   function avatarInnerHTML(person) {
     const p = person || {};
-    if (p.photoUrl) {
-      return `<img class="avatar-img" src="${escapeHtml(p.photoUrl)}" alt="" loading="lazy" decoding="async">`;
-    }
-    return escapeHtml(p.avatarText || String(p.nickname || '?').charAt(0));
+    const letter = p.avatarText || String(p.nickname || '?').charAt(0) || '?';
+    if (p.photoUrl) return avatarImgHTML(p.photoUrl, '', letter);
+    return escapeHtml(letter);
   }
 
-  /** 아바타 배경 — 프로필 색이 있으면 그 색, 없으면 이름에서 만든 색. */
+  /** 아바타 배경 — 사진이 있든 없든 깔아 둔다(사진이 깨지면 그 위에 이름 글자가 남는다). */
   function avatarStyle(person) {
     const p = person || {};
-    if (p.photoUrl) return '';
     return `background:${p.avatarGradient || commentAvatarTint(p.nickname)}`;
   }
 
@@ -12548,7 +12614,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ${info.people.slice(0, 6).map((p) => `
             <button class="member-chip" data-open-members="${grp.id}" data-member-focus="${escapeHtml(p.name)}" type="button"
                     title="${escapeHtml(p.name)}${p.role === 'leader' ? ' · 모임장' : ''}">
-              <span class="member-avatar" style="background:${p.gradient}">${p.photoUrl ? avatarImgHTML(p.photoUrl, p.name) : escapeHtml(p.avatarText)}</span>
+              <span class="member-avatar" style="background:${p.gradient}">${p.photoUrl ? avatarImgHTML(p.photoUrl, p.name, p.avatarText || p.name.charAt(0)) : escapeHtml(p.avatarText)}</span>
               <span class="member-name">${escapeHtml(p.name)}</span>
               ${p.role === 'leader' ? '<span class="member-role" aria-label="모임장">모임장</span>' : ''}
               ${p.role === 'me' ? '<span class="member-role member-role-me" aria-label="나">나</span>' : ''}
@@ -12567,9 +12633,12 @@ document.addEventListener('DOMContentLoaded', () => {
      가입 전이므로 하단 4탭(모임/피드/게시판/채팅방)·단체 채팅·⋯ 모임 설정 진입은 두지 않는다.
      그 자리에 가입하기 / 가입 신청하기 / 승인 대기 중(취소)만 둔다 — 가입하고 들어가야 생긴다.
 
-     멤버 프리뷰는 모임의 공개 설정을 따른다: 모임장 이름은 신청서에서도 보이는 공개 정보라
-     그대로 두고, 나머지 멤버는 이름·사진을 잠금 타일로 가린다(사진은 모임 안에서만 공유한다는
-     원칙 그대로 — 가입 전에는 '몇 명'만 알 수 있다). */
+     멤버 프리뷰(11/28 22:45 사용자 · IMG_4642·4643): "미리보기로 나온 3명의 이용자만 가입하기
+     전까지는 해당 그룹에 가입한 미리보기 3인의 이용자만 나오게 하고 멤버 목록을 누르는 순간
+     가입해야 한다고 알려줘. 4번째부터는 똑같이 흐릿한 그라데이션 효과를 넣어서 궁금증 유발시키고."
+     · 카드 우측 하단의 얼굴 3명(store.getGroupPreviewFaces)과 **같은 3명·같은 순서**를 그대로 보여 준다.
+     · 그 뒤에 4번째가 넘어가면서 흐려지는 자리(블러 + 오른쪽 페이드)를 두어 '더 있다'는 것만 알린다.
+     · 목록을 누르면 가입 안내 토스트 — 가입 전에는 그 3명 외의 신상은 보이지 않는다. */
   function renderGuestGroupDetail(grp) {
     const vis = groupCoverVisual(grp, 'circle');
     const tone = GROUP_TOP_COVER_TONES.indexOf(vis.tone) >= 0 ? vis.tone : 'neutral';
@@ -12585,6 +12654,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const upcoming = store.getUpcomingGroupEvents(grp.id, 99);
     const notices = store.getGroupNotices(grp.id).length;
     const total = grp.memberCount || 0;
+    /* v40.0 — 카드 얼굴과 **같은 3명**(모임 전용 프로필 우선)을 또렷하게, 그 뒤는 흐리게. */
+    const preview = store.getGroupPreviewFaces(grp.id, 3);
+    const hiddenCount = Math.max(0, (total || preview.length) - preview.length);
+    const previewTiles = preview.map((p, i) => {
+      const text = p.avatarText || String(p.name || '?').charAt(0);
+      const inner = p.photoUrl ? avatarImgHTML(p.photoUrl, p.name || '', text) : escapeHtml(text);
+      const isLeader = (i === 0 && (grp.leaderId === p.id || /모임장/.test(String(p.name || ''))));
+      return `<span class="ginfo-member gintro-member is-preview" data-preview-face="${i}"
+                    aria-label="${escapeHtml(p.name || '')}${isLeader ? ' · 모임장' : ''}">
+        <span class="ginfo-member-avatar" style="background:${escapeHtml(p.gradient || 'var(--bg-subtle)')}">${inner}</span>
+        <span class="ginfo-member-name">${escapeHtml(p.name || '멤버')}</span>
+        ${isLeader ? '<span class="ginfo-role leader">모임장</span>' : ''}
+      </span>`;
+    }).join('');
+    const veiledTiles = Array.from({ length: Math.min(2, hiddenCount) }).map(() => `
+      <span class="ginfo-member gintro-member is-veiled" aria-hidden="true">
+        <span class="ginfo-member-avatar veiled"></span>
+        <span class="ginfo-member-name locked">···</span>
+      </span>`).join('');
     const rows = [
       { label: '가입 방식', value: mode === 'approval' ? '승인제' : '바로 가입' },
       { label: '나이 조건', value: ageSliderLabel(range.min, range.max) }
@@ -12637,25 +12725,19 @@ document.addEventListener('DOMContentLoaded', () => {
           </ul>
         </section>
 
-        <section class="ginfo-card" aria-labelledby="gintro-members-title">
+        <section class="ginfo-card gintro-members-card${hiddenCount ? ' is-locked' : ''}" aria-labelledby="gintro-members-title"
+                 ${joined ? '' : 'role="button" tabindex="0" data-gintro-members-locked="' + escapeHtml(grp.id) + '"'}
+                 aria-label="${joined ? `멤버 ${total}명` : `멤버 ${total}명 · 모임에 가입하면 전체 멤버를 볼 수 있어요`}">
           <div class="ginfo-card-head">
             <h3 class="ginfo-card-title" id="gintro-members-title">멤버 <span class="section-count">${total}</span></h3>
           </div>
-          <div class="ginfo-members">
-            <span class="ginfo-member gintro-member">
-              <span class="ginfo-member-avatar" style="background:${store.currentUser.id === grp.leaderId ? store.currentUser.avatarGradient : 'linear-gradient(135deg,#E8EDEA,#D3DDD7)'}">${escapeHtml((grp.leaderName || '모').charAt(0))}</span>
-              <span class="ginfo-member-name">${escapeHtml(grp.leaderName || '모임장')}</span>
-              <span class="ginfo-role leader">모임장</span>
-            </span>
-            ${Array.from({ length: Math.max(0, Math.min(3, total - 1)) }).map(() => `
-              <span class="ginfo-member gintro-member is-locked" aria-label="가입 후 공개">
-                <span class="ginfo-member-avatar locked" aria-hidden="true">${ic('person')}</span>
-                <span class="ginfo-member-name locked">···</span>
-              </span>`).join('')}
+          <div class="ginfo-members gintro-members">
+            ${previewTiles}
+            ${hiddenCount ? `<span class="gintro-members-veil" aria-hidden="true">${veiledTiles}</span>` : ''}
           </div>
           <p class="gintro-note">${joined
             ? '모임에 들어가면 멤버를 모두 볼 수 있어요.'
-            : (total > 1 ? '멤버 이름·사진은 가입 후에 볼 수 있어요.' : '아직 모임장 혼자예요.')}</p>
+            : (hiddenCount ? `가입하면 멤버 ${total}명을 모두 볼 수 있어요.` : '아직 모임장 혼자예요.')}</p>
         </section>
 
         <section class="join-policy-card gintro-join" data-join-policy="${grp.id}" aria-labelledby="gintro-join-title">
@@ -17290,6 +17372,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (face) { queueGroupNameFit(); showToast('대표 사진을 지웠어요 · 모임 이름으로 보여요', 'info'); }
   });
   bindPhotoCrop();
+  /* v40.0 — 주소가 죽은 아바타 사진은 파란 [?] 대신 이름 첫 글자로(한 곳에서 모든 <img> 를 받는다). */
+  bindAvatarErrorFallback();
 
   el.createGroupPrev && el.createGroupPrev.addEventListener('click', () => {
     if (ui.groupDraft.step <= 1) return;

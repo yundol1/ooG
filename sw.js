@@ -80,13 +80,13 @@
    스마일 입(초승달)만** 남는다(o 가 곧 입이 된다). 다시 튕겨 제자리에 서며 o 가 돌아와 'ooG' 완성.
    모션 1.2초 → 2.1초(75% 느리게) · 첫 화면 진입은 o 가 제자리에 서는 모션 끝 130ms 뒤(노출 2,230~2,430ms).
    (캐시 이름을 올려 옛 셸을 확실히 버린다.) */
-const CACHE_VERSION = 'oog-shell-v39-9';
+const CACHE_VERSION = 'oog-shell-v40-0';
 const SHELL_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/style.css',
-  './css/style.css?v=39.9',
+  './css/style.css?v=40.0',
   './css/fonts/PretendardVariable.woff2',
   './js/icons.js',
   './js/store.js',
@@ -94,11 +94,11 @@ const SHELL_ASSETS = [
   './js/cloud.js',
   './js/app.js',
   /* v39.9 — index.html 이 버전 쿼리로 부르는 주소도 함께 담아 둔다(오프라인에서도 같은 화면). */
-  './js/icons.js?v=39.9',
-  './js/store.js?v=39.9',
-  './js/api.js?v=39.9',
-  './js/cloud.js?v=39.9',
-  './js/app.js?v=39.9',
+  './js/icons.js?v=40.0',
+  './js/store.js?v=40.0',
+  './js/api.js?v=40.0',
+  './js/cloud.js?v=40.0',
+  './js/app.js?v=40.0',
   './version.json',
   /* H2 — 지역·아지트 목록(http 로 열렸을 때 fetch). 없으면 앱 내장본을 쓴다. */
   './data/regions.json',

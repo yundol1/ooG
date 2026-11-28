@@ -27068,6 +27068,46 @@ body.group-mode .push-permission-banner { display: none !important; }
   color: var(--text-muted);
   font-size: 18px;
 }
+
+/* v40.0 — 멤버 목록: 앞의 3명(카드 얼굴과 같은 사람)만 또렷하게, 4번째부터는 흐릿한 그라데이션.
+   사용자(11/28 22:45): "4번째부터는 똑같이 흐릿한 그라데이션 효과를 넣어서 궁금증 유발시키고
+   멤버 목록을 누르는 순간 가입해야한다고 알려줘." */
+.gintro-members {
+  position: relative;
+  padding-bottom: 2px;
+  /* v40.0 — 또렷한 3명 + 흐린 자리를 **한 줄**에 둔다(그리드 4칸이면 흐린 자리가 다음 줄로 넘어갔다). */
+  display: flex;
+  gap: 6px;
+}
+.gintro-members .gintro-member { flex: 1 1 0; min-width: 0; }
+.gintro-members-card.is-locked { cursor: pointer; }
+.gintro-members-card.is-locked:active { transform: scale(0.995); }
+.gintro-member.is-preview .ginfo-member-name { font-weight: var(--fw-label); }
+.gintro-members-veil {
+  display: contents;
+}
+.gintro-member.is-veiled { pointer-events: none; }
+.ginfo-member-avatar.veiled {
+  position: relative;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--text-muted) 22%, var(--bg-base)) 0%,
+    color-mix(in srgb, var(--text-muted) 42%, var(--bg-base)) 100%);
+  filter: blur(3px);
+  opacity: 0.9;
+}
+.ginfo-member-avatar.veiled::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.72) 0 24%, transparent 25%),
+    radial-gradient(circle at 50% 104%, rgba(255, 255, 255, 0.72) 0 44%, transparent 45%);
+}
+/* 목록 오른쪽으로 갈수록 흐려진다 — '더 있다'만 알린다(3명은 또렷하게). */
+.gintro-members-card.is-locked .ginfo-members {
+  -webkit-mask-image: linear-gradient(to right, #000 0 70%, rgba(0,0,0,0.7) 88%, rgba(0,0,0,0.35) 100%);
+  mask-image: linear-gradient(to right, #000 0 70%, rgba(0,0,0,0.7) 88%, rgba(0,0,0,0.35) 100%);
+}
 .gintro-member .ginfo-member-avatar.locked .oo-ic { width: 20px; height: 20px; }
 .gintro-member .ginfo-member-name.locked { color: var(--text-muted); letter-spacing: 1px; }
 .gintro-note {
@@ -28495,7 +28535,6 @@ body.is-photo-crop { overflow: hidden; }
   border-top: 4px solid currentColor;
   opacity: 0.75;
 }
-.home-rec-expand-label { font-size: var(--fs-caption); font-weight: var(--fw-label); }
 .home-rec-collapse.is-collapsed { overflow: hidden; }
 
 /* 접힘 상자 — 2개만 보이고 둘째 줄 하단이 페이드로 덮인다 */
@@ -28510,14 +28549,18 @@ body.is-photo-crop { overflow: hidden; }
   left: 0;
   right: 0;
   bottom: 0;
-  height: 40px;
+  /* v40.0 — 반쯤 보이는 카드가 아래로 사라지듯 흐려진다(사용자: "흐릿한 그라데이션").
+     높이는 app.js 가 보기(그룹 88px · 일정 26px)에 맞춰 인라인으로 준다. */
+  height: 88px;
   pointer-events: none;
   opacity: 1;
   transition: opacity 0.22s ease;
   background: linear-gradient(to bottom,
     rgba(255, 255, 255, 0) 0%,
-    color-mix(in srgb, var(--bg-base) 66%, transparent) 46%,
-    var(--bg-base) 88%);
+    color-mix(in srgb, var(--bg-base) 10%, transparent) 38%,
+    color-mix(in srgb, var(--bg-base) 58%, transparent) 66%,
+    color-mix(in srgb, var(--bg-base) 92%, transparent) 88%,
+    var(--bg-base) 100%);
 }
 [data-theme="dark"] .home-rec-fade {
   background: linear-gradient(to bottom,
@@ -28539,7 +28582,8 @@ body.is-photo-crop { overflow: hidden; }
   min-height: 44px;
   height: 44px;
   margin: -20px auto 2px;
-  padding: 0 16px;
+  /* v40.0 — 글자를 빼고 화살표만 남겼다(원형 버튼). */
+  padding: 0;
   position: relative;
   z-index: 4;
   border: 1px solid var(--divider);
@@ -28624,3 +28668,33 @@ body.is-photo-crop { overflow: hidden; }
 .home-recommend-grid[hidden],
 .home-rec-events[hidden],
 .home-rec-fade[hidden] { display: none !important; }
+
+/* ---------------------------------------- v40.0 · 깨진 아바타 사진의 대체 글자
+   주소가 죽은 사진(지운 파일·만료·오프라인)은 문서 캡처(bindAvatarErrorFallback)가
+   그 자리에서 이름 첫 글자 span 으로 바꾼다. 어떤 원형에서도 가운데·한 글자. */
+.avatar-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: #FFFFFF;
+  font-size: 0.9em;
+  font-weight: var(--fw-label);
+  line-height: 1;
+  letter-spacing: 0;
+  text-align: center;
+}
+.ig-liker-face .avatar-letter { font-size: 10px; }
+.group-card-face .avatar-letter { font-size: 11px; }
+.ginfo-face .avatar-letter,
+.member-avatar .avatar-letter,
+.member-row-avatar .avatar-letter { font-size: 13px; }
+.is-letter { overflow: hidden; }
+
+/* ---------------------------------------- v40.0 · 탐색 검색 중에는 결과부터
+   검색어를 넣으면 글쓰기·프로필 올리기·실시간 베스트를 접는다(모임 결과가 화면 맨 위에 온다). */
+#tab-explore.is-searching .explore-actions,
+#tab-explore.is-searching #explore-profile-publish,
+#tab-explore.is-searching #hot-strip { display: none !important; }
+#tab-explore.is-searching .explore-head { margin-bottom: 6px; }

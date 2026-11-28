@@ -33,7 +33,7 @@
   <!-- ===== PWA (Sprint 5) — 홈 화면에 추가 · 앱처럼 실행 ===== -->
   <link rel="manifest" href="manifest.json">
   <!-- v39.9 (#27907) — 기기에 남은 옛 JS 를 알아채기 위한 표식(version.json 과 짝) -->
-  <meta name="oog-version" content="v39.9">
+  <meta name="oog-version" content="v40.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -43,7 +43,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310B981'/%3E%3Ctext x='32' y='42' font-family='sans-serif' font-size='30' font-weight='800' fill='white' text-anchor='middle'%3EooG%3C/text%3E%3C/svg%3E">
   <meta name="description" content="ooG(우그) - 취미로 이어지는 사람과 모임">
   <title>ooG(우그) - 취미로 이어지는 사람과 모임</title>
-  <link rel="stylesheet" href="css/style.css?v=39.9">
+  <link rel="stylesheet" href="css/style.css?v=40.0">
 </head>
 <body>
   <noscript>
@@ -222,7 +222,8 @@
             <!-- 정렬·성격 칩 -->
             <div class="home-rec-chips" id="home-rec-chips" role="group" aria-label="추천 정렬"><!-- JS --></div>
 
-            <!-- 접힘 상자 — 2개만 보이고 둘째 줄 하단이 흐려진다 · 화살표로 펼침/접힘 -->
+            <!-- 접힘 상자 — v40.0: 그룹은 둘째 줄(3·4번째), 일정은 3번째가 반쯤 보이며 아래로 흐려진다
+                 · 버튼은 화살표만(더 보기/접기 글자 없음) -->
             <div class="home-rec-collapse is-collapsed" id="home-rec-collapse">
               <div class="home-recommend-grid" id="home-recommend-grid" aria-live="polite"><!-- JS --></div>
               <div class="home-rec-events" id="home-rec-events" aria-live="polite" hidden><!-- JS --></div>
@@ -230,8 +231,7 @@
             </div>
             <!-- 화살표는 접힘 상자 **밖**에 둔다(상자 끝에서 잘리지 않고, 흐린 하단에 살짝 걸친다) -->
             <button class="home-rec-expand" id="btn-home-rec-expand" type="button"
-                    aria-expanded="false" aria-controls="home-recommend-grid">
-              <span class="home-rec-expand-label" id="home-rec-expand-label">더 보기</span>
+                    aria-expanded="false" aria-controls="home-recommend-grid" aria-label="추천 모임 더 보기">
               <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronDown"></span>
             </button>
           </section>
@@ -2321,10 +2321,10 @@
     </div>
   </div>
 
-  <script src="js/icons.js?v=39.9"></script>
-  <script src="js/store.js?v=39.9"></script>
-  <script src="js/api.js?v=39.9"></script>
-  <script src="js/cloud.js?v=39.9"></script>
-  <script src="js/app.js?v=39.9"></script>
+  <script src="js/icons.js?v=40.0"></script>
+  <script src="js/store.js?v=40.0"></script>
+  <script src="js/api.js?v=40.0"></script>
+  <script src="js/cloud.js?v=40.0"></script>
+  <script src="js/app.js?v=40.0"></script>
 </body>
 </html>

@@ -23,7 +23,7 @@
   const CONF = {
     url: 'https://nnzrunhjxwcspsfgsmgf.supabase.co',
     key: 'sb_publishable_fy0CjiojNNWeTVAzrflP8w_098c3T2J',
-    version: 'v39.8'
+    version: 'v40.0'
   };
 
   const LS_SESSION = 'oog_cloud_session_v1';
@@ -462,8 +462,7 @@
   }
 
   /** data URL 이면 올려서 공개 URL 로 바꾼다(이미 http URL 이면 그대로). */
-  async function ensurePhotoUrl(value, bucket, kind) {
-    if (!value || typeof value !== 'string') return { ok: true, url: value || null };
+  async function ensurePhotoUrl(value, bucket, kind) {    if (!value || typeof value !== 'string') return { ok: true, url: value || null };
     if (/^https?:\/\//.test(value)) return { ok: true, url: value };
     if (!/^data:image\//.test(value)) return { ok: true, url: null };
     if (!hasSession()) return { ok: false, reason: 'no_session', url: value };
@@ -1200,6 +1199,9 @@
         /* v39.0 — 사진의 Storage 경로(photoPath)는 이 기기의 정리용 열쇠라 서버 data 에는 넣지 않는다. */
         ...stripKeys(u, ['album', 'secretShares', 'photoPath']),
         album: { public: (u.album && u.album.public) || [], secret: [] },
+        /* v40.0 — '사용자가 사진을 지웠다'를 서버에 남긴다. 예전에는 공개 앨범이 비었다는 것만으로
+           다른 기기의 대표 사진을 지워, 사진을 한 장도 안 올린 계정의 아바타가 사라졌다. */
+        avatarCleared: u.avatarCleared === true,
         /* v37.5 (#24337) — 다른 사람 프로필의 잠긴 비밀앨범 원형이 장수를 보여 줄 수 있게
            **장수만** 공개한다(사진·경로는 절대 넣지 않는다). */
         secretCount: (u.album && Array.isArray(u.album.secret)) ? u.album.secret.length : 0
@@ -1207,11 +1209,111 @@
     };
   }
 
+  /**
+   * v40.0 — 이 기기의 내 프로필이 **아무것도 모르는 빈 값**인가.
+   *  (인증 링크를 연 새 브라우저·방금 깔았는데 아직 내려받지 못한 기기)
+   */
+  function isBlankLocalProfile(u) {
+    const x = u || {};
+    const handle = String(x.handle || '').replace(/^@+/, '').replace(/^me$/, '');
+    const album = (x.album && Array.isArray(x.album.public)) ? x.album.public : [];
+    return !String(x.nickname || '').trim() && !handle && !x.photoUrl && !album.length;
+  }
+
+  /**
+   * 내 프로필 줄(서버) — 사진·공개 앨범을 합칠 때만 부른다.
+   *  · 사진이 없는 계정은 저장할 때마다 묻게 되므로 10분 동안은 받아 둔 값을 다시 쓴다.
+   */
+  async function fetchMyProfileRow() {
+    const me = currentUser();
+    if (!me || !isUuid(me.id)) return null;
+    const cached = state.meta && state.meta.profileRemote;
+    if (cached && cached.id === me.id && Date.now() - (cached.at || 0) < 10 * 60 * 1000) return cached.row;
+    try {
+      const rows = await request(`${REST}/profiles?id=eq.${me.id}&select=id,nickname,handle,avatar_url,data`, { retry: 0 });
+      const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+      state.meta = state.meta || {};
+      state.meta.profileRemote = { id: me.id, at: Date.now(), row };
+      saveMeta();
+      return row;
+    } catch (e) { return null; }
+  }
+
+  /**
+   * v40.0 — 로컬에 사진이 없는데 서버에는 있으면 **서버 사진을 받아 온다**.
+   *  · 사용자가 직접 지운 경우(avatarCleared === true · data.avatarCleared)는 되살리지 않는다.
+   *  @returns {boolean} 내 프로필을 바꿨는가
+   */
+  async function mergeRemoteProfilePhotos(u) {
+    const x = u || {};
+    const localAlbum = (x.album && Array.isArray(x.album.public)) ? x.album.public : [];
+    if (x.avatarCleared === true) return false;          /* 지운 것을 서버에서 되살리지 않는다 */
+    if (x.photoUrl || localAlbum.length) return false;   /* 이 기기에 이미 사진이 있다 */
+    const row = await fetchMyProfileRow();
+    if (!row) return false;
+    const data = row.data || {};
+    const serverAlbum = (data.album && Array.isArray(data.album.public)) ? data.album.public : [];
+    if (data.avatarCleared === true && !serverAlbum.length) { x.avatarCleared = true; return true; }
+    let changed = false;
+    if (row.avatar_url) {
+      x.photoUrl = row.avatar_url;
+      x.photoPath = pathFromPublicUrl('avatars', row.avatar_url) || x.photoPath || null;
+      changed = true;
+    }
+    const photos = serverAlbum
+      .filter((p) => p && /^https?:/i.test(String(p.url || '')))
+      .slice(0, 4)
+      .map((p) => ({ ...p, cloudPath: p.cloudPath || pathFromPublicUrl('public-photos', p.url) }));
+    if (photos.length) {
+      if (!x.album || typeof x.album !== 'object') x.album = { public: [], secret: [] };
+      x.album.public = photos;
+      if (!x.photoUrl) x.photoUrl = photos[0].url;
+      changed = true;
+    }
+    return changed;
+  }
+
+  /**
+   * v40.0 (38일차) — 세션이 생기면 **가입하면서 고른 대표 사진·공개 사진**을 가장 먼저 Storage 로 올린다.
+   * ---------------------------------------------------------------------------------------------
+   *  사용자(11/28 22:41 · IMG_4642): "새로 회원가입하며 프로필 이미지를 설정했는데 내 프로필에 사진이
+   *  안 달리고 기본 이니셜로 나옴."
+   *  · 원인: 가입 화면은 사진을 기기(data URL)에만 두고, 서버 세션이 생긴 뒤 pullAll 이 먼저 돌았다.
+   *    인증 링크를 연 다른 기기가 만든 '빈 내 프로필 줄'을 받으면 photoUrl 이 비워져 사진이 사라졌다.
+   *  · 고침: 내려받기(pull) **전에** 올린다 — 이 기기가 가진 사진이 서버의 첫 값이 된다.
+   */
+  async function uploadPendingPhotos() {
+    const store2 = global.appStore;
+    const me = currentUser();
+    if (!store2 || !me || !isUuid(me.id) || !hasSession()) return { ok: false, reason: 'no_session', changed: 0 };
+    const u = store2.state.currentUser || {};
+    let changed = 0;
+    if (typeof u.photoUrl === 'string' && /^data:image\//.test(u.photoUrl)) {
+      const up = await uploadPhoto(u.photoUrl, 'avatars', 'avatar');
+      if (up.ok) { u.photoUrl = up.url; u.photoPath = up.path; changed += 1; }
+    }
+    const album = (u.album && Array.isArray(u.album.public)) ? u.album.public : [];
+    for (const photo of album) {
+      if (!photo || typeof photo.url !== 'string' || !/^data:image\//.test(photo.url)) continue;
+      const up = await uploadPhoto(photo.url, 'public-photos', 'photo');
+      if (up.ok) { photo.url = up.url; photo.cloudPath = up.path; changed += 1; }
+    }
+    if (changed) { try { store2.saveState(); } catch (e) { /* noop */ } }
+    return { ok: true, changed };
+  }
+
   async function pushProfile() {
     const store2 = global.appStore;
     const me = currentUser();
     if (!store2 || !me || !isUuid(me.id)) return;
     const u = store2.state.currentUser;
+    /* v40.0 (38일차) — **아직 내 프로필을 모르는 기기(빈 값)가 서버 줄을 덮어쓰지 않는다.**
+       인증 메일 링크를 연 다른 브라우저처럼 localStorage 가 빈 곳은 이름·사진·앨범이 모두 비어 있는데,
+       그 기기가 먼저 밀어 올리면 서버 프로필이 빈 값(avatar_url null · album [])으로 바뀌었다. */
+    if (isBlankLocalProfile(u)) return;
+    /* v40.0 — 이 기기에 사진이 없으면 서버가 가진 사진·공개 앨범을 먼저 받아 합친다(빈 값으로 지우지 않게). */
+    const merged = await mergeRemoteProfilePhotos(u);
+    if (merged) { try { store2.saveState(); } catch (e) { /* 저장 실패가 동기화를 막지 않는다 */ } }
     /* 사진은 Storage 로 — 프로필/아바타는 avatars, 공개 앨범은 public-photos.
        v39.0 — 바꾼 사진의 **예전 파일은 지운다**(경로를 기억해 두었다가 교체·삭제 시). */
     const prevAvatarPath = u.photoPath || pathFromPublicUrl('avatars', u.photoUrl) || null;
@@ -1247,6 +1349,11 @@
       method: 'POST', body: row,
       prefer: 'resolution=merge-duplicates,return=minimal', retry: 1
     });
+    /* 방금 올린 값이 서버의 최신이다 — 다음 합치기에서 옛 줄을 다시 읽지 않게. */
+    if (state.meta) state.meta.profileRemote = { id: me.id, at: Date.now(), row: {
+      id: me.id, nickname: row.nickname, handle: row.handle,
+      avatar_url: row.avatar_url, data: row.data
+    } };
   }
 
   async function pushUserState() {
@@ -1558,11 +1665,34 @@
         u.id = me.id;
         u.nickname = mine.nickname || u.nickname;
         u.handle = mine.handle ? `@${mine.handle}` : u.handle;
-        /* v38.9 (#26318) — 서버 프로필의 공개 앨범(data.album.public)이 비어 있으면
-           avatar_url 이 남아 있어도 사진을 되살리지 않는다(이름만 남긴다). */
+        /* v40.0 (38일차) — 서버 프로필의 사진을 따른다.
+           · `data.avatarCleared === true`(사용자가 직접 지움 · v38.9)일 때만 비운다.
+           · 예전에는 '공개 앨범이 비었다'만 보고 비웠다 — 사진을 앨범에 안 넣은 계정(가입 직후)의
+             대표 사진까지 사라졌다. 이제 그 표식이 없으면 서버 사진을 그대로 쓴다. */
         const serverAlbum = (mine.data && mine.data.album && Array.isArray(mine.data.album.public))
           ? mine.data.album.public : null;
-        u.photoUrl = (serverAlbum && serverAlbum.length === 0) ? null : (mine.avatar_url || u.photoUrl);
+        const cleared = !!(mine.data && mine.data.avatarCleared === true);
+        if (cleared && (!serverAlbum || !serverAlbum.length)) {
+          u.photoUrl = null;
+          u.avatarCleared = true;
+          if (u.album) u.album.public = [];
+        } else {
+          if (mine.avatar_url) {
+            u.photoUrl = mine.avatar_url;
+            u.photoPath = pathFromPublicUrl('avatars', mine.avatar_url) || u.photoPath || null;
+          }
+          u.avatarCleared = false;
+          /* 이 기기의 공개 앨범이 비어 있으면 서버 목록을 받아 둔다(새 기기에서도 사진이 보이게). */
+          const photos = (serverAlbum || [])
+            .filter((p) => p && /^https?:/i.test(String(p.url || '')))
+            .slice(0, 4)
+            .map((p) => ({ ...p, cloudPath: p.cloudPath || pathFromPublicUrl('public-photos', p.url) }));
+          if (photos.length && !((u.album && Array.isArray(u.album.public) && u.album.public.length))) {
+            if (!u.album || typeof u.album !== 'object') u.album = { public: [], secret: [] };
+            u.album.public = photos;
+            if (!u.photoUrl) u.photoUrl = photos[0].url;
+          }
+        }
         u.bio = mine.bio || u.bio;
         u.age = mine.age == null ? u.age : mine.age;
         u.regionId = mine.region_id || u.regionId;
@@ -1863,6 +1993,8 @@
       if (fresh.ok && fresh.user && !fresh.user.email_confirmed_at) return { ok: false, reason: 'email_unconfirmed' };
     }
     const u = store2.state.currentUser || {};
+    /* v40.0 — 내려받기 전에 **가입 때 고른 사진**을 먼저 올린다(빈 서버 줄이 사진을 지우지 않게). */
+    try { await uploadPendingPhotos(); } catch (e) { /* 사진을 못 올려도 내려받기는 계속 */ }
     /* 서버에 이미 내 프로필이 있으면 서버 값이 우선(다른 기기에서 고친 이름·사진). */
     const pulled = await pullAll();
     if (!pulled.ok && pulled.reason === 'network') return { ok: false, reason: 'network' };
@@ -1903,6 +2035,8 @@
     /* v37.7 — 가입 이메일 중복 확인 */
     checkEmail,
     uploadPhoto, ensurePhotoUrl, publicUrl, signedUrl, dataUrlToBlob,
+    /* v40.0 (38일차) — 가입 사진을 내려받기 전에 올리기 · 서버 사진 합치기 */
+    uploadPendingPhotos, mergeRemoteProfilePhotos,
     /* v39.0 (36일차) — 모임 전용 프로필 사진 · 사진 파일 정리 */
     syncMyGroupProfiles, sweepMyMedia, pathFromPublicUrl, myMediaKeep,
     /* v37.5 (#24337) */
