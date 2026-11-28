@@ -12737,7 +12737,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <p class="gintro-note">${joined
             ? '모임에 들어가면 멤버를 모두 볼 수 있어요.'
-            : (hiddenCount ? `가입하면 멤버 ${total}명을 모두 볼 수 있어요.` : '아직 모임장 혼자예요.')}</p>
+            : (hiddenCount ? `가입하면 멤버 ${total}명을 모두 볼 수 있어요.`
+              : (total > 1 ? '가입하면 이 멤버들과 인사할 수 있어요.' : '아직 모임장 혼자예요.'))}</p>
         </section>
 
         <section class="join-policy-card gintro-join" data-join-policy="${grp.id}" aria-labelledby="gintro-join-title">
