@@ -14447,6 +14447,7 @@ class Store {
     /* v40.0 — **사용자가 사진을 지웠다**는 표식. 서버(profiles.data.avatarCleared)에 함께 올려
        다른 기기·새 기기가 '사진 없음'을 알 수 있게 한다(빈 앨범만 보고 지우지 않는다). */
     u.avatarCleared = !url;
+    u.avatarClearedAt = url ? null : new Date().toISOString();
     (this.state.feedPosts || []).forEach((p) => { if (p.authorId === u.id) p.authorPhotoUrl = url; });
     (this.state.explorePosts || []).forEach((p) => { if (p.authorId === u.id) p.authorPhotoUrl = url; });
     (this.state.stories || []).filter((s) => s.authorId === u.id).forEach((s) => { s.authorPhotoUrl = url; });

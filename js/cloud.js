@@ -1202,6 +1202,7 @@
         /* v40.0 — '사용자가 사진을 지웠다'를 서버에 남긴다. 예전에는 공개 앨범이 비었다는 것만으로
            다른 기기의 대표 사진을 지워, 사진을 한 장도 안 올린 계정의 아바타가 사라졌다. */
         avatarCleared: u.avatarCleared === true,
+        avatarClearedAt: u.avatarClearedAt || null,
         /* v37.5 (#24337) — 다른 사람 프로필의 잠긴 비밀앨범 원형이 장수를 보여 줄 수 있게
            **장수만** 공개한다(사진·경로는 절대 넣지 않는다). */
         secretCount: (u.album && Array.isArray(u.album.secret)) ? u.album.secret.length : 0
@@ -1672,7 +1673,11 @@
         const serverAlbum = (mine.data && mine.data.album && Array.isArray(mine.data.album.public))
           ? mine.data.album.public : null;
         const cleared = !!(mine.data && mine.data.avatarCleared === true);
-        if (cleared && (!serverAlbum || !serverAlbum.length)) {
+        /* 이 기기에서 방금 지웠는데 아직 못 올렸다면(서버 줄이 그보다 오래됐다) 서버 사진을 되살리지 않는다. */
+        const serverAt = mine.updated_at ? new Date(mine.updated_at).getTime() : 0;
+        const localClearedAt = u.avatarClearedAt ? new Date(u.avatarClearedAt).getTime() : 0;
+        const localClearWins = u.avatarCleared === true && localClearedAt > serverAt;
+        if ((cleared && (!serverAlbum || !serverAlbum.length)) || localClearWins) {
           u.photoUrl = null;
           u.avatarCleared = true;
           if (u.album) u.album.public = [];
