@@ -3368,6 +3368,27 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 박스(테두리·그림자) 없이 이미지를 둥글게, 글자는 이미지 아래에.
    *  · 대표 이미지가 없으면 취미 대분류 색 + 아이콘 타일.
    */
+  /**
+   * v39.9 (#27907 사용자: "추천 그룹 대표 이미지 우측하단에 가입한 이용자의 … 미리보기로 3명이 나오게") —
+   * 카드 대표 이미지 오른쪽 아래에 가입자 얼굴을 최대 3개 겹쳐 보여 준다.
+   *  · 모임 전용 프로필을 쓰는 모임이면 **그 모임에서 쓰는 사진**이 뜨고, 없으면 기본 프로필,
+   *    그것도 없으면 이름 첫 글자다(store.getGroupPreviewFaces 가 순서를 정한다).
+   */
+  function groupCardFacesHTML(group, max) {
+    const faces = group ? store.getGroupPreviewFaces(group.id, max || 3) : [];
+    if (!faces.length) return '';
+    const items = faces.map((f) => {
+      const inner = f.photoUrl
+        ? avatarImgHTML(f.photoUrl, f.name || '멤버')
+        : escapeHtml(fnAvatarText(f));
+      return `<span class="group-card-face" style="background:${escapeHtml(f.gradient || 'var(--bg-subtle)')}">${inner}</span>`;
+    }).join('');
+    return `<span class="group-card-faces" aria-hidden="true">${items}</span>`;
+  }
+  function fnAvatarText(f) {
+    return f.avatarText || String(f.name || '?').charAt(0);
+  }
+
   function groupCardHTML(item) {
     const g = item.group;
     const vis = groupCoverVisual(g);
@@ -3387,6 +3408,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<img class="group-card-photo" src="${escapeHtml(vis.photoUrl)}" alt="" loading="lazy" decoding="async">`
             : `<span class="group-card-tile" aria-hidden="true">${groupNameFace(g.name)}</span>`}
           ${item.isLeader ? '<span class="group-card-badge">모임장</span>' : ''}
+          ${groupCardFacesHTML(g, 3)}
         </div>
         <h4 class="group-card-name">${escapeHtml(g.name)}</h4>
         <p class="group-card-meta">${escapeHtml(place)} · 멤버 ${g.memberCount}${dist}</p>
@@ -3494,6 +3516,28 @@ document.addEventListener('DOMContentLoaded', () => {
     return list;
   }
 
+  /**
+   * v39.9 (#27907) — 서버에서 모임을 받다가 실패했는지. 실패한 채로 '없어요' 라고 하면
+   * 데이터가 없는 것처럼 보인다 — 실패는 실패로 말하고 '다시 시도'를 둔다.
+   * (`window.oogPerf.cloudPull.errors` 는 pullAll 이 남기는 표별 실패 목록이다.)
+   */
+  function recLoadFailed() {
+    const perf = window.oogPerf && window.oogPerf.cloudPull;
+    if (!perf || !Array.isArray(perf.errors) || !perf.errors.length) return false;
+    return perf.errors.some((e) => e && (e.table === 'groups' || e.table === 'events' || e.table === 'group_members'));
+  }
+  /** 실패한 뒤 '다시 시도' — 한 번 더 받아 오고 홈을 다시 그린다. */
+  function retryCloudPull() {
+    if (!window.OOGCloud || !window.OOGCloud.pullAll) return Promise.resolve(false);
+    showToast('모임을 다시 불러오는 중이에요');
+    return window.OOGCloud.pullAll().then((r) => {
+      renderHomeRecommend();
+      if (r && r.ok) showToast('모임을 불러왔어요');
+      else showToast('아직 불러오지 못했어요 · 잠시 뒤 다시 시도해 주세요');
+      return r;
+    }).catch(() => false);
+  }
+
   /** 추천 모임 — 그룹 | 일정 토글 · 카테고리 탭 · 칩 · 2개만 남기고 접힘. */
   function renderHomeRecommend() {
     if (!el.homeRecommendGrid) return;
@@ -3539,8 +3583,10 @@ document.addEventListener('DOMContentLoaded', () => {
         el.homeRecEvents.innerHTML = items.length
           ? items.map(suggestEventRowHTML).join('')
           : `<div class="home-empty-line">
-               <p class="home-empty-title">지금은 추천할 일정이 없어요</p>
-               <button class="btn-text" data-home-find="1" type="button">모임 찾기</button>
+               <p class="home-empty-title">${recLoadFailed() ? '일정을 불러오지 못했어요' : '지금은 추천할 일정이 없어요'}</p>
+               ${recLoadFailed()
+    ? '<button class="btn-text" data-home-retry="1" type="button">다시 시도</button>'
+    : '<button class="btn-text" data-home-find="1" type="button">모임 찾기</button>'}
              </div>`;
         hydrateIcons(el.homeRecEvents);
       }
@@ -3558,8 +3604,11 @@ document.addEventListener('DOMContentLoaded', () => {
         })).join('')
         : `<div class="home-empty-line">
              <p class="home-empty-title">${cloudPending ? '모임을 불러오는 중이에요'
-    : (sort === 'shop' ? '아직 동네가게모임이 없어요' : '지금은 추천할 모임이 없어요')}</p>
-             ${cloudPending ? '' : '<button class="btn-text" data-home-find="1" type="button">모임 찾기</button>'}
+    : (recLoadFailed() ? '모임을 불러오지 못했어요'
+      : (sort === 'shop' ? '아직 동네가게모임이 없어요' : '지금은 추천할 모임이 없어요'))}</p>
+             ${cloudPending ? '' : (recLoadFailed()
+    ? '<button class="btn-text" data-home-retry="1" type="button">다시 시도</button>'
+    : '<button class="btn-text" data-home-find="1" type="button">모임 찾기</button>')}
            </div>`;
       hydrateIcons(el.homeRecommendGrid);
     }
@@ -4765,6 +4814,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.homeRecEvents) {
       el.homeRecEvents.addEventListener('click', (e) => {
         if (e.target.closest('[data-home-find]')) { openFindScreen(); return; }
+        if (e.target.closest('[data-home-retry]')) { retryCloudPull(); return; }
         const btn = e.target.closest('[data-guest-event]');
         if (btn) { handleGuestEventButton(btn, renderHomeRecommend); return; }
         const row = e.target.closest('[data-suggest-event]');
@@ -4775,6 +4825,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el.homeRecommendGrid) {
       el.homeRecommendGrid.addEventListener('click', (e) => {
         if (e.target.closest('[data-home-find]')) { openFindScreen(); return; }
+        if (e.target.closest('[data-home-retry]')) { retryCloudPull(); return; }
         const card = e.target.closest('[data-group-card]');
         if (!card) return;
         if (card.dataset.joined === '1') enterGroupSpace(card.dataset.groupId, 'tab-groupinfo');
@@ -8484,7 +8535,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.8';
+  const APP_VERSION = 'v39.9';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -18586,6 +18637,13 @@ document.addEventListener('DOMContentLoaded', () => {
   /**
    * Service Worker 등록. 반환값은 상태 문자열('ready' | 'protocol' | 'bundle' | 'unsupported' | 'error').
    * 파일로 연 경우(file://)와 단일 번들에서는 등록하지 않는다 — 그래도 앱은 그대로 동작해야 한다.
+   *
+   * v39.9 (#27907) — **엣 JS 가 기기에 남지 않게** 한다. 전에는 캐시 우선 정책에 갱신 감지가 없어
+   * 홈 화면 PWA 로 계속 쓰면 새 버전이 나가도 며칠씩 엣 화면이 그대로였습니다(오늘 '추천 모임 없어요'가
+   * v39.8 로 고쳐진 뒤에도 그 화면이 남아 있던 이유). 이제는:
+   *  · 등록 직후·화면이 돌아올 때마다 `reg.update()` 로 새 sw.js 를 확인하고,
+   *  · 새 워커가 제어를 잡는 순간(controllerchange)과 `version.json` 이 앱 버전과 다를 때
+   *    **한 번만** 스스로 새로고침한다(무한 반복은 sessionStorage 로 막는다).
    */
   async function registerServiceWorker() {
     if (document.documentElement.dataset.bundle === 'true') {
@@ -18610,11 +18668,70 @@ document.addEventListener('DOMContentLoaded', () => {
       swRegistration = reg;
       swStatus = 'ready';
       renderPwaRow();
+      installUpdateWatchers(reg);
       return 'ready';
     } catch (e) {
       swStatus = 'error';
       renderPwaRow();
       return 'error';
+    }
+  }
+
+  /* v39.9 — 새 버전이 기기에 닿았는지 지켜보고, 닿으면 한 번만 새로고침한다. */
+  const RELOAD_FLAG = 'oog:reloaded-for';
+  function reloadForNewVersion(why) {
+    try {
+      if (sessionStorage.getItem(RELOAD_FLAG) === APP_VERSION) return false;
+      sessionStorage.setItem(RELOAD_FLAG, APP_VERSION);
+    } catch (e) { /* 저장을 못 해도 한 번은 새로고침한다 */ }
+    window.oogPerf = window.oogPerf || {};
+    window.oogPerf.reloadedFor = why || 'update';
+    window.oogPerf.reloadReasons = (window.oogPerf.reloadReasons || []).concat(why || 'update');
+    /* 검사(헤드리스)에서 실제 이동을 막고 '몇 번 시도했는지'만 볼 때 쓴다. */
+    if (window.__oogNoReload === true) return true;
+    try { location.reload(); } catch (e) { /* noop */ }
+    return true;
+  }
+  function installUpdateWatchers(reg) {
+    if (!reg || reg.__oogWatched) return;
+    reg.__oogWatched = true;
+    const check = () => { try { reg.update(); } catch (e) { /* noop */ } };
+    check();
+    window.setInterval(check, 30 * 60 * 1000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') { check(); checkAppVersion(); }
+    });
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      if (!w) return;
+      w.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) reloadForNewVersion('controllerchange');
+      });
+    });
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.addEventListener('controllerchange', () => reloadForNewVersion('controllerchange'));
+    }
+    window.setTimeout(checkAppVersion, 4000);
+  }
+  /** version.json 과 앱 버전이 다르면 새 버전이 나간 것 — 캐시를 비우고 한 번 새로고침. */
+  async function checkAppVersion() {
+    if (location.protocol !== 'http:' && location.protocol !== 'https:') return false;
+    try {
+      const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) return false;
+      const data = await res.json();
+      const ver = String((data && data.version) || '').trim();
+      if (!ver || ver === APP_VERSION) return false;
+      window.oogPerf = window.oogPerf || {};
+      window.oogPerf.versionBehind = ver;
+      if (window.caches && caches.keys) {
+        const keys = await caches.keys();
+        await Promise.all(keys.filter((k) => /^oog-shell-/.test(k)).map((k) => caches.delete(k)));
+      }
+      reloadForNewVersion(`version:${ver}`);
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -19552,51 +19669,154 @@ document.addEventListener('DOMContentLoaded', () => {
      *   · 부딪히는 순간(1.07~1.16초) 눌리고, 펴지기 시작(1.40초)부터 탄성으로 살짝 지나쳤다가
      *     1.72초에 동그란 o 로 돌아온다(음수 진행 = 고리가 살짝 커졌다 오는 '통' 튐).
      * ------------------------------------------------------------------ */
-    const SPLASH_O_RING = [
-      50, 0,
-      77.6, 0, 100, 23.5, 100, 52.5,
-      100, 81.5, 77.6, 105, 50, 105,
-      22.4, 105, 0, 81.5, 0, 52.5,
-      0, 23.5, 22.4, 0, 50, 0,
-      50, 21.1,
-      62.4, 21.1, 72.4, 35.2, 72.4, 52.5,
-      72.4, 69.8, 62.4, 83.9, 50, 83.9,
-      37.6, 83.9, 27.6, 69.8, 27.6, 52.5,
-      27.6, 35.2, 37.6, 21.1, 50, 21.1
-    ];
-    /* v39.8 (#27868 사용자: "로딩화면의 o가 더 찡그러져야지 웃음 표시처럼 안보이잖아") —
-       v39.7 의 눌린 모양은 위가 14 → 거의 그대로라 **납작한 도넛**으로 보였다. 이제
-       위 가장자리가 아래로 깊게 파이고(중심 y 50) 양끝이 위로 올라가(x 4·96, y 17)
-       **누가 봐도 방긋 웃는 입** 이다. 바깥 테두리는 닫혀 있고 구멍은 그 웃는 호를 따라
-       얇고 길쭉하게(높이 47 중 16만 남는 띠) 찌그러진다. 눌림 배율(1.14×0.74)까지 곱하면
-       높이는 o 의 약 58%, 폭은 약 121% — 납작하게 눌리며 양옆이 살짝 넓어진다. */
-    const SPLASH_O_SMILE = [
-      50, 38,
-      76, 36, 94, 30, 99, 20,
-      96, 58, 74, 98, 50, 98,
-      26, 98, 4, 58, 1, 20,
-      6, 30, 24, 36, 50, 38,
-      50, 54,
-      70, 52, 86, 44, 90, 38,
-      92, 58, 72, 82, 50, 82,
-      28, 82, 8, 58, 10, 38,
-      14, 44, 30, 52, 50, 54
-    ];
-    const morphPath = node ? node.querySelector('.oog-mark-mouth path') : null;
     const r2 = (n) => Math.round(n * 100) / 100;
-    function splashOPathAt(p) {
-      const v = SPLASH_O_RING.map((n, i) => n + (SPLASH_O_SMILE[i] - n) * p);
-      return `M ${r2(v[0])} ${r2(v[1])} `
-        + `C ${r2(v[2])} ${r2(v[3])} ${r2(v[4])} ${r2(v[5])} ${r2(v[6])} ${r2(v[7])} `
-        + `C ${r2(v[8])} ${r2(v[9])} ${r2(v[10])} ${r2(v[11])} ${r2(v[12])} ${r2(v[13])} `
-        + `C ${r2(v[14])} ${r2(v[15])} ${r2(v[16])} ${r2(v[17])} ${r2(v[18])} ${r2(v[19])} `
-        + `C ${r2(v[20])} ${r2(v[21])} ${r2(v[22])} ${r2(v[23])} ${r2(v[24])} ${r2(v[25])} Z `
-        + `M ${r2(v[26])} ${r2(v[27])} `
-        + `C ${r2(v[28])} ${r2(v[29])} ${r2(v[30])} ${r2(v[31])} ${r2(v[32])} ${r2(v[33])} `
-        + `C ${r2(v[34])} ${r2(v[35])} ${r2(v[36])} ${r2(v[37])} ${r2(v[38])} ${r2(v[39])} `
-        + `C ${r2(v[40])} ${r2(v[41])} ${r2(v[42])} ${r2(v[43])} ${r2(v[44])} ${r2(v[45])} `
-        + `C ${r2(v[46])} ${r2(v[47])} ${r2(v[48])} ${r2(v[49])} ${r2(v[50])} ${r2(v[51])} Z`;
+    /* v39.9 (#27907 사용자: "로딩화면의 o웃을때 너무 무서워 뾰족해 피클의 로고처럼 둥글고
+       귀엽게 웃을 수 없어?") — v39.8 은 웃는 입술을 4개의 큐빅으로 그리다 보니 **양 끝이
+       뾰족한 뿔**이 되어 무서웠다. 이제 좌표 배열 대신 **둥근 점들을 잇는 곡선**으로 그린다:
+        · 닫힌 고리를 점 72개(바깥) · 36개(구멍)로 두고, 인접한 두 점 사이를 부드러운 곡선
+          (Catmull-Rom)으로 이어 **모서리·꼭짓점이 하나도 생기지 않는다**(전 구간 G1 연속).
+        · 눌린 모양은 **아래가 통통한 몽글몽글한 덩어리**(가로 49 · 세로 33.5 · 아랫배 +8)이고,
+          구멍은 그 안의 **가운데가 처지고 양 끝이 올라간 둥근 웃는 틈**이다(높이 15 · 끝은 반원).
+        · o 고리와 웃는 덩어리는 같은 점 개수·같은 시작점(위 가운데)·같은 방향이라 좌표만
+          보간하면 중간 모양도 언제나 매끄러운 닫힌 고리다. */
+    const SPLASH_OUT_N = 72;
+    const SPLASH_IN_N = 36;
+    function splashEllipsePoints(cx, cy, rx, ry, n) {
+      const pts = [];
+      for (let i = 0; i < n; i += 1) {
+        const a = -Math.PI / 2 + (Math.PI * 2 * i) / n;
+        pts.push([cx + rx * Math.cos(a), cy + ry * Math.sin(a)]);
+      }
+      return pts;
     }
+    /** 아래 절반만 살짝 불룩한 둥근 덩어리 — 어느 각도에서도 매끄럽다(sin² 가중). */
+    function splashBlobPoints(cx, cy, rx, ry, belly, n) {
+      const pts = [];
+      for (let i = 0; i < n; i += 1) {
+        const a = -Math.PI / 2 + (Math.PI * 2 * i) / n;
+        const s = Math.sin(a);
+        pts.push([cx + rx * Math.cos(a), cy + ry * s + (s > 0 ? belly * s * s : 0)]);
+      }
+      return pts;
+    }
+    /**
+     * 웃는 틈 — 2차 곡선(a→control→b)을 두께 r 로 도려낸 띠. 양 끝은 반원 캡이라 뾰족하지 않다.
+     * 돌려주는 점은 **위 가운데에서 시작해 시계방향**(o 고리와 같은 규칙)으로 정렬한다.
+     */
+    function splashSmileSlitPoints(a, control, b, r, n, capSteps) {
+      const q = (u) => [
+        (1 - u) * (1 - u) * a[0] + 2 * (1 - u) * u * control[0] + u * u * b[0],
+        (1 - u) * (1 - u) * a[1] + 2 * (1 - u) * u * control[1] + u * u * b[1]
+      ];
+      const qd = (u) => [
+        2 * (1 - u) * (control[0] - a[0]) + 2 * u * (b[0] - control[0]),
+        2 * (1 - u) * (control[1] - a[1]) + 2 * u * (b[1] - control[1])
+      ];
+      const unit = (v) => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
+      const off = (u, sign) => {
+        const p = q(u); const t = unit(qd(u)); const nx = -t[1]; const ny = t[0];
+        return [p[0] + nx * r * sign, p[1] + ny * r * sign];
+      };
+      const up = off(0.5, 1); const dn = off(0.5, -1);
+      const topSign = up[1] < dn[1] ? 1 : -1;
+      const pts = [];
+      for (let i = 0; i <= n; i += 1) pts.push(off(i / n, topSign));
+      /* 끝 캡 — 반원. 두 점(바깥·안쪽) 사이를 돌되 **띠가 나아가는 쪽(t)** 을 지나도록
+         회전 폭을 정한다(좌·우가 같은 규칙이라 모양이 대칭이다). */
+      const wrap = (v) => {
+        let x = v;
+        while (x > Math.PI) x -= Math.PI * 2;
+        while (x <= -Math.PI) x += Math.PI * 2;
+        return x;
+      };
+      const capArc = (from, center, targetAngle) => {
+        const th0 = Math.atan2(from[1] - center[1], from[0] - center[0]);
+        const half = wrap(targetAngle - th0);
+        for (let i = 1; i < capSteps; i += 1) {
+          const ang = th0 + (2 * half) * (i / capSteps);
+          pts.push([center[0] + Math.cos(ang) * r, center[1] + Math.sin(ang) * r]);
+        }
+      };
+      capArc(off(1, topSign), q(1), Math.atan2(qd(1)[1], qd(1)[0]));
+      for (let i = n; i >= 0; i -= 1) pts.push(off(i / n, -topSign));
+      capArc(off(0, -topSign), q(0), Math.atan2(-qd(0)[1], -qd(0)[0]));
+      /* 둘레를 같은 간격으로 다시 나눈다 — 캡은 점이 촘촘해 곡선이 출렁이지 않게. */
+      const resampled = splashResampleClosed(pts, n);
+      /* 꼭짓점이 위 가운데가 되도록 배열을 돌린다(o 고리와 점 대응). */
+      const top = off(0.5, topSign);
+      let best = 0; let bestD = Infinity;
+      resampled.forEach((p, i) => {
+        const d = Math.hypot(p[0] - top[0], p[1] - top[1]);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      return resampled.slice(best).concat(resampled.slice(0, best));
+    }
+    /** 닫힌 점 목록을 둘레 길이 기준 같은 간격 n 개로 다시 나눈다. */
+    function splashResampleClosed(pts, n) {
+      const m = pts.length;
+      const seg = []; let total = 0;
+      for (let i = 0; i < m; i += 1) {
+        const a = pts[i]; const b = pts[(i + 1) % m];
+        const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        seg.push(l); total += l;
+      }
+      const out = []; let cur = 0; let walked = 0;
+      for (let k = 0; k < n; k += 1) {
+        const want = (total * k) / n;
+        while (seg[cur] && walked + seg[cur] < want && cur < m - 1) { walked += seg[cur]; cur += 1; }
+        const f = seg[cur] ? (want - walked) / seg[cur] : 0;
+        const a = pts[cur]; const b = pts[(cur + 1) % m];
+        out.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
+      }
+      return out;
+    }
+    /** 점들을 지나는 **닫힌 부드러운 곡선**(Catmull-Rom → 큐빅). 꼭짓점 0개. */
+    function splashPathFrom(pts) {
+      const n = pts.length;
+      let d = `M ${r2(pts[0][0])} ${r2(pts[0][1])} `;
+      for (let i = 0; i < n; i += 1) {
+        const p0 = pts[(i - 1 + n) % n]; const p1 = pts[i];
+        const p2 = pts[(i + 1) % n]; const p3 = pts[(i + 2) % n];
+        const c1x = p1[0] + (p2[0] - p0[0]) / 6; const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+        const c2x = p2[0] - (p3[0] - p1[0]) / 6; const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+        d += `C ${r2(c1x)} ${r2(c1y)} ${r2(c2x)} ${r2(c2y)} ${r2(p2[0])} ${r2(p2[1])} `;
+      }
+      return `${d}Z`;
+    }
+    /** 좌우를 정확히 맞춘다(점 i ↔ n-i 는 거울상) — 중간 모양이 한쪽으로 기울지 않게. */
+    function splashSymmetrize(pts) {
+      const n = pts.length;
+      for (let i = 0; i < n; i += 1) {
+        const j = (n - i) % n;
+        const ax = pts[i][0]; const ay = pts[i][1];
+        const bx = 100 - pts[j][0]; const by = pts[j][1];
+        pts[i] = [(ax + bx) / 2, (ay + by) / 2];
+      }
+      return pts;
+    }
+    const SPLASH_RING_OUT = splashSymmetrize(splashEllipsePoints(50, 52.5, 50, 52.5, SPLASH_OUT_N));
+    const SPLASH_RING_IN = splashSymmetrize(splashResampleClosed(
+      splashEllipsePoints(50, 52.5, 22.4, 31.4, SPLASH_IN_N), SPLASH_IN_N));
+    const SPLASH_SMILE_OUT = splashSymmetrize(splashBlobPoints(50, 52.5, 49, 36, 8, SPLASH_OUT_N));
+    const SPLASH_SMILE_IN = splashSymmetrize(
+      splashSmileSlitPoints([27, 48], [50, 71], [73, 48], 7.5, SPLASH_IN_N, 12));
+    function splashLerpPts(A, B, p) {
+      return A.map((pt, i) => [pt[0] + (B[i][0] - pt[0]) * p, pt[1] + (B[i][1] - pt[1]) * p]);
+    }
+    const morphPath = node ? node.querySelector('.oog-mark-mouth path') : null;
+    function splashOPathAt(p) {
+      const k = p > 0 ? (p > 1 ? 1 : p) : 0;
+      return `${splashPathFrom(splashLerpPts(SPLASH_RING_OUT, SPLASH_SMILE_OUT, k))} `
+        + `${splashPathFrom(splashLerpPts(SPLASH_RING_IN, SPLASH_SMILE_IN, k))}`;
+    }
+    /* 검사용 — 그 프레임의 점들(둘레가 매끄러운지 계산에 쓴다). */
+    window.oogSplashShapePoints = (p) => {
+      const k = p > 0 ? (p > 1 ? 1 : p) : 0;
+      return {
+        outer: splashLerpPts(SPLASH_RING_OUT, SPLASH_SMILE_OUT, k),
+        inner: splashLerpPts(SPLASH_RING_IN, SPLASH_SMILE_IN, k)
+      };
+    };
     const easeOutCubic = (u) => 1 - Math.pow(1 - u, 3);
     /* 살짝 지나쳤다 돌아오는 탄성(끝값 1, 중간에 1을 넘는다) */
     const easeOutBack = (u) => 1 + 2.7 * Math.pow(u - 1, 3) + 1.7 * Math.pow(u - 1, 2);
@@ -21838,6 +22058,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dismissAllPushBanners, renderNotificationSettings,
     /* Sprint 5 — 알림 범위 확장 · PWA */
     renderPwaRow, registerServiceWorker, promptInstall, openFromNotification,
+    checkAppVersion,   /* v39.9 — 검사·진단용(기기에 남은 옛 JS 확인) */
     simulateIncomingReaction: (kind) => store.simulateIncomingReaction(kind),
     simulateJoinRequest: () => store.simulateJoinRequest(),
     simulateJoinDecision: (approved) => store.simulateJoinDecision(approved),

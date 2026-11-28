@@ -13687,6 +13687,76 @@ class Store {
     return { ok: true, memberCanWrite: g.memberBoardWrite, policy: this.getGroupBoardPolicy(groupId) };
   }
 
+  /* ------------------------------------ v39.9 (#27907). 추천 카드의 가입자 미리보기 */
+  /**
+   * 추천 모임 카드 대표 이미지 위에 겹쳐 보여 줄 **가입자 최대 3명**.
+   *  · 모임 전용 프로필을 쓰는 모임이면 **그 모임에서 쓰는 사진·닉네임**이 먼저다.
+   *  · 내가 그 모임의 멤버면 명단(roster)에서 바로 만들고, 아니면 모임 data 에 실어 둔
+   *    `memberPreview` 를 쓴다 — `group_members` 는 RLS 상 **미가입자에게 보이지 않기** 때문이다.
+   * @returns {Array<{id,name,photoUrl,avatarText,gradient,groupProfile:boolean}>}
+   */
+  getGroupPreviewFaces(groupId, max) {
+    const limit = Math.max(0, max == null ? 3 : max);
+    const g = this.getGroup(groupId);
+    if (!g || !limit) return [];
+    const allowGroup = g.allowGroupProfile !== false;
+    const seen = new Set();
+    const out = [];
+    const add = (id, groupName, groupPhoto, baseName, basePhoto, avatarText, gradient) => {
+      const key = String(id || '') || groupName || '';
+      if (!key || seen.has(key)) return;
+      const name = (allowGroup && groupName) || baseName || groupName || '';
+      const photoUrl = (allowGroup && groupPhoto) || basePhoto || (allowGroup ? groupPhoto : null) || null;
+      seen.add(key);
+      out.push({
+        id: id || null,
+        name,
+        photoUrl,
+        avatarText: avatarText || String(name || '?').charAt(0),
+        gradient: gradient || null,
+        groupProfile: !!(allowGroup && groupPhoto)
+      });
+    };
+    /* 1) 내가 멤버면 명단에서(모임장 → 멤버 순) */
+    if (this.isGroupJoined(groupId)) {
+      const roster = this.getGroupRoster(groupId);
+      (roster.members || []).forEach((m) => {
+        add(m.id, m.photoUrl ? m.name : '', m.photoUrl, m.name, null, m.avatarText, m.gradient);
+      });
+    }
+    /* 2) 아니면 모임 data 의 미리보기(모임장 기기가 갱신한다) */
+    if (!out.length) {
+      (g.memberPreview || []).forEach((m) => {
+        if (!m) return;
+        add(m.id, m.name, m.photoUrl, m.baseName, m.basePhotoUrl, m.avatarText, m.gradient);
+      });
+    }
+    return out.slice(0, limit);
+  }
+
+  /**
+   * 내가 모임장인 모임의 `memberPreview` 를 지금 명단으로 다시 만든다(바뀐 게 있을 때만 저장).
+   * 모임장 기기만 모임 줄을 올릴 수 있으므로, 미가입자가 보는 미리보기는 여기서 최신이 된다.
+   */
+  syncGroupMemberPreview(groupId) {
+    const g = this.getGroup(groupId);
+    if (!g) return false;
+    const me = this.currentUser || {};
+    if (!g.leaderId || g.leaderId !== me.id) return false;
+    const rows = [];
+    if (g.leaderId) rows.push({ id: g.leaderId, name: g.leaderName || '', photoUrl: null });
+    (g.members || []).forEach((m) => {
+      if (m && m.id) rows.push({ id: m.id, name: m.name || '', photoUrl: m.photoUrl || null });
+    });
+    const next = rows.slice(0, 3).map((r) => ({
+      id: r.id, name: r.name, photoUrl: r.photoUrl || null
+    }));
+    if (JSON.stringify(g.memberPreview || null) === JSON.stringify(next)) return false;
+    g.memberPreview = next;
+    this.saveState();
+    return true;
+  }
+
   /* ------------------------------------ v38.5. 모임 내 프로필 허용 */
   /**
    * 모임 전용 프로필을 이 모임에서 쓸 수 있는지 — 모임장이 5단계(또는 모임 설정)에서 정한 값.

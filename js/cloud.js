@@ -1434,6 +1434,10 @@
         const mine = (memberRowsByGroup[r.id] || []).find((m) => m.user_id === me.id);
         if (mine) g.myRole = mine.role;
         if (r.owner_id) g.leaderId = r.owner_id;
+        /* v39.9 — 미가입자에게는 group_members 가 보이지 않는다(RLS). 모임장 기기가 실어 둔
+           가입자 미리보기(최대 3명·모임 전용 프로필 포함)를 카드에 쓰도록 그대로 옮긴다. */
+        const preview = (r.data && r.data.memberPreview) || null;
+        if (Array.isArray(preview)) g.memberPreview = preview.slice(0, 3);
         return g;
       });
       st.groups = mergeById(st.groups, remoteGroups, (item) => isUuid(item.leaderId) && item.leaderId !== me.id ? 'remote' : 'keep');
@@ -1650,6 +1654,11 @@
       if (!st.homePrefs.groupId || !st.currentUser.joinedGroupIds.includes(st.homePrefs.groupId)) {
         st.homePrefs.groupId = st.currentUser.joinedGroupIds[0] || null;
       }
+      /* v39.9 — 내가 모임장인 모임은 가입자 미리보기(최대 3명)를 지금 명단으로 맞춰 둔다.
+         그래야 **미가입자**가 추천 카드에서 우리 모임 멤버 얼굴을 볼 수 있다(RLS 우회 없이). */
+      try {
+        (st.groups || []).forEach((g) => { if (store2.syncGroupMemberPreview) store2.syncGroupMemberPreview(g.id); });
+      } catch (e) { /* 미리보기는 없어도 나머지는 계속 */ }
 
       store2.saveState();
       try { store2.emit && store2.emit(); } catch (e) { /* 구독자 갱신은 app.js 가 한다 */ }

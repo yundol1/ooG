@@ -32,6 +32,8 @@
   <meta property="og:type" content="website">
   <!-- ===== PWA (Sprint 5) — 홈 화면에 추가 · 앱처럼 실행 ===== -->
   <link rel="manifest" href="manifest.json">
+  <!-- v39.9 (#27907) — 기기에 남은 옛 JS 를 알아채기 위한 표식(version.json 과 짝) -->
+  <meta name="oog-version" content="v39.9">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -41,7 +43,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310B981'/%3E%3Ctext x='32' y='42' font-family='sans-serif' font-size='30' font-weight='800' fill='white' text-anchor='middle'%3EooG%3C/text%3E%3C/svg%3E">
   <meta name="description" content="ooG(우그) - 취미로 이어지는 사람과 모임">
   <title>ooG(우그) - 취미로 이어지는 사람과 모임</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=39.9">
 </head>
 <body>
   <noscript>
@@ -2319,10 +2321,10 @@
     </div>
   </div>
 
-  <script src="js/icons.js"></script>
-  <script src="js/store.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/cloud.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/icons.js?v=39.9"></script>
+  <script src="js/store.js?v=39.9"></script>
+  <script src="js/api.js?v=39.9"></script>
+  <script src="js/cloud.js?v=39.9"></script>
+  <script src="js/app.js?v=39.9"></script>
 </body>
 </html>

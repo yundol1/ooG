@@ -21029,6 +21029,35 @@ textarea,
 }
 .group-card:active .group-card-cover { transform: scale(0.985); }
 
+/* v39.9 (#27907) — 추천 모임 카드 대표 이미지 오른쪽 아래, 가입자 3명이 겹친 미리보기.
+   피드 좋아요 줄(.ig-liker-face)과 같은 작은 원형이고, 모임 전용 프로필 사진이 있으면 그것이 뜨다. */
+.group-card-faces {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+}
+.group-card-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 999px;
+  border: 2px solid var(--bg-base);
+  overflow: hidden;
+  background: var(--bg-subtle);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: var(--fw-label);
+  line-height: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
+.group-card-face + .group-card-face { margin-left: -7px; }
+.group-card-face .avatar-img { width: 100%; height: 100%; object-fit: cover; }
+
 /* ---------------------------------------- H1-4. 추천 일정 · 추천 피드 (행 + 구분선) */
 .home-suggest { margin: 20px 0 4px; }
 .home-suggest[hidden] { display: none; }
