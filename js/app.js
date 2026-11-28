@@ -2173,6 +2173,18 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) { console.warn('[ooG] refresh', e); }
   }
 
+  /* v39.8 (#27868) — **서버 내려받기가 끝나는 순간 홈을 다시 그린다.**
+     로그인·앱 시작의 첫 렌더는 pull 보다 먼저 끝나므로 그때는 모임·일정 목록이 비어 있고,
+     그 뒤로 아무도 홈을 다시 그리지 않아 '샘플 모임·일정이 안 보이는' 화면이 남았다.
+     (cloud.js pullAll 이 pull 끝에 이 신호를 보낸다. 여러 번 와도 400ms 로 합쳐 한 번만 그린다.) */
+  window.addEventListener('oog:cloud-pulled', () => {
+    try {
+      if (!store.isSignedIn()) return;
+      if (typeof window.oogRefresh === 'function') window.oogRefresh();
+      else oogRefreshAll();
+    } catch (e) { /* noop */ }
+  });
+
   /** 가입/로그인 완료 → 앱 화면으로. 정한 닉네임·사진을 전체에 반영한다. */
   function finishSignup() {
     applySignInGate();
@@ -3536,13 +3548,18 @@ document.addEventListener('DOMContentLoaded', () => {
       if (el.homeRecEvents) el.homeRecEvents.hidden = true;
       el.homeRecommendGrid.hidden = false;
       const items = recGroupItems();
+      /* v39.8 (#27868) — 서버에 들어 있는 모임을 아직 받아 오는 중이면 '없어요' 라고 하지 않는다.
+         (로그인 직후 첫 렌더가 pull 보다 먼저라 잠깐 비어 보이는 순간이 있었다.) */
+      const cloudPending = !items.length && !(window.oogPerf && window.oogPerf.cloudPull)
+        && !!(window.OOGCloud && window.OOGCloud.hasSession && window.OOGCloud.hasSession());
       el.homeRecommendGrid.innerHTML = items.length
         ? items.map((it) => groupCardHTML({
           group: it.group, tone: it.tone, azit: it.azit, joined: false
         })).join('')
         : `<div class="home-empty-line">
-             <p class="home-empty-title">${sort === 'shop' ? '아직 동네가게모임이 없어요' : '지금은 추천할 모임이 없어요'}</p>
-             <button class="btn-text" data-home-find="1" type="button">모임 찾기</button>
+             <p class="home-empty-title">${cloudPending ? '모임을 불러오는 중이에요'
+    : (sort === 'shop' ? '아직 동네가게모임이 없어요' : '지금은 추천할 모임이 없어요')}</p>
+             ${cloudPending ? '' : '<button class="btn-text" data-home-find="1" type="button">모임 찾기</button>'}
            </div>`;
       hydrateIcons(el.homeRecommendGrid);
     }
@@ -8467,7 +8484,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.7';
+  const APP_VERSION = 'v39.8';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -19547,18 +19564,23 @@ document.addEventListener('DOMContentLoaded', () => {
       37.6, 83.9, 27.6, 69.8, 27.6, 52.5,
       27.6, 35.2, 37.6, 21.1, 50, 21.1
     ];
-    /* 눌린 스마일 루프 — 윗변이 가운데로 눌리고(오목) 아랫변은 둥글게 웃는다. 안쪽 구멍은 그대로 뚫려 있다. */
+    /* v39.8 (#27868 사용자: "로딩화면의 o가 더 찡그러져야지 웃음 표시처럼 안보이잖아") —
+       v39.7 의 눌린 모양은 위가 14 → 거의 그대로라 **납작한 도넛**으로 보였다. 이제
+       위 가장자리가 아래로 깊게 파이고(중심 y 50) 양끝이 위로 올라가(x 4·96, y 17)
+       **누가 봐도 방긋 웃는 입** 이다. 바깥 테두리는 닫혀 있고 구멍은 그 웃는 호를 따라
+       얇고 길쭉하게(높이 47 중 16만 남는 띠) 찌그러진다. 눌림 배율(1.14×0.74)까지 곱하면
+       높이는 o 의 약 58%, 폭은 약 121% — 납작하게 눌리며 양옆이 살짝 넓어진다. */
     const SPLASH_O_SMILE = [
-      50, 14,
-      77.6, 14, 100, 31.1, 100, 52,
-      100, 72.9, 78, 90, 50, 90,
-      22, 90, 0, 72.9, 0, 52,
-      0, 31.1, 22.4, 14, 50, 14,
-      50, 40,
-      66, 36, 82, 42, 82, 56,
-      82, 68, 66, 72, 50, 72,
-      34, 72, 18, 68, 18, 56,
-      18, 42, 34, 36, 50, 40
+      50, 38,
+      76, 36, 94, 30, 99, 20,
+      96, 58, 74, 98, 50, 98,
+      26, 98, 4, 58, 1, 20,
+      6, 30, 24, 36, 50, 38,
+      50, 54,
+      70, 52, 86, 44, 90, 38,
+      92, 58, 72, 82, 50, 82,
+      28, 82, 8, 58, 10, 38,
+      14, 44, 30, 52, 50, 54
     ];
     const morphPath = node ? node.querySelector('.oog-mark-mouth path') : null;
     const r2 = (n) => Math.round(n * 100) / 100;

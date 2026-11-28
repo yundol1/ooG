@@ -23,7 +23,7 @@
   const CONF = {
     url: 'https://nnzrunhjxwcspsfgsmgf.supabase.co',
     key: 'sb_publishable_fy0CjiojNNWeTVAzrflP8w_098c3T2J',
-    version: 'v39.0'
+    version: 'v39.8'
   };
 
   const LS_SESSION = 'oog_cloud_session_v1';
@@ -1180,9 +1180,13 @@
   /* ----------------------------------------------------------- 내 프로필 */
   function profileRow(user, me) {
     const u = user || {};
+    /* v39.8 (#27868) — 서버의 profiles_handle_format 은 `^[a-z0-9._]{3,20}$` 다.
+       핸들이 아직 없거나(`me` 같은 임시값·2자 이하·한글) 규칙에 맞지 않으면 null 로 보낸다.
+       그렇지 않으면 프로필 올리기가 400 으로 막혀 동기화 전체가 멈췄다. */
+    const rawHandle = u.handle ? String(u.handle).replace(/^@+/, '').toLowerCase() : '';
     return {
       id: me,
-      handle: u.handle ? String(u.handle).replace(/^@+/, '').toLowerCase() : null,
+      handle: /^[a-z0-9._]{3,20}$/.test(rawHandle) ? rawHandle : null,
       nickname: u.nickname || '',
       avatar_url: /^https?:/.test(String(u.photoUrl || '')) ? u.photoUrl : null,
       bio: u.bio || null,
@@ -1285,11 +1289,19 @@
     if (state.syncing && !options.force) return { ok: false, reason: 'busy' };
     state.syncing = true;
     const errors = [];
+    /* v39.8 (#27868) — 프로필·모임 전용 프로필·비밀앨범 올리기는 서로 독립이다.
+       한 가지가 실패해도 나머지 표(모임·글·일정)는 계속 올린다. */
+    const soft = async (name, fn) => {
+      try { await fn(); } catch (e) {
+        errors.push(`${name}: ${(e && (e.message || e.code)) || 'error'}`);
+        state.lastError = e;
+      }
+    };
     try {
-      await pushProfile();
-      await syncMyGroupProfiles(me.id);
-      await syncSecretAlbum(me.id);
-      await syncSecretRequests(me.id);
+      await soft('profiles', pushProfile);
+      await soft('group_profiles', () => syncMyGroupProfiles(me.id));
+      await soft('secret_album', () => syncSecretAlbum(me.id));
+      await soft('secret_requests', () => syncSecretRequests(me.id));
       let mediaChanged = false;
       for (const name of Object.keys(TABLES)) {
         const spec = TABLES[name];
@@ -1338,7 +1350,7 @@
           state.lastError = e;
         }
       }
-      await pushUserState();
+      await soft('user_state', pushUserState);
       const sig = mediaSignature();
       const sigChanged = state.meta.mediaSig !== sig;
       state.meta.mediaSig = sig;
@@ -1373,22 +1385,32 @@
     const store2 = global.appStore;
     const me = currentUser();
     if (!store2 || !me || !isUuid(me.id) || !hasSession()) return { ok: false, reason: 'no_session' };
+    /* v39.8 (#27868) — 표 하나가 막혀도(권한·네트워크) 나머지 표는 그대로 내려받는다.
+       전에는 Promise.all 이라 한 표만 실패해도 모임·일정까지 통째로 비어 홈 '추천 모임'이
+       아무것도 없이 남았다. 실패한 표 이름은 아래 pullErrors 에 남겨 진단에 쓴다. */
+    const pullErrors = [];
+    const pick = (name, p) => p.catch((e) => {
+      pullErrors.push({ table: name, reason: (e && (e.code || e.status)) || 'error' });
+      return [];
+    });
     try {
       const [profiles, groups, members, posts, events, notices, gchats, echats, dms, stories, apps, notifs, ustate] = await Promise.all([
-        selectAll('profiles'),
-        selectAll('groups', '&deleted=eq.false'),
-        selectAll('group_members'),
-        selectAll('posts', '&deleted=eq.false'),
-        selectAll('events', '&deleted=eq.false'),
-        selectAll('notices', '&deleted=eq.false'),
-        selectAll('group_chats'),
-        selectAll('event_chats'),
-        selectAll('dm_rooms'),
-        selectAll('stories', '&deleted=eq.false'),
-        selectAll('group_applications', '&deleted=eq.false'),
-        selectAll('notifications', '&deleted=eq.false'),
-        request(`${REST}/user_state?select=*&user_id=eq.${me.id}`, { retry: 0 }).catch(() => [])
+        pick('profiles', selectAll('profiles')),
+        pick('groups', selectAll('groups', '&deleted=eq.false')),
+        pick('group_members', selectAll('group_members')),
+        pick('posts', selectAll('posts', '&deleted=eq.false')),
+        pick('events', selectAll('events', '&deleted=eq.false')),
+        pick('notices', selectAll('notices', '&deleted=eq.false')),
+        pick('group_chats', selectAll('group_chats')),
+        pick('event_chats', selectAll('event_chats')),
+        pick('dm_rooms', selectAll('dm_rooms')),
+        pick('stories', selectAll('stories', '&deleted=eq.false')),
+        pick('group_applications', selectAll('group_applications', '&deleted=eq.false')),
+        pick('notifications', selectAll('notifications', '&deleted=eq.false')),
+        pick('user_state', request(`${REST}/user_state?select=*&user_id=eq.${me.id}`, { retry: 0 }).catch(() => []))
       ]);
+      global.oogPerf = global.oogPerf || {};
+      global.oogPerf.cloudPull = { at: nowIso(), errors: pullErrors, groups: (groups || []).length, events: (events || []).length };
 
       const st = store2.state;
       /* --- 모임 ------------------------------------------------------- */
@@ -1633,7 +1655,15 @@
       try { store2.emit && store2.emit(); } catch (e) { /* 구독자 갱신은 app.js 가 한다 */ }
       state.lastSyncAt = nowIso();
       state.status = 'online';
-      return { ok: true };
+      /* v39.8 (#27868) — **내려받기가 끝난 그 순간 화면을 다시 그린다.**
+         첫 렌더(로그인 직후)는 pull 보다 먼저 끝나므로, 그때는 모임 목록이 비어 있어
+         홈 '추천 모임'이 '지금은 추천할 모임이 없어요' 로 남았다. 서버 데이터가 도착하면
+         앱이 홈(내 모임·추천 모임·추천 일정·피드)을 그 자리에서 다시 그린다. */
+      try {
+        global.dispatchEvent(new CustomEvent('oog:cloud-pulled', { detail: { at: nowIso(), errors: pullErrors } }));
+      } catch (e) { /* 구형 브라우저 — 아래 직접 호출이 있다 */ }
+      try { if (typeof global.oogRefresh === 'function') global.oogRefresh(); } catch (e) { /* noop */ }
+      return { ok: true, pullErrors };
     } catch (e) {
       state.status = e && e.code === 'network' ? 'offline' : 'error';
       state.lastError = e;
@@ -1832,7 +1862,15 @@
     store2.state.currentUser.registered = true;
     if (!store2.state.currentUser.photoUrl && u.photoUrl) store2.state.currentUser.photoUrl = u.photoUrl;
     store2.saveState();
-    await pushAll({ force: true });
+    /* v39.8 (#27868) — 올리기가 실패해도(예: 아직 서버에 없는 내 프로필 줄·사진 업로드 실패)
+       **내려받은 내용은 이미 화면에 있어야 한다.** 전에는 여기서 예외가 나면 bootstrap 의
+       약속이 거부되어, 앱이 홈을 다시 그리지 못하고 샘플 모임·일정이 빈 채로 남았다. */
+    try {
+      await pushAll({ force: true });
+    } catch (e) {
+      state.lastError = e;
+      try { console.warn('[ooG cloud] push 실패 · 내려받은 내용으로 계속', e && (e.message || e.code)); } catch (e2) { /* noop */ }
+    }
     startRealtime();
     return { ok: true };
   }
