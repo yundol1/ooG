@@ -19374,10 +19374,13 @@ document.addEventListener('DOMContentLoaded', () => {
       /* v39.6 — 모션 끝 + 130ms 에 진입(에니메이션이 없는 자리·동작 줄이기는 아래 ready 로). */
       if (!hold && !reduced && leadMark) {
         motionOwnsEntry = true;
-        leadMark.addEventListener('animationend', (ev) => {
+        const onMotionEnd = (ev) => {
           if (!/splashRollIn/.test((ev && ev.animationName) || '')) return;
           window.setTimeout(() => finish('motion'), enterDelayMs);
-        });
+        };
+        /* 옛 사파리는 webkitAnimationEnd 만 보낸다 — 둘 다 받아 둔다(finish 가 중복을 막는다). */
+        leadMark.addEventListener('animationend', onMotionEnd);
+        leadMark.addEventListener('webkitAnimationEnd', onMotionEnd);
       }
     }
     /* 앱 준비 완료 — 최소 노출 시간만 지나면 즉시 걷는다(최대 1.5초는 위 타임아웃이 보장). */
