@@ -8263,7 +8263,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.5';
+  const APP_VERSION = 'v39.6';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -19281,6 +19281,10 @@ document.addEventListener('DOMContentLoaded', () => {
        v39.5 (11/28) — 워드마크 연출(맨 앞 o 가 굴러와 부딪혀 튕겼다 제자리에 서기)은
          CSS(`splashRollIn`·`splashSmileIn`·`splashRestNudge`)가 전부 맡고, 여기서는
          그 연출이 끝까지 보이도록 노출 시간만 늘렸다.
+       v39.6 (11/28 사용자: "o자가 아예 입이 되어야해 그리고 속도는 즉 로딩화면은 조금만 더 천천히" ·
+         "튕기는게 끝날때 진입이 되어야해") — 모션을 2.1초로 늦추고, **o 가 제자리에 딱 서는 순간이
+         곧 애니메이션의 끝**이 되게 다시 잡았다. 그래서 첫 화면 진입(페이드아웃)은 모션 끝
+         **130ms 뒤**(최소 노출 2,230ms)에 바로 시작한다 — 깨끗한 ooG 로 오래 머물지 않는다.
      ------------------------------------------------------------------------ */
   /* Sprint 28.5 — 스플래시 자산은 CSS 의 --splash-art-fallback 한 곳만 바꾸면 교체된다.
      Sprint 31 — 선택 자산(oog_christmas_night.svg) 확인용 프로브를 거뒀다.
@@ -19302,10 +19306,19 @@ document.addEventListener('DOMContentLoaded', () => {
        v39.5 (11/28 사용자: "맨 앞 o가 왼쪽에서 굴러와 부딪히고 튕겼다 제자리에 서는" 연출) —
        굴러오기 0~0.5초 · 부딪힘·눌림 0.5~0.56초 · 튕김·착지 0.56~0.82초 · 여운(깨끗한 ooG)까지
        다 보이도록 최소 노출 **1,950ms**, 하드 상한 **2,150ms** 로 늘렸다(애니메이션 자체는 1.2초).
+       v39.6 (11/28) — 모션 2.1초(굴러오기 0~0.97초 · 부딪혀 입 1.09초 · 튕김 1.24초 · 제자리 2.1초)로
+       늦추고, **제자리에 서는 순간(2.1초)이 모션의 끝**이라 130ms 뒤 바로 첫 화면으로 넘어간다:
+       최소 노출 **2,230ms**, 하드 상한 **2,430ms**(총 노출 ≈ 2.46초).
        (손가락·키 입력이 있으면 지금처럼 바로 건너뛰고, 동작 줄이기·자동화 테스트는 짧게/생략 유지) */
-    const minMs = reduced ? 100 : 1950;
-    const stayMs = reduced ? 140 : 2150;
+    const minMs = reduced ? 100 : 2230;
+    const stayMs = reduced ? 140 : 2430;
     const leaveMs = reduced ? 0 : 200;
+    /* v39.6 — "튕기는게 끝날때 진입이 되어야해". 모션(`splashRollIn`)이 끝나는 순간이 곧 o 가 제자리에
+       딱 서는 순간이라, 그 **130ms 뒤**에 첫 화면 진입(페이드아웃)을 시작한다. 타이머로 재면 첫 페인트와
+       스크립트 시작 사이의 시차만큼 어긋나므로, CSS 애니메이션의 끝(animationend)을 직접 받아 잰다. */
+    const enterDelayMs = 130;
+    const leadMark = node ? node.querySelector('.oog-mark-lead') : null;
+    let motionOwnsEntry = false;
     const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const state = {
       present: !!node,
@@ -19338,9 +19351,9 @@ document.addEventListener('DOMContentLoaded', () => {
       listeners.length = 0;
     }
     function finish(reason) {
+      if (!node) { state.reason = reason || state.reason; markDone(state.reason); return; }
+      if (node.hidden || node.classList.contains('is-leaving')) return;   /* 이미 걷히는 중 — 이유를 덮지 않는다 */
       state.reason = reason || state.reason;
-      if (!node) { markDone(state.reason); return; }
-      if (node.hidden || node.classList.contains('is-leaving')) return;
       detach();
       node.classList.add('is-leaving');
       if (leaveMs <= 0) { markDone(state.reason); return; }
@@ -19358,6 +19371,14 @@ document.addEventListener('DOMContentLoaded', () => {
         listeners.push([type, onInput, opts]);
       });
       if (!hold) window.setTimeout(() => finish('timeout'), stayMs);
+      /* v39.6 — 모션 끝 + 130ms 에 진입(에니메이션이 없는 자리·동작 줄이기는 아래 ready 로). */
+      if (!hold && !reduced && leadMark) {
+        motionOwnsEntry = true;
+        leadMark.addEventListener('animationend', (ev) => {
+          if (!/splashRollIn/.test((ev && ev.animationName) || '')) return;
+          window.setTimeout(() => finish('motion'), enterDelayMs);
+        });
+      }
     }
     /* 앱 준비 완료 — 최소 노출 시간만 지나면 즉시 걷는다(최대 1.5초는 위 타임아웃이 보장). */
     let readyCalled = false;
@@ -19365,6 +19386,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (readyCalled) return;
       readyCalled = true;
       if (hold || skipNow) return;
+      /* v39.6 — 모션 연출이 있는 자리에서는 animationend 가 진입 시점을 갖는다(위 참고). */
+      if (motionOwnsEntry) return;
       const elapsed = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - started;
       const wait = Math.max(0, minMs - elapsed);
       window.setTimeout(() => finish('ready'), wait);
