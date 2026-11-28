@@ -8263,7 +8263,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.4';
+  const APP_VERSION = 'v39.5';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -19278,6 +19278,9 @@ document.addEventListener('DOMContentLoaded', () => {
          기다리지 않고 바로 통과한다 — 테스트·접근성을 해치지 않는다.
        · 주소에 ?splash=1 을 붙이면 강제로 보여 주고, ?splash=hold 는 직접 끌 때까지,
          ?splash=0 은 끈다(미리보기·촬영용).
+       v39.5 (11/28) — 워드마크 연출(맨 앞 o 가 굴러와 부딪혀 튕겼다 제자리에 서기)은
+         CSS(`splashRollIn`·`splashSmileIn`·`splashRestNudge`)가 전부 맡고, 여기서는
+         그 연출이 끝까지 보이도록 노출 시간만 늘렸다.
      ------------------------------------------------------------------------ */
   /* Sprint 28.5 — 스플래시 자산은 CSS 의 --splash-art-fallback 한 곳만 바꾸면 교체된다.
      Sprint 31 — 선택 자산(oog_christmas_night.svg) 확인용 프로브를 거뒀다.
@@ -19296,9 +19299,12 @@ document.addEventListener('DOMContentLoaded', () => {
     /* Sprint 28.5 — 최대 1.5초. 앱 첫 렌더가 끝나면(ready) 0.55초만 보여주고 바로 걷힌다.
        v33.8 (#22203 · 11/22 12:46 사용자: "oog를 실행했을때 나오는 첫 로딩화면을 좀만 더 길게") —
        최소 노출 550ms → **1,500ms**, 하드 상한 1,500ms → **1,800ms**.
-       (손가락·키 입력이 있으면 지금처럼 바로 건넌뛰고, 동작 줄이기·자동화 테스트는 짧게/생략 유지) */
-    const minMs = reduced ? 100 : 1500;
-    const stayMs = reduced ? 140 : 1800;
+       v39.5 (11/28 사용자: "맨 앞 o가 왼쪽에서 굴러와 부딪히고 튕겼다 제자리에 서는" 연출) —
+       굴러오기 0~0.5초 · 부딪힘·눌림 0.5~0.56초 · 튕김·착지 0.56~0.82초 · 여운(깨끗한 ooG)까지
+       다 보이도록 최소 노출 **1,950ms**, 하드 상한 **2,150ms** 로 늘렸다(애니메이션 자체는 1.2초).
+       (손가락·키 입력이 있으면 지금처럼 바로 건너뛰고, 동작 줄이기·자동화 테스트는 짧게/생략 유지) */
+    const minMs = reduced ? 100 : 1950;
+    const stayMs = reduced ? 140 : 2150;
     const leaveMs = reduced ? 0 : 200;
     const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const state = {
