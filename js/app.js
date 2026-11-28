@@ -69,6 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
     feedFilter: 'my',            // 'my' | 'popular'
     feedGroupId: null,           // null = 모든 가입 모임
     feedHashtag: null,           // v33.7 — #해시태그로 모아 보는 중이면 그 태그
+    homeRecSort: 'rec',          // v39.7 — 추천/인기/요즘 뜨는/동네가게모임
+    homeRecView: 'group',        // v39.7 — 그룹 | 일정
+    homeRecCat: 'all',           // v39.7 — 전체/운동/동네친구/아웃도어·여행/자기계발/기타
+    homeRecOpen: false,          // v39.7 — 추천 모임 펼침 여부(기본 2개 접힘)
     exploreFilter: 'all',        // 'all' | 'people' | 'groups' | 취미 id
     exploreAge: 'all',           // Sprint 6~7 — 나이 필터 ('all'|'for_me'|'none'|'20s'|'2030'|'30plus')
     exploreRegion: 'all',        // Sprint 7 — 지역(생활권) 필터
@@ -224,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ------------------------------------------------------------- DOM 캐시 */
   const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
   /* Sprint 12 — 손맛 있는 모션의 공통 전제.
      사용자가 OS에서 '동작 줄이기'를 켜 두었으면 시트·카드·하트 애니메이션을
@@ -255,7 +259,14 @@ document.addEventListener('DOMContentLoaded', () => {
     homeRecommend: $('#home-recommend'),
     homeRecommendSub: $('#home-recommend-sub'),
     homeRecommendGrid: $('#home-recommend-grid'),
-    homeRecommendChips: $('#home-recommend-chips'),
+    homeRecSeg: $('#home-rec-seg'),
+    homeRecCats: $('#home-rec-cats'),
+    homeRecChips: $('#home-rec-chips'),
+    homeRecCollapse: $('#home-rec-collapse'),
+    homeRecEvents: $('#home-rec-events'),
+    homeRecFade: $('#home-rec-fade'),
+    btnHomeRecExpand: $('#btn-home-rec-expand'),
+    homeRecExpandLabel: $('#home-rec-expand-label'),
     btnHomeRecommendMore: $('#btn-home-recommend-more'),
     homeSuggestEvents: $('#home-suggest-events'),
     homeSuggestEventsSub: $('#home-suggest-events-sub'),
@@ -3372,46 +3383,202 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ---------------------------------------- H1-② 추천 모임 */
 
-  const RECOMMEND_SORTS = [
-    { id: 'near', label: '가까운 순' },
+  /* v39.7 (#27717 · IMG_4639) — 추천 모임 개편: 그룹 | 일정 · 카테고리 탭 · 칩 · 2개 접힘 */
+  const REC_VIEWS = [
+    { id: 'group', label: '그룹' },
+    { id: 'event', label: '일정' }
+  ];
+  /* 사진의 카테고리 탭을 ooG 취미 대분류에 맞춰 옮겼다.
+     · 운동 = 운동·스포츠 · 아웃도어/여행 = 여행·야외 · 자기계발 = 독서·글(+스터디)
+     · 동네친구 = 내 아지트에서 가까운 모임 · 기타 = 게임·맛집·문화·일상 */
+  const REC_CATS = [
+    { id: 'all', label: '전체' },
+    { id: 'sports', label: '운동' },
+    { id: 'local', label: '동네친구' },
+    { id: 'travel', label: '아웃도어/여행' },
+    { id: 'growth', label: '자기계발' },
+    { id: 'etc', label: '기타' }
+  ];
+  const REC_SORTS = [
+    { id: 'rec', label: '추천', caret: true },
     { id: 'popular', label: '인기' },
-    { id: 'new', label: '새로 생긴' }
+    { id: 'trending', label: '요즘 뜨는' },
+    { id: 'shop', label: '동네가게모임' }
   ];
 
   function homeRecommendSort() {
-    return RECOMMEND_SORTS.some((s) => s.id === ui.homeRecSort) ? ui.homeRecSort : 'near';
+    return REC_SORTS.some((s) => s.id === ui.homeRecSort) ? ui.homeRecSort : 'rec';
+  }
+  function homeRecView() {
+    return ui.homeRecView === 'event' ? 'event' : 'group';
+  }
+  function homeRecCat() {
+    return REC_CATS.some((c) => c.id === ui.homeRecCat) ? ui.homeRecCat : 'all';
   }
 
-  /** 추천 모임 — 가입하지 않은 모임만. 칩 3개가 순서를 바꾼다. */
+  /** 모임의 추천 카테고리 — 운동/아웃도어·여행/자기계발/기타 (+ '동네친구'는 거리로 따로 판정). */
+  function recGroupCategory(g) {
+    const chip = g ? store.getHobbyChip(g.hobbyId || g.category) : null;
+    const cat = chip ? chip.categoryId : '';
+    if (cat === 'sports') return 'sports';
+    if (cat === 'travel') return 'travel';
+    if (cat === 'read' || (g && g.hobbyId === 'study')) return 'growth';
+    return 'etc';
+  }
+  /** '동네친구' — 내 아지트와 같은 동네이거나 5km 안쪽 모임. */
+  function recGroupIsLocal(g) {
+    const azit = store.getGroupAzit(g);
+    const mine = store.getMyAzit();
+    if (azit && mine && azit.id && azit.id === mine.id) return true;
+    if (azit && mine && azit.areaId && azit.areaId === mine.areaId) return true;
+    const km = store.getGroupDistanceKm(g);
+    return km != null && km <= 5;
+  }
+  function recInCategory(g, cat) {
+    if (cat === 'all') return true;
+    if (cat === 'local') return recGroupIsLocal(g);
+    return recGroupCategory(g) === cat;
+  }
+  /** '요즘 뜨는' — 최근 2주 새 글·다가오는 일정이 많은 모임. */
+  function recTrendScore(g) {
+    const since = Date.now() - 14 * 24 * 60 * 60 * 1000;
+    const posts = (store.state.feedPosts || []).filter((p) => p.groupId === g.id
+      && new Date(p.createdAt || 0).getTime() >= since).length;
+    const events = (store.state.groupEvents || []).filter((e) => e.groupId === g.id
+      && new Date(e.when || 0).getTime() > Date.now()).length;
+    return posts * 2 + events * 3 + Math.min(6, Math.floor((g.memberCount || 0) / 10));
+  }
+
+  /** 추천 그룹 목록 — 필터·정렬을 화면 상태(칩·탭)에 맞춘다. */
+  function recGroupItems() {
+    const sort = homeRecommendSort();
+    const base = store.getRecommendedGroups({
+      limit: 60,
+      sort: sort === 'popular' ? 'popular' : (sort === 'trending' ? 'new' : 'recommend')
+    });
+    let list = base.filter((it) => recInCategory(it.group, homeRecCat()));
+    if (sort === 'shop') {
+      list = list.filter((it) => it.group.partnerBusiness === true || it.group.shopPartner === true);
+    }
+    if (sort === 'trending') {
+      list = list.slice().sort((a, b) => (recTrendScore(b.group) - recTrendScore(a.group))
+        || ((b.group.memberCount || 0) - (a.group.memberCount || 0)));
+    }
+    return list;
+  }
+
+  /** 추천 일정 목록 — 같은 탭·칩을 일정에 맞게 적용한다(날짜 순, 참석 많은 순 …). */
+  function recEventItems() {
+    const sort = homeRecommendSort();
+    let list = store.getRecommendedEvents({ limit: 60 });
+    list = list.filter((it) => it.group && recInCategory(it.group, homeRecCat()));
+    if (sort === 'shop') {
+      list = list.filter((it) => it.group && (it.group.partnerBusiness === true || it.group.shopPartner === true));
+    }
+    if (sort === 'popular') {
+      list = list.slice().sort((a, b) => (b.event.rsvps || []).filter((r) => r.status === 'yes').length
+        - (a.event.rsvps || []).filter((r) => r.status === 'yes').length);
+    }
+    return list;
+  }
+
+  /** 추천 모임 — 그룹 | 일정 토글 · 카테고리 탭 · 칩 · 2개만 남기고 접힘. */
   function renderHomeRecommend() {
     if (!el.homeRecommendGrid) return;
+    const view = homeRecView();
+    const cat = homeRecCat();
     const sort = homeRecommendSort();
-    if (el.homeRecommendChips) {
-      el.homeRecommendChips.innerHTML = RECOMMEND_SORTS.map((s) => `
+
+    if (el.homeRecSeg) {
+      $$('.home-rec-seg-btn', el.homeRecSeg).forEach((b) => {
+        const on = b.dataset.homeRecView === view;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+    }
+    if (el.homeRecCats) {
+      el.homeRecCats.innerHTML = REC_CATS.map((c) => `
+        <button class="home-rec-cat ${cat === c.id ? 'is-active' : ''}" type="button"
+                data-home-rec-cat="${c.id}" aria-pressed="${cat === c.id}">${escapeHtml(c.label)}</button>`).join('');
+    }
+    if (el.homeRecChips) {
+      el.homeRecChips.innerHTML = REC_SORTS.map((s) => `
         <button class="home-chip ${sort === s.id ? 'active' : ''}" data-home-rec-sort="${s.id}"
-                type="button" aria-pressed="${sort === s.id}">${escapeHtml(s.label)}</button>`).join('');
+                type="button" aria-pressed="${sort === s.id}">${escapeHtml(s.label)}${s.caret
+          ? '<span class="home-chip-caret" aria-hidden="true"></span>' : ''}</button>`).join('');
     }
     if (el.homeRecommendSub) {
       const taste = store.getTaste();
       const picked = (taste.goalIds.length ? taste.goalIds : taste.hobbyIds.length ? taste.hobbyIds : store.getTasteHobbyIds());
       const names = picked.map((id) => store.getHobbyChip(id)).filter(Boolean).map((h) => h.name).slice(0, 2);
       const mine = store.getMyAzit();
-      el.homeRecommendSub.textContent = names.length
-        ? `${mine ? `${mine.name} 근처 · ` : ''}${names.join(' · ')} 취미로 골랐어요`
-        : '아직 가입하지 않은 모임을 골라 왔어요';
+      el.homeRecommendSub.textContent = view === 'event'
+        ? '가입하지 않아도 참석을 신청할 수 있는 일정이에요'
+        : (names.length
+          ? `${mine ? `${mine.name} 근처 · ` : ''}${names.join(' · ')} 취미로 골랐어요`
+          : '아직 가입하지 않은 모임을 골라 왔어요');
     }
-    const items = store.getRecommendedGroups({ limit: 4, sort });
-    if (!items.length) {
-      el.homeRecommendGrid.innerHTML = `
-        <div class="home-empty-line">
-          <p class="home-empty-title">지금은 추천할 모임이 없어요</p>
-          <button class="btn-text" data-home-find="1" type="button">모임 찾기</button>
-        </div>`;
+
+    if (view === 'event') {
+      el.homeRecommendGrid.hidden = true;
+      if (el.homeRecEvents) {
+        const items = recEventItems();
+        el.homeRecEvents.hidden = false;
+        el.homeRecEvents.innerHTML = items.length
+          ? items.map(suggestEventRowHTML).join('')
+          : `<div class="home-empty-line">
+               <p class="home-empty-title">지금은 추천할 일정이 없어요</p>
+               <button class="btn-text" data-home-find="1" type="button">모임 찾기</button>
+             </div>`;
+        hydrateIcons(el.homeRecEvents);
+      }
+    } else {
+      if (el.homeRecEvents) el.homeRecEvents.hidden = true;
+      el.homeRecommendGrid.hidden = false;
+      const items = recGroupItems();
+      el.homeRecommendGrid.innerHTML = items.length
+        ? items.map((it) => groupCardHTML({
+          group: it.group, tone: it.tone, azit: it.azit, joined: false
+        })).join('')
+        : `<div class="home-empty-line">
+             <p class="home-empty-title">${sort === 'shop' ? '아직 동네가게모임이 없어요' : '지금은 추천할 모임이 없어요'}</p>
+             <button class="btn-text" data-home-find="1" type="button">모임 찾기</button>
+           </div>`;
+      hydrateIcons(el.homeRecommendGrid);
+    }
+    applyHomeRecCollapse();
+  }
+
+  /** 접힘/펼침 — 2개만 보이고 둘째 줄 하단이 흐려진다. 화살표를 누르면 전체가 펼쳐진다. */
+  function applyHomeRecCollapse() {
+    const box = el.homeRecCollapse;
+    if (!box) return;
+    const open = ui.homeRecOpen === true;
+    const list = homeRecView() === 'event' ? el.homeRecEvents : el.homeRecommendGrid;
+    const items = list ? [...list.children].filter((n) => n.nodeType === 1 && !n.classList.contains('home-empty-line')) : [];
+    /* 그룹은 2열이라 '2개'가 한 줄이다 — 펼칠 것이 있을 때만 화살표를 둔다. */
+    const canExpand = items.length > 2;
+    const opened = open && canExpand;
+    box.classList.toggle('is-open', opened);
+    box.classList.toggle('is-collapsed', !opened);
+    if (el.btnHomeRecExpand) {
+      el.btnHomeRecExpand.classList.toggle('is-open', opened);
+      el.btnHomeRecExpand.hidden = !canExpand;
+      el.btnHomeRecExpand.setAttribute('aria-expanded', open && canExpand ? 'true' : 'false');
+      el.btnHomeRecExpand.setAttribute('aria-label', open && canExpand ? '추천 모임 접기' : '추천 모임 더 보기');
+    }
+    if (el.homeRecExpandLabel) el.homeRecExpandLabel.textContent = open && canExpand ? '접기' : '더 보기';
+    if (el.homeRecFade) el.homeRecFade.hidden = !canExpand || (open && canExpand);
+    if (!canExpand || open) {
+      box.style.maxHeight = 'none';
       return;
     }
-    el.homeRecommendGrid.innerHTML = items.map((it) => groupCardHTML({
-      group: it.group, tone: it.tone, azit: it.azit, joined: false
-    })).join('');
+    const second = items[1];
+    const listTop = list.getBoundingClientRect().top;
+    /* 둘째 카드 아래에 16px 여유를 두고 자른다 — 이름은 살아 있고, 그 아래(설명 줄)가
+       흐림에 잠기며 화살표가 그 자리에 걸린다. */
+    const cut = second.getBoundingClientRect().bottom - listTop + 16;
+    box.style.maxHeight = `${Math.max(110, Math.round(cut))}px`;
   }
 
   /* ---------------------------------------- H1-③ 추천 일정 */
@@ -3825,7 +3992,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /** 추천 모임 가로 레일 — 가입하지 않은 모임만(기존 추천 규칙 그대로). */
   function feedRailGroupsHTML(railIndex) {
-    const all = store.getRecommendedGroups({ limit: 8, sort: homeRecommendSort() });
+    const railSort = homeRecommendSort() === 'popular' ? 'popular' : 'recommend';
+    const all = store.getRecommendedGroups({ limit: 8, sort: railSort });
     if (!all.length) return '';
     const items = rotateBy(all, railIndex);
     return `
@@ -4543,15 +4711,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.btnMyGroupsMore) el.btnMyGroupsMore.addEventListener('click', () => openMyGroupsScreen());
 
-    /* 추천 모임 — 칩으로 순서 바꾸기 · 카드 열기 · 더 보기 → 모임 찾기 */
-    if (el.homeRecommendChips) {
-      el.homeRecommendChips.addEventListener('click', (e) => {
-        const chip = e.target.closest('[data-home-rec-sort]');
-        if (!chip) return;
-        ui.homeRecSort = chip.dataset.homeRecSort;
+    /* 추천 모임 — 그룹|일정 토글 · 카테고리 탭 · 칩 · 접힘/펼침 (v39.7) */
+    if (el.homeRecSeg) {
+      el.homeRecSeg.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-home-rec-view]');
+        if (!btn) return;
+        ui.homeRecView = btn.dataset.homeRecView === 'event' ? 'event' : 'group';
+        ui.homeRecOpen = false;
         renderHomeRecommend();
       });
     }
+    if (el.homeRecCats) {
+      el.homeRecCats.addEventListener('click', (e) => {
+        const tab = e.target.closest('[data-home-rec-cat]');
+        if (!tab) return;
+        ui.homeRecCat = tab.dataset.homeRecCat;
+        ui.homeRecOpen = false;
+        renderHomeRecommend();
+      });
+    }
+    if (el.homeRecChips) {
+      el.homeRecChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-home-rec-sort]');
+        if (!chip) return;
+        ui.homeRecSort = chip.dataset.homeRecSort;
+        ui.homeRecOpen = false;
+        renderHomeRecommend();
+      });
+    }
+    if (el.btnHomeRecExpand) {
+      el.btnHomeRecExpand.addEventListener('click', () => {
+        ui.homeRecOpen = ui.homeRecOpen !== true;
+        applyHomeRecCollapse();
+      });
+    }
+    if (el.homeRecEvents) {
+      el.homeRecEvents.addEventListener('click', (e) => {
+        if (e.target.closest('[data-home-find]')) { openFindScreen(); return; }
+        const btn = e.target.closest('[data-guest-event]');
+        if (btn) { handleGuestEventButton(btn, renderHomeRecommend); return; }
+        const row = e.target.closest('[data-suggest-event]');
+        if (row) openEventDetail(row.dataset.suggestEvent);
+      });
+    }
+    window.addEventListener('resize', () => { if (el.homeRecCollapse) applyHomeRecCollapse(); });
     if (el.homeRecommendGrid) {
       el.homeRecommendGrid.addEventListener('click', (e) => {
         if (e.target.closest('[data-home-find]')) { openFindScreen(); return; }
@@ -4570,8 +4773,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (el.btnHomeRecommendMore) {
       el.btnHomeRecommendMore.addEventListener('click', () => {
-        const map = { near: 'near', popular: 'members', new: 'new' };
-        openFindScreen({ sort: map[homeRecommendSort()] || 'recommend' });
+        const v = homeRecView() === 'event' ? 'recommend' : homeRecommendSort();
+        const map = { rec: 'recommend', popular: 'members', trending: 'new', shop: 'recommend' };
+        openFindScreen({ sort: map[v] || 'recommend' });
       });
     }
 
@@ -8263,7 +8467,7 @@ document.addEventListener('DOMContentLoaded', () => {
    *  · 개발자 도구(예시 데이터·초기화)는 ?dev=1 에서만 DOM 에 그린다.
    *  · 행 48px · 구분선 좌우 16px · 그룹 사이 16px · 카드 없이 (styles 34-5).
    * ======================================================================== */
-  const APP_VERSION = 'v39.6';
+  const APP_VERSION = 'v39.7';
 
   /* 지금 보고 있는 설정 화면 — 'main' | 'notif' | 'theme' */
   let settingsView = 'main';
@@ -19310,14 +19514,101 @@ document.addEventListener('DOMContentLoaded', () => {
        늦추고, **제자리에 서는 순간(2.1초)이 모션의 끝**이라 130ms 뒤 바로 첫 화면으로 넘어간다:
        최소 노출 **2,230ms**, 하드 상한 **2,430ms**(총 노출 ≈ 2.46초).
        (손가락·키 입력이 있으면 지금처럼 바로 건너뛰고, 동작 줄이기·자동화 테스트는 짧게/생략 유지) */
-    const minMs = reduced ? 100 : 2230;
-    const stayMs = reduced ? 140 : 2430;
+    /* v39.7 (11/28 사용자: "진입(페이드아웃)은 이 모든 연출(우그 강조 포함)이 끝나고 살짝 여유를 둔 직후에") —
+       o 가 제자리에 서는 2.1초 + '우'·'그' 강조 연출이 끝난 뒤 **380ms 여유**를 두고 진입한다:
+       최소 노출 **2,480ms**, 하드 상한 **2,680ms**. */
+    const minMs = reduced ? 100 : 2480;
+    const stayMs = reduced ? 140 : 2680;
     const leaveMs = reduced ? 0 : 200;
     /* v39.6 — "튕기는게 끝날때 진입이 되어야해". 모션(`splashRollIn`)이 끝나는 순간이 곧 o 가 제자리에
        딱 서는 순간이라, 그 **130ms 뒤**에 첫 화면 진입(페이드아웃)을 시작한다. 타이머로 재면 첫 페인트와
        스크립트 시작 사이의 시차만큼 어긋나므로, CSS 애니메이션의 끝(animationend)을 직접 받아 잰다. */
-    const enterDelayMs = 130;
+    const enterDelayMs = 380;
     const leadMark = node ? node.querySelector('.oog-mark-lead') : null;
+
+    /* ------------------------------------------------------------------
+     * v39.7 — 맨 앞 o 의 morph (눌린 스마일 루프 ↔ 동그란 o)
+     *   · 두 모양을 **같은 명령 구조**(바깥 고리 4 세그먼트 + 안쪽 구멍 4 세그먼트)의 좌표 배열로 두고
+     *     좌표를 보간해 `d` 를 다시 쓴다 → opacity 교차가 없어 깜빡이지 않는다.
+     *   · 시간은 CSS 모션(`splashRollIn`)의 currentTime 을 그대로 읽는다 — 테스트가 CSS 를 멈추면
+     *     morph 도 같은 프레임에 멈춘다(화면과 검사가 어긋나지 않는다).
+     *   · 부딪히는 순간(1.07~1.16초) 눌리고, 펴지기 시작(1.40초)부터 탄성으로 살짝 지나쳤다가
+     *     1.72초에 동그란 o 로 돌아온다(음수 진행 = 고리가 살짝 커졌다 오는 '통' 튐).
+     * ------------------------------------------------------------------ */
+    const SPLASH_O_RING = [
+      50, 0,
+      77.6, 0, 100, 23.5, 100, 52.5,
+      100, 81.5, 77.6, 105, 50, 105,
+      22.4, 105, 0, 81.5, 0, 52.5,
+      0, 23.5, 22.4, 0, 50, 0,
+      50, 21.1,
+      62.4, 21.1, 72.4, 35.2, 72.4, 52.5,
+      72.4, 69.8, 62.4, 83.9, 50, 83.9,
+      37.6, 83.9, 27.6, 69.8, 27.6, 52.5,
+      27.6, 35.2, 37.6, 21.1, 50, 21.1
+    ];
+    /* 눌린 스마일 루프 — 윗변이 가운데로 눌리고(오목) 아랫변은 둥글게 웃는다. 안쪽 구멍은 그대로 뚫려 있다. */
+    const SPLASH_O_SMILE = [
+      50, 14,
+      77.6, 14, 100, 31.1, 100, 52,
+      100, 72.9, 78, 90, 50, 90,
+      22, 90, 0, 72.9, 0, 52,
+      0, 31.1, 22.4, 14, 50, 14,
+      50, 44,
+      64, 40, 78, 46, 78, 56,
+      78, 64, 64, 68, 50, 68,
+      36, 68, 22, 64, 22, 56,
+      22, 46, 36, 40, 50, 44
+    ];
+    const morphPath = node ? node.querySelector('.oog-mark-mouth path') : null;
+    const r2 = (n) => Math.round(n * 100) / 100;
+    function splashOPathAt(p) {
+      const v = SPLASH_O_RING.map((n, i) => n + (SPLASH_O_SMILE[i] - n) * p);
+      return `M ${r2(v[0])} ${r2(v[1])} `
+        + `C ${r2(v[2])} ${r2(v[3])} ${r2(v[4])} ${r2(v[5])} ${r2(v[6])} ${r2(v[7])} `
+        + `C ${r2(v[8])} ${r2(v[9])} ${r2(v[10])} ${r2(v[11])} ${r2(v[12])} ${r2(v[13])} `
+        + `C ${r2(v[14])} ${r2(v[15])} ${r2(v[16])} ${r2(v[17])} ${r2(v[18])} ${r2(v[19])} `
+        + `C ${r2(v[20])} ${r2(v[21])} ${r2(v[22])} ${r2(v[23])} ${r2(v[24])} ${r2(v[25])} Z `
+        + `M ${r2(v[26])} ${r2(v[27])} `
+        + `C ${r2(v[28])} ${r2(v[29])} ${r2(v[30])} ${r2(v[31])} ${r2(v[32])} ${r2(v[33])} `
+        + `C ${r2(v[34])} ${r2(v[35])} ${r2(v[36])} ${r2(v[37])} ${r2(v[38])} ${r2(v[39])} `
+        + `C ${r2(v[40])} ${r2(v[41])} ${r2(v[42])} ${r2(v[43])} ${r2(v[44])} ${r2(v[45])} `
+        + `C ${r2(v[46])} ${r2(v[47])} ${r2(v[48])} ${r2(v[49])} ${r2(v[50])} ${r2(v[51])} Z`;
+    }
+    const easeOutCubic = (u) => 1 - Math.pow(1 - u, 3);
+    /* 살짝 지나쳤다 돌아오는 탄성(끝값 1, 중간에 1을 넘는다) */
+    const easeOutBack = (u) => 1 + 2.7 * Math.pow(u - 1, 3) + 1.7 * Math.pow(u - 1, 2);
+    const O_PRESS = 1070;   /* 부딪히는 순간 — 누르기 시작 */
+    const O_PRESSED = 1160; /* 눌린 모양 완성 */
+    const O_RELEASE = 1400; /* 펴지기 시작 */
+    const O_SETTLED = 1720; /* 동그란 o 로 복귀 */
+    function splashOMorphAt(t) {
+      if (!(t > O_PRESS)) return 0;
+      if (t < O_PRESSED) return easeOutCubic((t - O_PRESS) / (O_PRESSED - O_PRESS));
+      if (t < O_RELEASE) return 1;
+      if (t < O_SETTLED) return 1 - easeOutBack((t - O_RELEASE) / (O_SETTLED - O_RELEASE));
+      return 0;
+    }
+    if (morphPath) morphPath.setAttribute('d', splashOPathAt(0));
+    const morphStart = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    function splashOTick() {
+      if (!morphPath) return;
+      if (state.visible === false) return;
+      let t = 0;
+      const anims = leadMark && leadMark.getAnimations ? leadMark.getAnimations() : [];
+      const motion = (anims || []).find((a) => /splashRollIn/.test(a.animationName || ''));
+      if (motion && typeof motion.currentTime === 'number') t = motion.currentTime;
+      morphPath.setAttribute('d', splashOPathAt(splashOMorphAt(t)));
+      /* CSS 시간을 따라가는 동안은 계속 돈다(검사가 시간을 어느 시점으로 멈춰도 그 프레임의 모양이 남는다).
+         ?splash=hold 로 오래 떠 있어도 30초에서 멈춘다(그 뒤로는 o 그대로). */
+      const wall = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - morphStart;
+      if (wall < 30000) window.requestAnimationFrame(splashOTick);
+    }
+    if (morphPath && node && !skipNow && !reduced && !hold) window.requestAnimationFrame(splashOTick);
+    if (morphPath && hold) {
+      /* ?splash=hold — 보이는 그대로 두되 morph 는 CSS 시간을 따라간다(촬영·검사용). */
+      window.requestAnimationFrame(splashOTick);
+    }
     let motionOwnsEntry = false;
     const started = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const state = {
@@ -21805,6 +22096,21 @@ document.addEventListener('DOMContentLoaded', () => {
     /* H1 — 내 모임 전체 화면 · 모임 찾기 전용 화면 */
     openMyGroupsScreen, renderMyGroupsScreen, renderMyGroupsWeek,
     openFindScreen, renderFindScreen, closeSubscreens,
+    /* v39.7 — 홈 추천 모임(그룹|일정) 상태·목록 — 스모크가 화면과 저장소를 함께 본다. */
+    getHomeRecState: () => ({
+      view: homeRecView(), cat: homeRecCat(), sort: homeRecommendSort(),
+      open: ui.homeRecOpen === true,
+      groups: recGroupItems().map((it) => ({ id: it.group.id, name: it.group.name, cat: recGroupCategory(it.group),
+        local: recGroupIsLocal(it.group), partner: it.group.partnerBusiness === true })),
+      events: recEventItems().map((it) => ({ id: it.event.id, title: it.event.title, cat: it.group ? recGroupCategory(it.group) : '',
+        guestOpen: it.event.guestOpen === true })),
+      collapse: el.homeRecCollapse ? { maxHeight: el.homeRecCollapse.style.maxHeight,
+        open: el.homeRecCollapse.classList.contains('is-open'),
+        fadeHidden: !!(el.homeRecFade && el.homeRecFade.hidden),
+        expandHidden: !!(el.btnHomeRecExpand && el.btnHomeRecExpand.hidden) } : null,
+      cards: el.homeRecommendGrid ? el.homeRecommendGrid.querySelectorAll('[data-group-card]').length : 0,
+      rows: el.homeRecEvents ? el.homeRecEvents.querySelectorAll('[data-suggest-event]').length : 0
+    }),
     getH1State: () => ({
       openScreen: ui.openSubscreen,
       homeSections: ['my-groups', 'home-recommend', 'home-suggest-events', 'home-suggest-feed']

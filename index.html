@@ -61,13 +61,16 @@
     <!-- Sprint 27.5 — 배경 그림 위에 로고 글자만(점토 타일 박스 없음) -->
     <div class="oog-splash-bg" aria-hidden="true"></div>
     <div class="oog-splash-stage">
-      <!-- v39.6 (11/28 사용자: "o자가 아예 입이 되어야해 그리고 속도는 즉 로딩화면은 조금만 더 천천히") —
-           v39.5 의 'o 구멍 안 입표시' 를 걷어내고, 부딪혀 눌리는 순간 **o 글자 자체를 감추고 같은 자리에
-           굵은 흰 스마일 입(초승달 곡선)만** 그린다 → o 가 곧 입이 된다. 튕겨 돌아올 때 입이 사라지고
-           o 가 다시 살아나 완성된 'ooG' 가 된다(두 칸으로 나눈 구조·자간·크기는 v39.5 그대로). -->
-      <span class="oog-splash-logo"><span class="oog-mark-lead"><span class="oog-mark-o">o</span><span class="oog-mark-mouth" aria-hidden="true"><svg viewBox="0 0 100 72" focusable="false" aria-hidden="true"><path d="M10 20C16 62 84 62 90 20" /></svg></span></span><span class="oog-mark-rest">oG</span></span>
-      <p class="oog-splash-word" aria-hidden="true">우그</p>
-      <div class="oog-splash-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      <!-- v39.7 (11/28 사용자: "로딩화면 입표시는 잘했는데 o를 윗부분을 눌러서 구멍이있어야지 바로 반을
+           짤라버리면어떡해.. 그리고 oog밑에 초록색 점세개는 없애줘도돼 웃는표시는 맞는데 자르지말고
+           위를 눌러서 웃는 표시로" · "입표시에서 깜빡거리고 o로 변하는데 자연스럽게 눌러졌던게
+           펼쳐지도록 해 이때도 살짝 통 튀도록 · 밑에 한글로 된 우그도 ... '우리들의 그룹'이 나오고
+           입표시에서 다시 o가 됐을때는 '리들의  룹'이 회색? 흐릿하게 처리되면서 '우그'가 강조되도록")
+           — 맨 앞 o 는 이제 **하나의 SVG 고리**다. 글자 o 는 자리(폭)만 차지하고 감춰 두고,
+           그 위에 o 잉크와 같은 크기의 고리를 얹어 **눌린 스마일 루프 ↔ 동그란 o 를 같은 패스로
+           이어서 변형(morph)** 한다 → opacity 교차가 없어 깜빡이지 않는다. -->
+      <span class="oog-splash-logo"><span class="oog-mark-lead"><span class="oog-mark-o" aria-hidden="true">o</span><span class="oog-mark-mouth" aria-hidden="true"><svg viewBox="0 0 100 105" preserveAspectRatio="none" focusable="false" aria-hidden="true"><path fill-rule="evenodd" d="M 50 0 C 77.6 0 100 23.5 100 52.5 C 100 81.5 77.6 105 50 105 C 22.4 105 0 81.5 0 52.5 C 0 23.5 22.4 0 50 0 Z M 50 21.1 C 62.4 21.1 72.4 35.2 72.4 52.5 C 72.4 69.8 62.4 83.9 50 83.9 C 37.6 83.9 27.6 69.8 27.6 52.5 C 27.6 35.2 37.6 21.1 50 21.1 Z" /></svg></span></span><span class="oog-mark-rest">oG</span></span>
+      <p class="oog-splash-word" aria-hidden="true"><span class="splash-u">우</span><span class="splash-dim">리들의 </span><span class="splash-g">그</span><span class="splash-dim">룹</span></p>
     </div>
   </div>
 
@@ -188,19 +191,47 @@
             <div class="my-groups-rail" id="my-groups-rail" aria-live="polite"><!-- JS --></div>
           </section>
 
-          <!-- ② 추천 모임 — 가입하지 않은 모임만 · 칩 3개 · 2열 이미지 카드(박스 없이) -->
-          <section class="home-recommend" id="home-recommend" aria-labelledby="home-recommend-title" hidden>
+          <!-- ② 추천 모임 (v39.7 · #27717·#27728·IMG_4639) — 내 모임 바로 아래.
+               상단 알약 토글 **그룹 | 일정** · 카테고리 가로 탭(전체·운동·동네친구·아웃도어/여행·자기계발·기타)
+               · 정렬 칩(추천·인기·요즘 뜨는·동네가게모임) · **2개만 남기고 접힘**(둘째 줄 하단이 흐려지고
+               화살표를 누르면 펼쳐진다 · 다시 누르면 2개로 접힌다). -->
+          <section class="home-recommend" id="home-recommend" aria-labelledby="home-recommend-title">
             <div class="home-recommend-head">
               <div class="home-recommend-head-text">
                 <h3 class="home-recommend-title" id="home-recommend-title">추천 모임</h3>
                 <p class="home-recommend-sub" id="home-recommend-sub"></p>
               </div>
-              <button class="home-recommend-more" id="btn-home-recommend-more" type="button">더 보기
+              <button class="home-recommend-more" id="btn-home-recommend-more" type="button">모임 찾기
                 <span class="oo-icon-17" aria-hidden="true" data-oog-icon="chevronRight"></span>
               </button>
             </div>
-            <div class="home-recommend-chips" id="home-recommend-chips" role="group" aria-label="추천 모임 순서"><!-- JS --></div>
-            <div class="home-recommend-grid" id="home-recommend-grid" aria-live="polite"><!-- JS --></div>
+
+            <!-- 상단 알약 세그먼트 — 그룹 | 일정 (v39.7 · #27728 "아 모임이 일정으로") -->
+            <div class="home-rec-seg" id="home-rec-seg" role="tablist" aria-label="추천 보기">
+              <button class="home-rec-seg-btn is-active" id="home-rec-seg-group" type="button" role="tab"
+                      data-home-rec-view="group" aria-selected="true" aria-controls="home-recommend-grid">그룹</button>
+              <button class="home-rec-seg-btn" id="home-rec-seg-event" type="button" role="tab"
+                      data-home-rec-view="event" aria-selected="false" aria-controls="home-rec-events">일정</button>
+            </div>
+
+            <!-- 카테고리 가로 탭 -->
+            <div class="home-rec-cats" id="home-rec-cats" role="group" aria-label="추천 카테고리"><!-- JS --></div>
+
+            <!-- 정렬·성격 칩 -->
+            <div class="home-rec-chips" id="home-rec-chips" role="group" aria-label="추천 정렬"><!-- JS --></div>
+
+            <!-- 접힘 상자 — 2개만 보이고 둘째 줄 하단이 흐려진다 · 화살표로 펼침/접힘 -->
+            <div class="home-rec-collapse is-collapsed" id="home-rec-collapse">
+              <div class="home-recommend-grid" id="home-recommend-grid" aria-live="polite"><!-- JS --></div>
+              <div class="home-rec-events" id="home-rec-events" aria-live="polite" hidden><!-- JS --></div>
+              <div class="home-rec-fade" id="home-rec-fade" aria-hidden="true"></div>
+            </div>
+            <!-- 화살표는 접힘 상자 **밖**에 둔다(상자 끝에서 잘리지 않고, 흐린 하단에 살짝 걸친다) -->
+            <button class="home-rec-expand" id="btn-home-rec-expand" type="button"
+                    aria-expanded="false" aria-controls="home-recommend-grid">
+              <span class="home-rec-expand-label" id="home-rec-expand-label">더 보기</span>
+              <span class="oo-icon-20" aria-hidden="true" data-oog-icon="chevronDown"></span>
+            </button>
           </section>
 
           <!-- ③ 추천 일정 — '게스트 참여 가능'을 켠 일정만 · 행 + 얇은 구분선 -->
