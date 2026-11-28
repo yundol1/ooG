@@ -13717,20 +13717,23 @@ class Store {
         groupProfile: !!(allowGroup && groupPhoto)
       });
     };
-    /* 1) 내가 멤버면 명단에서(모임장 → 멤버 순) */
-    if (this.isGroupJoined(groupId)) {
+    const fromRoster = () => {
       const roster = this.getGroupRoster(groupId);
       (roster.members || []).forEach((m) => {
         add(m.id, m.photoUrl ? m.name : '', m.photoUrl, m.name, null, m.avatarText, m.gradient);
       });
-    }
-    /* 2) 아니면 모임 data 의 미리보기(모임장 기기가 갱신한다) */
+    };
+    /* 1) 내가 멤버면 명단에서(모임장 → 멤버 순) */
+    if (this.isGroupJoined(groupId)) fromRoster();
+    /* 2) 아니면 모임 data 의 미리보기(모임장 기기가 갱신한다 · 미가입자도 볼 수 있는 유일한 길) */
     if (!out.length) {
       (g.memberPreview || []).forEach((m) => {
         if (!m) return;
         add(m.id, m.name, m.photoUrl, m.baseName, m.basePhotoUrl, m.avatarText, m.gradient);
       });
     }
+    /* 3) 그것도 없으면 이 기기가 아는 명단(예시 데이터·방금 만든 모임 — 모임장 얼굴부터) */
+    if (!out.length) fromRoster();
     return out.slice(0, limit);
   }
 
